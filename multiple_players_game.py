@@ -40,15 +40,18 @@ class Game:
             else:
                 file.write(f'{player.name} decided to not to bank. They now have {player.banked_money} in bank.\n')
 
-
-    def play_game(self,file):
+    def play_game(self, file):
         while max(player.banked_money for player in self.players) < 100:
             self.active_players = list(self.players)  # reset active players for the round
             self.play_round(file)
         winner = max(self.players, key=lambda player: player.banked_money)
         file.write(f"{winner.name} wins with {winner.banked_money} points!\n")
-        self.print_rankings(file)
-        return self.get_game_state()
+        game_state = self.get_game_state()
+        print(game_state)
+        # Assign points based on the final standings
+        final_scores = assign_points(game_state)
+        print("Final Scores:", final_scores)
+        return game_state
 
     def print_rankings(self, file):
         file.write("\n\n")
@@ -75,11 +78,7 @@ class Game:
         file.write("\n\n\n")
 
 
-
-
-
-    
-def run_simulation_many_times(number,score):
+def run_simulation_many_times(number):
     
     all_players=get_all_player_classes_from_folder()
     if not all_players:
@@ -97,15 +96,21 @@ def run_simulation_many_times(number,score):
         for _ in range(number):
             game = Game(all_players)
             game_result = game.play_game(file)
-            winner = max(game.players, key=lambda player: player.banked_money)
-            win_counts[winner.name] += score
+            print(game_result)
+            result = assign_points(game_result)
+            #update win_counts with the result
+            
+            for player in result:
+                win_counts[player] += result[player]
 
     # Print the results
     results = [f"{number} games were played"]
     for player_name, count in sorted(win_counts.items(), key=lambda item: item[1], reverse=True):
-        results.append(f"{player_name} won {count} games")
+        results.append(f"{player_name} won {count} points")
     
     return "\n".join(results)
+
+
 
 def get_all_player_classes_from_folder(folder_name="classes"):
     # Get a list of all .py files in the given folder
@@ -125,3 +130,42 @@ def get_all_player_classes_from_folder(folder_name="classes"):
                 player_classes.append((obj, file))
 
     return player_classes
+
+
+def assign_points(game_result):
+    # Sort the players by their scores in descending order
+    banked_money = game_result['banked_money']
+    sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
+
+    points_distribution = {}
+    last_score = None
+    last_rank = 0
+    num_players_at_rank = 0
+
+    for rank, (player, score) in enumerate(sorted_scores, start=1):
+        # Handle ties
+        if score == last_score:
+            num_players_at_rank += 1
+        else:
+            last_rank += num_players_at_rank
+            num_players_at_rank = 1
+            last_score = score
+
+        # Assign points based on rank
+        if (5-last_rank) >= 0:
+            points_distribution[player] = 5 - last_rank
+
+    for player in banked_money:
+        #if the players score appears more than once in the banked money dictionary reduce their points by 1
+        if banked_money[player] in [banked_money[x] for x in banked_money if x != player]:
+            points_distribution[player] -= 1
+    
+    return points_distribution
+
+
+
+
+
+
+if __name__ == "__main__":
+    print(run_simulation_many_times(100))
