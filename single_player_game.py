@@ -17,7 +17,8 @@ class Game:
     def get_game_state(self):
         return {
             "banked_money": {self.player.name: self.player.banked_money},
-            "unbanked_money": {self.player.name: self.player.unbanked_money}
+            "unbanked_money": {self.player.name: self.player.unbanked_money},
+            "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
         }
 
     def play_round(self):
