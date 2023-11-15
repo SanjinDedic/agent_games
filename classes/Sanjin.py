@@ -2,7 +2,6 @@ from player_base import Player
 
 class Testing_Player(Player):
     def make_decision(self, game_state):
-        print(game_state)
         import random
         threshold = 1
         #bank if I have won
