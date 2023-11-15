@@ -177,11 +177,9 @@ def assign_points(game_result):
         if (5-last_rank) >= 0:
             points_distribution[player] = 5 - last_rank
 
-    for player in game_result['points_aggregate']:
+    for player in banked_money:
         #if the players score appears more than once in the banked money dictionary reduce their points by 1
         if banked_money[player] in [banked_money[x] for x in banked_money if x != player]:
-            if player in points_distribution:
-                if points_distribution[player] > 0:
-                    points_distribution[player] -= 1
-    
+            points_distribution[player] -= 1
+
     return points_distribution
