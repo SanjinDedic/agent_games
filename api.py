@@ -5,7 +5,6 @@ import importlib.util
 from single_player_game import run_single_simulation
 from pydantic import BaseModel
 import re
-from multiple_players_game import run_simulation_many_times
 import json
 
 app = FastAPI()
@@ -46,11 +45,14 @@ async def run_game(data: Source_Data):
     if not match:
         return {"game_result":"No class definition found in the provided source code."}
     class_name = match.group(1)
-    filepath = "classes/"+filename 
+    filepath = "classes/"+filename
+    modified_class_definition = f"class {class_name}(Player):"
+    modified_class_source = re.sub(r'class \w+\(\):', modified_class_definition, class_source)
+
     # Write the source code to a temporary file
     with open(filepath, 'w') as file:
         file.write("from player_base import Player\n\n")
-        file.write(class_source)
+        file.write(modified_class_source)
 
     # Dynamically import the class
     spec = importlib.util.spec_from_file_location(class_name, filepath)
@@ -66,14 +68,6 @@ async def run_game(data: Source_Data):
 
     return {"game_result": result}
 
-@app.post("/run_game_simulation/")
-async def run_simulation(data: Admin_Simulation):
-    if data.password=="BOSSMAN":
-        results = run_simulation_many_times(data.simulations,data.score)
-        return {"game_result":results}
-    else:
-        return {"game_result":"Wrong password"}
-    
 """
 @app.get("/game_rankings/")
 async def game_rankings(data: Admin_Simulation):
@@ -88,7 +82,6 @@ async def run_simulation(data: Admin_Simulation):
     else:
         return {"results":"Wrong password"}
 """
-
 
 if __name__=="__main__":
     import uvicorn
