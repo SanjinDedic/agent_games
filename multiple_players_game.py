@@ -18,7 +18,8 @@ class Game:
     def get_game_state(self):
         return {
             "banked_money": {player.name: player.banked_money for player in self.players},
-            "unbanked_money": {player.name: player.unbanked_money for player in self.players}
+            "unbanked_money": {player.name: player.unbanked_money for player in self.players},
+            "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
         }
     
     def play_round(self,file):
@@ -80,33 +81,30 @@ class Game:
 
 def run_simulation_many_times(number):
     
-    all_players=get_all_player_classes_from_folder()
+    all_players = get_all_player_classes_from_folder()
     if not all_players:
         raise ValueError("No player classes provided.")
 
-    # Dictionary to store the number of wins for each player
-    win_counts = {filename[:-3]: 0 for _, filename in all_players}
+    # Dictionary to store the total points for each player
+    total_points = {filename[:-3]: 0 for _, filename in all_players}
 
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S")
-
-    # Create a filename using the number of simulations and the current time
-    filename = f"game_simulation_{number}_runs_{current_time}.txt"
+    filename = f"logfiles/game_simulation_{number}_runs_{current_time}.txt"
     
     with open(filename, 'w') as file:
         for _ in range(number):
             game = Game(all_players)
             game_result = game.play_game(file)
-            print(game_result)
-            result = assign_points(game_result)
-            #update win_counts with the result
-            
-            for player in result:
-                win_counts[player] += result[player]
+            points_this_game = assign_points(game_result)
+
+            # Update total_points with the points from this game
+            for player, points in points_this_game.items():
+                total_points[player] += points
 
     # Print the results
     results = [f"{number} games were played"]
-    for player_name, count in sorted(win_counts.items(), key=lambda item: item[1], reverse=True):
-        results.append(f"{player_name} won {count} points")
+    for player_name in sorted(total_points, key=total_points.get, reverse=True):
+        results.append(f"{player_name} earned a total of {total_points[player_name]} points")
     
     return "\n".join(results)
 
@@ -163,9 +161,3 @@ def assign_points(game_result):
     return points_distribution
 
 
-
-
-
-
-if __name__ == "__main__":
-    print(run_simulation_many_times(100))

@@ -1,0 +1,206 @@
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to not to bank. They now have 0 in bank.
+Sanjin decided to not to bank. They now have 0 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to not to bank. They now have 0 in bank.
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to not to bank. They now have 0 in bank.
+Sanjin decided to not to bank. They now have 0 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to not to bank. They now have 0 in bank.
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to not to bank. They now have 0 in bank.
+Sanjin decided to not to bank. They now have 0 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to not to bank. They now have 0 in bank.
+Gamemaster rolled a 1. Round over without banking money.
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to not to bank. They now have 0 in bank.
+Sanjin decided to not to bank. They now have 0 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to not to bank. They now have 0 in bank.
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to not to bank. They now have 0 in bank.
+Sanjin decided to not to bank. They now have 0 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to not to bank. They now have 0 in bank.
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to not to bank. They now have 0 in bank.
+Sanjin decided to not to bank. They now have 0 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to not to bank. They now have 0 in bank.
+Another_Player decided to not to bank. They now have 0 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to not to bank. They now have 0 in bank.
+Jen decided to bank. They now have 15 in bank.
+Sanjin decided to bank. They now have 15 in bank.
+Toan decided to not to bank. They now have 0 in bank.
+Toan_copy decided to bank. They now have 15 in bank.
+Another_Player decided to bank. They now have 21 in bank.
+CustomPlayer decided to not to bank. They now have 0 in bank.
+Dawood_Hassan decided to bank. They now have 21 in bank.
+Jen decided to not to bank. They now have 15 in bank.
+Sanjin decided to not to bank. They now have 15 in bank.
+Toan decided to bank. They now have 21 in bank.
+Toan_copy decided to not to bank. They now have 15 in bank.
+Another_Player decided to not to bank. They now have 21 in bank.
+CustomPlayer decided to bank. They now have 25 in bank.
+Dawood_Hassan decided to not to bank. They now have 21 in bank.
+Jen decided to not to bank. They now have 15 in bank.
+Sanjin decided to not to bank. They now have 15 in bank.
+Toan decided to not to bank. They now have 21 in bank.
+Toan_copy decided to not to bank. They now have 15 in bank.
+Another_Player decided to not to bank. They now have 21 in bank.
+CustomPlayer decided to not to bank. They now have 25 in bank.
+Dawood_Hassan decided to not to bank. They now have 21 in bank.
+Jen decided to not to bank. They now have 15 in bank.
+Sanjin decided to not to bank. They now have 15 in bank.
+Toan decided to not to bank. They now have 21 in bank.
+Toan_copy decided to not to bank. They now have 15 in bank.
+Another_Player decided to not to bank. They now have 21 in bank.
+CustomPlayer decided to not to bank. They now have 25 in bank.
+Dawood_Hassan decided to not to bank. They now have 21 in bank.
+Jen decided to bank. They now have 36 in bank.
+Sanjin decided to bank. They now have 36 in bank.
+Toan decided to not to bank. They now have 21 in bank.
+Toan_copy decided to bank. They now have 36 in bank.
+Another_Player decided to bank. They now have 42 in bank.
+CustomPlayer decided to not to bank. They now have 25 in bank.
+Dawood_Hassan decided to bank. They now have 42 in bank.
+Jen decided to not to bank. They now have 36 in bank.
+Sanjin decided to not to bank. They now have 36 in bank.
+Toan decided to bank. They now have 42 in bank.
+Toan_copy decided to not to bank. They now have 36 in bank.
+Another_Player decided to not to bank. They now have 42 in bank.
+CustomPlayer decided to not to bank. They now have 25 in bank.
+Dawood_Hassan decided to not to bank. They now have 42 in bank.
+Jen decided to not to bank. They now have 36 in bank.
+Sanjin decided to not to bank. They now have 36 in bank.
+Toan decided to not to bank. They now have 42 in bank.
+Toan_copy decided to not to bank. They now have 36 in bank.
+Another_Player decided to not to bank. They now have 42 in bank.
+CustomPlayer decided to not to bank. They now have 25 in bank.
+Dawood_Hassan decided to not to bank. They now have 42 in bank.
+Jen decided to not to bank. They now have 36 in bank.
+Sanjin decided to not to bank. They now have 36 in bank.
+Toan decided to not to bank. They now have 42 in bank.
+Toan_copy decided to not to bank. They now have 36 in bank.
+Another_Player decided to not to bank. They now have 42 in bank.
+CustomPlayer decided to bank. They now have 55 in bank.
+Dawood_Hassan decided to not to bank. They now have 42 in bank.
+Jen decided to bank. They now have 55 in bank.
+Sanjin decided to bank. They now have 55 in bank.
+Toan decided to not to bank. They now have 42 in bank.
+Toan_copy decided to bank. They now have 55 in bank.
+Another_Player decided to bank. They now have 61 in bank.
+CustomPlayer decided to not to bank. They now have 55 in bank.
+Dawood_Hassan decided to bank. They now have 61 in bank.
+Jen decided to not to bank. They now have 55 in bank.
+Sanjin decided to not to bank. They now have 55 in bank.
+Toan decided to not to bank. They now have 42 in bank.
+Toan_copy decided to not to bank. They now have 55 in bank.
+Another_Player decided to not to bank. They now have 61 in bank.
+CustomPlayer decided to not to bank. They now have 55 in bank.
+Dawood_Hassan decided to not to bank. They now have 61 in bank.
+Jen decided to not to bank. They now have 55 in bank.
+Sanjin decided to not to bank. They now have 55 in bank.
+Toan decided to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 55 in bank.
+Another_Player decided to not to bank. They now have 61 in bank.
+CustomPlayer decided to not to bank. They now have 55 in bank.
+Dawood_Hassan decided to not to bank. They now have 61 in bank.
+Jen decided to not to bank. They now have 55 in bank.
+Sanjin decided to not to bank. They now have 55 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 55 in bank.
+Another_Player decided to not to bank. They now have 61 in bank.
+CustomPlayer decided to not to bank. They now have 55 in bank.
+Dawood_Hassan decided to not to bank. They now have 61 in bank.
+Jen decided to not to bank. They now have 55 in bank.
+Sanjin decided to not to bank. They now have 55 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 55 in bank.
+Another_Player decided to not to bank. They now have 61 in bank.
+CustomPlayer decided to not to bank. They now have 55 in bank.
+Dawood_Hassan decided to not to bank. They now have 61 in bank.
+Jen decided to bank. They now have 71 in bank.
+Sanjin decided to bank. They now have 71 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to bank. They now have 71 in bank.
+Another_Player decided to not to bank. They now have 61 in bank.
+CustomPlayer decided to not to bank. They now have 55 in bank.
+Dawood_Hassan decided to not to bank. They now have 61 in bank.
+Jen decided to not to bank. They now have 71 in bank.
+Sanjin decided to not to bank. They now have 71 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 71 in bank.
+Another_Player decided to bank. They now have 77 in bank.
+CustomPlayer decided to bank. They now have 77 in bank.
+Dawood_Hassan decided to bank. They now have 77 in bank.
+Jen decided to not to bank. They now have 71 in bank.
+Sanjin decided to not to bank. They now have 71 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 71 in bank.
+Gamemaster rolled a 1. Round over without banking money.
+Another_Player decided to not to bank. They now have 77 in bank.
+CustomPlayer decided to not to bank. They now have 77 in bank.
+Dawood_Hassan decided to not to bank. They now have 77 in bank.
+Jen decided to not to bank. They now have 71 in bank.
+Sanjin decided to not to bank. They now have 71 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 71 in bank.
+Another_Player decided to not to bank. They now have 77 in bank.
+CustomPlayer decided to not to bank. They now have 77 in bank.
+Dawood_Hassan decided to not to bank. They now have 77 in bank.
+Jen decided to not to bank. They now have 71 in bank.
+Sanjin decided to not to bank. They now have 71 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 71 in bank.
+Another_Player decided to not to bank. They now have 77 in bank.
+CustomPlayer decided to not to bank. They now have 77 in bank.
+Dawood_Hassan decided to not to bank. They now have 77 in bank.
+Jen decided to not to bank. They now have 71 in bank.
+Sanjin decided to not to bank. They now have 71 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to not to bank. They now have 71 in bank.
+Another_Player decided to not to bank. They now have 77 in bank.
+CustomPlayer decided to not to bank. They now have 77 in bank.
+Dawood_Hassan decided to not to bank. They now have 77 in bank.
+Jen decided to bank. They now have 86 in bank.
+Sanjin decided to bank. They now have 86 in bank.
+Toan decided to not to bank. They now have 63 in bank.
+Toan_copy decided to bank. They now have 86 in bank.
+Another_Player decided to bank. They now have 95 in bank.
+CustomPlayer decided to not to bank. They now have 77 in bank.
+Dawood_Hassan decided to bank. They now have 95 in bank.
+Jen decided to not to bank. They now have 86 in bank.
+Sanjin decided to not to bank. They now have 86 in bank.
+Toan decided to bank. They now have 81 in bank.
+Toan_copy decided to not to bank. They now have 86 in bank.
+Another_Player decided to not to bank. They now have 95 in bank.
+CustomPlayer decided to not to bank. They now have 77 in bank.
+Dawood_Hassan decided to not to bank. They now have 95 in bank.
+Jen decided to not to bank. They now have 86 in bank.
+Sanjin decided to not to bank. They now have 86 in bank.
+Toan decided to not to bank. They now have 81 in bank.
+Toan_copy decided to not to bank. They now have 86 in bank.
+Another_Player decided to not to bank. They now have 95 in bank.
+CustomPlayer decided to bank. They now have 106 in bank.
+Dawood_Hassan decided to not to bank. They now have 95 in bank.
+Jen decided to not to bank. They now have 86 in bank.
+Sanjin decided to not to bank. They now have 86 in bank.
+Toan decided to not to bank. They now have 81 in bank.
+Toan_copy decided to not to bank. They now have 86 in bank.
+CustomPlayer wins with 106 points!
