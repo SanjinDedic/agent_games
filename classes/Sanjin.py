@@ -18,13 +18,3 @@ class Testing_Player(Player):
 
         #if I am ranked last then continue
         return 'continue'
-    def my_rank(self, game_state):
-        # Extract the points_aggregate dictionary
-        points_aggregate = game_state['points_aggregate']
-        # Sort the dictionary by its values in descending order
-        sorted_players = sorted(points_aggregate, key=points_aggregate.get, reverse=True)
-        try:
-            rank = sorted_players.index(self.name) + 1
-            return rank
-        except ValueError:
-            return 0

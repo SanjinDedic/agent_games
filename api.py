@@ -6,6 +6,7 @@ from single_player_game import run_single_simulation
 from pydantic import BaseModel
 import re
 import json
+import os
 
 app = FastAPI()
 
@@ -62,26 +63,11 @@ async def run_game(data: Source_Data):
 
     # Run a single simulation
     result = run_single_simulation(PlayerClass,data.team_name,data.password)
-
-    # Optionally remove the temporary file (recommended for cleanup)
-    # os.remove(filename)
+    if result=='Not Validated' or result=='Not Validated: Stuck in endless loop':
+        os.remove('classes/'+filename)
 
     return {"game_result": result}
 
-"""
-@app.get("/game_rankings/")
-async def game_rankings(data: Admin_Simulation):
-    
-        return {"results":"Wrong password"}
-
-@app.post("/update_rankings/")
-async def run_simulation(data: Admin_Simulation):
-    if data.password=="BOSSMAN":
-        results = run_simulation_many_times(data.simulations,data.score)
-        return {"results":results}
-    else:
-        return {"results":"Wrong password"}
-"""
 
 if __name__=="__main__":
     import uvicorn

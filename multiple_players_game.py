@@ -14,6 +14,7 @@ class Game:
         self.players = [PlayerClass(f"{filename[:-3]}", "abc123") for PlayerClass, filename in player_classes]
         self.active_players = list(self.players)
         self.dice = Dice()
+        self.players_banked_this_round = set()
 
     def get_game_state(self):
         return {
@@ -22,7 +23,8 @@ class Game:
             "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
         }
     
-    def play_round(self,file):
+    def play_round(self):
+        self.players_banked_this_round.clear()
         game_state= self.get_game_state()
         roll = self.dice.roll()
         if roll == 1:
@@ -33,9 +35,11 @@ class Game:
         for player in self.active_players:
 
             player.unbanked_money += roll
-            decision = player.make_decision(game_state)
-            if decision == 'bank':
-                player.bank_money()
+            if player.name not in self.players_banked_this_round:
+                decision = player.make_decision(game_state)
+                if decision == 'bank':
+                    player.bank_money()
+                    self.players_banked_this_round.add(player.name)
 
     def play_game(self, file):
         while max(player.banked_money for player in self.players) < 100:
