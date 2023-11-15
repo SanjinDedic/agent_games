@@ -18,7 +18,7 @@ class Game:
         return {
             "banked_money": {self.player.name: self.player.banked_money},
             "unbanked_money": {self.player.name: self.player.unbanked_money},
-            "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
+            "points_aggregate": {self.player.name: self.player.banked_money + self.player.unbanked_money}
         }
 
     def play_round(self):
