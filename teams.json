@@ -1,28 +1,69 @@
 {
     "teams": [
-        {
-          "name": "Danijela",
-          "password": "hqcdjt53"
-        },
-        {
-          "name": "Nathan",
-          "password": "Rw3DZs9x"
-        },
-        {
-          "name": "Craig",
-          "password": "QpPNJZ3j"
-        },
-        {
-          "name": "Toan",
-          "password": "E85nwJ7H"
-        },
-        {
-          "name": "Jen",
-          "password": "dMGuJyZt"
-        },
-        {
-          "name": "Sanjin",
-          "password": "aaa"
-        }
-        ]
-}
+      {
+        "name": "BoxHill",
+        "password": "ighEMkOP"
+      },
+      {
+        "name": "Brunswick1",
+        "password": "LXr0KsjO"
+      },
+      {
+        "name": "Brunswick2",
+        "password": "en9qT2QO"
+      },
+      {
+        "name": "CatholicRegional1",
+        "password": "MbFy1b8B"
+      },
+      {
+        "name": "CatholicRegional2",
+        "password": "kQlglhBq"
+      },
+      {
+        "name": "Caulfield1",
+        "password": "UM3QXyXB"
+      },
+      {
+        "name": "Caulfield2",
+        "password": "d9L9G3Lw"
+      },
+      {
+        "name": "Doncaster",
+        "password": "CANwU62H"
+      },
+      {
+        "name": "GlenWaverley1",
+        "password": "7tKUi42C"
+      },
+      {
+        "name": "GlenWaverley2",
+        "password": "E78zR6he"
+      },
+      {
+        "name": "MountAlexander",
+        "password": "xaS9KBlT"
+      },
+      {
+        "name": "PlentyValley1",
+        "password": "swQzFAev"
+      },
+      {
+        "name": "PlentyValley2",
+        "password": "C70Y3LuH"
+      },
+      {
+        "name": "Preston",
+        "password": "Pd8R8sYY"
+      },
+      {
+        "name": "StJosephs",
+        "password": "g1I3sQ1b"
+      },
+      {
+        "name": "Nathan",
+        "password": "gabdtyyy"
+      }
+
+    ]
+  }
