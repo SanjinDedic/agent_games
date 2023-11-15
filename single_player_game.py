@@ -13,6 +13,7 @@ class Game:
         self.player = player_class
         self.active_player = self.player  # Only one player, so this is straightforward
         self.dice = Dice()
+        
 
     def get_game_state(self):
         return {
@@ -21,25 +22,35 @@ class Game:
             "points_aggregate": {self.player.name: self.player.banked_money + self.player.unbanked_money}
         }
 
-    def play_round(self):
-        roll = self.dice.roll()
-        if roll == 1:
-            self.active_player.reset_unbanked_money()
-            return
-        self.active_player.unbanked_money += roll
-        decision = self.active_player.make_decision(self.get_game_state())
 
-        if decision not in ['bank','continue']:
-            return "Not Validated"
-        
-        if decision == 'bank':
-            self.active_player.bank_money()
+    def play_round(self):
+        try:
+            roll = self.dice.roll()
+            if roll == 1:
+                self.active_player.reset_unbanked_money()
+                return
+            self.active_player.unbanked_money += roll
+
+            decision = self.active_player.make_decision(self.get_game_state())
+
+            if decision not in ['bank','continue']:
+                return "Not Validated"
+            
+            if decision == 'bank':
+                self.active_player.bank_money()
+        except Exception as e:
+            return 'Not Validated'
             
 
     def play_game(self):
+        round_counter = 0
+        max_rounds = 1000
         while self.player.banked_money < 100:
+            round_counter += 1
             result = self.play_round()
-            if isinstance(result,str):
+            if round_counter > max_rounds:
+                return "Not Validated: Stuck in endless loop"
+            if isinstance(result,str) or result=='Not Validated':
                 return "Not Validated"
         return self.get_game_state()
 
@@ -55,6 +66,8 @@ def run_single_simulation(PlayerClass, team_name, password):
         game_result = game.play_game()
         if game_result=='Not Validated':
             return "Not Validated"
+        elif game_result == "Not Validated: Stuck in endless loop":
+            return "Not Validated: Stuck in endless loop"
         elif game_result:
             return "Validated"
     else:
