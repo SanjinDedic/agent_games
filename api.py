@@ -6,6 +6,7 @@ from single_player_game import run_single_simulation
 from pydantic import BaseModel
 import re
 import json
+import os
 
 app = FastAPI()
 
@@ -62,9 +63,8 @@ async def run_game(data: Source_Data):
 
     # Run a single simulation
     result = run_single_simulation(PlayerClass,data.team_name,data.password)
-
-    # Optionally remove the temporary file (recommended for cleanup)
-    # os.remove(filename)
+    if result=='Not Validated':
+        os.remove('classes/'+filename)
 
     return {"game_result": result}
 

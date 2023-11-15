@@ -21,25 +21,30 @@ class Game:
             "points_aggregate": {self.player.name: self.player.banked_money + self.player.unbanked_money}
         }
 
-    def play_round(self):
-        roll = self.dice.roll()
-        if roll == 1:
-            self.active_player.reset_unbanked_money()
-            return
-        self.active_player.unbanked_money += roll
-        decision = self.active_player.make_decision(self.get_game_state())
 
-        if decision not in ['bank','continue']:
-            return "Not Validated"
-        
-        if decision == 'bank':
-            self.active_player.bank_money()
+    def play_round(self):
+        try:
+            roll = self.dice.roll()
+            if roll == 1:
+                self.active_player.reset_unbanked_money()
+                return
+            self.active_player.unbanked_money += roll
+
+            decision = self.active_player.make_decision(self.get_game_state())
+
+            if decision not in ['bank','continue']:
+                return "Not Validated"
+            
+            if decision == 'bank':
+                self.active_player.bank_money()
+        except Exception as e:
+            return 'Not Validated'
             
 
     def play_game(self):
         while self.player.banked_money < 100:
             result = self.play_round()
-            if isinstance(result,str):
+            if isinstance(result,str) or result=='Not Validated':
                 return "Not Validated"
         return self.get_game_state()
 

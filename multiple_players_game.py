@@ -149,13 +149,11 @@ def get_all_player_classes_from_folder(folder_name="classes"):
         for name, obj in vars(module).items():
             if isinstance(obj, type) and issubclass(obj, Player) and obj is not Player:
                 player_classes.append((obj, file))
-    print(player_classes)
     time.sleep(5)
     return player_classes
 
 
 def assign_points(game_result):
-    # Sort the players by their scores in descending order
     banked_money = game_result['banked_money']
     sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
 
@@ -165,23 +163,22 @@ def assign_points(game_result):
     num_players_at_rank = 0
 
     for rank, (player, score) in enumerate(sorted_scores, start=1):
-        # Handle ties
-        if score == last_score:
+        if score == last_score:  # Handle ties
             num_players_at_rank += 1
         else:
-            last_rank += num_players_at_rank
-            num_players_at_rank = 1
+            last_rank = rank
             last_score = score
+            num_players_at_rank = 1
 
-        # Assign points based on rank
-        if (5-last_rank) >= 0:
-            points_distribution[player] = 5 - last_rank
+        if (5 - last_rank + 1) > 0:
+            points_distribution[player] = 5 - last_rank + 1
 
-    for player in game_result['points_aggregate']:
-        #if the players score appears more than once in the banked money dictionary reduce their points by 1
-        if banked_money[player] in [banked_money[x] for x in banked_money if x != player]:
-            if player in points_distribution:
-                if points_distribution[player] > 0:
-                    points_distribution[player] -= 1
-    
+    # Efficient deduction logic
+    score_counts = {score: sum(player_score == score for player_score in banked_money.values()) 
+                    for score in set(banked_money.values())}
+
+    for player, score in banked_money.items():
+        if score_counts[score] > 1:  # If the score appears more than once
+            points_distribution[player] = max(points_distribution.get(player, 0) - 1, 0)
+
     return points_distribution
