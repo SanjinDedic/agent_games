@@ -43,6 +43,17 @@ async def run_game(data: Source_Data):
         return {"game_result":"Print statements are not allowed"}
     if 'exec' in class_source:
         return {"game_result":"Exec statements are not allowed"}
+    if 'eval(' in class_source:
+        return {"game_result":"Eval statements are not allowed"}
+    if 'open(' in class_source:
+        return {"game_result":"Open statements are not allowed"}
+    if 'import' in class_source:
+        if 'import random' not in class_source:
+            return {"game_result":"Import statements are not allowed except for import random"}
+        if 'import random' in class_source:
+            #make sure that import random is the only import statement
+            if class_source.count('import')>1:
+                return {"game_result":"Import statements are not allowed except for import random"}
     
     with open('teams.json', 'r') as file:
         list_data = json.load(file)
