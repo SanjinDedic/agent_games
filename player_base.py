@@ -6,6 +6,7 @@ class Player(ABC):
         self.password = password
         self.banked_money = 0
         self.unbanked_money = 0
+        self.has_banked_this_turn = False  # Track banking status within a turn
 
     def reset_unbanked_money(self):
         self.unbanked_money = 0
@@ -13,6 +14,9 @@ class Player(ABC):
     def bank_money(self):
         self.banked_money += self.unbanked_money
         self.reset_unbanked_money()
+
+    def reset_turn(self):
+        self.has_banked_this_turn = False  # Reset banking status at the start of each turn
 
     def my_rank(self, game_state):
         # Extract the points_aggregate dictionary

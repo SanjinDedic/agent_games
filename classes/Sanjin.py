@@ -3,7 +3,7 @@ from player_base import Player
 class Testing_Player(Player):
     def make_decision(self, game_state):
         import random
-        threshold = 1
+        threshold = 22
         #bank if I have won
         if game_state['unbanked_money'][self.name] + game_state['banked_money'][self.name] >= 100:
             return 'bank'

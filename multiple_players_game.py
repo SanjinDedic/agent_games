@@ -23,28 +23,28 @@ class Game:
             "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
         }
     
-    def play_round(self,file):
-        self.players_banked_this_round.clear()
-        game_state= self.get_game_state()
-        roll = self.dice.roll()
-        if roll == 1:
-            for player in self.active_players:
-                player.reset_unbanked_money()
-            return
-    
+    def play_round(self):
         for player in self.active_players:
+            player.reset_turn()  # Resetting the banking status at the start of each turn
 
-            player.unbanked_money += roll
-            if player.name not in self.players_banked_this_round:
-                decision = player.make_decision(game_state)
-                if decision == 'bank':
+        while True:
+            roll = self.dice.roll()
+            if roll == 1:
+                for player in self.active_players:
+                    player.reset_unbanked_money()
+                break  # End of the turn
+
+            for player in self.active_players:
+                player.unbanked_money += roll
+                decision = player.make_decision(self.get_game_state())
+                if decision == 'bank' and not player.has_banked_this_turn:
                     player.bank_money()
-                    self.players_banked_this_round.add(player.name)
+                    player.has_banked_this_turn = True
 
     def play_game(self, file):
         while max(player.banked_money for player in self.players) < 100:
             self.active_players = list(self.players)  # reset active players for the round
-            self.play_round(file)
+            self.play_round()
         winner = max(self.players, key=lambda player: player.banked_money)
         file.write(f"{winner.name} wins with {winner.banked_money} points!\n")
         game_state = self.get_game_state()
@@ -153,8 +153,6 @@ def get_all_player_classes_from_folder(folder_name="classes"):
         for name, obj in vars(module).items():
             if isinstance(obj, type) and issubclass(obj, Player) and obj is not Player:
                 player_classes.append((obj, file))
-    
-    time.sleep(5)
     return player_classes
 
 
@@ -185,3 +183,7 @@ def assign_points(game_result):
             points_distribution[player] -= 1
     
     return points_distribution
+
+
+if __name__ == "__main__":
+    print(run_simulation_many_times(1000))
