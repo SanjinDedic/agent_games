@@ -20,8 +20,11 @@ class Player(ABC):
 
     def my_rank(self, game_state):
         # Extract the points_aggregate dictionary
-        points_aggregate = game_state['points_aggregate']
+        points_aggregate = dict()
+        for player in game_state['banked_money']:
+            points_aggregate[player] = game_state['banked_money'][player]+game_state['unbanked_money'][player]
         # Sort the dictionary by its values in descending order
+
         sorted_players = sorted(points_aggregate, key=points_aggregate.get, reverse=True)
         try:
             rank = sorted_players.index(self.name) + 1

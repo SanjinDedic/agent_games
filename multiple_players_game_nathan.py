@@ -136,7 +136,7 @@ def run_simulation_many_times(number, verbose=False):
 
     with open(filename, 'w') as file:
         g_res = {"banked_money":total_points}
-        scores = assign_points(g_res)
+        scores = assign_points(g_res, max_score=21)
         for player_name in sorted(scores, key=scores.get, reverse=True):
             file.write(f"{player_name} earned a total of {scores[player_name]*20} points\n")
         file.write("\n")
@@ -193,11 +193,10 @@ def get_all_player_classes_from_folder(folder_name="classes"):
     return player_classes
 
 
-def assign_points(game_result):
+def assign_points(game_result, max_score=6):
     banked_money = game_result['banked_money']
     
     sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
-    max_score = 21
     points_distribution = {}
     last_score = None
     last_rank = 0
@@ -215,4 +214,4 @@ def assign_points(game_result):
 
 
 if __name__ == "__main__":
-    print(run_simulation_many_times(15000, verbose=False))
+    print(run_simulation_many_times(100000, verbose=False))

@@ -2,6 +2,6 @@ from player_base import Player
 
 class New2_Player(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 26:
+        if self.my_rank(game_state) <= 3:
             return 'bank'
         return 'continue'
