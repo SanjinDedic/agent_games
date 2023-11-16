@@ -45,6 +45,7 @@ class Game:
     def play_game(self):
         round_counter = 0
         max_rounds = 1000
+        start_time = time.time()
         while self.player.banked_money < 100:
             round_counter += 1
             result = self.play_round()
@@ -52,6 +53,8 @@ class Game:
                 return "Not Validated: Stuck in endless loop"
             if isinstance(result,str) or result=='Not Validated':
                 return "Not Validated"
+            if time.time() - start_time > 5:
+                return "Not Validated: Stuck in endless loop"
         return self.get_game_state()
 
 

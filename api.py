@@ -67,7 +67,7 @@ async def run_game(data: Source_Data):
     spec.loader.exec_module(player_module)
     PlayerClass = getattr(player_module, class_name)
 
-    # Run a single simulation
+    # Run a single simulation (if this takes more than 5 second return an error)
     result = run_single_simulation(PlayerClass,data.team_name,data.password)
     if result=='Not Validated' or result=='Not Validated: Stuck in endless loop':
         os.remove('classes/'+filename)
