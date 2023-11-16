@@ -23,7 +23,7 @@ class Game:
             "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
         }
     
-    def play_round(self):
+    def play_round(self,file):
         self.players_banked_this_round.clear()
         game_state= self.get_game_state()
         roll = self.dice.roll()
@@ -153,39 +153,35 @@ def get_all_player_classes_from_folder(folder_name="classes"):
         for name, obj in vars(module).items():
             if isinstance(obj, type) and issubclass(obj, Player) and obj is not Player:
                 player_classes.append((obj, file))
-    print(player_classes)
+    
     time.sleep(5)
     return player_classes
 
 
 def assign_points(game_result):
-    # Sort the players by their scores in descending order
     banked_money = game_result['banked_money']
+    
     sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
-
+    max_score = 21
     points_distribution = {}
     last_score = None
     last_rank = 0
-    num_players_at_rank = 0
 
     for rank, (player, score) in enumerate(sorted_scores, start=1):
-        # Handle ties
-        if score == last_score:
-            num_players_at_rank += 1
-        else:
-            last_rank += num_players_at_rank
-            num_players_at_rank = 1
-            last_score = score
+        if score != last_score:  # New score, update rank
+            last_rank = rank
+        last_score = score
 
         # Assign points based on rank
-        if (5-last_rank) >= 0:
-            points_distribution[player] = 5 - last_rank
+        points = max(max_score - last_rank, 0)
+        points_distribution[player] = points
 
-    for player in game_result['points_aggregate']:
-        #if the players score appears more than once in the banked money dictionary reduce their points by 1
-        if banked_money[player] in [banked_money[x] for x in banked_money if x != player]:
-            if player in points_distribution:
-                if points_distribution[player] > 0:
-                    points_distribution[player] -= 1
+    # Adjust points for ties
+    score_counts = {score: sum(player_score == score for player_score in banked_money.values())
+                    for score in set(banked_money.values())}
+
+    for player, score in banked_money.items():
+        if score_counts[score] > 1 and points_distribution.get(player, 0) > 0:
+            points_distribution[player] -= 1
     
     return points_distribution

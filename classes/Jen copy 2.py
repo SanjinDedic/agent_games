@@ -1,7 +1,7 @@
 from player_base import Player
 
-class New4_Player(Player):
+class New2_Player(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 12:
+        if game_state['unbanked_money'][self.name] >= 5:
             return 'bank'
         return 'continue'
