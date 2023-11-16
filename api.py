@@ -38,6 +38,11 @@ async def root():
 @app.post("/submit_agent/")
 async def run_game(data: Source_Data):
     class_source = data.code
+    #if the code contains the word print return an error
+    if 'print' in class_source:
+        return {"game_result":"Print statements are not allowed"}
+    if 'exec' in class_source:
+        return {"game_result":"Exec statements are not allowed"}
     
     with open('teams.json', 'r') as file:
         list_data = json.load(file)
