@@ -41,17 +41,12 @@ class Game:
                     player.bank_money()
                     player.has_banked_this_turn = True
 
-    def play_game(self, file):
+    def play_game(self):
         while max(player.banked_money for player in self.players) < 100:
             self.active_players = list(self.players)  # reset active players for the round
             self.play_round()
         winner = max(self.players, key=lambda player: player.banked_money)
-        file.write(f"{winner.name} wins with {winner.banked_money} points!\n")
         game_state = self.get_game_state()
-        #print(game_state)
-        # Assign points based on the final standings
-        final_scores = assign_points(game_state)
-        #print("Final Scores:", final_scores)
         return game_state
 
     def print_rankings(self, file):
@@ -91,21 +86,23 @@ def run_simulation_many_times(number):
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"logfiles/game_simulation_{number}_runs_{current_time}.txt"
     
-    with open(filename, 'w') as file:
-        for _ in range(number):
-            game = Game(all_players)
-            game_result = game.play_game(file)
-            points_this_game = assign_points(game_result)
+    for _ in range(number):
+        game = Game(all_players)
+        game_result = game.play_game()
+        points_this_game = assign_points(game_result)
 
-            # Update total_points with the points from this game
-            for player, points in points_this_game.items():
-                total_points[player] += points
+        # Update total_points with the points from this game
+        for player, points in points_this_game.items():
+            total_points[player] += points
 
     # Print the results
     results = [f"{number} games were played"]
     for player_name in sorted(total_points, key=total_points.get, reverse=True):
         results.append(f"{player_name} earned a total of {total_points[player_name]} points")
-    
+
+    with open(filename, 'w') as file:
+        file.write("\n".join(results))
+
     return "\n".join(results)
 
 def run_animation(refresh_rate, number):
