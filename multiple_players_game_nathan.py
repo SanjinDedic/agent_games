@@ -14,22 +14,30 @@ class Game:
         self.players = [PlayerClass(f"{filename[:-3]}", "abc123") for PlayerClass, filename in player_classes]
         self.active_players = list(self.players)
         self.dice = Dice()
-        self.players_banked_this_round = set()
+        self.players_banked_this_round = []
+        self.round_no = 0
+        self.roll_no = 0
 
     def get_game_state(self):
         return {
+            "round_no": self.round_no,
+            "roll_no": self.roll_no,
+            "players_banked_this_round": self.players_banked_this_round,
             "banked_money": {player.name: player.banked_money for player in self.players},
             "unbanked_money": {player.name: player.unbanked_money for player in self.players},
-            "points_aggregate": {player.name: player.banked_money + player.unbanked_money for player in self.players}
         }
     
-    def play_round(self):
+    def play_round(self, verbose=False):
+        self.players_banked_this_round = []
+        self.round_no += 1
+        self.roll_no = 0
         for player in self.active_players:
             player.reset_turn()  # Resetting the banking status at the start of each turn
 
         while True:
             roll = self.dice.roll()
-
+            if verbose:
+                print('  ROLL #' + str(self.roll_no) + ':', 'Dice says', roll)
             # If roll is 1, all players lose unbanked money and the round ends
             if roll == 1:
                 for player in self.active_players:
@@ -43,8 +51,12 @@ class Game:
                     player.unbanked_money += roll
                     decision = player.make_decision(self.get_game_state())
                     if decision == 'bank':
+                        if verbose:
+                            print('    *', player.name, 'banked $' + str(player.unbanked_money))
                         player.bank_money()
                         player.has_banked_this_turn = True
+                        self.players_banked_this_round.append(player.name)
+
 
                         # Check if the player has won after banking
                         if player.banked_money >= 100:
@@ -56,11 +68,20 @@ class Game:
                 #print('---------TURN END----------')
                 break
 
-    def play_game(self):
+    def play_game(self, verbose= False):
         while max(player.banked_money for player in self.players) < 100:
             self.active_players = list(self.players)  # reset active players for the round
-            self.play_round()
-        winner = max(self.players, key=lambda player: player.banked_money)
+            if verbose:
+                print()
+                print('START ROUND #' + str(self.round_no))
+            self.play_round(verbose)
+            if verbose:
+                print()
+                print('  END OF ROUND')
+                for player in self.players:
+                    print('  ' + player.name + ': $' + str(player.banked_money))
+                time.sleep(2)
+
         game_state = self.get_game_state()
         return game_state
 
@@ -89,7 +110,7 @@ class Game:
         file.write("\n\n\n")
 
 
-def run_simulation_many_times(number):
+def run_simulation_many_times(number, verbose=False):
     all_players = get_all_player_classes_from_folder()
     if not all_players:
         raise ValueError("No player classes provided.")
@@ -102,7 +123,7 @@ def run_simulation_many_times(number):
     
     for _ in range(number):
         game = Game(all_players)
-        game_result = game.play_game()
+        game_result = game.play_game(verbose)
         points_this_game = assign_points(game_result)
         #print(points_this_game)
         # Update total_points with the points from this game
@@ -115,6 +136,12 @@ def run_simulation_many_times(number):
         results.append(f"{player_name} earned a total of {total_points[player_name]} points")
 
     with open(filename, 'w') as file:
+        g_res = {"banked_money":total_points}
+        scores = assign_points(g_res)
+        for player_name in sorted(scores, key=scores.get, reverse=True):
+            file.write(f"{player_name} earned a total of {scores[player_name]*20} points\n")
+        file.write("\n")
+        file.write("----------------------------")
         file.write("\n".join(results))
 
     return "\n".join(results)
@@ -189,4 +216,4 @@ def assign_points(game_result):
 
 
 if __name__ == "__main__":
-    print(run_simulation_many_times(100000))
+    print(run_simulation_many_times(5000, verbose=False))

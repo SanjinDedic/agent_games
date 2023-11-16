@@ -17,9 +17,37 @@ class Game:
 
     def get_game_state(self):
         return {
-            "banked_money": {self.player.name: self.player.banked_money},
-            "unbanked_money": {self.player.name: self.player.unbanked_money},
-            "points_aggregate": {self.player.name: self.player.banked_money + self.player.unbanked_money}
+            'round_no': 9, 'roll_no': 0, 'players_banked_this_round': ["a"],
+            "banked_money": {self.player.name: self.player.banked_money,
+                            "a":0,
+                            "b":0,
+                            "c":0,
+                            "d":0,
+                            "e":0,
+                            "f":0,
+                            "g":0,
+                            "h":0,
+                            "i":0,
+                            "j":0,
+                            "k":0,
+                            "l":0,
+                            "m":0,
+                            "n":0},
+            "unbanked_money": {self.player.name: self.player.unbanked_money,
+                            "a":0,
+                            "b":0,
+                            "c":0,
+                            "d":0,
+                            "e":0,
+                            "f":0,
+                            "g":0,
+                            "h":0,
+                            "i":10,
+                            "j":11,
+                            "k":12,
+                            "l":13,
+                            "m":14,
+                            "n":15}
         }
 
 

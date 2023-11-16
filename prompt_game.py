@@ -1,9 +1,9 @@
 import random
 import os
 import time
-from abc import ABC, abstractmethod
+from abc import  abstractmethod
 
-class Player(ABC):
+class Player():
     def __init__(self, name, password):
         self.name = name
         self.password = password
@@ -25,8 +25,6 @@ class Player(ABC):
     def make_decision(self, game_state):
         pass
 
-
-
 class Dice:
     def roll(self):
         return random.randint(1, 6)
@@ -36,7 +34,6 @@ class Game:
         self.players = [PlayerClass(f"{filename[:-3]}", "abc123") for PlayerClass, filename in player_classes]
         self.active_players = list(self.players)
         self.dice = Dice()
-        self.players_banked_this_round = set()
 
     def get_game_state(self):
         return {
@@ -51,18 +48,32 @@ class Game:
 
         while True:
             roll = self.dice.roll()
+
+            # If roll is 1, all players lose unbanked money and the round ends
             if roll == 1:
                 for player in self.active_players:
                     player.reset_unbanked_money()
-                break  # End of the turn
+                    print('---------TURN END----------')
+                break
 
+            # Process each player's turn
             for player in self.active_players:
-                player.unbanked_money += roll
-                decision = player.make_decision(self.get_game_state())
-                if decision == 'bank' and not player.has_banked_this_turn:
-                    player.bank_money()
-                    player.has_banked_this_turn = True
+                if not player.has_banked_this_turn:
+                    player.unbanked_money += roll
+                    decision = player.make_decision(self.get_game_state())
+                    if decision == 'bank':
+                        player.bank_money()
+                        player.has_banked_this_turn = True
 
+                        # Check if the player has won after banking
+                        if player.banked_money >= 100:
+                            print('---------TURN END----------')
+                            return  # End the round if a player has won
+
+            # Check if all players have banked, then end the round
+            if all(player.has_banked_this_turn for player in self.active_players):
+                print('---------TURN END----------')
+                break
 
 
     def play_game(self):
@@ -102,25 +113,31 @@ def run_simulation_many_times(number):
 
 class Player11111(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 20:
+        threshold = 22
+        if game_state['unbanked_money'][self.name] >= threshold:
+            print(self.name, 'banking threshold is',threshold,'Unbanked money:', game_state['unbanked_money'][self.name])
             return 'bank'
         return 'continue'
 
 class Player22222(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 5:
+        threshold = 5
+        if game_state['unbanked_money'][self.name] >= threshold:
+            print(self.name, 'banking threshold is',threshold,'Unbanked money:', game_state['unbanked_money'][self.name])
             return 'bank'
         return 'continue'
 
 class Player33333(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 12:
+        threshold = 12
+        if game_state['unbanked_money'][self.name] >= threshold:
+            print(self.name, 'banking threshold is',threshold,'Unbanked money:', game_state['unbanked_money'][self.name])
             return 'bank'
         return 'continue'
 
 class Player44444(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 24:
+        if game_state['unbanked_money'][self.name] >= 31:
             return 'bank'
         return 'continue'
    
