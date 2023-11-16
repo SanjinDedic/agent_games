@@ -17,7 +17,7 @@ class Game:
 
     def get_game_state(self):
         return {
-            'round_no': 9, 'roll_no': 0, 'players_banked_this_round': ["a"],
+            'round_no': 9, 'roll_no': 0, 'players_banked_this_round': ["a","b","c","d","e","f"],
             "banked_money": {self.player.name: self.player.banked_money,
                             "a":0,
                             "b":0,
@@ -72,7 +72,7 @@ class Game:
 
     def play_game(self):
         round_counter = 0
-        max_rounds = 1000
+        max_rounds = 10000
         start_time = time.time()
         while self.player.banked_money < 100:
             round_counter += 1
