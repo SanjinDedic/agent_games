@@ -29,7 +29,13 @@ class Admin_Simulation(BaseModel):
     simulations: int
     score: int
 
-@app.post("/run_single_game/")
+
+@app.get("/")
+async def root():
+    return {"message": "Success, server is running"}
+
+
+@app.post("/submit_agent/")
 async def run_game(data: Source_Data):
     class_source = data.code
     
