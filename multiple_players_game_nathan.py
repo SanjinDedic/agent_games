@@ -57,7 +57,6 @@ class Game:
                         player.bank_money()
                         player.has_banked_this_turn = True
                         self.players_banked_this_round.append(player.name)
-                        print(self.get_game_state())
                         # Check if the player has won after banking
                         if player.banked_money >= 100:
                             #print('---------TURN END----------')
@@ -216,4 +215,4 @@ def assign_points(game_result):
 
 
 if __name__ == "__main__":
-    print(run_simulation_many_times(5, verbose=False))
+    print(run_simulation_many_times(15000, verbose=False))
