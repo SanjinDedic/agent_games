@@ -7,7 +7,7 @@ class CustomPlayer(Player):
         #You can random her if you wish to use it
 
         # Change this algorithm. You must return 'bank' or 'continue'.
-        if game_state['unbanked_money'][self.name] >= 18:
+        if game_state['unbanked_money'][self.name] >= 17:
             return 'bank'
 
         return 'continue'

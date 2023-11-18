@@ -66,7 +66,7 @@ async def run_game(data: Source_Data):
     if not match:
         return {"game_result":"No class definition found in the provided source code."}
     class_name = match.group(1)
-    filepath = "classes/"+filename
+    filepath = "test_classes/"+filename
     modified_class_definition = f"class {class_name}(Player):"
     modified_class_source = re.sub(r'class \w+\(\):', modified_class_definition, class_source)
 
@@ -79,10 +79,15 @@ async def run_game(data: Source_Data):
     spec = importlib.util.spec_from_file_location(class_name, filepath)
     player_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(player_module)
-    PlayerClass = getattr(player_module, class_name)
 
     try:
         result = run_simulation_many_times(10, verbose=False, folder_name="test_classes")
+        filepath = "classes/"+filename
+        with open(filepath, 'w') as file:
+            file.write("from player_base import Player\n\n")
+            file.write(modified_class_source)
+        os.remove('test_classes/'+filename)
+
     except Exception as e:
         result = f"Error: {e}"
 

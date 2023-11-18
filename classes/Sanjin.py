@@ -1,9 +1,7 @@
 from player_base import Player
 
-class CustomPlayer(Player):
-
+class Testing_Player(Player):
     def make_decision(self, game_state):
-        if game_state['unbanked_money'][self.name] >= 32:
+        if len(game_state['players_banked_this_round']) > 2:
             return 'bank'
-
         return 'continue'
