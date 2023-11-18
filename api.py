@@ -2,7 +2,7 @@ from fastapi import FastAPI,UploadFile, Request, HTTPException, status, File, Qu
 from fastapi.middleware.cors import CORSMiddleware
 import inspect
 import importlib.util
-from single_player_game import run_single_simulation
+from multiple_players_game_nathan import run_simulation_many_times
 from pydantic import BaseModel
 import re
 import json
@@ -81,10 +81,10 @@ async def run_game(data: Source_Data):
     spec.loader.exec_module(player_module)
     PlayerClass = getattr(player_module, class_name)
 
-    # Run a single simulation (if this takes more than 5 second return an error)
-    result = run_single_simulation(PlayerClass,data.team_name,data.password)
-    if result=='Not Validated' or result=='Not Validated: Stuck in endless loop':
-        os.remove('classes/'+filename)
+    try:
+        result = run_simulation_many_times(10, verbose=False, folder_name="test_classes")
+    except Exception as e:
+        result = f"Error: {e}"
 
     return {"game_result": result}
 

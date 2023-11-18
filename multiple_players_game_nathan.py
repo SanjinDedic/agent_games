@@ -43,7 +43,6 @@ class Game:
             if roll == 1:
                 for player in self.active_players:
                     player.reset_unbanked_money()
-                    #print('---------TURN END----------')
                 break
 
             # Process each player's turn
@@ -59,24 +58,22 @@ class Game:
                         self.players_banked_this_round.append(player.name)
                         # Check if the player has won after banking
                         if player.banked_money >= 100:
-                            #print('---------TURN END----------')
                             return  # End the round if a player has won
 
             # Check if all players have banked, then end the round
             if all(player.has_banked_this_turn for player in self.active_players):
-                #print('---------TURN END----------')
                 break
 
     def play_game(self, verbose= False):
+        #randomise the order of the players
+        random.shuffle(self.players)
         while max(player.banked_money for player in self.players) < 100:
             self.active_players = list(self.players)  # reset active players for the round
             if verbose:
-                print()
-                print('START ROUND #' + str(self.round_no))
+                print('\nSTART ROUND #' + str(self.round_no))
             self.play_round(verbose)
             if verbose:
-                print()
-                print('  END OF ROUND')
+                print('\n  END OF ROUND')
                 for player in self.players:
                     print('  ' + player.name + ': $' + str(player.banked_money))
                 time.sleep(2)
@@ -84,33 +81,9 @@ class Game:
         game_state = self.get_game_state()
         return game_state
 
-    def print_rankings(self, file):
-        file.write("\n\n")
-        file.write("-" * 20)
-        file.write("\nFinal Rankings and Points:\n")
-        ranked_players = sorted(self.players, key=lambda player: player.banked_money, reverse=True)
 
-        # Initial points based on ranking (5 for 1st, 4 for 2nd, and so on)
-        points_dict = {player.name: 5 - i for i, player in enumerate(ranked_players)}
-
-        # Adjust points for ties
-        for i in range(len(ranked_players) - 1):
-            if ranked_players[i].banked_money == ranked_players[i + 1].banked_money:
-                tied_point = max(1, points_dict[ranked_players[i + 1].name])
-                points_dict[ranked_players[i].name] = tied_point
-
-        # Write the final points to the file
-        for i, player in enumerate(ranked_players, start=1):
-            player_name = player.name
-            player_points = points_dict[player_name]
-            file.write(f"{i}. {player_name} with {player.banked_money} banked, {player_points} points\n")
-
-        file.write("-" * 20)
-        file.write("\n\n\n")
-
-
-def run_simulation_many_times(number, verbose=False):
-    all_players = get_all_player_classes_from_folder()
+def run_simulation_many_times(number, verbose=False, folder_name="classes"):
+    all_players = get_all_player_classes_from_folder(folder_name)
     if not all_players:
         raise ValueError("No player classes provided.")
 
@@ -119,7 +92,8 @@ def run_simulation_many_times(number, verbose=False):
 
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"logfiles/game_simulation_{number}_runs_{current_time}.txt"
-    
+    start_time = time.time()
+
     for _ in range(number):
         game = Game(all_players)
         game_result = game.play_game(verbose)
@@ -130,7 +104,7 @@ def run_simulation_many_times(number, verbose=False):
             total_points[player] += points
 
     # Print the results
-    results = [f"{number} games were played"]
+    results = [f"{number} games were played" + f" in {round(time.time() - start_time,2)} seconds"]
     for player_name in sorted(total_points, key=total_points.get, reverse=True):
         results.append(f"{player_name} earned a total of {total_points[player_name]} points")
 
@@ -143,54 +117,10 @@ def run_simulation_many_times(number, verbose=False):
         file.write("----------------------------")
         file.write("\n".join(results))
 
-    return "\n".join(results)
-
-def run_animation(refresh_rate, number):
-    all_players = get_all_player_classes_from_folder()
-    if not all_players:
-        raise ValueError("No player classes provided.")
-
-    # Dictionary to store the total points for each player
-    total_points = {filename[:-3]: 0 for _, filename in all_players}
-
-    current_time = time.strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"logfiles/game_simulation_{number}_runs_{current_time}.txt"
-    
-    with open(filename, 'w') as file:
-        for i in range(number):
-            game = Game(all_players)
-            game_result = game.play_game(file)
-            points_this_game = assign_points(game_result)
-
-            # Update total_points with the points from this game
-            for player, points in points_this_game.items():
-                total_points[player] += points  
-            if i % refresh_rate == 0:
-                os.system('clear')
-                results = [f"{i} games were played"]
-                for player_name in sorted(total_points, key=total_points.get, reverse=True):
-                    results.append(f"{player_name} earned a total of {total_points[player_name]} points")
-                print("\n".join(results))
-                time.sleep(1)
-    print("\n".join(results))
-
-def get_all_player_classes_from_folder(folder_name="classes"):
-    # Get a list of all .py files in the given folder
-    files = [f for f in os.listdir(folder_name) if os.path.isfile(os.path.join(folder_name, f)) and f.endswith('.py')]
-
-    player_classes = []
-
-    for file in files:
-        module_name = file[:-3]  # remove the ".py" extension
-        spec = importlib.util.spec_from_file_location(module_name, os.path.join(folder_name, file))
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        # Check each item in the module to see if it's a subclass of Player
-        for name, obj in vars(module).items():
-            if isinstance(obj, type) and issubclass(obj, Player) and obj is not Player:
-                player_classes.append((obj, file))
-    return player_classes
+    if folder_name == "classes":
+        return "\n".join(results)
+    else:
+        return total_points
 
 
 def assign_points(game_result, max_score=6):
@@ -213,5 +143,29 @@ def assign_points(game_result, max_score=6):
     return points_distribution
 
 
+def get_all_player_classes_from_folder(folder_name="classes"):
+    # Get a list of all .py files in the given folder
+    #check if a folder called classes exists otherwise use the present working directory
+    if not os.path.exists(folder_name):
+        folder_name = os.getcwd()
+
+    files = [f for f in os.listdir(folder_name) if os.path.isfile(os.path.join(folder_name, f)) and f.endswith('.py')]
+
+    player_classes = []
+
+    for file in files:
+        module_name = file[:-3]  # remove the ".py" extension
+        spec = importlib.util.spec_from_file_location(module_name, os.path.join(folder_name, file))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Check each item in the module to see if it's a subclass of Player
+        for name, obj in vars(module).items():
+            if isinstance(obj, type) and issubclass(obj, Player) and obj is not Player:
+                player_classes.append((obj, file))
+    return player_classes
+
+
+
 if __name__ == "__main__":
-    print(run_simulation_many_times(100000, verbose=False))
+    print(run_simulation_many_times(10000, verbose=False))
