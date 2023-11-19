@@ -86,19 +86,16 @@ def run_simulation_many_times(number, verbose=False, folder_name="classes"):
     all_players = get_all_player_classes_from_folder(folder_name)
     if not all_players:
         raise ValueError("No player classes provided.")
-
     # Dictionary to store the total points for each player
     total_points = {filename[:-3]: 0 for _, filename in all_players}
 
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"logfiles/game_simulation_{number}_runs_{current_time}.txt"
     start_time = time.time()
-
     for _ in range(number):
         game = Game(all_players)
         game_result = game.play_game(verbose)
         points_this_game = assign_points(game_result)
-        #print(points_this_game)
         # Update total_points with the points from this game
         for player, points in points_this_game.items():
             total_points[player] += points

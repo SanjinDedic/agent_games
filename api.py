@@ -4,6 +4,7 @@ import inspect
 import importlib.util
 from multiple_players_game_nathan import run_simulation_many_times
 from pydantic import BaseModel
+import traceback
 import re
 import json
 import os
@@ -50,9 +51,10 @@ async def submit_agent(data: Source_Data):
     try:
         # Wait for 2 seconds for the processing_logic to complete
         result = await asyncio.wait_for(run_game(data), timeout=2)
-        #if the players points are 0 
-        if result["game_result"][data.team_name] == 0:
-            return {"WARNING:":"Validated Agent is weak Score = 0"}
+        #if the players points are 0
+        if "game_result" in result:
+            if result["game_result"][data.team_name] == 0:
+                return {"WARNING:":"Validated Agent is weak Score = 0"}
         return result
     except asyncio.TimeoutError:
         # Logic didn't complete in 2 seconds
@@ -63,18 +65,18 @@ async def run_game(data: Source_Data):
     class_source = data.code
     #if the code contains the word print return an error
     if 'print' in class_source:
-        return {"game_result":"Print statements are not allowed"}
+        return {"invalid":"Print statements are not allowed"}
     if 'exec' in class_source:
-        return {"game_result":"Exec statements are not allowed"}
+        return {"invalid":"Exec statements are not allowed"}
     if 'eval(' in class_source:
-        return {"game_result":"Eval statements are not allowed"}
+        return {"invalid":"Eval statements are not allowed"}
     if 'open(' in class_source:
-        return {"game_result":"Open statements are not allowed"}
+        return {"invalid":"Open statements are not allowed"}
     if 'import' in class_source:
         if class_source.count('import')>1:
-            return {"game_result":"Import statements are not allowed except for import random"}
+            return {"invalid":"Import statements are not allowed except for import random"}
         if 'import random' not in class_source:
-            return {"game_result":"Import statements are not allowed except for import random"}
+            return {"invalid":"Import statements are not allowed except for import random"}
 
     with open('teams.json', 'r') as file:
         list_data = json.load(file)
@@ -84,10 +86,10 @@ async def run_game(data: Source_Data):
     if any(team_found):
         filename = f"{data.team_name}.py"
     else:
-        return {"game_result": "Team not found"}
+        return {"Error": "Team not found"}
     match = re.search(r'class (\w+)', class_source)
     if not match:
-        return {"game_result":"No class definition found in the provided source code."}
+        return {"Error":"No class definition found in the provided source code."}
     class_name = match.group(1)
     filepath = "test_classes/"+filename
     modified_class_definition = f"class {class_name}(Player):"
@@ -104,9 +106,8 @@ async def run_game(data: Source_Data):
     spec.loader.exec_module(player_module)
 
     try:
-        result = run_simulation_many_times(10, verbose=False, folder_name="test_classes")
+        result = run_simulation_many_times(50, verbose=False, folder_name="test_classes")
         ranking = my_rank(result, data.team_name)
-
         os.remove('test_classes/'+filename)
         filepath = "classes/"+filename
         with open(filepath, 'w') as file:
@@ -114,10 +115,17 @@ async def run_game(data: Source_Data):
             file.write(modified_class_source)
 
     except Exception as e:
-        result = f"Error: {e}"
-        return {"Error:": result}
+        # Print the error message and the traceback
+        error_message = f"Error: {e}"
+        print(error_message)
+        traceback.print_exc()
 
-    return {"my ranking":ranking, "game_result": result}
+        # and return it along with the error message
+        error_traceback = traceback.format_exc()
+        result = {"Error": error_message, "Traceback": error_traceback}
+        return result
+
+    return {"my ranking":str(ranking) +"/10","games played": 50, "game_result": result}
 
 
 if __name__=="__main__":
