@@ -55,11 +55,11 @@ async def root():
 async def submit_agent(data: Source_Data):
     try:
         # Wait for 2 seconds for the processing_logic to complete
-        result = await asyncio.wait_for(run_game(data: Source_Data), timeout=2)
+        result = await asyncio.wait_for(run_game(data), timeout=2)
         return result
     except asyncio.TimeoutError:
         # Logic didn't complete in 2 seconds
-        return {"error": "Your agent might be stuck in an infnite loop. It took more than 2 second to sim 10 games"}
+        return {"error": "Your agent might be stuck in an infinite loop. It took more than 2 seconds to sim 10 games"}
 
 
 async def run_game(data: Source_Data):
