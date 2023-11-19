@@ -30,10 +30,24 @@ class Admin_Simulation(BaseModel):
     score: int
 
 
+def my_rank(game_state, name):
+    # Extract the points_aggregate dictionary
+    points_aggregate = dict()
+    for player in game_state['banked_money']:
+        points_aggregate[player] = game_state['banked_money'][player]+game_state['unbanked_money'][player]
+    # Sort the dictionary by its values in descending order
+
+    sorted_players = sorted(points_aggregate, key=points_aggregate.get, reverse=True)
+    try:
+        rank = sorted_players.index(name) + 1
+        return rank
+    except ValueError:
+        return 0
+
+
 @app.get("/")
 async def root():
     return {"message": "Success, server is running"}
-
 
 @app.post("/submit_agent/")
 async def run_game(data: Source_Data):
@@ -82,16 +96,18 @@ async def run_game(data: Source_Data):
 
     try:
         result = run_simulation_many_times(10, verbose=False, folder_name="test_classes")
+        ranking = my_rank(result, data.team_name)
+
+        os.remove('test_classes/'+filename)
         filepath = "classes/"+filename
         with open(filepath, 'w') as file:
             file.write("from player_base import Player\n\n")
             file.write(modified_class_source)
-        os.remove('test_classes/'+filename)
 
     except Exception as e:
         result = f"Error: {e}"
 
-    return {"game_result": result}
+    return {"my ranking":ranking, "game_result": result}
 
 
 if __name__=="__main__":
