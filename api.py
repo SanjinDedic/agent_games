@@ -4,6 +4,13 @@ import inspect
 import importlib.util
 from multiple_players_game_nathan import run_simulation_many_times
 from pydantic import BaseModel
+
+from fastapi import FastAPI, HTTPException, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+
 import traceback
 import re
 import json
@@ -11,6 +18,15 @@ import os
 import asyncio
 
 app = FastAPI()
+
+# Initialize SlowAPI Limiter
+limiter = Limiter(key_func=get_remote_address)
+
+app.state.limiter = limiter
+
+
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,8 +62,9 @@ async def root():
     return {"message": "Success, server is running"}
 
 
-@app.post("/submit_agent/")
-async def submit_agent(data: Source_Data):
+@app.post("/submit_agent")
+@limiter.limit("2/minute")
+async def submit_agent(request: Request, data: Source_Data):
     try:
         # Wait for 2 seconds for the processing_logic to complete
         result = await asyncio.wait_for(run_game(data), timeout=2)
@@ -126,6 +143,13 @@ async def run_game(data: Source_Data):
         return result
 
     return {"my ranking":str(ranking) +"/10","games played": 50, "game_result": result}
+
+
+def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="Rate limit exceeded"
+    )
 
 
 if __name__=="__main__":
