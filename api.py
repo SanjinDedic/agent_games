@@ -31,13 +31,7 @@ class Admin_Simulation(BaseModel):
     score: int
 
 
-def my_rank(game_state, name):
-    # Extract the points_aggregate dictionary
-    points_aggregate = dict()
-    for player in game_state['banked_money']:
-        points_aggregate[player] = game_state['banked_money'][player]+game_state['unbanked_money'][player]
-    # Sort the dictionary by its values in descending order
-
+def my_rank(points_aggregate, name):
     sorted_players = sorted(points_aggregate, key=points_aggregate.get, reverse=True)
     try:
         rank = sorted_players.index(name) + 1
@@ -56,6 +50,9 @@ async def submit_agent(data: Source_Data):
     try:
         # Wait for 2 seconds for the processing_logic to complete
         result = await asyncio.wait_for(run_game(data), timeout=2)
+        #if the players points are 0 
+        if result["game_result"][data.team_name] == 0:
+            return {"WARNING:":"Validated Agent is weak Score = 0"}
         return result
     except asyncio.TimeoutError:
         # Logic didn't complete in 2 seconds
@@ -118,6 +115,7 @@ async def run_game(data: Source_Data):
 
     except Exception as e:
         result = f"Error: {e}"
+        return {"Error:": result}
 
     return {"my ranking":ranking, "game_result": result}
 

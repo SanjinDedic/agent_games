@@ -108,16 +108,15 @@ def run_simulation_many_times(number, verbose=False, folder_name="classes"):
     for player_name in sorted(total_points, key=total_points.get, reverse=True):
         results.append(f"{player_name} earned a total of {total_points[player_name]} points")
 
-    with open(filename, 'w') as file:
-        g_res = {"banked_money":total_points}
-        scores = assign_points(g_res, max_score=21)
-        for player_name in sorted(scores, key=scores.get, reverse=True):
-            file.write(f"{player_name} earned a total of {scores[player_name]*20} points\n")
-        file.write("\n")
-        file.write("----------------------------")
-        file.write("\n".join(results))
-
     if folder_name == "classes":
+        with open(filename, 'w') as file:
+            g_res = {"banked_money":total_points}
+            scores = assign_points(g_res, max_score=21)
+            for player_name in sorted(scores, key=scores.get, reverse=True):
+                file.write(f"{player_name} earned a total of {scores[player_name]*20} points\n")
+            file.write("\n")
+            file.write("----------------------------")
+            file.write("\n".join(results))
         return "\n".join(results)
     else:
         return total_points
