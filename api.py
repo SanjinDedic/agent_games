@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import re
 import json
 import os
+import asyncio
 
 app = FastAPI()
 
@@ -49,7 +50,18 @@ def my_rank(game_state, name):
 async def root():
     return {"message": "Success, server is running"}
 
+
 @app.post("/submit_agent/")
+async def submit_agent(data: Source_Data):
+    try:
+        # Wait for 2 seconds for the processing_logic to complete
+        result = await asyncio.wait_for(run_game(data: Source_Data), timeout=2)
+        return result
+    except asyncio.TimeoutError:
+        # Logic didn't complete in 2 seconds
+        return {"error": "Your agent might be stuck in an infnite loop. It took more than 2 second to sim 10 games"}
+
+
 async def run_game(data: Source_Data):
     class_source = data.code
     #if the code contains the word print return an error

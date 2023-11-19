@@ -17,7 +17,7 @@ data={"team_name":"Sanjin","password":"aaa","code":code}
 response = requests.post(url,json=data)
 
 if response.status_code == 200:
-    print(response.json()["game_result"])
+    print(response.json())
 else:
     print("An error has occurred.")
 
