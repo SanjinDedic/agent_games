@@ -1,71 +1,95 @@
 {
     "teams": [
       {
-        "name": "BoxHill",
+        "name": "BrunswickSC1",
         "password": "ighEMkOP"
       },
       {
-        "name": "Brunswick1",
+        "name": "BrunswickSC2",
         "password": "LXr0KsjO"
       },
       {
-        "name": "Brunswick2",
+        "name": "CatholicRegional",
         "password": "en9qT2QO"
       },
       {
-        "name": "CatholicRegional1",
+        "name": "CaulfieldGrammar1",
         "password": "MbFy1b8B"
       },
       {
-        "name": "CatholicRegional2",
+        "name": "CaulfieldGrammar2",
         "password": "kQlglhBq"
       },
       {
-        "name": "Caulfield1",
+        "name": "DoncasterSC1",
         "password": "UM3QXyXB"
       },
       {
-        "name": "Caulfield2",
+        "name": "DoncasterSC2",
         "password": "d9L9G3Lw"
       },
       {
-        "name": "Doncaster",
+        "name": "GlenWaverley1",
         "password": "CANwU62H"
       },
       {
-        "name": "GlenWaverley1",
+        "name": "GlenWaverley2",
         "password": "7tKUi42C"
       },
       {
-        "name": "GlenWaverley2",
+        "name": "MacKillop1",
         "password": "E78zR6he"
       },
       {
-        "name": "MountAlexander",
+        "name": "MacKillop2",
         "password": "xaS9KBlT"
       },
       {
-        "name": "PlentyValley1",
+        "name": "MountAlexander",
         "password": "swQzFAev"
       },
       {
-        "name": "PlentyValley2",
+        "name": "Nossal",
         "password": "C70Y3LuH"
       },
       {
-        "name": "Preston",
+        "name": "PlentyValleyChristian1",
         "password": "Pd8R8sYY"
       },
       {
-        "name": "StJosephs",
+        "name": "PlentyValleyChristian2",
         "password": "g1I3sQ1b"
       },
       {
-        "name": "Nathan",
+        "name": "PrestonHigh",
         "password": "aaa"
       },
       {
-        "name": "Sanjin",
+        "name": "PrincessHill1",
+        "password": "aaa"
+      },
+      {
+        "name": "PrincessHill2",
+        "password": "aaa"
+      },
+      {
+        "name": "Sirius2",
+        "password": "aaa"
+      },
+      {
+        "name": "Sirius1",
+        "password": "aaa"
+      },
+      {
+        "name": "BrightonandFirbank1",
+        "password": "aaa"
+      },
+      {
+        "name": "BrightonandFirbank2",
+        "password": "aaa"
+      },
+      {
+        "name": "EastDoncaster",
         "password": "aaa"
       }
     ]

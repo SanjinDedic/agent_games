@@ -6,7 +6,7 @@ class CustomPlayer(Player):
         import random
         # Change this algorithm. You must return 'bank' or 'continue'.
         #bankchance = random.randint(1,2)
-        if game_state['unbanked_money'][self.name] >= 29:
+        if game_state['unbanked_money'][self.name] >= random.randint(5,20):
           #if bankchance == 1:
           return 'bank'
 

@@ -4,10 +4,10 @@ class CustomPlayer(Player):
 
     def make_decision(self, game_state):
         import random
-
         # Change this algorithm. You must return 'bank' or 'continue'.
-        a=14+random.randint(-2,2)
-        if game_state['unbanked_money'][self.name] >= a:
-            return 'bank'
+        #bankchance = random.randint(1,2)
+        if game_state['unbanked_money'][self.name] >= random.randint(5,20):
+          #if bankchance == 1:
+          return 'bank'
 
         return 'continue'

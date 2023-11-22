@@ -19,22 +19,10 @@ import asyncio
 
 app = FastAPI()
 
-# Initialize SlowAPI Limiter
-IS_TEST_MODE = True  # Set this based on your testing environment
 
-if IS_TEST_MODE:
-    class DummyLimiter:
-        def limit(self, *args, **kwargs):
-            def decorator(f):
-                return f
-            return decorator
-    limiter = DummyLimiter()
-else:
-    limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_remote_address)
 
 app.state.limiter = limiter
-
-
 
 
 

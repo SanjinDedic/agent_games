@@ -91,7 +91,7 @@ def run_simulation_with_animation(number, verbose=False, folder_name="classes"):
         raise ValueError("No player classes provided.")
     with open('colors.json', 'r') as file:
         data = json.load(file)
-        colors = data["colors"]
+        team_colors = {team["name"]: team["color"] for team in data["teams"]}
 
     # Dictionary to store the total points for each player
     total_points = {filename[:-3]: 0 for _, filename in all_players}
@@ -133,15 +133,16 @@ def run_simulation_with_animation(number, verbose=False, folder_name="classes"):
             table.add_column("Games Won", justify="right")
             table.add_column("Top 5", justify="right")
             table.add_column("Games Played", justify="right")
-            count=0
+            
             for player_name in sorted(total_points, key=total_points.get, reverse=True):
-                count+=1
+                player_color = team_colors.get(player_name, "white")
                 table.add_row(player_name, 
                             str(total_points[player_name]), 
                             str(games_won[player_name]),
                             str(top_5_finishes[player_name]),
                             str(games_played[player_name]),
-                            style=colors[count])
+                            style=player_color)
+                
 
             console.clear()
             console.print(table)
