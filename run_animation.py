@@ -85,7 +85,7 @@ class Game:
         return game_state
 
 
-def run_simulation_with_animation(number, verbose=False, folder_name="classes"):
+def run_simulation_with_animation(number, refresh_rate=200, verbose=False, folder_name="classes"):
     all_players = get_all_player_classes_from_folder(folder_name)
     if not all_players:
         raise ValueError("No player classes provided.")
@@ -126,7 +126,7 @@ def run_simulation_with_animation(number, verbose=False, folder_name="classes"):
         for player in top_5_players:
             top_5_finishes[player] += 1            
 
-        if (i + 1) % 200 == 0 or i == number - 1:
+        if (i + 1) % refresh_rate == 0 or i == number - 1:
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Player", justify="right", style="bold")
             table.add_column("Total Points", justify="right")
@@ -141,11 +141,10 @@ def run_simulation_with_animation(number, verbose=False, folder_name="classes"):
                             str(games_won[player_name]),
                             str(top_5_finishes[player_name]),
                             str(games_played[player_name]),
-                            style=colors[count])
+                            style=colors[count]) #colors.json needs be a dict with name : color then each team can have a color
 
             console.clear()
             console.print(table)
-            time.sleep(1)  # Pause for a short time before next update
 
     # Final results
     results = [f"{number} games were played in {round(time.time() - start_time, 2)} seconds"]
@@ -184,7 +183,17 @@ def assign_points(game_result, max_score=6):
         # Assign points based on rank
         points = max(max_score - last_rank, 0)
         points_distribution[player] = points
-  
+
+    #if a player finishes first and its not a tie then they get an extra point
+    if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
+        points_distribution[sorted_scores[0][0]] += 2
+    
+    #if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
+    balances = [i[1] for i in sorted_scores]
+    for player in banked_money:
+        if balances.count(banked_money[player]) > 1 and points_distribution[player] >= 1:
+            points_distribution[player] -= 1
+
     return points_distribution
 
 

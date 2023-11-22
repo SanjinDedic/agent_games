@@ -135,7 +135,17 @@ def assign_points(game_result, max_score=6):
         # Assign points based on rank
         points = max(max_score - last_rank, 0)
         points_distribution[player] = points
-  
+
+    #if a player finishes first and its not a tie then they get an extra point
+    if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
+        points_distribution[sorted_scores[0][0]] += 2
+    
+    #if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
+    balances = [i[1] for i in sorted_scores]
+    for player in banked_money:
+        if balances.count(banked_money[player]) > 1 and points_distribution[player] >= 1:
+            points_distribution[player] -= 1
+
     return points_distribution
 
 

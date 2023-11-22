@@ -11,7 +11,7 @@ def main():
     # Parse arguments
     args = parser.parse_args()
 
-    run_simulation_with_animation(args.sims)
+    run_simulation_with_animation(number = args.sims, refresh_rate = args.refresh)
 
     # Run the simulation
     #results = run_simulation_many_times(args.sims)
