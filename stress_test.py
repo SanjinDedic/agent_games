@@ -2,6 +2,7 @@ from locust import HttpUser, task, between
 import json
 import inspect
 import random
+import uuid
 
 class CustomPlayer():
 
@@ -17,21 +18,24 @@ class CustomPlayer():
 
 
 class UserBehavior(HttpUser):
-    wait_time = between(3, 9)
+    wait_time = between(1, 2)
 
     def on_start(self):
         self.team_list = self.load_teams()
+        self.headers = {
+            'X-Forwarded-For': str(uuid.uuid4())
+        }
 
     def load_teams(self):
         with open('teams.json', 'r') as file:
             list_data = json.load(file)
             return list_data['teams']
 
-    @task
-    def get_root(self):
-        self.client.get("/")
+    #@task
+    #def get_root(self):
+    #    self.client.get("/")
 
-    @task
+    @task(100)
     def submit_code(self):
         team = random.choice(self.team_list)
         self.submit_for_team(team)
@@ -43,6 +47,6 @@ class UserBehavior(HttpUser):
             "password": team["password"],
             "code": code
         }
-        self.client.post("/submit_agent", json=payload)
+        self.client.post("/submit_agent", headers=self.headers, json=payload)
 
     
