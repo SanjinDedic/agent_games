@@ -63,11 +63,11 @@ async def root():
 
 
 @app.post("/submit_agent")
-@limiter.limit("2/minute")
+@limiter.limit("3/minute")
 async def submit_agent(request: Request, data: Source_Data):
     try:
         # Wait for 2 seconds for the processing_logic to complete
-        result = await asyncio.wait_for(run_game(data), timeout=2)
+        result = await asyncio.wait_for(run_game(data), timeout=3)
         #if the players points are 0
         if "game_result" in result:
             if result["game_result"][data.team_name] == 0:
@@ -75,7 +75,7 @@ async def submit_agent(request: Request, data: Source_Data):
         return result
     except asyncio.TimeoutError:
         # Logic didn't complete in 2 seconds
-        return {"error": "Your agent might be stuck in an infinite loop. It took more than 2 seconds to sim 10 games"}
+        return {"error": "Your agent might be stuck in an infinite loop. It took more than 3 seconds to sim 10 games"}
 
 
 async def run_game(data: Source_Data):

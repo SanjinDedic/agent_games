@@ -92,6 +92,8 @@ def run_simulation_with_animation(number, refresh_rate=200, verbose=False, folde
     with open('colors.json', 'r') as file:
         data = json.load(file)
         team_colors = {team["name"]: team["color"] for team in data["teams"]}
+        print(team_colors)
+        time.sleep(15)
 
     # Dictionary to store the total points for each player
     total_points = {filename[:-3]: 0 for _, filename in all_players}
@@ -134,7 +136,10 @@ def run_simulation_with_animation(number, refresh_rate=200, verbose=False, folde
             table.add_column("Top 5", justify="right")
             table.add_column("Games Played", justify="right")
             for player_name in sorted(total_points, key=total_points.get, reverse=True):
-                player_color = team_colors.get(player_name, "white")
+                if player_name in team_colors:
+                    player_color = team_colors[player_name]
+                else:
+                    player_color = "white"
                 table.add_row(player_name, 
                             str(total_points[player_name]), 
                             str(games_won[player_name]),
