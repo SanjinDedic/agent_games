@@ -1,16 +1,4 @@
-# agent_games
-
-1. **player_base.py**: This file defines an abstract `Player` class, which includes methods for managing a player's money (both banked and unbanked) and tracking their banking status within a turn. It appears to be the base class for player objects in the game.
-
-2. **multi_player_game.py**: This contains the logic for the game itself, including a `Dice` class for dice rolls and a `Game` class. The `Game` class seems to handle player creation, dice rolling, and managing the game state.
-
-3. **agent_send.py**: This file includes a `Testing_Player` class and code to send this player's behavior (defined by the `make_decision` method) to a specified URL using an HTTP POST request. This is likely used for testing the game's AI or player decision-making logic.
-
-4. **api.py**: It defines an API using FastAPI. The API appears to handle file uploads, manage CORS, and possibly integrate with other components of the game, such as running simulations and handling rate limits.
-
-Given this information, I will draft a README.md that explains the project, its structure, how to set it up, and how to use it. The README will also include information about each file and their purpose within the project. Let's proceed with drafting the README.md.
-
-# README.md for the Greedy Pig Game Simulation Project
+# Greedy Pig Game Simulation Project
 
 ## Overview
 The Greedy Pig Game Simulation is a Python-based project that simulates the popular dice game, Greedy Pig. This project includes a set of Python files that together create a framework for playing the game, testing game strategies, and handling game data through an API.
