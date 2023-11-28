@@ -22,6 +22,8 @@ To host the Greedy Pig Game Simulation, you will need:
 - Run `python3 api.py` to start the FastAPI application.
 - For 24/7 agent reception, configure `systemd` to manage the FastAPI app as a service.
 - Ensure all agents are located in the `classes` folder.
+- Create credentials for each participant by modifying `teams.json`
+- Provide each player with credentials and a link to the `agent_send.py` script from this repo to send their agents
 - To run a simulation:
   ```bash
   python3 live_table.py -sims 20000 -refresh 500
@@ -72,8 +74,6 @@ This script deals with sending the agent to the server for participation in the 
 
 - Utilizes command-line arguments for simulation customization, including number of simulations, refresh rate, and player class folder.
 - Integrates with `animated_multi_player_game` for animated game simulations.
-
-#### How to Use:
 
 To run the script, use the following command in the terminal:
 
