@@ -4,11 +4,8 @@ import inspect
 import importlib.util
 from multi_player_game import run_simulation_many_times
 from pydantic import BaseModel
-
-from fastapi import FastAPI, HTTPException, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+import sqlite3
+from datetime import datetime, timedelta
 
 
 import traceback
@@ -18,15 +15,6 @@ import os
 import asyncio
 
 app = FastAPI()
-
-
-limiter = Limiter(key_func=get_remote_address)
-
-app.state.limiter = limiter
-
-
-
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,6 +44,46 @@ def my_rank(points_aggregate, name):
     except ValueError:
         return 0
 
+def update_or_insert_timestamp(team_name):
+    # Connect to the SQLite database
+    conn = sqlite3.connect("teams_log.db")
+    cursor = conn.cursor()
+
+    # Get the current time
+    current_time = datetime.now()
+
+    try:
+        # Try to retrieve the timestamp for the given team name
+        cursor.execute("SELECT timestamp FROM teams_submission WHERE name = ?", (team_name,))
+        result = cursor.fetchone()
+
+        # If the team name is found in the database
+        if result:
+            # Parse the timestamp from the database
+            last_timestamp = datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S')
+
+            # Calculate the time difference
+            time_difference = current_time - last_timestamp
+
+            # If the difference is more than 1 minute, update the timestamp
+            if time_difference > timedelta(minutes=1):
+                cursor.execute("UPDATE teams_submission SET timestamp = ? WHERE name = ?", (current_time.strftime('%Y-%m-%d %H:%M:%S'), team_name))
+                conn.commit()
+                return True
+            else:
+                return False
+        else:
+            # If the team name is not found, insert a new record
+            cursor.execute("INSERT INTO teams_submission (name, timestamp) VALUES (?, ?)", (team_name, current_time.strftime('%Y-%m-%d %H:%M:%S')))
+            conn.commit()
+            return True
+
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
 
 @app.get("/")
 async def root():
@@ -63,16 +91,19 @@ async def root():
 
 
 @app.post("/submit_agent")
-@limiter.limit("3/minute")
-async def submit_agent(request: Request, data: Source_Data):
+async def submit_agent(data: Source_Data):
     try:
-        # Wait for 2 seconds for the processing_logic to complete
-        result = await asyncio.wait_for(run_game(data), timeout=3)
-        #if the players points are 0
-        if "game_result" in result:
-            if result["game_result"][data.team_name] == 0:
-                return {"WARNING:":"Validated Agent is weak Score = 0"}
-        return result
+        outcome = update_or_insert_timestamp(data.team_name)
+        if outcome:
+            # Wait for 2 seconds for the processing_logic to complete
+            result = await asyncio.wait_for(run_game(data), timeout=3)
+            #if the players points are 0
+            if "game_result" in result:
+                if result["game_result"][data.team_name] == 0:
+                    return {"WARNING:":"Validated Agent is weak Score = 0"}
+            return result
+        else:
+            return {"error": "Your agent has been sent multiple times in one minute"}
     except asyncio.TimeoutError:
         # Logic didn't complete in 2 seconds
         return {"error": "Your agent might be stuck in an infinite loop. It took more than 3 seconds to sim 10 games"}
@@ -143,13 +174,6 @@ async def run_game(data: Source_Data):
         return result
 
     return {"my ranking":str(ranking) +"/10","games played": 50, "game_result": result}
-
-
-def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
-    return HTTPException(
-        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        detail="Rate limit exceeded"
-    )
 
 
 if __name__=="__main__":
