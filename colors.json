@@ -1,96 +1,28 @@
 {
-    "teams": [
-      {
-        "name": "BrunswickSC1",
-        "color": "rgb(0,0,255)"
-      },
-      {
-        "name": "BrunswickSC2",
-        "color": "rgb(0,95,255)"
-      },
-      {
-        "name": "CatholicRegional",
-        "color": "rgb(0,135,255)"
-      },
-      {
-        "name": "CaulfieldGrammar1",
-        "color": "rgb(0,175,255)"
-      },
-      {
-        "name": "CaulfieldGrammar2",
-        "color": "rgb(0,215,255)"
-      },
-      {
-        "name": "DoncasterSC1",
-        "color": "rgb(0,255,0)"
-      },
-      {
-        "name": "DoncasterSC2",
-        "color": "rgb(0,255,95)"
-      },
-      {
-        "name": "GlenWaverley1",
-        "color": "rgb(0,255,135)"
-      },
-      {
-        "name": "GlenWaverley2",
-        "color": "rgb(0,255,175)"
-      },
-      {
-        "name": "MacKillop1",
-        "color": "rgb(0,255,215)"
-      },
-      {
-        "name": "MacKillop2",
-        "color": "rgb(0,255,255)"
-      },
-      {
-        "name": "MountAlexander",
-        "color": "rgb(95,0,255)"
-      },
-      {
-        "name": "Nossal",
-        "color": "rgb(95,95,255)"
-      },
-      {
-        "name": "PlentyValleyChristian1",
-        "color": "rgb(95,135,255)"
-      },
-      {
-        "name": "PlentyValleyChristian2",
-        "color": "rgb(95,215,255)"
-      },
-      {
-        "name": "PrestonHigh",
-        "color": "rgb(95,255,95)"
-      },
-      {
-        "name": "PrincessHill1",
-        "color": "rgb(95,255,175)"
-      },
-      {
-        "name": "PrincessHill2",
-        "color": "rgb(95,255,255)"
-      },
-      {
-        "name": "Sirius2",
-        "color": "rgb(135,175,255)"
-      },
-      {
-        "name": "Sirius1",
-        "color": "rgb(135,215,255)"
-      },
-      {
-        "name": "BrightonandFirbank1",
-        "color": "rgb(135,255,135)"
-      },
-      {
-        "name": "BrightonandFirbank2",
-        "color": "rgb(135,255,215)"
-      },
-      {
-        "name": "EastDoncaster",
-        "color": "rgb(135,255,255)"
-      }
+    "colors": [
+      "rgb(0,0,255)",
+      "rgb(0,95,255)",
+      "rgb(0,135,255)",
+      "rgb(0,175,255)",
+      "rgb(0,215,255)",
+      "rgb(0,255,0)",
+      "rgb(0,255,95)",
+      "rgb(0,255,135)",
+      "rgb(0,255,175)",
+      "rgb(0,255,215)",
+      "rgb(0,255,255)",
+      "rgb(95,0,255)",
+      "rgb(95,95,255)",
+      "rgb(95,135,255)",
+      "rgb(95,215,255)",
+      "rgb(95,255,95)",
+      "rgb(95,255,175)",
+      "rgb(95,255,255)",
+      "rgb(135,175,255)",
+      "rgb(135,215,255)",
+      "rgb(135,255,135)",
+      "rgb(135,255,215)",
+      "rgb(135,255,255)"
     ]
   }
+  

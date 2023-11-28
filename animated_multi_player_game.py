@@ -91,9 +91,7 @@ def run_simulation_with_animation(number, refresh_rate=200, verbose=False, folde
         raise ValueError("No player classes provided.")
     with open('colors.json', 'r') as file:
         data = json.load(file)
-        team_colors = {team["name"]: team["color"] for team in data["teams"]}
-        print(team_colors)
-        time.sleep(15)
+        team_colors = data['colors']
 
     # Dictionary to store the total points for each player
     total_points = {filename[:-3]: 0 for _, filename in all_players}
@@ -112,8 +110,21 @@ def run_simulation_with_animation(number, refresh_rate=200, verbose=False, folde
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"logfiles/game_simulation_{number}_runs_{current_time}.txt"
     start_time = time.time()
+
+    colors = dict()
+    with open('colors.json', 'r') as file:
+        data = json.load(file)
+        team_colors = data['colors']
+        game = Game(all_players)
+        for player in game.players:
+            colors[player.name] = team_colors[game.players.index(player)%len(team_colors)]
+    
+
     for i in range(number):
         game = Game(all_players)
+        for player in game.players:
+            player.color = team_colors[i%len(team_colors)]
+
         game_result = game.play_game(verbose)
         points_this_game = assign_points(game_result)
 
@@ -136,19 +147,19 @@ def run_simulation_with_animation(number, refresh_rate=200, verbose=False, folde
             table.add_column("Top 5", justify="right")
             table.add_column("Games Played", justify="right")
             for player_name in sorted(total_points, key=total_points.get, reverse=True):
-                if player_name in team_colors:
-                    player_color = team_colors[player_name]
-                else:
-                    player_color = "white"
                 table.add_row(player_name, 
                             str(total_points[player_name]), 
                             str(games_won[player_name]),
                             str(top_5_finishes[player_name]),
                             str(games_played[player_name]),
-                            style=player_color)
+                            style=colors[player_name])
+                            #check all players in game.players and if player_name is in there then use that color
+
+                        
 
             console.clear()
             console.print(table)
+            time.sleep(0.3)
 
     # Final results
     results = [f"{number} games were played in {round(time.time() - start_time, 2)} seconds"]
@@ -188,9 +199,9 @@ def assign_points(game_result, max_score=6):
         points = max(max_score - last_rank, 0)
         points_distribution[player] = points
 
-    #if a player finishes first and its not a tie then they get an extra point
+    #if a player finishes first and its not a tie then they get extra points (8 in total)
     if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
-        points_distribution[sorted_scores[0][0]] += 2
+        points_distribution[sorted_scores[0][0]] = 8
     
     #if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
     balances = [i[1] for i in sorted_scores]

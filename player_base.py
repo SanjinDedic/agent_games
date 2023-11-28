@@ -9,6 +9,7 @@ class Player(ABC):
         self.banked_money = 0
         self.unbanked_money = 0
         self.has_banked_this_turn = False  # Track banking status within a turn
+        self.color = 'white'
 
     def reset_unbanked_money(self):
         self.unbanked_money = 0

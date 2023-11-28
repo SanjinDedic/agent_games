@@ -1,6 +1,10 @@
 {
   "teams": [
     {
+      "name": "AcademyofMaryImmaculate",
+      "password": "igMD3X3B"
+    },
+    {
       "name": "BrunswickSC1",
       "password": "ighEMkOP"
     },

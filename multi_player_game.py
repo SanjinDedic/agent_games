@@ -136,9 +136,9 @@ def assign_points(game_result, max_score=6):
         points = max(max_score - last_rank, 0)
         points_distribution[player] = points
 
-    #if a player finishes first and its not a tie then they get an extra point
+    #if a player finishes first and its not a tie then they get extra points (8 in total)
     if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
-        points_distribution[sorted_scores[0][0]] += 2
+        points_distribution[sorted_scores[0][0]] = 8
     
     #if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
     balances = [i[1] for i in sorted_scores]
@@ -174,4 +174,4 @@ def get_all_player_classes_from_folder(folder_name="classes"):
 
 
 if __name__ == "__main__":
-    print(run_simulation_many_times(10000, verbose=False))
+    print(run_simulation_many_times(10000, verbose=False, folder_name="classes-by-strategy"))

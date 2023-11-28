@@ -10,7 +10,7 @@ class Testing_Player():
         return 'continue'
         
 start_t = time.time()
-url = 'http://192.168.0.229:8000/submit_agent/'
+url = 'agents.vccfinal:8000/submit_agent/'
 
 code = inspect.getsource(Testing_Player)
 data={"team_name":"Sanjin","password":"aaa","code":code}
