@@ -11,7 +11,7 @@ class Testing_Player():
         
 start_t = time.time()
 url = 'https://agents.vccfinal.net/submit_agent'
-"""
+
 code = inspect.getsource(Testing_Player)
 data={"team_name":"Sanjin","password":"aaa","code":code}
 response = requests.post(url,json=data)
@@ -19,8 +19,9 @@ response = requests.post(url,json=data)
 if response.status_code == 200:
     print(response.json())
 else:
+    print(response.status_code)
+    print(response.text)
     print("An error has occurred.")
 
 elapse_t = time.time() - start_t
 print("Time elapsed: ", elapse_t)
-"""
