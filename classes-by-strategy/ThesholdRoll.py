@@ -1,4 +1,4 @@
-from player_base import Player
+from player import Player
 
 class Agent1(Player):
     def make_decision(self, game_state):

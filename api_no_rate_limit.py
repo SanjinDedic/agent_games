@@ -2,7 +2,7 @@ from fastapi import FastAPI,UploadFile, Request, HTTPException, status, File, Qu
 from fastapi.middleware.cors import CORSMiddleware
 import inspect
 import importlib.util
-from multi_player_game import GameSimulation
+from game_simulation import GameSimulation
 from pydantic import BaseModel
 import sqlite3
 from datetime import datetime, timedelta
@@ -145,7 +145,7 @@ async def run_game(data: Source_Data):
 
     # Write the source code to a temporary file
     with open(filepath, 'w') as file:
-        file.write("from player_base import Player\n\n")
+        file.write("from player import Player\n\n")
         file.write(modified_class_source)
 
     # Dynamically import the class
@@ -160,7 +160,7 @@ async def run_game(data: Source_Data):
         os.remove('test_classes/'+filename)
         filepath = "classes/"+filename
         with open(filepath, 'w') as file:
-            file.write("from player_base import Player\n\n")
+            file.write("from player import Player\n\n")
             file.write(modified_class_source)
 
     except Exception as e:

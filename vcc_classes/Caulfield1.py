@@ -1,4 +1,4 @@
-from player_base import Player
+from player import Player
 
 class CustomPlayer(Player):
 

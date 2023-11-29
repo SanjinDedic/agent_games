@@ -1,4 +1,4 @@
-from player_base import Player
+from player import Player
 
 class Agent3(Player):
     def calculate_dynamic_threshold(self, game_state):

@@ -2,7 +2,7 @@ import random
 import os
 import time
 import json
-from player_base import Player
+from player import Player
 import importlib.util
 from game import Game
 from rich.console import Console

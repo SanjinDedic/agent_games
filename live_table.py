@@ -1,5 +1,5 @@
 import argparse
-from multi_player_game import GameSimulation
+from game_simulation import GameSimulation
 
 def main():
     # Create the parser
@@ -15,12 +15,6 @@ def main():
     simulation.set_folder(args.folder)
     simulation.run_simulation_with_animation(number = args.sims, refresh_rate = args.refresh)
 
-    # Run the simulation
-    #results = run_simulation_many_times(args.sims)
-    #top 5 nth times
-    # Print results
-    #print("Simulation Results:")
-    #print(results)
 
 if __name__ == "__main__":
     main()

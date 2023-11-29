@@ -31,7 +31,7 @@ To host the Greedy Pig Game Simulation, you will need:
 
 ## 📚 Project Structure
 
-### `player_base.py`
+### `player.py`
 
 This file defines the `Player` class, which serves as the base class for all agents in the game. Key aspects include:
 
@@ -39,7 +39,7 @@ This file defines the `Player` class, which serves as the base class for all age
 - **Money Management**: Methods like `reset_unbanked_money()` and `bank_money()` manage the player's in-game finances.
 - **Abstract Methods**: Being an abstract base class (ABC), it requires derived classes to implement specific methods, such as making game decisions.
 
-### `multi_player_game.py`
+### `game_simulation.py`
 
 Manages the game environment, including classes and functions for game mechanics. Key components:
 
@@ -52,9 +52,11 @@ Manages the game environment, including classes and functions for game mechanics
   - **`play_game` Method**: Manages the overall game play, including looping through rounds. 
 
 - **Functions**:
-  - **`run_simulation_many_times`**: Runs the game simulation multiple times, with parameters for the number of simulations, verbosity, and class file location.
-  - **`assign_points`**: Assigns points to players based on game results, with an optional maximum score parameter.
-  - **`get_all_player_classes_from_folder`**: Retrieves all player class definitions from a specified folder, aiding in dynamic player class integration.
+  - **`run_simulation_many_times()`**: Runs the game simulation multiple times, with parameters for the number of simulations, verbosity, and class file location.
+  - **`assign_points()`**: Assigns points to players based on game results, with an optional maximum score parameter.
+  - **`get_all_player_classes_from_folder()`**: Retrieves all player class definitions from a specified folder, aiding in dynamic player class integration.
+  - **`run_simulation_with_animation()`**:
+  - The script includes a formatted table printout with colors to enhance readability and user engagement. This is achieved using the `Table` class from the `rich.table` module. The table dynamically updates during the game, showing player positions, scores, and other relevant information in a visually appealing manner.
 
 ### `agent_send.py`
 
@@ -63,17 +65,10 @@ This script deals with sending the agent to the server for participation in the 
 - **HTTP Request**: Sends the agent's code to the server using an HTTP POST request. The request requires credentials (`team_name` and `password`).
 - **Server Response**: The server's response indicates whether the agent is accepted and validated. It also provides feedback on the agent's performance.
 
-### `animate_multi_player_game.py`
-
-- This file extends the functionality of `multi_player_game.py` by adding animation
-- It features an interactive simulation table using the `rich` Python module.
-- There's planned integration with `multi_player_game.py` because current structure has redundancies
-- The script includes a formatted table printout with colors to enhance readability and user engagement. This is achieved using the `Table` class from the `rich.table` module. The table dynamically updates during the game, showing player positions, scores, and other relevant information in a visually appealing manner.
-
 ### `live_table.py`
 
 - Utilizes command-line arguments for simulation customization, including number of simulations, refresh rate, and player class folder.
-- Integrates with `animated_multi_player_game` for animated game simulations.
+- Uses `run_simulation_with_animation()` from the `game_simulation.py` to create a visually appealing table
 
 To run the script, use the following command in the terminal:
 
