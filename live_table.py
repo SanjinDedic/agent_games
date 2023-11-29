@@ -11,8 +11,9 @@ def main():
     parser.add_argument('-folder', type=str, required=False, help='folder for which classes to run')
     # Parse arguments
     args = parser.parse_args()
-    simulation = GameSimulation
-    simulation.run_simulation_with_animation(number = args.sims, refresh_rate = args.refresh, folder_name = args.folder)
+    simulation = GameSimulation()
+    simulation.set_folder(args.folder)
+    simulation.run_simulation_with_animation(number = args.sims, refresh_rate = args.refresh)
 
     # Run the simulation
     #results = run_simulation_many_times(args.sims)

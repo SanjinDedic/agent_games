@@ -9,10 +9,14 @@ from rich.console import Console
 from rich.table import Table
 
 class GameSimulation:
-    def __init__(self, folder_name="vcc_classes"):
+    def __init__(self, folder_name="test_classes"):
         self.folder_name = folder_name
         self.player_classes = self.get_all_player_classes_from_folder()
         self.team_colors = self.load_team_colors()
+
+    def set_folder(self, folder_name):
+        self.folder_name = folder_name
+        self.player_classes = self.get_all_player_classes_from_folder()
 
     def load_team_colors(self):
         with open('colors.json', 'r') as file:
@@ -40,7 +44,7 @@ class GameSimulation:
         results = self.format_results(total_points, start_time, number, filename)
         return "\n".join(results) if self.folder_name == "classes" else total_points
     
-    def run_simulation_with_animation(self, number, refresh_rate=200, verbose=False):
+    def run_simulation_with_animation(self, number, refresh_rate=200, verbose=False, folder_name="test_classes"):
         if not self.player_classes:
             raise ValueError("No player classes provided.")
 
