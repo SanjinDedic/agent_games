@@ -66,14 +66,14 @@ Runs a specified numbber of games and contains several methods of displaying the
   - **`__init__` Method**: list attributes
 
 - **Methods**:
-  - **`set_folder` Method**: Sets the folder name for loading player classes.
-  - **`load_team_colors` Method**: FILL OUT
+  - **`set_folder`**: Sets the folder name for loading player classes.
+  - **`load_team_colors`**: Assigns a unique color to each team (colors will work on most terminals) 
   - **`run_simulation_many_times()`**: Runs the game simulation multiple times, with parameters for the number of simulations, verbosity, and class file location.
   - **`run_simulation_with_animation()`**:
   - The script includes a formatted table printout with colors to enhance readability and user engagement. This is achieved using the `Table` class from the `rich.table` module. The table dynamically updates during the game, showing player positions, scores, and other relevant information in a visually appealing manner.
   - **`assign_points()`**: Assigns points to players based on game results, with an optional maximum score parameter.
   - **`get_all_player_classes_from_folder()`**: Retrieves all player class definitions from a specified folder, aiding in dynamic player class integration.
-  - **`format_results()`**: FILL OUT
+  - **`format_results()`**: formats the results for use in the animated table
 
 
 ### `agent_send.py`
