@@ -31,32 +31,50 @@ To host the Greedy Pig Game Simulation, you will need:
 
 ## 📚 Project Structure
 
-### `player.py`
 
+### `player.py`
 This file defines the `Player` class, which serves as the base class for all agents in the game. Key aspects include:
 
-- **Initialization**: The `Player` class is initialized with a name, password, and default values for `banked_money`, `unbanked_money`, and `has_banked_this_turn`. 
-- **Money Management**: Methods like `reset_unbanked_money()` and `bank_money()` manage the player's in-game finances.
-- **Abstract Methods**: Being an abstract base class (ABC), it requires derived classes to implement specific methods, such as making game decisions.
+- **`Player` Class**: Abstract base class for players in the game.
+  - **`__init__` Method**: Initializes player with name, password, banked and unbanked money, banking status, and color.
+
+- **Methods**:
+  - **`reset_unbanked_money` Method**: Resets the player's unbanked money to zero.
+  - **`bank_money` Method**: Transfers unbanked money to banked money and resets unbanked money.
+  - **`reset_turn` Method**: Resets the player's banking status for the new turn.
+  - **`my_rank` Method**: Determines the player's rank based on total points in comparison to others.
+  - **`make_decision` Method**: Abstract method to be implemented in subclasses for player decision-making.
+
+
+### `game.py`
+Runs a single game of Greedy Pig. It needs a list of player objects to run.
+
+- **`Game` Class**: Manages the simulation of the game.
+  - **`__init__` Method**: Initializes the game with players, active players list, player banked list, round number, and roll number.
+
+- **Methods**:
+  - **`roll_dice` Method**: Returns a random number between 1 and 6, simulating a dice roll.
+  - **`get_game_state` Method**: Retrieves the current state of the game including active players, round number, etc.
+  - **`play_round` Method**: Conducts a single round, managing player turns and scoring.
+  - **`play_game` Method**: Controls the overall flow of the game, initiating and ending rounds.
+
 
 ### `game_simulation.py`
+Runs a specified numbber of games and contains several methods of displaying the result
 
-Manages the game environment, including classes and functions for game mechanics. Key components:
+- **`GameSimulation` Class**: Manages the simulation of the game.
+  - **`__init__` Method**: list attributes
 
-- **`Dice` Class**: Provides a simple dice rolling functionality.
-  - **`roll` Method**: Generates a random number between 1 and 6, simulating a dice roll.
-
-- **`Game` Class**: Central class for managing game flow and interactions.
-  - **`get_game_state` Method**: Retrieves the current state of the game. 
-  - **`play_round` Method**: Handles the logic for playing a single round in the game. 
-  - **`play_game` Method**: Manages the overall game play, including looping through rounds. 
-
-- **Functions**:
+- **Methods**:
+  - **`set_folder` Method**: Sets the folder name for loading player classes.
+  - **`load_team_colors` Method**: FILL OUT
   - **`run_simulation_many_times()`**: Runs the game simulation multiple times, with parameters for the number of simulations, verbosity, and class file location.
-  - **`assign_points()`**: Assigns points to players based on game results, with an optional maximum score parameter.
-  - **`get_all_player_classes_from_folder()`**: Retrieves all player class definitions from a specified folder, aiding in dynamic player class integration.
   - **`run_simulation_with_animation()`**:
   - The script includes a formatted table printout with colors to enhance readability and user engagement. This is achieved using the `Table` class from the `rich.table` module. The table dynamically updates during the game, showing player positions, scores, and other relevant information in a visually appealing manner.
+  - **`assign_points()`**: Assigns points to players based on game results, with an optional maximum score parameter.
+  - **`get_all_player_classes_from_folder()`**: Retrieves all player class definitions from a specified folder, aiding in dynamic player class integration.
+  - **`format_results()`**: FILL OUT
+
 
 ### `agent_send.py`
 
@@ -73,10 +91,11 @@ This script deals with sending the agent to the server for participation in the 
 To run the script, use the following command in the terminal:
 
 ```bash
-python3 live_table.py -sims 20000 -refresh 500 -folder classes-by-strategy
+python3 live_table.py -sims 12000 -refresh 500 -folder classes-by-strategy
 ```
+![Animated Ranking Table](table.PNG)
 
-- `-sims 20000`: Specifies the number of game simulations to run. In this example, it will run 20,000 simulations.
+- `-sims 12000`: Specifies the number of game simulations to run. In this example, it will run 20,000 simulations.
 - `-refresh 500`: Sets the refresh rate for the animation in milliseconds. Here, it's set to 500 milliseconds.
 - `-folder classes-by-strategy`: Indicates the folder where the player class files are located. This allows the script to access different player strategies for the simulations.
 
