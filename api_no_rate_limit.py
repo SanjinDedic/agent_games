@@ -2,7 +2,7 @@ from fastapi import FastAPI,UploadFile, Request, HTTPException, status, File, Qu
 from fastapi.middleware.cors import CORSMiddleware
 import inspect
 import importlib.util
-from multi_player_game import run_simulation_many_times
+from multi_player_game import GameSimulation
 from pydantic import BaseModel
 import sqlite3
 from datetime import datetime, timedelta
@@ -154,7 +154,8 @@ async def run_game(data: Source_Data):
     spec.loader.exec_module(player_module)
 
     try:
-        result = run_simulation_many_times(50, verbose=False, folder_name="test_classes")
+        simulation = GameSimulation()
+        result = simulation.run_simulation_many_times(50, verbose=False, folder_name="test_classes")
         ranking = my_rank(result, data.team_name)
         os.remove('test_classes/'+filename)
         filepath = "classes/"+filename

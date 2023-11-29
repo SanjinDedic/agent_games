@@ -31,10 +31,10 @@ class UserBehavior(HttpUser):
             list_data = json.load(file)
             return list_data['teams']
 
-    #@task
-    #def get_root(self):
-    #    self.client.get("/")
-
+    @task
+    def get_root(self):
+        self.client.get("/")
+"""
     @task(100)
     def submit_code(self):
         team = random.choice(self.team_list)
@@ -48,5 +48,5 @@ class UserBehavior(HttpUser):
             "code": code
         }
         self.client.post("/submit_agent", headers=self.headers, json=payload)
-
+"""
     
