@@ -10,8 +10,8 @@ class Testing_Player():
         return 'continue'
         
 start_t = time.time()
-url = 'agents.vccfinal:8000/submit_agent/'
-
+url = 'https://agents.vccfinal.net/submit_agent'
+"""
 code = inspect.getsource(Testing_Player)
 data={"team_name":"Sanjin","password":"aaa","code":code}
 response = requests.post(url,json=data)
@@ -23,3 +23,4 @@ else:
 
 elapse_t = time.time() - start_t
 print("Time elapsed: ", elapse_t)
+"""
