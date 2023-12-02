@@ -12,9 +12,12 @@ def main():
     # Parse arguments
     args = parser.parse_args()
     simulation = GameSimulation()
-    simulation.set_folder(args.folder)
-    simulation.run_simulation_with_animation(number = args.sims, refresh_rate = args.refresh)
-
+    if args.folder:
+        simulation.set_folder(args.folder)
+    if args.refresh:
+        simulation.run_simulation_with_animation(number = args.sims, refresh_rate = args.refresh)
+    else:
+        simulation.run_simulation_with_animation(args.sims)
 
 if __name__ == "__main__":
     main()
