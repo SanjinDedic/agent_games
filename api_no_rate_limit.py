@@ -155,7 +155,8 @@ async def run_game(data: Source_Data):
 
     try:
         simulation = GameSimulation()
-        result = simulation.run_simulation_many_times(50, verbose=False, folder_name="test_classes")
+        simulation.set_folder("test_classes")
+        result = simulation.run_simulation_many_times(50, verbose=False)
         ranking = my_rank(result, data.team_name)
         os.remove('test_classes/'+filename)
         filepath = "classes/"+filename
