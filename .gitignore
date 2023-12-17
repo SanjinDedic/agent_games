@@ -1,2 +1,21 @@
 __pycache__
 classes/__pycache__
+logfiles
+single_file_game
+
+.coverage
+coverage/
+htmlcov/
+
+# pytest cache
+.pytest_cache/
+
+# pip cache
+Pipfile.lock
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# If you are using Jupyter notebooks
+.ipynb_checkpoints/

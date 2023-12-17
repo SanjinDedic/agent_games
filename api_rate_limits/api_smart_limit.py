@@ -16,6 +16,39 @@ import asyncio
 
 app = FastAPI()
 
+# Rate Limiting Middleware
+class RateLimiter:
+    def __init__(self, max_requests: int, time_window: timedelta):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.access_records: Dict[str, list] = {}
+
+    def is_allowed(self, client_ip: str) -> bool:
+        current_time = datetime.now()
+        if client_ip not in self.access_records:
+            self.access_records[client_ip] = [current_time]
+            return True
+
+        self.access_records[client_ip] = [
+            t for t in self.access_records[client_ip]
+            if t > current_time - self.time_window
+        ]
+
+        if len(self.access_records[client_ip]) < self.max_requests:
+            self.access_records[client_ip].append(current_time)
+            return True
+
+        return False
+
+rate_limiter = RateLimiter(max_requests=10, time_window=timedelta(minutes=1))
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host
+    if not rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    return await call_next(request)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

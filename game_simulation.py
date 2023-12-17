@@ -88,6 +88,10 @@ class GameSimulation:
         last_score = None
         last_rank = 0
 
+        if len(sorted_scores) == 1:  # Only one player, assign maximum points
+            points_distribution[sorted_scores[0][0]] = max_score
+            return points_distribution
+
         for rank, (player, score) in enumerate(sorted_scores, start=1):
             if score != last_score:  # New score, update rank
                 last_rank = rank
