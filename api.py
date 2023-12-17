@@ -36,14 +36,6 @@ class Admin_Simulation(BaseModel):
     score: int
 
 
-def my_rank(points_aggregate, name):
-    sorted_players = sorted(points_aggregate, key=points_aggregate.get, reverse=True)
-    try:
-        rank = sorted_players.index(name) + 1
-        return rank
-    except ValueError:
-        return 0
-
 def update_or_insert_timestamp(team_name):
     # Connect to the SQLite database
     conn = sqlite3.connect("teams_log.db")
