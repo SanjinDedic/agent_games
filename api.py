@@ -4,37 +4,29 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 import inspect
 import logging
-import importlib.util
 from game_simulation import GameSimulation
-from pydantic import BaseModel
 import sqlite3
 from datetime import datetime, timedelta
 from check_file import is_safe
 
-import traceback
-import re
 import json
 import os
 import asyncio
 
-CURRENT_DIR = os.path.dirname(__file__)
-CURRENT_DB = os.path.join(CURRENT_DIR, "teams.db")
-SECRET_KEY = "AGENTBOSS"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
-class Team(BaseModel):
-    team_name: str
-    password: str
+from config import CURRENT_DB,CURRENT_DIR,SECRET_KEY,ADMIN_PASSWORD,ACCESS_TOKEN_EXPIRE_MINUTES
+from models import Team,Admin,Answer
+from auth import create_access_token,get_current_user,get_password_hash,verify_password
+from database import create_database
 
-class Answer(BaseModel):
-    code: str
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    with open(os.path.join(CURRENT_DIR, "initial.json"), 'r') as f:
+        initial_data = json.load(f)
+    teams_json_path = os.path.join(CURRENT_DIR, "teams.json")
+    create_database(initial_data, teams_json_path)
+    yield
 
-class Admin_Simulation(BaseModel):
-    password: str
-    simulations: int
-    score: int
 
 app = FastAPI()
 
@@ -47,40 +39,7 @@ app.add_middleware(
 )
 
 
-def execute_db_query(query, params=(), fetchone=False, db=None):
-    if db is None:
-        db=CURRENT_DB
-    try:
-        conn = sqlite3.connect(db)
-        c = conn.cursor()
-        c.execute(query, params)
-        conn.commit()
-        if fetchone:
-            return c.fetchone()
-        else:
-            return c.fetchall()
-    except Exception as e:
-        logging.error("Error occurred when executing database query", exc_info=True)
-        raise e
-    finally:
-        conn.close()
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    expire = datetime.now() + expires_delta if expires_delta else datetime.now() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        team_name: str = payload.get("sub")
-        if team_name is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return team_name
 
 def update_or_insert_timestamp(team_name):
     # Connect to the SQLite database
@@ -131,14 +90,17 @@ async def root():
 @app.post("/agent_login")
 async def team_login(user: Team):
     try:
-        result = execute_db_query("SELECT password FROM teams WHERE name=?",(user.team_name,))
-        if result and result[0][0]==user.password:
-            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = create_access_token(
-                data={"sub": user.team_name}, 
-                expires_delta=access_token_expires
-            )
-            return {"access_token": access_token, "token_type": "bearer"}
+        result = execute_db_query("SELECT password FROM teams WHERE name=?",(user.team_name,),fetchone=True)
+        if result is not None:
+            hashed_password = result[0]
+            if verify_password(user.password, hashed_password):
+                print("Password verified.")
+                access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+                access_token = create_access_token(
+                    data={"sub": user.team_name, "role": "student"}, 
+                    expires_delta=access_token_expires
+                )
+                return {"access_token": access_token, "token_type": "bearer"}
         else:
             return {"status": "failed", "message": "No team found with these credentials"}
             
@@ -165,120 +127,8 @@ async def submit_agent(data: Answer, team_name: str = Depends(get_current_user))
         return {"error": "Your agent might be stuck in an infinite loop. It took more than 3 seconds to sim 10 games"}
 
 
-async def run_game(data: Answer):
-    class_source = data.code
-    #if the code contains the word print return an error
-    if 'print' in class_source:
-        return {"invalid":"Print statements are not allowed"}
-    if 'exec' in class_source:
-        return {"invalid":"Exec statements are not allowed"}
-    if 'eval(' in class_source:
-        return {"invalid":"Eval statements are not allowed"}
-    if 'open(' in class_source:
-        return {"invalid":"Open statements are not allowed"}
-    if 'import' in class_source:
-        if class_source.count('import')>1:
-            return {"invalid":"Import statements are not allowed except for import random"}
-        if 'import random' not in class_source:
-            return {"invalid":"Import statements are not allowed except for import random"}
-
-    with open('teams.json', 'r') as file:
-        list_data = json.load(file)
-        teams_list = list_data['teams']
-    
-    team_found = [team["name"] == data.team_name and team["password"] == data.password for team in teams_list]
-    if any(team_found):
-        filename = f"{data.team_name}.py"
-    else:
-        return {"Error": "Team not found"}
-    match = re.search(r'class (\w+)', class_source)
-    if not match:
-        return {"Error":"No class definition found in the provided source code."}
-    class_name = match.group(1)
-    filepath = "test_classes/"+filename
-    modified_class_definition = f"class {class_name}(Player):"
-    modified_class_source = re.sub(r'class \w+\(\):', modified_class_definition, class_source)
-
-    # Write the source code to a temporary file
-    with open(filepath, 'w') as file:
-        file.write("from player import Player\n\n")
-        file.write(modified_class_source)
-
-    # Dynamically import the class
-    spec = importlib.util.spec_from_file_location(class_name, filepath)
-    player_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(player_module)
-
-    try:
-        simulation = GameSimulation()
-        simulation.set_folder("test_classes")
-        result = simulation.run_simulation_many_times(50, verbose=False)
-        ranking = my_rank(result, data.team_name)
-        os.remove('test_classes/'+filename)
-        filepath = "classes/"+filename
-        with open(filepath, 'w') as file:
-            file.write("from player import Player\n\n")
-            file.write(modified_class_source)
-
-    except Exception as e:
-        # Print the error message and the traceback
-        error_message = f"Error: {e}"
-        print(error_message)
-        traceback.print_exc()
-
-        # and return it along with the error message
-        error_traceback = traceback.format_exc()
-        result = {"Error": error_message, "Traceback": error_traceback}
-        return result
-
-    return {"my ranking":str(ranking) +"/10","games played": 50, "game_result": result}
 
 
-def create_database():
-    db_file_path = os.path.join(CURRENT_DIR, f"{CURRENT_DB}")
-
-    # Delete the database file if it already exists
-    if os.path.exists(db_file_path):
-        os.remove(db_file_path)
-    try:
-        conn = sqlite3.connect(db_file_path)
-        cursor = conn.cursor()
-        
-        # Define tables
-        teams_table = """
-        CREATE TABLE "teams" (
-            "name"	TEXT NOT NULL UNIQUE,
-            "password"	TEXT NOT NULL,
-            "score"	TEXT NOT NULL,
-            PRIMARY KEY("name")
-        );
-        """
-
-        submission_table = """
-        CREATE TABLE "submissions" (
-            "name"	TEXT NOT NULL UNIQUE,
-            "code"	TEXT NOT NULL,
-            "timestamp" TEXT NOT NULL,
-            FOREIGN KEY("name") REFERENCES "teams"("name")
-        );"""
-
-        cursor.execute(teams_table)
-        cursor.execute(submission_table)
-
-        teams_json_path = os.path.join(CURRENT_DIR, 'teams.json')
-
-        with open(teams_json_path, 'r') as file:
-            data = json.load(file)
-            teams_list = data['teams']
-
-        for team in teams_list:
-            cursor.execute("INSERT INTO teams (name, password, score) VALUES (?,?,?)",(team["name"], team["password"], 0))
-
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error("An error occurred when creating the database", exc_info=True)
-        raise e
 
 if __name__=="__main__":
     create_database()
