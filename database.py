@@ -3,9 +3,10 @@ import os
 import logging
 from fastapi import FastAPI, HTTPException
 import json
-from passlib.context import CryptContext
-from datetime import datetime
-from config import CURRENT_DB,CURRENT_DIR
+from datetime import datetime,timedelta
+from config import CURRENT_DB,CURRENT_DIR,SECRET_KEY,ADMIN_PASSWORD
+
+
 
 def execute_db_query(query, params=(), fetchone=False, db=None):
     if db is None:
@@ -25,6 +26,24 @@ def execute_db_query(query, params=(), fetchone=False, db=None):
     finally:
         conn.close()
 
+
+def update_submission(team_name,code):
+    
+    try:
+        # Get the current time
+        current_time = datetime.now()
+        result = execute_db_query("SELECT timestamp FROM submission WHERE name = ?", (team_name,),fetchone=True)
+        
+        # If the team name is found in the database
+        if result:
+            execute_db_query("UPDATE teams_submission SET timestamp = ?, code = ? WHERE name = ?", (current_time.strftime('%Y-%m-%d %H:%M:%S'),code, team_name,))
+        else:
+            # If the team name is not found, insert a new record
+            execute_db_query("INSERT INTO submission (name, code, timestamp) VALUES (?, ?, ?)", (team_name, code, current_time.strftime('%Y-%m-%d %H:%M:%S'),))
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
 
 
 
@@ -72,50 +91,8 @@ def create_database(data, teams_json_path):
         logging.error("An error occurred when creating the database", exc_info=True)
         raise e
     
-async def run_game(data):
-    class_source = data
-    #if the code contains the word print return an error
-    if 'print' in class_source:
-        return {"invalid":"Print statements are not allowed"}
-    if 'exec' in class_source:
-        return {"invalid":"Exec statements are not allowed"}
-    if 'eval(' in class_source:
-        return {"invalid":"Eval statements are not allowed"}
-    if 'open(' in class_source:
-        return {"invalid":"Open statements are not allowed"}
-    if 'import' in class_source:
-        if class_source.count('import')>1:
-            return {"invalid":"Import statements are not allowed except for import random"}
-        if 'import random' not in class_source:
-            return {"invalid":"Import statements are not allowed except for import random"}
-
-    with open('teams.json', 'r') as file:
-        list_data = json.load(file)
-        teams_list = list_data['teams']
+async def run_game(code):
     
-    team_found = [team["name"] == data.team_name and team["password"] == data.password for team in teams_list]
-    if any(team_found):
-        filename = f"{data.team_name}.py"
-    else:
-        return {"Error": "Team not found"}
-    match = re.search(r'class (\w+)', class_source)
-    if not match:
-        return {"Error":"No class definition found in the provided source code."}
-    class_name = match.group(1)
-    filepath = "test_classes/"+filename
-    modified_class_definition = f"class {class_name}(Player):"
-    modified_class_source = re.sub(r'class \w+\(\):', modified_class_definition, class_source)
-
-    # Write the source code to a temporary file
-    with open(filepath, 'w') as file:
-        file.write("from player import Player\n\n")
-        file.write(modified_class_source)
-
-    # Dynamically import the class
-    spec = importlib.util.spec_from_file_location(class_name, filepath)
-    player_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(player_module)
-
     try:
         simulation = GameSimulation()
         simulation.set_folder("test_classes")
@@ -123,19 +100,10 @@ async def run_game(data):
         ranking = my_rank(result, data.team_name)
         os.remove('test_classes/'+filename)
         filepath = "classes/"+filename
-        with open(filepath, 'w') as file:
-            file.write("from player import Player\n\n")
-            file.write(modified_class_source)
-
+        
     except Exception as e:
-        # Print the error message and the traceback
-        error_message = f"Error: {e}"
-        print(error_message)
-        traceback.print_exc()
-
-        # and return it along with the error message
-        error_traceback = traceback.format_exc()
-        result = {"Error": error_message, "Traceback": error_traceback}
+       
+        result = {"Error": e}
         return result
 
     return {"my ranking":str(ranking) +"/10","games played": 50, "game_result": result}
