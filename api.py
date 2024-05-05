@@ -1,20 +1,37 @@
-from fastapi import FastAPI,UploadFile, Request, HTTPException, status, File, Query, Depends,Body
+from fastapi import FastAPI, HTTPException, status, File, Query, Depends,Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt, JWTError
 import inspect
-import importlib.util
+import logging
 from game_simulation import GameSimulation
-from pydantic import BaseModel
 import sqlite3
 from datetime import datetime, timedelta
+from check_file import is_safe
 
-
-import traceback
-import re
 import json
 import os
 import asyncio
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from config import CURRENT_DB,CURRENT_DIR,SECRET_KEY,ADMIN_PASSWORD,ACCESS_TOKEN_EXPIRE_MINUTES
+from models import Team, Admin, Answer
+from auth import create_access_token,get_current_user,get_password_hash,verify_password
+from database import create_database,execute_db_query,update_submission
+from game import Game
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    with open(os.path.join(CURRENT_DIR, "initial.json"), 'r') as f:
+        initial_data = json.load(f)
+    teams_json_path = os.path.join(CURRENT_DIR, "teams.json")
+    create_database(initial_data, teams_json_path)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,151 +42,67 @@ app.add_middleware(
 )
 
 
-class Source_Data(BaseModel):
-    team_name: str
-    password: str
-    code: str
-
-class Admin_Simulation(BaseModel):
-    password: str
-    simulations: int
-    score: int
-
-
-def update_or_insert_timestamp(team_name):
-    # Connect to the SQLite database
-    conn = sqlite3.connect("teams_log.db")
-    cursor = conn.cursor()
-
-    # Get the current time
-    current_time = datetime.now()
-
-    try:
-        # Try to retrieve the timestamp for the given team name
-        cursor.execute("SELECT timestamp FROM teams_submission WHERE name = ?", (team_name,))
-        result = cursor.fetchone()
-
-        # If the team name is found in the database
-        if result:
-            # Parse the timestamp from the database
-            last_timestamp = datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S')
-
-            # Calculate the time difference
-            time_difference = current_time - last_timestamp
-
-            # If the difference is more than 1 minute, update the timestamp
-            if time_difference > timedelta(minutes=1):
-                cursor.execute("UPDATE teams_submission SET timestamp = ? WHERE name = ?", (current_time.strftime('%Y-%m-%d %H:%M:%S'), team_name))
-                conn.commit()
-                return True
-            else:
-                return False
-        else:
-            # If the team name is not found, insert a new record
-            cursor.execute("INSERT INTO teams_submission (name, timestamp) VALUES (?, ?)", (team_name, current_time.strftime('%Y-%m-%d %H:%M:%S')))
-            conn.commit()
-            return True
-
-        
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        conn.close()
-
-
 @app.get("/")
 async def root():
     return {"message": "Success, server is running"}
 
 
-@app.post("/submit_agent")
-async def submit_agent(data: Source_Data):
+@app.post("/agent_login")
+async def team_login(user: Team):
     try:
-        outcome = update_or_insert_timestamp(data.team_name)
-        if outcome:
-            # Wait for 2 seconds for the processing_logic to complete
-            result = await asyncio.wait_for(run_game(data), timeout=3)
-            #if the players points are 0
-            if "game_result" in result:
-                if result["game_result"][data.team_name] == 0:
-                    return {"WARNING:":"Validated Agent is weak Score = 0"}
-            return result
+        result = execute_db_query("SELECT password FROM teams WHERE name=?",(user.team_name,),fetchone=True)
+        if result is not None:
+            hashed_password = result[0]
+            if verify_password(user.password, hashed_password):
+                access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+                access_token = create_access_token(
+                    data={"sub": user.team_name, "role": "student"}, 
+                    expires_delta=access_token_expires
+                )
+                return {"access_token": access_token, "token_type": "bearer"}
         else:
-            return {"error": "Your agent has been sent multiple times in one minute"}
+            return {"status": "failed", "message": "No team found with these credentials"}
+            
+    except Exception as e:
+         return {"status": "failed", "message": "Server error"}
+
+@app.post("/submit_agent")
+async def submit_agent(data: Answer, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        if is_safe(data.code):
+            
+            #output = execute_code_in_docker(data.code)
+            #update_submission(team_name,code)
+            return {"status" : "success", "message" : "It went through"}
+        else:
+            return {"error": "Code is unsafe to execute"}
+        
+        
     except asyncio.TimeoutError:
         # Logic didn't complete in 2 seconds
         return {"error": "Your agent might be stuck in an infinite loop. It took more than 3 seconds to sim 10 games"}
-
-
-async def run_game(data: Source_Data):
-    class_source = data.code
-    #if the code contains the word print return an error
-    if 'print' in class_source:
-        return {"invalid":"Print statements are not allowed"}
-    if 'exec' in class_source:
-        return {"invalid":"Exec statements are not allowed"}
-    if 'eval(' in class_source:
-        return {"invalid":"Eval statements are not allowed"}
-    if 'open(' in class_source:
-        return {"invalid":"Open statements are not allowed"}
-    if 'import' in class_source:
-        if class_source.count('import')>1:
-            return {"invalid":"Import statements are not allowed except for import random"}
-        if 'import random' not in class_source:
-            return {"invalid":"Import statements are not allowed except for import random"}
-
-    with open('teams.json', 'r') as file:
-        list_data = json.load(file)
-        teams_list = list_data['teams']
     
-    team_found = [team["name"] == data.team_name and team["password"] == data.password for team in teams_list]
-    if any(team_found):
-        filename = f"{data.team_name}.py"
+
+@app.post("/admin_login")
+async def admin_login(a: Admin):
+    if not a.admin_password:
+        return {"status": "failed", "message": "Admin credentials are wrong"}
+    if a.admin_password != ADMIN_PASSWORD:
+        return {"status": "failed", "message": "Admin credentials are wrong"}
     else:
-        return {"Error": "Team not found"}
-    match = re.search(r'class (\w+)', class_source)
-    if not match:
-        return {"Error":"No class definition found in the provided source code."}
-    class_name = match.group(1)
-    filepath = "test_classes/"+filename
-    modified_class_definition = f"class {class_name}(Player):"
-    modified_class_source = re.sub(r'class \w+\(\):', modified_class_definition, class_source)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": "admin", "role": "admin"}, 
+            expires_delta=access_token_expires
+        )
+        return {"access_token": access_token, "token_type": "bearer"}
+    
 
-    # Write the source code to a temporary file
-    with open(filepath, 'w') as file:
-        file.write("from player import Player\n\n")
-        file.write(modified_class_source)
-
-    # Dynamically import the class
-    spec = importlib.util.spec_from_file_location(class_name, filepath)
-    player_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(player_module)
-
-    try:
-        simulation = GameSimulation()
-        simulation.set_folder("test_classes")
-        result = simulation.run_simulation_many_times(50, verbose=False)
-        ranking = my_rank(result, data.team_name)
-        os.remove('test_classes/'+filename)
-        filepath = "classes/"+filename
-        with open(filepath, 'w') as file:
-            file.write("from player import Player\n\n")
-            file.write(modified_class_source)
-
-    except Exception as e:
-        # Print the error message and the traceback
-        error_message = f"Error: {e}"
-        print(error_message)
-        traceback.print_exc()
-
-        # and return it along with the error message
-        error_traceback = traceback.format_exc()
-        result = {"Error": error_message, "Traceback": error_traceback}
-        return result
-
-    return {"my ranking":str(ranking) +"/10","games played": 50, "game_result": result}
-
-
-if __name__=="__main__":
-    import uvicorn
-    uvicorn.run(app,host="0.0.0.0",port=8000)
+@app.post("/run_simulation")
+async def run_simulation(number_of_runs: int, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    return {"status": "success", "message": "result"}

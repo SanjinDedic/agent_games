@@ -7,7 +7,7 @@ import importlib.util
 from game import Game
 from rich.console import Console
 from rich.table import Table
-
+from config import CURRENT_DIR
 
 class GameSimulation:
     def __init__(self, folder_name="test_classes"):
@@ -20,7 +20,7 @@ class GameSimulation:
         self.player_classes = self.get_all_player_classes_from_folder()
 
     def load_team_colors(self):
-        with open('colors.json', 'r') as file:
+        with open(os.path.join(CURRENT_DIR,'colors.json', 'r')) as file:
             data = json.load(file)
             team_colors = data['colors']
         return team_colors
