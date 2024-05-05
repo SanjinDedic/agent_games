@@ -52,9 +52,10 @@ class Game:
                         player.bank_money()
                         self.players_banked_this_round.append(player.name)
                         if player.banked_money >= 100:
+                            #everyone's unbanked money should be added to be banked before ranking function
                             if verbose:
                                 print(f"{player.name} has won the game with ${player.banked_money}!")
-                            return player.name  # End the game if a player has won
+                            return player.name  # Game complete
                     elif verbose:
                         # Adding feedback for choosing to not bank
                         print(f"{player.name} chooses not to bank. Risking ${player.unbanked_money} on the next roll!")

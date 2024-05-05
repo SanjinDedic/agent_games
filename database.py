@@ -91,7 +91,7 @@ def create_database(data, teams_json_path):
         logging.error("An error occurred when creating the database", exc_info=True)
         raise e
     
-async def run_game(code):
+def run_game(code):
     
     try:
         simulation = GameSimulation()

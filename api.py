@@ -67,7 +67,9 @@ async def team_login(user: Team):
          return {"status": "failed", "message": "Server error"}
 
 @app.post("/submit_agent")
-async def submit_agent(data: Answer, team_name: str = Depends(get_current_user)):
+async def submit_agent(data: Answer, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Forbidden")
     try:
         if is_safe(data.code):
             
@@ -96,3 +98,11 @@ async def admin_login(a: Admin):
             expires_delta=access_token_expires
         )
         return {"access_token": access_token, "token_type": "bearer"}
+    
+
+@app.post("/run_simulation")
+async def run_simulation(number_of_runs: int, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    return {"status": "success", "message": "result"}
