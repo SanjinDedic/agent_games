@@ -44,7 +44,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Success, server is up and running (deply.yml works)"}
+    return {"message": "Success, server is up and running (deploy.yml works)"}
 
 
 @app.post("/agent_login")
