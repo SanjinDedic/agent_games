@@ -23,10 +23,8 @@ from game import Game
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    with open(os.path.join(CURRENT_DIR, "initial.json"), 'r') as f:
-        initial_data = json.load(f)
     teams_json_path = os.path.join(CURRENT_DIR, "teams.json")
-    create_database(initial_data, teams_json_path)
+    create_database(teams_json_path)
     yield
 
 

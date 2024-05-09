@@ -47,7 +47,7 @@ def update_submission(team_name,code):
 
 
 
-def create_database(data, teams_json_path):
+def create_database(teams_json_path):
     db_file_path = os.path.join(CURRENT_DIR, f"{CURRENT_DB}")
 
     # Delete the database file if it already exists
