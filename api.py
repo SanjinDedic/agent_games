@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from config import CURRENT_DB,CURRENT_DIR,SECRET_KEY,ADMIN_PASSWORD,ACCESS_TOKEN_EXPIRE_MINUTES
 from models import *
 from auth import create_access_token,get_current_user,get_password_hash,verify_password
-from database import create_database,get_team
+from database import create_database,get_team,create_team
 from game import Game
 
 
@@ -58,14 +58,10 @@ async def team_login(user: TeamLogin):
          return {"status": "failed", "message": "Server error"}
 
 @app.post("/agent_create")
-async def team_login(user: TeamSignUp):
+async def team_login(user: TeamBase):
     try:
-        team = create_team(user)
-        if team is not False:
-            return team
-        else:
-            return {"status": "failed", "message": "No team found with these credentials"}
-            
+        return create_team(user)
+         
     except Exception as e:
          return {"status": "failed", "message": "Server error"}
 

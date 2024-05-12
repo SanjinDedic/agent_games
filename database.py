@@ -39,17 +39,18 @@ def create_league(league_name, expiry_date=None):
             session.rollback()
             raise e
 
-def create_team(league_name, team_name, password):
+def create_team(league_name,user):
     with Session(engine) as session:
         try:
             league = session.exec(select(League).where(League.name == league_name)).one()
             if league:
-                hashed_pwd=get_password_hash(password)
-                team = Team(name=team_name, password=hashed_pwd, league=league)
+                hashed_pwd=get_password_hash(user.password)
+                team = Team(name=user.name,school_name=user.school_name, password=hashed_pwd, league=league)
                 session.add(team)
                 session.commit()
+                return {"status": "success", "message": "Agent Successfully created"}
             else:
-                raise ValueError(f"League '{league_name}' does not exist")
+                return {"status": "failed", "message": f"League '{league_name}' does not exist"}
         except Exception as e:
             session.rollback()
             raise e

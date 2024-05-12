@@ -44,6 +44,7 @@ class Submission(SubmissionBase, table=True):
 
 class TeamLogin(TeamBase):
     pass
+
     
 class CodeSubmit(SubmissionBase):
     pass
