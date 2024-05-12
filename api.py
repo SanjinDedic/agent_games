@@ -15,16 +15,16 @@ import asyncio
 
 from contextlib import asynccontextmanager
 from config import CURRENT_DB,CURRENT_DIR,SECRET_KEY,ADMIN_PASSWORD,ACCESS_TOKEN_EXPIRE_MINUTES
-from models import Team, Admin, Answer
+from models import *
 from auth import create_access_token,get_current_user,get_password_hash,verify_password
-from database import create_database,execute_db_query,update_submission
+from database import create_database,get_team
 from game import Game
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    teams_json_path = os.path.join(CURRENT_DIR, "teams.json")
-    create_database(teams_json_path)
+    #teams_json_path = os.path.join(CURRENT_DIR, "teams.json")
+    create_database()
     yield
 
 
@@ -46,26 +46,32 @@ async def root():
 
 
 @app.post("/agent_login")
-async def team_login(user: Team):
+async def team_login(user: TeamLogin):
     try:
-        result = execute_db_query("SELECT password FROM teams WHERE name=?",(user.team_name,),fetchone=True)
-        if result is not None:
-            hashed_password = result[0]
-            if verify_password(user.password, hashed_password):
-                access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-                access_token = create_access_token(
-                    data={"sub": user.team_name, "role": "student"}, 
-                    expires_delta=access_token_expires
-                )
-                return {"access_token": access_token, "token_type": "bearer"}
+        team = get_team(user.name,user.password)
+        if team is not False:
+            return team
         else:
             return {"status": "failed", "message": "No team found with these credentials"}
             
     except Exception as e:
          return {"status": "failed", "message": "Server error"}
 
+@app.post("/agent_create")
+async def team_login(user: TeamSignUp):
+    try:
+        team = create_team(user)
+        if team is not False:
+            return team
+        else:
+            return {"status": "failed", "message": "No team found with these credentials"}
+            
+    except Exception as e:
+         return {"status": "failed", "message": "Server error"}
+
+
 @app.post("/submit_agent")
-async def submit_agent(data: Answer, current_user: dict = Depends(get_current_user)):
+async def submit_agent(data: CodeSubmit, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "student":
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
@@ -84,7 +90,7 @@ async def submit_agent(data: Answer, current_user: dict = Depends(get_current_us
     
 
 @app.post("/admin_login")
-async def admin_login(a: Admin):
+async def admin_login(a: AdminLogin):
     if not a.admin_password:
         return {"status": "failed", "message": "Admin credentials are wrong"}
     if a.admin_password != ADMIN_PASSWORD:
