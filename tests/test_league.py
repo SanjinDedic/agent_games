@@ -27,19 +27,14 @@ def client_fixture(session: Session):
     yield client  
     app.dependency_overrides.clear()
 
-
-def test_team_login(client: TestClient):
-    response = client.post("/team_login", json={"name": "BrunswickSC1","school_name": "ABC", "password": "ighEMkOP"})
+def test_league_creation(client: TestClient):
+    response = client.post("/league_create", json={"name": "week1"})
     assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert response.json() == {"status" : "success", "link": "MQ=="}
 
-    response = client.post("/team_login", json={"name": "BrunswickSC1","school_name": "ABC", "password": "wrongpass"})
-    assert response.status_code == 200
-    assert response.json() == {"status": "failed", "message": "No team found with these credentials"}
-
-    response = client.post("/team_login", json={"team": "BrunswickSC1","school_name": "ABC", "password": "wrongpass"})
+    response = client.post("/league_create")
     assert response.status_code == 422
-
-    response = client.post("/team_login", json={"name": "BrunswickSC1","school_name": "ABC", "password": ""})
+    
+    response = client.post("/league_create", json={"name": ""})
     assert response.status_code == 200
-    assert response.json() == {"status": "failed", "message": "Team credentials are empty"}
+    assert response.json() == {"status" : "failed", "message": "Name is Empty"}
