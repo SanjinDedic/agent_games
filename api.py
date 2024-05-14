@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, File, Query, Depends,Body
+from fastapi import FastAPI, HTTPException, status, File, Query, Depends,Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from check_file import is_safe
 import asyncio
@@ -34,26 +34,30 @@ async def root():
 
 
 @app.post("/league_create")
-async def league_create(user: LeagueSignUp):
+async def league_create(user: LeagueSignUp, authorization: str = Header(None)):
     try:
         if not user.name:
             return {"status": "failed", "message": "Name is Empty"}
+        elif authorization and authorization.startswith("Bearer "):
+            if get_current_user(authorization.split(" ")[1])["role"]=="admin":
+                return create_admin_league(user.name)
         else:
             return create_league(user.name)
          
     except Exception as e:
-         print(e)
          return {"status": "failed", "message": "Server error"}
 
 @app.post("/league_join/{link}")
 async def league_join(link ,user: TeamSignUp):
     try:
+        user_data = TeamSignUp.model_validate(user)
+        print(user_data)
         return create_team(link,user.name,user.password,user.school)
          
     except Exception as e:
          return {"status": "failed", "message": "Server error"}
 
-@app.post("/agent_login")
+@app.post("/team_login")
 async def team_login(user: TeamLogin):
     try:
         team = get_team(user.name,user.password)
@@ -65,7 +69,7 @@ async def team_login(user: TeamLogin):
     except Exception as e:
          return {"status": "failed", "message": "Server error"}
 
-@app.post("/agent_create")
+@app.post("/team_create")
 async def agent_create(user: TeamBase):
     try:
         return create_team(user)

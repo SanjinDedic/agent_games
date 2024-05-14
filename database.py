@@ -2,7 +2,7 @@ import os
 import logging
 import json
 from datetime import datetime,timedelta
-from config import CURRENT_DB,CURRENT_DIR,GUEST_LEAGUE_EXPIRY,ADMIN_PASSWORD
+from config import CURRENT_DB,CURRENT_DIR,GUEST_LEAGUE_EXPIRY,ADMIN_PASSWORD,ADMIN_LEAGUE_EXPIRY
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 from models import *
 from auth import *
@@ -30,10 +30,10 @@ def create_database():
     
 
 
-def create_league(league_name, expiry_date=datetime.now()):
+def create_league(league_name):
     with Session(engine) as session:
         try:
-            league = League(name=league_name, expiry_date=(expiry_date+timedelta(hours=GUEST_LEAGUE_EXPIRY)), active=True,signup_link=None)
+            league = League(name=league_name,created_date=datetime.now(), expiry_date=(datetime.now()+timedelta(hours=GUEST_LEAGUE_EXPIRY)),deleted_date=(datetime.now()+timedelta(days=7)), active=True,signup_link=None)
             session.add(league)
             session.commit()
             session.refresh(league)
@@ -50,10 +50,10 @@ def create_league(league_name, expiry_date=datetime.now()):
     
     
 
-def create_admin_league(league_name, expiry_date=datetime.now()):
+def create_admin_league(league_name):
     with Session(engine) as session:
         try:
-            league = League(name=league_name, expiry_date=(expiry_date+timedelta(hours=GUEST_LEAGUE_EXPIRY)), active=True,signup_link=None)
+            league = League(name=league_name,created_date=datetime.now(), expiry_date=(datetime.now()+timedelta(hours=ADMIN_LEAGUE_EXPIRY)),deleted_date=None, active=True,signup_link=None)
             session.add(league)
             session.commit()
             session.refresh(league)
@@ -119,10 +119,9 @@ def add_teams_from_json(league_link,teams_json_path):
             teams_list = data['teams']
 
         for team in teams_list:
-            create_team(league_link,team["name"], team["password"])
+            create_team(league_link,team["name"], team["password"],team["school"])
 
     except Exception as e:
-        logging.error("An error occurred when creating the database", exc_info=True)
         raise e
 
 def get_team(team_name,team_password):
