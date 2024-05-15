@@ -1,30 +1,18 @@
-from fastapi import FastAPI, HTTPException, status, File, Query, Depends,Body
+from fastapi import FastAPI, HTTPException, status, File, Query, Depends,Body, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import jwt, JWTError
-import inspect
-import logging
-from game_simulation import GameSimulation
-import sqlite3
-from datetime import datetime, timedelta
 from check_file import is_safe
-
-import json
-import os
 import asyncio
 
 from contextlib import asynccontextmanager
-from config import CURRENT_DB,CURRENT_DIR,SECRET_KEY,ADMIN_PASSWORD,ACCESS_TOKEN_EXPIRE_MINUTES
-from models import Team, Admin, Answer
-from auth import create_access_token,get_current_user,get_password_hash,verify_password
-from database import create_database,execute_db_query,update_submission
+from models import *
+from auth import get_current_user
+from database import *
 from game import Game
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    teams_json_path = os.path.join(CURRENT_DIR, "teams.json")
-    create_database(teams_json_path)
+    create_database()
     yield
 
 
@@ -45,27 +33,53 @@ async def root():
     return {"message": "Success, server is up and running (deploy.yml works1)"}
 
 
-@app.post("/agent_login")
-async def team_login(user: Team):
+@app.post("/league_create")
+async def league_create(user: LeagueSignUp, authorization: str = Header(None)):
     try:
-        result = execute_db_query("SELECT password FROM teams WHERE name=?",(user.team_name,),fetchone=True)
-        if result is not None:
-            hashed_password = result[0]
-            if verify_password(user.password, hashed_password):
-                access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-                access_token = create_access_token(
-                    data={"sub": user.team_name, "role": "student"}, 
-                    expires_delta=access_token_expires
-                )
-                return {"access_token": access_token, "token_type": "bearer"}
+        if not user.name:
+            return {"status": "failed", "message": "Name is Empty"}
+        elif authorization and authorization.startswith("Bearer "):
+            if get_current_user(authorization.split(" ")[1])["role"]=="admin":
+                return create_admin_league(user.name)
+        else:
+            return create_league(user.name)
+         
+    except Exception as e:
+         return {"status": "failed", "message": "Server error"}
+
+@app.post("/league_join/{link}")
+async def league_join(link ,user: TeamSignUp):
+    try:
+        user_data = TeamSignUp.model_validate(user)
+        print(user_data)
+        return create_team(link,user.name,user.password,user.school)
+         
+    except Exception as e:
+         return {"status": "failed", "message": "Server error"}
+
+@app.post("/team_login")
+async def team_login(user: TeamLogin):
+    try:
+        team = get_team(user.name,user.password)
+        if team is not False:
+            return team
         else:
             return {"status": "failed", "message": "No team found with these credentials"}
             
     except Exception as e:
          return {"status": "failed", "message": "Server error"}
 
+@app.post("/team_create")
+async def agent_create(user: TeamBase):
+    try:
+        return create_team(user)
+         
+    except Exception as e:
+         return {"status": "failed", "message": "Server error"}
+
+
 @app.post("/submit_agent")
-async def submit_agent(data: Answer, current_user: dict = Depends(get_current_user)):
+async def submit_agent(data: CodeSubmit, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "student":
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
@@ -84,18 +98,12 @@ async def submit_agent(data: Answer, current_user: dict = Depends(get_current_us
     
 
 @app.post("/admin_login")
-async def admin_login(a: Admin):
-    if not a.admin_password:
+async def admin_login(a: AdminLogin):
+    if not a.password:
         return {"status": "failed", "message": "Admin credentials are wrong"}
-    if a.admin_password != ADMIN_PASSWORD:
-        return {"status": "failed", "message": "Admin credentials are wrong"}
-    else:
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": "admin", "role": "admin"}, 
-            expires_delta=access_token_expires
-        )
-        return {"access_token": access_token, "token_type": "bearer"}
+    return get_admin(a.password)
+    
+    
     
 
 @app.post("/run_simulation")
