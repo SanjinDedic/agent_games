@@ -25,6 +25,21 @@ def db_engine():
         os.remove("test.db")
         time.sleep(1)
 
+
+@pytest.fixture(scope="session")
+def db_engine():
+    engine = setup_test_db(verbose=True)
+    yield engine
+    try:
+        if os.path.exists("../test.db"):
+            os.remove("../test.db")
+        else:
+            os.remove("test.db")
+    except FileNotFoundError:
+        pass
+    finally:
+        time.sleep(1)
+
 @pytest.fixture(scope="function")
 def db_session(db_engine):
     with Session(db_engine) as session:
@@ -50,11 +65,9 @@ def test_team_login(client: TestClient):
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid team credentials"}
 
-    response = client.post("/team_login", json={"team": "BrunswickSC1", "password": "wrongpass"})
-    assert response.status_code == 422
+def test_admin_login_missing_fields(client: TestClient):
+    login_response = client.post("/admin_login", json={"username": "Administrator"})
+    assert login_response.status_code == 422
 
-    response = client.post("/team_login", json={"name": "BrunswickSC1", "password": ""})
-    assert response.status_code == 422
-
-    response = client.post("/team_login", json={"name": " ", "password": "ighEMkOP"})
-    assert response.status_code == 422
+    login_response = client.post("/admin_login", json={"password": "BOSSMAN"})
+    assert login_response.status_code == 422

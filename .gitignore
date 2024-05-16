@@ -30,3 +30,8 @@ __pycache__/
 
 # If you are using Jupyter notebooks
 .ipynb_checkpoints/
+
+#anything in the folder "other" is ignored
+other/*
+
+gen_prompt2.py

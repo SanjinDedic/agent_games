@@ -116,8 +116,8 @@ class GameSimulation:
     def get_all_player_classes_from_folder(self):
         # Get a list of all .py files in the given folder
         # check if a folder called classes exists otherwise use the present working directory
-        if os.path.exists(self.folder_name):
-            main_folder_name = self.folder_name
+        if os.path.exists(os.path.join("leagues", self.folder_name)):
+            main_folder_name = os.path.join("leagues", self.folder_name)
         else:
             main_folder_name = os.getcwd()
 
