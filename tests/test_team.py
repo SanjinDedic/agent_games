@@ -21,8 +21,8 @@ def db_engine():
     yield engine
     if os.path.exists("../test.db"):
         os.remove("../test.db")
-    else:
-        os.remove("test.db")
+    if os.path.exists("/test.db"):
+        os.remove("/test.db")
         time.sleep(1)
 
 @pytest.fixture(scope="function")
