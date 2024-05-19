@@ -65,13 +65,13 @@ class GameSimulation:
                 player.color = self.team_colors[i % len(self.team_colors)]
 
             game_result = game.play_game(verbose)
+            winner = game_result.get('winner')  # Get the winner's name from the game result
             points_this_game = self.assign_points(game_result)
 
             for player, points in points_this_game.items():
                 total_points[player] += points
                 games_played[player] += 1
-                # Assuming you have a way to determine if a game is won or lost
-                if game_result['banked_money'][player] > 100:
+                if winner == player:  # Check if the player's name matches the winner's name
                     games_won[player] += 1
 
             top_5_players = sorted(points_this_game, key=points_this_game.get, reverse=True)[:5]
@@ -83,37 +83,23 @@ class GameSimulation:
         if self.folder_name == "classes":
             self.log_results(number, total_points)
 
-    def assign_points(self, game_result, max_score=6):
+    def assign_points(self, game_result):
         banked_money = game_result['banked_money']
         sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
-        points_distribution = {}
-        last_score = None
-        last_rank = 0
-
-        if len(sorted_scores) == 1:  # Only one player, assign maximum points
-            points_distribution[sorted_scores[0][0]] = max_score
-            return points_distribution
-
-        for rank, (player, score) in enumerate(sorted_scores, start=1):
-            if score != last_score:  # New score, update rank
-                last_rank = rank
-            last_score = score
-
-            # Assign points based on rank
-            points = max(max_score - last_rank, 0)
-            points_distribution[player] = points
-
-        # if a player finishes first and its not a tie then they get extra points (8 in total)
-        if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
-            points_distribution[sorted_scores[0][0]] = 8
-
-        # if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
-        balances = [i[1] for i in sorted_scores]
-        for player in banked_money:
-            if balances.count(banked_money[player]) > 1 and points_distribution[player] >= 1:
-                points_distribution[player] -= 1
-
+        
+        points_distribution = {player: 0 for player in banked_money}
+        
+        if len(sorted_scores) >= 1:
+            points_distribution[sorted_scores[0][0]] = 3  # First place gets 3 points
+        
+        if len(sorted_scores) >= 2:
+            points_distribution[sorted_scores[1][0]] = 2  # Second place gets 2 points
+        
+        if len(sorted_scores) >= 3:
+            points_distribution[sorted_scores[2][0]] = 1  # Third place gets 1 point
+        
         return points_distribution
+
 
     def get_all_player_classes_from_folder(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -199,7 +185,42 @@ class GameSimulation:
 
 if __name__ == "__main__":
     simulation = GameSimulation()
-    #simulation.set_folder("classes")
-    results = simulation.run_simulation_many_times(1, verbose=True)
-    #results = simulation.run_simulation_with_animation(5000, verbose=False)
+    #results = simulation.run_simulation_many_times(1, verbose=True)
+    results = simulation.run_simulation_with_animation(5000, verbose=False)
     print(results)
+
+
+
+'''
+def assign_points(self, game_result, max_score=6):
+        banked_money = game_result['banked_money']
+        sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
+        points_distribution = {}
+        last_score = None
+        last_rank = 0
+
+        if len(sorted_scores) == 1:  # Only one player, assign maximum points
+            points_distribution[sorted_scores[0][0]] = max_score
+            return points_distribution
+
+        for rank, (player, score) in enumerate(sorted_scores, start=1):
+            if score != last_score:  # New score, update rank
+                last_rank = rank
+            last_score = score
+
+            # Assign points based on rank
+            points = max(max_score - last_rank, 0)
+            points_distribution[player] = points
+
+        # if a player finishes first and its not a tie then they get extra points (8 in total)
+        if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
+            points_distribution[sorted_scores[0][0]] = 8
+
+        # if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
+        balances = [i[1] for i in sorted_scores]
+        for player in banked_money:
+            if balances.count(banked_money[player]) > 1 and points_distribution[player] >= 1:
+                points_distribution[player] -= 1
+
+        return points_distribution
+'''

@@ -25,21 +25,26 @@ class Game:
     def play_round(self, verbose=False):
         self.players_banked_this_round = []
         self.round_no += 1
-        roll = self.roll_dice()
-        if verbose:
-            print(' Dice says', roll)
+        self.roll_no = 0  # Reset roll_no at the start of each round
 
-        # If roll is 1, all players lose unbanked money and the round ends
-        if roll == 1:
+        while True:
+            self.roll_no += 1  # Increment roll_no after each roll
+            roll = self.roll_dice()
             if verbose:
-                print("  Oops! Rolled a 1. All players lose their unbanked money.")
-            for player in self.active_players:
-                if player.unbanked_money > 0:
-                    if verbose:
-                        print(f"    * {player.name} loses ${player.unbanked_money} of unbanked money.")
-                player.reset_unbanked_money()
-        else:
-            for player in self.active_players.copy():  # Use a copy to avoid modifying the list during iteration
+                print(f' Dice says {roll}')
+
+            # If roll is 1, all players lose unbanked money and the round ends
+            if roll == 1:
+                if verbose:
+                    print("  Oops! Rolled a 1. All players lose their unbanked money.")
+                for player in self.active_players:
+                    if player.unbanked_money > 0:
+                        if verbose:
+                            print(f"    * {player.name} loses ${player.unbanked_money} of unbanked money.")
+                    player.reset_unbanked_money()
+                break  # End the round
+
+            for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
                     if verbose:
@@ -49,18 +54,18 @@ class Game:
                         if verbose:
                             print(f"    * {player.name} decides to bank ${player.unbanked_money}.")
                         player.bank_money()
+                        player.has_banked_this_turn = True
                         self.players_banked_this_round.append(player.name)
-                        self.active_players.remove(player)  # Remove the player from active players for this round
-                        if player.banked_money >= 100:
+                        self.active_players.remove(player)
+                        if player.banked_money >= 40:
                             if verbose:
                                 print(f"{player.name} has won the game with ${player.banked_money}!")
-                            return player.name  # Game complete
+                            return player.name
                     elif verbose:
-                        # Adding feedback for choosing to not bank
                         print(f"{player.name} chooses not to bank. Risking ${player.unbanked_money} on the next roll!")
-    
+
         for player in self.players:
-            player.reset_turn()  # Resetting the banking status at the start of each turn
+            player.reset_turn()
 
 
     def play_game(self, verbose= False):
@@ -77,9 +82,17 @@ class Game:
                 break
             if verbose:
                 print('  END OF ROUND #' + str(self.round_no))
+                print(self.get_game_state())
                 for player in self.players:
                     print('  ' + player.name + ': $' + str(player.banked_money))
                 #time.sleep(2)
 
         game_state = self.get_game_state()
         return game_state
+    
+if __name__ == "__main__":
+    from player import Player
+    player1 = Player("Player1")
+    player2 = Player("Player2")
+    game = Game([(player1, "Player1"), (player2, "Player2")])
+    game.play_game(verbose=True)
