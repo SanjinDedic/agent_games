@@ -1,0 +1,19 @@
+{
+  "teams": [
+    {
+      "name": "AcademyofMaryImmaculate",
+      "password": "igMD3X3B",
+      "school": "AcademyofMaryImmaculate"
+    },
+    {
+      "name": "BrunswickSC1",
+      "password": "ighEMkOP",
+      "school": "BrunswickSC"
+    },
+    {
+      "name": "BrunswickSC2",
+      "password": "LXr0KsjO",
+      "school": "BrunswickSC"
+    }
+  ]
+}
