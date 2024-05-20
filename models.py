@@ -10,3 +10,4 @@ class Team(BaseModel):
 
 class Answer(BaseModel):
     code: str
+
