@@ -61,6 +61,8 @@ class AdminLogin(SQLModel):
 
 class SubmissionCode(SQLModel):
     code: str
+    team_name: str | None = None
+    league_name: str | None = None
 
 #---------------------------------------------------------------------------------#
 #---                                 TABLES                                    ---#

@@ -4,7 +4,7 @@ import time
 import json
 from player import Player
 import importlib.util
-from game import Game
+from greedy_pig import Game
 from rich.console import Console
 from rich.table import Table
 from config import CURRENT_DIR

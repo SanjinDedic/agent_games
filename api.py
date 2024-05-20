@@ -17,6 +17,7 @@ from database import (
     create_team,
     print_database
 )
+from greedy_pig_sim import run_simulations
 
 engine = create_engine(get_database_url())
 
@@ -105,10 +106,20 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             if not team:
                 raise HTTPException(status_code=404, detail="Team not found")
             league = team.league
+        
+        #validation
+        #step 1 add player to test_league
+        league_folder = "leagues/test_league"
+        file_path = os.path.join(league_folder, f"{team_name}.py")
+        with open(file_path, "w") as file:
+            file.write(submission.code)
+        #step 2 run 100 simulations
+        results = run_simulations(100)
 
         # Create the league folder if it doesn't exist
-        root_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        league_folder = os.path.join(root_folder, f"leagues/{'admin' if user_role == 'admin' else 'user'}/{league.name}")
+        league_folder = os.path.join(f"leagues/{'admin' if user_role == 'student' else 'user'}/{league.name}")
+        print(team_name, user_role, league.name)
+        print(league_folder)
         os.makedirs(league_folder, exist_ok=True)
 
         # Save the submitted code in a Python file named after the team
@@ -123,7 +134,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             session.commit()
             submission_id = db_submission.id
 
-        return {"message": f"Code submitted successfully. Submission ID: {submission_id}"}
+        return {"message": f"Code submitted successfully. Submission ID: {submission_id}", "results": results}
 
     except Exception as e:
         print(f"Error updating submission: {str(e)}")

@@ -30,7 +30,7 @@ def setup_test_db(verbose=False):
                 create_database(engine)
             
             with engine.connect() as conn:
-                league_name = "Test League"
+                league_name = "comp_test"
                 league_create_result = create_league(engine, league_name)
 
                 if league_create_result["status"] == "success":

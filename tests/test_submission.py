@@ -57,12 +57,21 @@ def test_submit_agent(client: TestClient, db_session: Session):
     TEAM_TOKEN = team_login_response.json()["access_token"]
 
     # Submit code for the team
-    code = "print('Hello, World!')"
+    code = """
+from player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        if game_state["unbanked_money"][self.name] > 15:
+            return 'bank'
+        return 'continue'
+"""
     submission_response = client.post(
         "/submit_agent",
         json={"code": code},
         headers={"Authorization": f"Bearer {TEAM_TOKEN}"}
     )
+    print("Submission Response:", submission_response.json()) 
     assert submission_response.status_code == 200
     assert "Code submitted successfully." in submission_response.json()["message"]
 
@@ -72,4 +81,8 @@ def test_submit_agent(client: TestClient, db_session: Session):
     assert len(submissions) == 1
     assert submissions[0].code == code
     assert submissions[0].team.name == "BrunswickSC1"
-    shutil.rmtree("leagues", ignore_errors=True)
+    assert "BrunswickSC1" in submission_response.json()["results"]
+
+    #delete the submission
+    os.remove("leagues/test_league/BrunswickSC1.py")
+    os.remove("leagues/admin/comp_test/BrunswickSC1.py")
