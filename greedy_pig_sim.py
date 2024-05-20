@@ -1,4 +1,5 @@
 from greedy_pig import Game
+from models import League
 import os
 import time
 
@@ -34,17 +35,19 @@ def animate_simulations(num_simulations, refresh_number):
 
         
 def run_simulations(num_simulations):
-    game = Game([])
-    player_instances = game.get_all_player_classes_from_folder("leagues/test_league")
-    
-    total_points = {player[0].name: 0 for player in player_instances}
-    
+    test_leauge = League(folder="leagues/test_league", name="Test League")
+    game = Game(test_leauge)
+    print("Players", game.players)
+    #create a dictionary to store the total points for each player
+    total_points = dict()
+    for player in game.players:
+        print(player.name)
+        total_points[player.name] = 0
+    print("Total Points", total_points)
     try:
         for i in range(1, num_simulations + 1):
-            game = Game(player_instances)
             game.reset()
             results = game.play_game()
-            
             for player, points in results["points"].items():
                 total_points[player] += points
     

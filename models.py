@@ -69,7 +69,8 @@ class SubmissionCode(SQLModel):
 #---------------------------------------------------------------------------------#
 
 class League(LeagueBase, table=True):
-    id: int = Field(primary_key=True)
+    id: int = Field(primary_key=True, default=None)
+    folder: str  | None = None
     teams: List['Team'] = Relationship(back_populates='league')
 
 
@@ -87,7 +88,6 @@ class Team(TeamBase, table=True):
     id: int = Field(primary_key=True)
     league_id: int = Field(default=None, foreign_key="league.id")
     league: League = Relationship(back_populates='teams')
-    submissions: List['Submission'] = Relationship(back_populates='team')
     __table_args__ = (UniqueConstraint("name", "league_id"),)
 
     def set_password(self, password: str):
@@ -98,8 +98,7 @@ class Team(TeamBase, table=True):
     
 
 class Submission(SubmissionBase, table=True):
-    id: int = Field(primary_key=True) #If this is a primary key it sc
+    id: int = Field(primary_key=True, default=None) #If this is a primary key it sc
     team_id: int = Field(default=None, foreign_key='team.id')
-    team: Team = Relationship(back_populates='submissions')
     code: str
 

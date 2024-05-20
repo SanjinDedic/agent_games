@@ -2,16 +2,17 @@ import random
 import time
 import os
 import importlib.util
+from models import League
 
 class Game:
-    def __init__(self, player_instances, verbose=False):
-        self.players = [player for player, _ in player_instances]
+    def __init__(self, league, verbose=False):
+        self.verbose = verbose
+        self.players = self.get_all_player_classes_from_folder(league.folder)
         self.active_players = list(self.players)
         self.players_banked_this_round = []
         self.round_no = 0
         self.roll_no = 0
         self.game_over = False
-        self.verbose = verbose
 
     def roll_dice(self):
         return random.randint(1, 6)
@@ -120,7 +121,7 @@ class Game:
 
         if self.verbose:
             print("Current directory:", current_dir)
-            print("Main folder name:", league_directory)
+            print("League:", league_directory)
 
         if not os.path.exists(league_directory):
             if self.verbose:
@@ -157,7 +158,7 @@ class Game:
                     player = player_class(module_name)
                     if self.verbose:
                         print(f"Created player instance: {player}")
-                    player_classes.append((player, item))
+                    player_classes.append(player)  # Append only the player instance
                 elif self.verbose:
                     print(f"CustomPlayer class not found in module: {module_name}")
 
@@ -178,10 +179,8 @@ class Game:
             player.has_banked_this_turn = False
 
 if __name__ == "__main__":
-    game = Game([])
-    player_instances = game.get_all_player_classes_from_folder("leagues/test_league")
-
-    game = Game(player_instances, verbose=False)
+    test_leauge = League(folder="leagues/test_league", name="Test League")
+    game = Game(league=test_leauge, verbose=True)
     results = game.play_game()
     print("\nFinal Game State:")
     print(game.get_game_state())

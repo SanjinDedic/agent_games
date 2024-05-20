@@ -48,7 +48,8 @@ def create_league(engine, league_name):
                 expiry_date=(datetime.now() + timedelta(hours=GUEST_LEAGUE_EXPIRY)),
                 deleted_date=(datetime.now() + timedelta(days=7)),
                 active=True,
-                signup_link=None
+                signup_link=None,
+                folder=None  # Set the folder field to None initially
             )
             session.add(league)
             session.flush()  # Flush to generate the league ID
@@ -97,7 +98,7 @@ def update_submission(engine, league_name, team_name, code):
             league = conn.execute(select(League).where(League.name == league_name)).one_or_none()
             team = conn.execute(select(Team).where(Team.name == team_name, Team.league == league)).one_or_none()
             if league and team:
-                submission = Submission(code=code, timestamp=datetime.now(), team=team, league=league)
+                submission = Submission(code=code, timestamp=datetime.now(), league=league)
                 conn.add(submission)
             else:
                 raise ValueError(f"Team '{team_name}' does not exist in league '{league_name}'")

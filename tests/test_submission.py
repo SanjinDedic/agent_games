@@ -80,7 +80,7 @@ class CustomPlayer(Player):
     submissions = statement.fetchall()
     assert len(submissions) == 1
     assert submissions[0].code == code
-    assert submissions[0].team.name == "BrunswickSC1"
+    assert submissions[0].team_id == 2
     assert "BrunswickSC1" in submission_response.json()["results"]
 
     #delete the submission

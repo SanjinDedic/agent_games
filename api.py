@@ -88,17 +88,13 @@ async def agent_create(user: TeamBase):
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
 
-from pydantic import BaseModel
-
-class SubmissionCreate(BaseModel):
-    code: str
-
 
 @app.post("/submit_agent")
 async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(get_current_user)):
+    print("submit_agent called")
     team_name = current_user["team_name"]
     user_role = current_user["role"]
-
+    print("submit_agent called and parsed")
     try:
         # Get the team's league from the database
         with Session(engine) as session:
@@ -106,16 +102,17 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             if not team:
                 raise HTTPException(status_code=404, detail="Team not found")
             league = team.league
-        
+        print("team and league found")
         #validation
         #step 1 add player to test_league
         league_folder = "leagues/test_league"
         file_path = os.path.join(league_folder, f"{team_name}.py")
         with open(file_path, "w") as file:
             file.write(submission.code)
+        print("file written")
         #step 2 run 100 simulations
         results = run_simulations(100)
-
+        print("simulations run")
         # Create the league folder if it doesn't exist
         league_folder = os.path.join(f"leagues/{'admin' if user_role == 'student' else 'user'}/{league.name}")
         print(team_name, user_role, league.name)
@@ -126,10 +123,10 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         file_path = os.path.join(league_folder, f"{team_name}.py")
         with open(file_path, "w") as file:
             file.write(submission.code)
-
+        print("are we here")
         # Log the submission in the database
         with Session(engine) as session:
-            db_submission = Submission(code=submission.code, timestamp=datetime.now(), team=team)
+            db_submission = Submission(code=submission.code, timestamp=datetime.now(), team_id=team.id)
             session.add(db_submission)
             session.commit()
             submission_id = db_submission.id
@@ -139,7 +136,6 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
         raise HTTPException(status_code=500, detail="Error updating submission")
-
 
 
 @app.post("/admin_login")
@@ -152,6 +148,13 @@ def admin_login(login: AdminLogin):
         raise HTTPException(status_code=401, detail=result["detail"])
     return result
 
+
+
+# Run simulation will be called from the front end to run the simulation
+# The simulation is specific to a League so the league name is passed as a parameter
+# The simulation will run for a specified number of runs which are also a parameter
+# The simulation will be run only if the user is an admin
+# The simulation will return the results of the simulation
 @app.post("/run_simulation")
 async def run_simulation(number_of_runs: int, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
