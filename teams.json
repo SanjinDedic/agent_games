@@ -2,107 +2,133 @@
   "teams": [
     {
       "name": "AcademyofMaryImmaculate",
-      "password": "igMD3X3B"
+      "password": "igMD3X3B",
+      "school": "AcademyofMaryImmaculate"
     },
     {
       "name": "BrunswickSC1",
-      "password": "ighEMkOP"
+      "password": "ighEMkOP",
+      "school": "BrunswickSC"
     },
     {
       "name": "BrunswickSC2",
-      "password": "LXr0KsjO"
+      "password": "LXr0KsjO",
+      "school": "BrunswickSC"
     },
     {
       "name": "CatholicRegional",
-      "password": "en9qT2QO"
+      "password": "en9qT2QO",
+      "school": "CatholicRegional"
     },
     {
       "name": "CaulfieldGrammar1",
-      "password": "MbFy1b8B"
+      "password": "MbFy1b8B",
+      "school": "CaulfieldGrammar"
     },
     {
       "name": "CaulfieldGrammar2",
-      "password": "kQlglhBq"
+      "password": "kQlglhBq",
+      "school": "CaulfieldGrammar"
     },
     {
       "name": "DoncasterSC1",
-      "password": "UM3QXyXB"
+      "password": "UM3QXyXB",
+      "school": "DoncasterSC"
     },
     {
       "name": "DoncasterSC2",
-      "password": "d9L9G3Lw"
+      "password": "d9L9G3Lw",
+      "school": "DoncasterSC"
     },
     {
       "name": "GlenWaverley1",
-      "password": "CANwU62H"
+      "password": "CANwU62H",
+      "school": "GlenWaverley"
     },
     {
       "name": "GlenWaverley2",
-      "password": "7tKUi42C"
+      "password": "7tKUi42C",
+      "school": "GlenWaverley"
     },
     {
       "name": "MacKillop1",
-      "password": "E78zR6he"
+      "password": "E78zR6he",
+      "school": "MacKillop"
     },
     {
       "name": "MacKillop2",
-      "password": "xaS9KBlT"
+      "password": "xaS9KBlT",
+      "school": "MacKillop"
     },
     {
       "name": "MountAlexander",
-      "password": "swQzFAev"
+      "password": "swQzFAev",
+      "school": "MountAlexander"
     },
     {
       "name": "Nossal",
-      "password": "C70Y3LuH"
+      "password": "C70Y3LuH",
+      "school": "Nossal"
     },
     {
       "name": "PlentyValleyChristian1",
-      "password": "Pd8R8sYY"
+      "password": "Pd8R8sYY",
+      "school": "PlentyValleyChristian"
     },
     {
       "name": "PlentyValleyChristian2",
-      "password": "g1I3sQ1b"
+      "password": "g1I3sQ1b",
+      "school": "PlentyValleyChristian"
     },
     {
       "name": "PrestonHigh",
-      "password": "3xVP8394"
+      "password": "3xVP8394",
+      "school": "PrestonHigh"
     },
     {
       "name": "PrincessHill1",
-      "password": "k4V4nH6X"
+      "password": "k4V4nH6X",
+      "school": "PrincessHill"
     },
     {
       "name": "PrincessHill2",
-      "password": "A27ZXZf7"
+      "password": "A27ZXZf7",
+      "school": "PrincessHill"
     },
     {
       "name": "Sirius2",
-      "password": "9aehH349"
+      "password": "9aehH349",
+      "school": "Sirius"
     },
     {
       "name": "Sirius1",
-      "password": "Y99b3hCr"
+      "password": "Y99b3hCr",
+      "school": "Sirius"
     },
     {
       "name": "BrightonandFirbank1",
-      "password": "F2X5vk2h"
+      "password": "F2X5vk2h",
+      "school": "BrightonandFirbank"
     },
     {
       "name": "BrightonandFirbank2",
-      "password": "5H5J68Zb"
+      "password": "5H5J68Zb",
+      "school": "BrightonandFirbank"
     },
     {
       "name": "EastDoncaster",
-      "password": "nCNfm788"
+      "password": "nCNfm788",
+      "school": "EastDoncaster"
     },
     {
       "name": "Sanjin",
-      "password": "aaa"
+      "password": "aaa",
+      "school": "Sanjin"
     },
     {
       "name": "Nathan",
-      "password": "aaa"
+      "password": "aaa",
+      "school": "Nathan"
     }
   ]
 }

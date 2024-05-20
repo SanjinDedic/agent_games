@@ -4,23 +4,25 @@ import time
 import json
 from player import Player
 import importlib.util
-from game import Game
+from greedy_pig import Game
 from rich.console import Console
 from rich.table import Table
 from config import CURRENT_DIR
 
 class GameSimulation:
-    def __init__(self, folder_name="test_classes"):
+    def __init__(self, folder_name="leagues/test_league"):
         self.folder_name = folder_name
-        self.player_classes = self.get_all_player_classes_from_folder()
+        self.player_classes = []  # Initialize player_classes as an empty list
         self.team_colors = self.load_team_colors()
+        self.player_classes = self.get_all_player_classes_from_folder()
+        
 
     def set_folder(self, folder_name):
         self.folder_name = folder_name
         self.player_classes = self.get_all_player_classes_from_folder()
 
     def load_team_colors(self):
-        with open(os.path.join(CURRENT_DIR,'colors.json', 'r')) as file:
+        with open(os.path.join(CURRENT_DIR, 'colors.json'), 'r') as file:
             data = json.load(file)
             team_colors = data['colors']
         return team_colors
@@ -63,13 +65,13 @@ class GameSimulation:
                 player.color = self.team_colors[i % len(self.team_colors)]
 
             game_result = game.play_game(verbose)
+            winner = game_result.get('winner')  # Get the winner's name from the game result
             points_this_game = self.assign_points(game_result)
 
             for player, points in points_this_game.items():
                 total_points[player] += points
                 games_played[player] += 1
-                # Assuming you have a way to determine if a game is won or lost
-                if game_result['banked_money'][player] > 100:
+                if winner == player:  # Check if the player's name matches the winner's name
                     games_won[player] += 1
 
             top_5_players = sorted(points_this_game, key=points_this_game.get, reverse=True)[:5]
@@ -81,60 +83,63 @@ class GameSimulation:
         if self.folder_name == "classes":
             self.log_results(number, total_points)
 
-    def assign_points(self, game_result, max_score=6):
+    def assign_points(self, game_result):
         banked_money = game_result['banked_money']
         sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
-        points_distribution = {}
-        last_score = None
-        last_rank = 0
-
-        if len(sorted_scores) == 1:  # Only one player, assign maximum points
-            points_distribution[sorted_scores[0][0]] = max_score
-            return points_distribution
-
-        for rank, (player, score) in enumerate(sorted_scores, start=1):
-            if score != last_score:  # New score, update rank
-                last_rank = rank
-            last_score = score
-
-            # Assign points based on rank
-            points = max(max_score - last_rank, 0)
-            points_distribution[player] = points
-
-        # if a player finishes first and its not a tie then they get extra points (8 in total)
-        if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
-            points_distribution[sorted_scores[0][0]] = 8
-
-        # if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
-        balances = [i[1] for i in sorted_scores]
-        for player in banked_money:
-            if balances.count(banked_money[player]) > 1 and points_distribution[player] >= 1:
-                points_distribution[player] -= 1
-
+        
+        points_distribution = {player: 0 for player in banked_money}
+        
+        if len(sorted_scores) >= 1:
+            points_distribution[sorted_scores[0][0]] = 3  # First place gets 3 points
+        
+        if len(sorted_scores) >= 2:
+            points_distribution[sorted_scores[1][0]] = 2  # Second place gets 2 points
+        
+        if len(sorted_scores) >= 3:
+            points_distribution[sorted_scores[2][0]] = 1  # Third place gets 1 point
+        
         return points_distribution
 
+
     def get_all_player_classes_from_folder(self):
-        # Get a list of all .py files in the given folder
-        # check if a folder called classes exists otherwise use the present working directory
-        if os.path.exists(self.folder_name):
-            main_folder_name = self.folder_name
-        else:
-            main_folder_name = os.getcwd()
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        league_directory = os.path.join(current_dir, self.folder_name)
 
-        files = [f for f in os.listdir(main_folder_name) if os.path.isfile(os.path.join(main_folder_name, f)) and f.endswith('.py')]
+        print("Current directory:", current_dir)
+        print("Main folder name:", league_directory)
 
+        if not os.path.exists(league_directory):
+            print(f"The folder '{league_directory}' does not exist.")
+            return []
+
+        print("Files and directories in the league folder:")
         player_classes = []
+        for item in os.listdir(league_directory):
+            print(item)
+            if item.endswith(".py"):
+                print(f"Found a Python file: {item}")
+                module_name = item[:-3]  # Remove the '.py' extension
+                module_path = os.path.join(league_directory, item)
+                print(f"Module name: {module_name}")
+                print(f"Module path: {module_path}")
+                
+                spec = importlib.util.spec_from_file_location(module_name, module_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                
+                print(f"Loaded module: {module}")
+                print(f"Module attributes: {dir(module)}")
+                
+                if hasattr(module, "CustomPlayer"):
+                    player_class = getattr(module, "CustomPlayer")
+                    print(f"Found CustomPlayer class: {player_class}")
+                    player = player_class(module_name, "abc123")
+                    print(f"Created player instance: {player}")
+                    player_classes.append((player, item))
+                else:
+                    print(f"CustomPlayer class not found in module: {module_name}")
 
-        for file in files:
-            module_name = file[:-3]  # remove the ".py" extension
-            spec = importlib.util.spec_from_file_location(module_name, os.path.join(main_folder_name, file))
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-
-            # Check each item in the module to see if it's a subclass of Player
-            for name, obj in vars(module).items():
-                if isinstance(obj, type) and issubclass(obj, Player) and obj is not Player:
-                    player_classes.append((obj, file))
+        print(f"Found {len(player_classes)} player classes.")
         return player_classes
 
     def print_table(self, game_status, console, refresh_rate, i, number):
@@ -180,6 +185,42 @@ class GameSimulation:
 
 if __name__ == "__main__":
     simulation = GameSimulation()
-    #simulation.set_folder("classes")
+    #results = simulation.run_simulation_many_times(1, verbose=True)
     results = simulation.run_simulation_with_animation(5000, verbose=False)
     print(results)
+
+
+
+'''
+def assign_points(self, game_result, max_score=6):
+        banked_money = game_result['banked_money']
+        sorted_scores = sorted(banked_money.items(), key=lambda x: x[1], reverse=True)
+        points_distribution = {}
+        last_score = None
+        last_rank = 0
+
+        if len(sorted_scores) == 1:  # Only one player, assign maximum points
+            points_distribution[sorted_scores[0][0]] = max_score
+            return points_distribution
+
+        for rank, (player, score) in enumerate(sorted_scores, start=1):
+            if score != last_score:  # New score, update rank
+                last_rank = rank
+            last_score = score
+
+            # Assign points based on rank
+            points = max(max_score - last_rank, 0)
+            points_distribution[player] = points
+
+        # if a player finishes first and its not a tie then they get extra points (8 in total)
+        if points_distribution[sorted_scores[0][0]] != points_distribution[sorted_scores[1][0]]:
+            points_distribution[sorted_scores[0][0]] = 8
+
+        # if a player has the same amount of banked money as another player and they have more than one point they get deducted a point
+        balances = [i[1] for i in sorted_scores]
+        for player in banked_money:
+            if balances.count(banked_money[player]) > 1 and points_distribution[player] >= 1:
+                points_distribution[player] -= 1
+
+        return points_distribution
+'''

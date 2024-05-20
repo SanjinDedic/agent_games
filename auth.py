@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from passlib.context import CryptContext
 
+import base64
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -31,3 +34,13 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     return {"team_name": team_name, "role": user_role}
+
+def encode_id(id: int) -> str:
+    id_bytes = str(id).encode('utf-8')
+    encoded_id = base64.urlsafe_b64encode(id_bytes).decode('utf-8')
+    return encoded_id
+
+def decode_id(encoded_id: str) -> int:
+    id_bytes = base64.urlsafe_b64decode(encoded_id)
+    id = int(id_bytes.decode('utf-8'))
+    return id
