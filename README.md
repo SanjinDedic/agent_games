@@ -1,4 +1,5 @@
 # 🐷 Greedy Pig Game Simulation Project
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)  [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml)  [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
 ## 🌟 Overview
 The Greedy Pig Game Simulation is a Python-based project that simulates the popular dice game, Greedy Pig. It's a simple dice game with very interesting and unpredictable dynamics when played by a large number of players. This primary school game's optimal play has been a subject of many academic papers and discussions. More information can be found here:
