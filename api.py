@@ -105,6 +105,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         print("team and league found")
         #validation
         #step 1 add player to test_league
+        #logic needs to be added here to dynamically get the league folder
+
         league_folder = "leagues/test_league"
         file_path = os.path.join(league_folder, f"{team_name}.py")
         with open(file_path, "w") as file:
