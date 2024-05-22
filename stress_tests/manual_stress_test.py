@@ -13,7 +13,7 @@ start_t = time.time()
 
 
 
-url = 'https://agents.vccfinal.net/submit_agent'
+url = 'https://vccfinal.net/agent_games/submit_agent'
 code = inspect.getsource(Testing_Player)
 number_of_tests = 50
 requests_per_second = 5

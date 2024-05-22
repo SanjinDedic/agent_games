@@ -15,7 +15,7 @@ async def make_request(session, url, data):
 
 
 async def main():
-    url = 'https://agents.vccfinal.net/submit_agent'
+    url = 'https://vccfinal.net/agent_games/submit_agent'
     code = inspect.getsource(Testing_Player)
     number_of_tests = 250
     requests_per_second = 7 #14 should have a 50% success rate, 7 should have a 99% success rate
