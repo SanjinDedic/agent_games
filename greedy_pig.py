@@ -180,9 +180,16 @@ class Game:
 
 if __name__ == "__main__":
     test_leauge = League(folder="leagues/test_league", name="Test League")
-    game = Game(league=test_leauge, verbose=True)
+    game = Game(league=test_leauge, verbose=False)
+    game.play_round()
+    print(game.round_no)
+    game.play_round()
+    print(game.round_no)
+    game.play_round()
+    print(game.round_no)
+    '''
     results = game.play_game()
     print("\nFinal Game State:")
     print(game.get_game_state())
     print("\nResults:")
-    print(results)
+    print(results)'''
