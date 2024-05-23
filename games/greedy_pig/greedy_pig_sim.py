@@ -1,4 +1,4 @@
-from greedy_pig import Game
+from games.greedy_pig.greedy_pig import Game
 from models import League
 import os
 import time

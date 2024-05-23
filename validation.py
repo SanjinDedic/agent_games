@@ -1,4 +1,6 @@
 import ast
+from games.greedy_pig.greedy_pig_sim import run_simulations
+import os
 
 # List of dangerous modules and risky functions
 DANGEROUS_MODULES = ['os', 'sys', 'subprocess', 'shutil']
@@ -36,3 +38,21 @@ def is_safe(code):
     checker = SafeVisitor()
     checker.visit(tree)
     return checker.safe
+
+def run_agent_simulation(code, team_name):
+        league_folder = "games/greedy_pig/leagues/test_league"
+        file_path = os.path.join(league_folder, f"{team_name}.py")
+        with open(file_path, "w") as file:
+            file.write(code)
+        print("file written")
+        #step 2 run 100 simulations
+        try:
+            results = run_simulations(100)
+            print("simulations run")
+            return results
+        except Exception as e:
+            print(e)
+            return False
+        finally:
+            os.remove(file_path)
+            print("file removed")

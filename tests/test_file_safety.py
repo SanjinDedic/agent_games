@@ -5,7 +5,7 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from check_file import is_safe
+from validation import is_safe
 
 def test_is_safe():
     safe_code = """
