@@ -14,6 +14,7 @@ from auth import (
     create_access_token,
     encode_id
 )
+from check_file import is_safe
 
 def get_db_engine():
     return create_engine(get_database_url())
@@ -94,14 +95,26 @@ def create_team(engine, league_link, name, password, school=None):
 
 def update_submission(engine, league_name, team_name, code):
     try:
-        with engine.begin() as conn:
-            league = conn.execute(select(League).where(League.name == league_name)).one_or_none()
-            team = conn.execute(select(Team).where(Team.name == team_name, Team.league == league)).one_or_none()
-            if league and team:
-                submission = Submission(code=code, timestamp=datetime.now(), league=league)
-                conn.add(submission)
+        if not is_safe(code):
+            raise ValueError("Submitted code is not safe.")
+
+        with Session(engine) as session:
+            statement = select(League).where(League.name == league_name)
+            league = session.exec(statement).one_or_none()
+
+            if league:
+                statement = select(Team).where(Team.name == team_name, Team.league == league)
+                team = session.exec(statement).one_or_none()
+
+                if team:
+                    submission = Submission(code=code, timestamp=datetime.now(), league=league)
+                    session.add(submission)
+                    session.commit()
+                    session.refresh(submission)
+                else:
+                    raise ValueError(f"Team '{team_name}' does not exist in league '{league_name}'")
             else:
-                raise ValueError(f"Team '{team_name}' does not exist in league '{league_name}'")
+                raise ValueError(f"League '{league_name}' does not exist")
     except Exception as e:
         raise e
 
@@ -147,34 +160,20 @@ def get_team(engine, team_name, team_password):
         raise e
 
 def get_admin(engine, username, password):
-    print("GET ADMIN CALLED! with", username, password)
-
     try:
-        with engine.connect() as conn:
-            print("CONNECTION CREATED!")
-            # Query the database for all users in the admin table
-            admins = conn.execute(select(Admin)).fetchall()
-            print(admins)
+        with Session(engine) as session:
+            statement = select(Admin).where(Admin.username == username)
+            admin = session.exec(statement).one_or_none()
 
-            # Query the database for the admin user with the given username
-            admin = conn.execute(select(Admin).where(Admin.username == username)).one_or_none()
-            if admin:
-                print("ADMIN FOUND!")
-                # Verifying the password
-                if verify_password(password, admin.password_hash):
-                    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-                    access_token = create_access_token(
-                        data={"sub": "admin", "role": "admin"},
-                        expires_delta=access_token_expires
-                    )
-                    return {"access_token": access_token, "token_type": "bearer"}
-                else:
-                    print("INVALID PASSWORD")
-                    return {"detail": "Invalid credentials"}
+            if admin and admin.verify_password(password):
+                access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+                access_token = create_access_token(
+                    data={"sub": "admin", "role": "admin"},
+                    expires_delta=access_token_expires
+                )
+                return {"access_token": access_token, "token_type": "bearer"}
             else:
-                print("ADMIN NOT FOUND")
-                return {"detail": "Admin not found"}
-
+                return {"detail": "Invalid credentials"}
     except Exception as e:
         print(f"An error occurred while fetching admin: {e}")
         return {"detail": "Server error"}
@@ -203,5 +202,15 @@ def create_administrator(engine, username, password):
 
 
 def clear_table(engine, table_model):
-    with engine.begin() as conn:
-        conn.execute(table_model.__table__.delete())
+    try:
+        with Session(engine) as session:
+            statement = select(table_model)
+            results = session.exec(statement)
+            
+            for obj in results:
+                session.delete(obj)
+            
+            session.commit()
+    except Exception as e:
+        print(f"An error occurred while clearing table {table_model.__name__}: {e}")
+        raise e
