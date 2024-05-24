@@ -71,8 +71,8 @@ class SubmissionCode(SQLModel):
 
 class League(LeagueBase, table=True):
     id: int = Field(primary_key=True, default=None)
-    folder: str  | None = None
-    teams: List['Team'] = Relationship(back_populates='league')
+    folder: str | None = None
+    teams: List['Team'] | None = Relationship(back_populates='league')
     game: str
 
 
