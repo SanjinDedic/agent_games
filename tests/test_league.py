@@ -53,25 +53,25 @@ def test_get_token(client: TestClient):
 
 def test_league_creation(client: TestClient):
 
-    response = client.post("/league_create", json={"name": "week1"})
+    response = client.post("/league_create", json={"name": "week1", "game": "greedy_pig"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
 
     response = client.post("/league_create")
     assert response.status_code == 422
     
-    response = client.post("/league_create", json={"name": ""})
+    response = client.post("/league_create", json={"name": "", "game": "greedy_pig"})
     assert response.status_code == 200
     assert response.json() == {"status": "failed", "message": "Name is Empty"}
 
-    response = client.post("/league_create", json={"name": "week2"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
+    response = client.post("/league_create", json={"name": "week2", "game": "greedy_pig"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
     #cleanup
-    shutil.rmtree(f"leagues/user/week1")
-    assert not os.path.isdir(f"leagues/user/week1")
-    shutil.rmtree(f"leagues/admin/week2")
-    assert not os.path.isdir(f"leagues/admin/week2")
+    shutil.rmtree(f"games/greedy_pig/leagues/user/week1")
+    assert not os.path.isdir(f"games/greedy_pig/leagues/user/week1")
+    shutil.rmtree(f"games/greedy_pig/leagues/admin/week2")
+    assert not os.path.isdir(f"games/greedy_pig/leagues/admin/week2")
 
 
 def test_league_join(client: TestClient):
@@ -83,21 +83,21 @@ def test_league_join(client: TestClient):
 
 def test_league_folder_creation(client: TestClient):
     league_name = "test_league_admin"
-    response = client.post("/league_create", json={"name": league_name}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
+    response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
-    assert os.path.isdir(f"leagues/admin/{league_name}")
-    shutil.rmtree(f"leagues/admin/{league_name}")
-    assert not os.path.isdir(f"leagues/user/{league_name}")
+    assert os.path.isdir(f"games/greedy_pig/leagues/admin/{league_name}")
+    shutil.rmtree(f"games/greedy_pig/leagues/admin/{league_name}")
+    assert not os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
 
 
 def test_league_folder_creation_no_auth(client: TestClient):
     league_name = "test_league_user"
-    response = client.post("/league_create", json={"name": league_name})
+    response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
-    assert os.path.isdir(f"leagues/user/{league_name}")
+    assert os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
     # cleanup
-    shutil.rmtree(f"leagues/user/{league_name}")
-    assert not os.path.isdir(f"leagues/user/{league_name}")
+    shutil.rmtree(f"games/greedy_pig/leagues/user/{league_name}")
+    assert not os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
     

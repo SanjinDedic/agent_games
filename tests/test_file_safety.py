@@ -5,7 +5,7 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from check_file import is_safe
+from validation import is_agent_safe
 
 def test_is_safe():
     safe_code = """
@@ -17,7 +17,7 @@ class CustomPlayer(Player):
             return 'bank'
         return 'continue'
 """
-    assert is_safe(safe_code) == True
+    assert is_agent_safe(safe_code) == True
 
     unsafe_code_import = """
 import os
@@ -27,7 +27,7 @@ class CustomPlayer(Player):
         os.system('rm -rf /')
         return 'continue'
 """
-    assert is_safe(unsafe_code_import) == False
+    assert is_agent_safe(unsafe_code_import) == False
 
     unsafe_code_exec = """
 class CustomPlayer(Player):
@@ -35,4 +35,4 @@ class CustomPlayer(Player):
         exec('print("Hello, world!")')
         return 'continue'
 """
-    assert is_safe(unsafe_code_exec) == False
+    assert is_agent_safe(unsafe_code_exec) == False

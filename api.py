@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, status, File, Query, Depends, Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import create_engine, select
-from check_file import is_safe
+from validation import is_agent_safe, run_agent_simulation
 import asyncio
 import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -17,7 +17,6 @@ from database import (
     create_team,
     print_database
 )
-from greedy_pig_sim import run_simulations
 
 engine = create_engine(get_database_url())
 
@@ -44,21 +43,26 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None))
     try:
         if not league.name:
             return {"status": "failed", "message": "Name is Empty"}
-        elif authorization and authorization.startswith("Bearer "):
-            if get_current_user(authorization.split(" ")[1])["role"] == "admin":
-                #create a folder for the league in /leagues/admin/league_name and a README.md file that says "This is the league_name league"
-                os.makedirs(f"leagues/admin/{league.name}", exist_ok=True)
-                with open(f"leagues/admin/{league.name}/README.md", "w") as f:
-                    f.write(f"This is the {league.name} league")
-                return create_league(engine=engine, league_name=league.name)
-            else:
-                raise HTTPException(status_code=403, detail="Forbidden")
-        else:
-            os.makedirs(f"leagues/user/{league.name}", exist_ok=True)
-            with open(f"leagues/user/{league.name}/README.md", "w") as f:
-                f.write(f"This is the {league.name} league")
-            return create_league(engine=engine, league_name=league.name)
 
+        user_role = "user"
+        if authorization and authorization.startswith("Bearer "):
+            user = get_current_user(authorization.split(" ")[1])
+            if user["role"] == "admin":
+                user_role = "admin"
+        #Do we need to give a token to a visior that has not logged in and call them a visitor??
+        if user_role == "admin":
+            league_folder = f"games/{league.game}/leagues/admin/{league.name}"
+        else:
+            league_folder = f"games/{league.game}/leagues/user/{league.name}"
+
+        os.makedirs(league_folder, exist_ok=True)
+        with open(f"{league_folder}/README.md", "w") as f:
+            f.write(f"This is the {league.name} league")
+
+        return create_league(engine=engine, league_name=league.name, league_game=league.game, league_folder=league_folder)
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
 
@@ -91,32 +95,31 @@ async def agent_create(user: TeamBase):
 
 @app.post("/submit_agent")
 async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(get_current_user)):
-    print("submit_agent called")
     team_name = current_user["team_name"]
     user_role = current_user["role"]
-    print("submit_agent called and parsed")
+    if not is_agent_safe(submission.code):
+        return {"status": "error", "message": "Agent code is not safe."}
+    results = run_agent_simulation(submission.code, team_name)
+    if not results:
+        return {"status": "error", "message": "Agent simulation failed."}
     try:
         # Get the team's league from the database
         with Session(engine) as session:
             team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+            game = team.league.game
             if not team:
                 raise HTTPException(status_code=404, detail="Team not found")
             league = team.league
         print("team and league found")
-        #validation
-        #step 1 add player to test_league
-        #logic needs to be added here to dynamically get the league folder
+        #the league must have a game associated with it!!
+        #the folder depends on the game and admin status
 
-        league_folder = "leagues/test_league"
-        file_path = os.path.join(league_folder, f"{team_name}.py")
-        with open(file_path, "w") as file:
-            file.write(submission.code)
-        print("file written")
-        #step 2 run 100 simulations
-        results = run_simulations(100)
-        print("simulations run")
         # Create the league folder if it doesn't exist
-        league_folder = os.path.join(f"leagues/{'admin' if user_role == 'student' else 'user'}/{league.name}")
+        # if user is logged in use the admin folder else use the user folder
+        if team.league.folder:
+            league_folder = team.league.folder
+        else:
+            league_folder = f"games/{game}/leagues/user/{league.name}"
         print(team_name, user_role, league.name)
         print(league_folder)
         os.makedirs(league_folder, exist_ok=True)
@@ -128,6 +131,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         print("are we here")
         # Log the submission in the database
         with Session(engine) as session:
+            print(submission.code)
+            print(team.id)
             db_submission = Submission(code=submission.code, timestamp=datetime.now(), team_id=team.id)
             session.add(db_submission)
             session.commit()

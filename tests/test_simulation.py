@@ -6,8 +6,8 @@ from io import StringIO
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from greedy_pig_sim import run_simulations
-from greedy_pig import Game
+from games.greedy_pig.greedy_pig_sim import run_simulations
+from games.greedy_pig.greedy_pig import Game
 from models import League
 
 @pytest.fixture

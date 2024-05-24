@@ -68,7 +68,7 @@ class CustomPlayer(Player):
 """
     submission_response = client.post(
         "/submit_agent",
-        json={"code": code},
+        json={"code": code, "team_name": "BrunswickSC1", "league_name": "comp_test"},
         headers={"Authorization": f"Bearer {TEAM_TOKEN}"}
     )
     print("Submission Response:", submission_response.json()) 
@@ -85,5 +85,4 @@ class CustomPlayer(Player):
     print(submission_response.json()["results"])
 
     #delete the submission
-    os.remove("leagues/test_league/BrunswickSC1.py")
-    os.remove("leagues/admin/comp_test/BrunswickSC1.py")
+    os.remove("games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

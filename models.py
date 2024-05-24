@@ -20,6 +20,7 @@ class LeagueBase(SQLModel):
 
 class LeagueSignUp(SQLModel):
     name: str
+    game: str
 
 class TeamBase(SQLModel):
     name: str = Field(index=True)
@@ -72,6 +73,7 @@ class League(LeagueBase, table=True):
     id: int = Field(primary_key=True, default=None)
     folder: str  | None = None
     teams: List['Team'] = Relationship(back_populates='league')
+    game: str
 
 
 class Admin(AdminBase, table=True):

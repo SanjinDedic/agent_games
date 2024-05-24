@@ -14,7 +14,6 @@ from auth import (
     create_access_token,
     encode_id
 )
-from check_file import is_safe
 
 def get_db_engine():
     return create_engine(get_database_url())
@@ -40,7 +39,7 @@ def print_database(engine):
                 print("No data available.")
 
 
-def create_league(engine, league_name):
+def create_league(engine, league_name, league_game, league_folder=None):
     try:
         with Session(engine) as session:
             league = League(
@@ -50,7 +49,8 @@ def create_league(engine, league_name):
                 deleted_date=(datetime.now() + timedelta(days=7)),
                 active=True,
                 signup_link=None,
-                folder=None  # Set the folder field to None initially
+                folder=league_folder,  # Set the folder field to None initially
+                game=league_game
             )
             session.add(league)
             session.flush()  # Flush to generate the league ID
@@ -95,9 +95,6 @@ def create_team(engine, league_link, name, password, school=None):
 
 def update_submission(engine, league_name, team_name, code):
     try:
-        if not is_safe(code):
-            raise ValueError("Submitted code is not safe.")
-
         with Session(engine) as session:
             statement = select(League).where(League.name == league_name)
             league = session.exec(statement).one_or_none()
