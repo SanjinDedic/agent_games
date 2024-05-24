@@ -43,21 +43,26 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None))
     try:
         if not league.name:
             return {"status": "failed", "message": "Name is Empty"}
-        elif authorization and authorization.startswith("Bearer "):
-            if get_current_user(authorization.split(" ")[1])["role"] == "admin":
-                #create a folder for the league in /leagues/admin/league_name and a README.md file that says "This is the league_name league"
-                os.makedirs(f"games/{league.game}/leagues/admin/{league.name}", exist_ok=True)
-                with open(f"games/{league.game}/leagues/admin/{league.name}/README.md", "w") as f:
-                    f.write(f"This is the {league.name} league")
-                return create_league(engine=engine, league_name=league.name, game=league.game)
-            else:
-                raise HTTPException(status_code=403, detail="Forbidden")
-        else:
-            os.makedirs(f"games/{league.game}/leagues/user/{league.name}", exist_ok=True)
-            with open(f"games/{league.game}/leagues/user/{league.name}/README.md", "w") as f:
-                f.write(f"This is the {league.name} league")
-            return create_league(engine=engine, league_name=league.name)
 
+        user_role = "user"
+        if authorization and authorization.startswith("Bearer "):
+            user = get_current_user(authorization.split(" ")[1])
+            if user["role"] == "admin":
+                user_role = "admin"
+        #Do we need to give a token to a visior that has not logged in and call them a visitor??
+        if user_role == "admin":
+            league_folder = f"games/{league.game}/leagues/admin/{league.name}"
+        else:
+            league_folder = f"games/{league.game}/leagues/user/{league.name}"
+
+        os.makedirs(league_folder, exist_ok=True)
+        with open(f"{league_folder}/README.md", "w") as f:
+            f.write(f"This is the {league.name} league")
+
+        return create_league(engine=engine, league_name=league.name, league_game=league.game, league_folder=league_folder)
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
 
@@ -94,8 +99,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     user_role = current_user["role"]
     if not is_agent_safe(submission.code):
         return {"status": "error", "message": "Agent code is not safe."}
-
-    if not run_agent_simulation(submission.code, team_name):
+    results = run_agent_simulation(submission.code, team_name)
+    if not results:
         return {"status": "error", "message": "Agent simulation failed."}
     try:
         # Get the team's league from the database
@@ -111,7 +116,10 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
 
         # Create the league folder if it doesn't exist
         # if user is logged in use the admin folder else use the user folder
-        league_folder = f"games/{game}/leagues/{'admin' if user_role == 'admin' else 'user'}/{league.name}"
+        if team.league.folder:
+            league_folder = team.league.folder
+        else:
+            league_folder = f"games/{game}/leagues/user/{league.name}"
         print(team_name, user_role, league.name)
         print(league_folder)
         os.makedirs(league_folder, exist_ok=True)
@@ -123,6 +131,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         print("are we here")
         # Log the submission in the database
         with Session(engine) as session:
+            print(submission.code)
+            print(team.id)
             db_submission = Submission(code=submission.code, timestamp=datetime.now(), team_id=team.id)
             session.add(db_submission)
             session.commit()

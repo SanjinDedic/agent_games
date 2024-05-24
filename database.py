@@ -14,7 +14,6 @@ from auth import (
     create_access_token,
     encode_id
 )
-from validation import is_safe
 
 def get_db_engine():
     return create_engine(get_database_url())
@@ -40,7 +39,7 @@ def print_database(engine):
                 print("No data available.")
 
 
-def create_league(engine, league_name, league_game):
+def create_league(engine, league_name, league_game, league_folder=None):
     try:
         with Session(engine) as session:
             league = League(
@@ -50,7 +49,7 @@ def create_league(engine, league_name, league_game):
                 deleted_date=(datetime.now() + timedelta(days=7)),
                 active=True,
                 signup_link=None,
-                folder=None,  # Set the folder field to None initially
+                folder=league_folder,  # Set the folder field to None initially
                 game=league_game
             )
             session.add(league)

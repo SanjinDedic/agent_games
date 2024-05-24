@@ -29,7 +29,7 @@ class SafeVisitor(ast.NodeVisitor):
             return
         self.generic_visit(node)
 
-def is_safe(code):
+def is_agent_safe(code):
     try:
         tree = ast.parse(code)
     except SyntaxError:
@@ -40,19 +40,19 @@ def is_safe(code):
     return checker.safe
 
 def run_agent_simulation(code, team_name):
-        league_folder = "games/greedy_pig/leagues/test_league"
-        file_path = os.path.join(league_folder, f"{team_name}.py")
-        with open(file_path, "w") as file:
-            file.write(code)
-        print("file written")
-        #step 2 run 100 simulations
-        try:
-            results = run_simulations(100)
-            print("simulations run")
-            return results
-        except Exception as e:
-            print(e)
-            return False
-        finally:
-            os.remove(file_path)
-            print("file removed")
+    league_folder = "games/greedy_pig/leagues/test_league"
+    file_path = os.path.join(league_folder, f"{team_name}.py")
+    with open(file_path, "w") as file:
+        file.write(code)
+    print("file written")
+    #step 2 run 100 simulations
+    try:
+        results = run_simulations(100)
+        print("simulations run")
+        return results
+    except Exception as e:
+        print(e)
+        return False
+    finally:
+        os.remove(file_path)
+        print("file removed")
