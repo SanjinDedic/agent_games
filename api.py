@@ -164,11 +164,22 @@ def admin_login(login: AdminLogin):
 # The simulation will be run only if the user is an admin
 # The simulation will return the results of the simulation
 @app.post("/run_simulation", response_model=SimulationResult)
-def run_simulation(simulation_config: SimulationConfig):
+def run_simulation(simulation_config: SimulationConfig, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can run simulations")
+
+    league_name = simulation_config.league_name
+    num_simulations = simulation_config.num_simulations
+
+    statement = select(League).where(League.name == league_name)
+    with Session(engine) as session:
+        league = session.exec(statement).one_or_none()
+
+    if not league:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"League '{league_name}' not found")
+
     try:
-        num_simulations = simulation_config.num_simulations
-        league_name = simulation_config.league_name
-        results = run_simulations(num_simulations)
+        results = run_simulations(num_simulations, league)
         return SimulationResult(results=results)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -41,12 +41,15 @@ def is_agent_safe(code):
     return checker.safe
 
 def run_agent_simulation(code, team_name):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    test_league_folder = os.path.join(current_dir, "games", "greedy_pig", "leagues", "test_league")
+    test_league_folder = "leagues/test_league"
 
     test_league = League(folder=test_league_folder, name="Test League")
-
-    file_path = os.path.join(test_league_folder, f"{team_name}.py")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if test_league.game == "greedy_pig":
+        file_path = os.path.join(current_dir,'games', 'greedy_pig', test_league.folder, f"{team_name}.py")
+    else:
+        file_path = os.path.join(current_dir,'games', 'greedy_pig', test_league.folder, f"{team_name}.py")
+    print("file path ATTEMPT TO WRITE", file_path)
     with open(file_path, "w") as file:
         file.write(code)
     print("file written")

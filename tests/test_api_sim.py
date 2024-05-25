@@ -73,8 +73,8 @@ def test_run_simulation(client: TestClient):
 
     simulation_response = client.post(
         "/run_simulation",
-        json={"league_name": "comp_test", "number_of_runs": 10},
+        json={"league_name": "comp_test", "num_simulations": 10},
         headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
     )
     assert simulation_response.status_code == 200
-    assert "success" in simulation_response.json()["message"]
+    assert "results" in simulation_response.json()

@@ -49,7 +49,7 @@ def create_league(engine, league_name, league_game, league_folder=None):
                 deleted_date=(datetime.now() + timedelta(days=7)),
                 active=True,
                 signup_link=None,
-                folder=league_folder,  # Set the folder field to None initially
+                folder=league_folder,  # this needs to start with /leagues and end with the league name (need a validator for this )
                 game=league_game
             )
             session.add(league)

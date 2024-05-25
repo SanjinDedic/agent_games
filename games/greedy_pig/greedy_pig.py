@@ -116,6 +116,7 @@ class Game:
         return {"points": points, "score_aggregate": score_aggregate}
 
     def get_all_player_classes_from_folder(self, folder_name):
+        #folder_name is relative path
         current_dir = os.path.dirname(os.path.abspath(__file__))
         league_directory = os.path.join(current_dir, folder_name)
 

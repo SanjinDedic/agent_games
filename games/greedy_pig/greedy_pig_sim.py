@@ -35,7 +35,7 @@ def animate_simulations(num_simulations, refresh_number, game):
 
         
 def run_simulations(num_simulations, league):
-    print("LEAGUE FOLDER:" , league.folder)
+    #league.folder is relative path
     game = Game(league)
     print("Players", game.players)
     #create a dictionary to store the total points for each player

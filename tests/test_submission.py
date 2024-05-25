@@ -85,4 +85,4 @@ class CustomPlayer(Player):
     print(submission_response.json()["results"])
 
     #delete the submission
-    os.remove("games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
+    #os.remove("games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

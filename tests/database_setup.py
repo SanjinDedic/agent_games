@@ -31,7 +31,7 @@ def setup_test_db(verbose=False):
             
             with engine.connect() as conn:
                 league_name = "comp_test"
-                league_create_result = create_league(engine, league_name, league_game="greedy_pig", league_folder="games/greedy_pig/leagues/admin/comp_test")
+                league_create_result = create_league(engine, league_name, league_game="greedy_pig", league_folder="leagues/admin/comp_test")
 
                 if league_create_result["status"] == "success":
                     league_link = league_create_result["link"]
