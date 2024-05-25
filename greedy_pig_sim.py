@@ -35,10 +35,8 @@ def animate_simulations(num_simulations, refresh_number, game):
 
         
 def run_simulations(num_simulations, league):
-    print("LEAGUE FOLDER:" , league.folder)
+
     game = Game(league)
-    print("Players", game.players)
-    #create a dictionary to store the total points for each player
     total_points = dict()
     for player in game.players:
         print(player.name)

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, status, File, Query, Depends, Body, 
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import create_engine, select
 from validation import is_agent_safe, run_agent_simulation
+from games.greedy_pig.greedy_pig_sim import run_simulations
 import asyncio
 import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -162,8 +163,12 @@ def admin_login(login: AdminLogin):
 # The simulation will run for a specified number of runs which are also a parameter
 # The simulation will be run only if the user is an admin
 # The simulation will return the results of the simulation
-@app.post("/run_simulation")
-async def run_simulation(number_of_runs: int, current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    return {"status": "success", "message": "result"}
+@app.post("/run_simulation", response_model=SimulationResult)
+def run_simulation(simulation_config: SimulationConfig):
+    try:
+        num_simulations = simulation_config.num_simulations
+        league_name = simulation_config.league_name
+        results = run_simulations(num_simulations)
+        return SimulationResult(results=results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

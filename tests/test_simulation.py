@@ -87,8 +87,10 @@ def test_game_reset(test_league):
 
 @patch('sys.stdout', new_callable=StringIO)
 def test_run_simulations(mock_stdout):
+    #create a test league
+    test_league = League(folder="leagues/test_league", name="Test League")
     num_simulations = 10
-    results = run_simulations(num_simulations)
+    results = run_simulations(num_simulations,test_league)
     assert isinstance(results, dict)
     assert len(results) == 9
     for points in results.values():

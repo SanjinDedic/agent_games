@@ -1,9 +1,20 @@
 from pydantic import BaseModel, field_validator
-from typing import List, Optional
+from typing import List, Optional, Dict
 from sqlmodel import Field, Session, SQLModel, create_engine, Relationship, UniqueConstraint
 from config import CURRENT_DB
 from datetime import datetime
 from auth import get_password_hash, verify_password
+
+class SimulationConfig(SQLModel):
+    num_simulations: int
+    league_name: str
+
+class SimulationResult(SQLModel):
+    results: Dict[str, int]
+
+class LeagueSignUp(SQLModel):
+    name: str
+    game: str
 
 class AdminBase(SQLModel):
     username: str = Field(unique=True, index=True)
@@ -17,10 +28,6 @@ class LeagueBase(SQLModel):
     active: bool
     signup_link: str | None = None
 
-
-class LeagueSignUp(SQLModel):
-    name: str
-    game: str
 
 class TeamBase(SQLModel):
     name: str = Field(index=True)

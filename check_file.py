@@ -1,7 +1,4 @@
 import ast
-from games.greedy_pig.greedy_pig_sim import run_simulations
-from models import League
-import os
 
 # List of dangerous modules and risky functions
 DANGEROUS_MODULES = ['os', 'sys', 'subprocess', 'shutil']
@@ -30,7 +27,7 @@ class SafeVisitor(ast.NodeVisitor):
             return
         self.generic_visit(node)
 
-def is_agent_safe(code):
+def is_safe(code):
     try:
         tree = ast.parse(code)
     except SyntaxError:
@@ -39,25 +36,3 @@ def is_agent_safe(code):
     checker = SafeVisitor()
     checker.visit(tree)
     return checker.safe
-
-def run_agent_simulation(code, team_name):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    test_league_folder = os.path.join(current_dir, "games", "greedy_pig", "leagues", "test_league")
-
-    test_league = League(folder=test_league_folder, name="Test League")
-
-    file_path = os.path.join(test_league_folder, f"{team_name}.py")
-    with open(file_path, "w") as file:
-        file.write(code)
-    print("file written")
-    #step 2 run 100 simulations
-    try:
-        results = run_simulations(100, test_league)
-        print("simulations run")
-        return results
-    except Exception as e:
-        print(e)
-        return False
-    finally:
-        os.remove(file_path)
-        print("file removed")
