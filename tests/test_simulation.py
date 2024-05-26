@@ -91,8 +91,7 @@ def test_run_simulations(mock_stdout):
     test_league = League(folder="leagues/test_league", name="Test League")
     num_simulations = 10
     results = run_simulations(num_simulations,test_league)
-    assert isinstance(results, dict)
-    assert len(results) == 9
-    for points in results.values():
+    assert len(results["total_points"]) == 9
+    for points in results["total_points"].values():
         assert isinstance(points, int)
         assert points >= 0

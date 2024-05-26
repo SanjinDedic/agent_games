@@ -82,7 +82,7 @@ class CustomPlayer(Player):
     assert len(submissions) == 1
     assert submissions[0].code == code
     assert submissions[0].team_id == 2
-    assert "BrunswickSC1" in submission_response.json()["results"]
+    assert "BrunswickSC1" in submission_response.json()["results"]['total_points']
     print(submission_response.json()["results"])
 
     #delete the submission

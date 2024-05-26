@@ -10,7 +10,7 @@ class SimulationConfig(SQLModel):
     league_name: str
 
 class SimulationResult(SQLModel):
-    results: Dict[str, int]
+    results: dict
 
 class LeagueSignUp(SQLModel):
     name: str

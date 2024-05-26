@@ -35,25 +35,47 @@ def animate_simulations(num_simulations, refresh_number, game):
 
         
 def run_simulations(num_simulations, league):
-    #league.folder is relative path
     game = Game(league)
     print("Players", game.players)
-    #create a dictionary to store the total points for each player
-    total_points = dict()
+
+    # Create dictionaries to store the total points and wins for each player
+    total_points = {}
+    total_wins = {}
     for player in game.players:
         print(player.name)
         total_points[player.name] = 0
+        total_wins[player.name] = 0
+
     print("Total Points", total_points)
+    print("Total Wins", total_wins)
+
     try:
         for i in range(1, num_simulations + 1):
             game.reset()
             results = game.play_game()
+            
+            # Update total points for each player
             for player, points in results["points"].items():
                 total_points[player] += points
-    
+            
+            # Determine the winner(s) of the game
+            max_points = max(results["points"].values())
+            winners = [player for player, points in results["points"].items() if points == max_points]
+            
+            # Update total wins for each winner
+            for winner in winners:
+                total_wins[winner] += 1
+
     except Exception as e:
         raise Exception(f"Simulation failed: {str(e)}")
-    
+
+    # Sort players based on total points in descending order
     sorted_total_points = sorted(total_points.items(), key=lambda x: x[1], reverse=True)
-    
-    return dict(sorted_total_points)
+
+    # Create a dictionary to store the results
+    results = {
+        "total_points": dict(sorted_total_points),
+        "total_wins": total_wins
+    }
+
+    return results
