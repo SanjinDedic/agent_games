@@ -10,7 +10,7 @@ os.environ["TESTING"] = "1"  # Set the TESTING environment variable
 from config import get_database_url
 from sqlmodel import create_engine, select
 from models import Admin
-from database import create_database, create_league, add_teams_from_json, print_database, clear_table, League, create_administrator
+from database import create_database, create_league, add_teams_from_json, print_database, League, create_administrator
 
 def setup_test_db(verbose=False):
     DB_URL = get_database_url()
