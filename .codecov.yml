@@ -1,0 +1,4 @@
+ignore:
+  - "legacy_agents/*"
+  - "test/*"
+  - "local_sim.py"

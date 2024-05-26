@@ -106,27 +106,6 @@ def create_team(engine, league_link, name, password, school=None):
         print(f"An error occurred: {str(e)}")
         return {"status": "failed", "message": "Server error"}
 
-def update_submission(engine, league_name, team_name, code):
-    try:
-        with Session(engine) as session:
-            statement = select(League).where(League.name == league_name)
-            league = session.exec(statement).one_or_none()
-
-            if league:
-                statement = select(Team).where(Team.name == team_name, Team.league == league)
-                team = session.exec(statement).one_or_none()
-
-                if team:
-                    submission = Submission(code=code, timestamp=datetime.now(), league=league)
-                    session.add(submission)
-                    session.commit()
-                    session.refresh(submission)
-                else:
-                    raise ValueError(f"Team '{team_name}' does not exist in league '{league_name}'")
-            else:
-                raise ValueError(f"League '{league_name}' does not exist")
-    except Exception as e:
-        raise e
 
 def add_teams_from_json(engine, league_link, teams_json_path):
     try:
@@ -209,18 +188,3 @@ def create_administrator(engine, username, password):
         print(f"An error occurred while creating admin: {e}")
         return {"status": "failed", "message": "Server error"}
 
-
-
-def clear_table(engine, table_model):
-    try:
-        with Session(engine) as session:
-            statement = select(table_model)
-            results = session.exec(statement)
-            
-            for obj in results:
-                session.delete(obj)
-            
-            session.commit()
-    except Exception as e:
-        print(f"An error occurred while clearing table {table_model.__name__}: {e}")
-        raise e
