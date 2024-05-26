@@ -151,12 +151,6 @@ def admin_login(login: AdminLogin):
     return result
 
 
-
-# Run simulation will be called from the front end to run the simulation
-# The simulation is specific to a League so the league name is passed as a parameter
-# The simulation will run for a specified number of runs which are also a parameter
-# The simulation will be run only if the user is an admin
-# The simulation will return the results of the simulation
 @app.post("/run_simulation", response_model=SimulationResult)
 def run_simulation(simulation_config: SimulationConfig, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
@@ -174,9 +168,13 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 
     try:
         results = run_simulations(num_simulations, league)
-        print("XXXX")
-        print(type(results))
-        print(results)
         return SimulationResult(results=results)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+@app.get("/get_all_admin_leagues")
+def get_all_admin_leagues():
+    with Session(engine) as session:
+        statement = select(League).where(League.folder.like("leagues/admin/%"))
+        leagues = session.exec(statement).all()
+        return leagues
