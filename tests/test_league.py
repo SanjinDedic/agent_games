@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+from config import ROOT_DIR
 from api import app
 from database import get_db_engine
 from models import League
@@ -55,6 +55,7 @@ def test_league_creation(client: TestClient):
 
     response = client.post("/league_create", json={"name": "week1", "game": "greedy_pig"})
     assert response.status_code == 200
+    print(response.json())
     assert "success" in response.json()["status"]
 
     response = client.post("/league_create")
@@ -68,10 +69,6 @@ def test_league_creation(client: TestClient):
     assert response.status_code == 200
     assert "success" in response.json()["status"]
     #cleanup
-    shutil.rmtree(f"games/greedy_pig/leagues/user/week1")
-    assert not os.path.isdir(f"games/greedy_pig/leagues/user/week1")
-    shutil.rmtree(f"games/greedy_pig/leagues/admin/week2")
-    assert not os.path.isdir(f"games/greedy_pig/leagues/admin/week2")
 
 
 def test_league_join(client: TestClient):

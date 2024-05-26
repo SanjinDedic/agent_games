@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 from sqlalchemy.exc import OperationalError
 from sqlmodel import select, SQLModel
-from config import CURRENT_DB, ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY 
+from config import CURRENT_DB, ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
 from models import Admin, League, Team, Submission
 from sqlalchemy import create_engine
 from sqlmodel import Session, select
@@ -39,9 +39,10 @@ def print_database(engine):
                 print("No data available.")
 
 
-def create_league(engine, league_name, league_game, league_folder=None):
+def create_league(engine, league_name, league_game, league_folder):
+    print("CREATE LEAGUE CALLED!")
     try:
-        with Session(engine) as session:
+        with Session(engine, expire_on_commit=False) as session:
             league = League(
                 name=league_name,
                 created_date=datetime.now(),
@@ -57,6 +58,18 @@ def create_league(engine, league_name, league_game, league_folder=None):
             
             league.signup_link = encode_id(league.id)
             session.commit()
+        #create the folder for the league
+        absolute_folder = ROOT_DIR +"/games/" +f"{league.game}"+league_folder
+        #print("/games/" +f"{league.game}")
+        print("ROOT DIR: ", ROOT_DIR)
+        print("LEAGUE FOLDER: ", league_folder)
+        print("MAKING FOLDER FOR LEAGUE: ", absolute_folder)
+        if league_folder:
+            os.makedirs(absolute_folder, exist_ok=True)
+            #insert a README file with the league name
+            with open(os.path.join(absolute_folder, "README.md"), "w") as file:
+                file.write(f"# {league_name}\n\nThis folder contains files for the {league_name} league.")
+
             
             return {"status": "success", "link": league.signup_link}
     except Exception as e:

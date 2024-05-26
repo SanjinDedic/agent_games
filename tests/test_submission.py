@@ -13,6 +13,7 @@ from api import app
 from database import get_db_engine
 from models import League, Team, Submission
 from tests.database_setup import setup_test_db
+from config import ROOT_DIR
 
 os.environ["TESTING"] = "1"
 
@@ -85,4 +86,5 @@ class CustomPlayer(Player):
     print(submission_response.json()["results"])
 
     #delete the submission
-    #os.remove("games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
+    time.sleep(1)
+    os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

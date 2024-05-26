@@ -5,7 +5,7 @@ from validation import is_agent_safe, run_agent_simulation
 from games.greedy_pig.greedy_pig_sim import run_simulations
 import asyncio
 import os
-from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES
+from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
 from contextlib import asynccontextmanager
 from models import *
 from auth import get_current_user, create_access_token
@@ -52,13 +52,9 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None))
                 user_role = "admin"
         #Do we need to give a token to a visior that has not logged in and call them a visitor??
         if user_role == "admin":
-            league_folder = f"games/{league.game}/leagues/admin/{league.name}"
+            league_folder = f"/leagues/admin/{league.name}"
         else:
-            league_folder = f"games/{league.game}/leagues/user/{league.name}"
-
-        os.makedirs(league_folder, exist_ok=True)
-        with open(f"{league_folder}/README.md", "w") as f:
-            f.write(f"This is the {league.name} league")
+            league_folder = f"/leagues/user/{league.name}"
 
         return create_league(engine=engine, league_name=league.name, league_game=league.game, league_folder=league_folder)
 
@@ -126,7 +122,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         os.makedirs(league_folder, exist_ok=True)
 
         # Save the submitted code in a Python file named after the team
-        file_path = os.path.join(league_folder, f"{team_name}.py")
+        file_path = os.path.join(ROOT_DIR,"games","greedy_pig",league_folder, f"{team_name}.py")
         with open(file_path, "w") as file:
             file.write(submission.code)
         print("are we here")
