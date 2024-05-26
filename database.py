@@ -59,7 +59,7 @@ def create_league(engine, league_name, league_game, league_folder):
             league.signup_link = encode_id(league.id)
             session.commit()
         #create the folder for the league
-        absolute_folder = ROOT_DIR +"/games/" +f"{league.game}"+league_folder
+        absolute_folder = ROOT_DIR +"/games/" +f"{league.game}/"+league_folder
         #print("/games/" +f"{league.game}")
         print("ROOT DIR: ", ROOT_DIR)
         print("LEAGUE FOLDER: ", league_folder)

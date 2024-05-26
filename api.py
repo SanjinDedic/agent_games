@@ -118,8 +118,6 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         else:
             league_folder = f"games/{game}/leagues/user/{league.name}"
         print(team_name, user_role, league.name)
-        print(league_folder)
-        os.makedirs(league_folder, exist_ok=True)
 
         # Save the submitted code in a Python file named after the team
         file_path = os.path.join(ROOT_DIR,"games","greedy_pig",league_folder, f"{team_name}.py")

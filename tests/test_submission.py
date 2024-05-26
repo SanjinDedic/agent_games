@@ -87,4 +87,5 @@ class CustomPlayer(Player):
 
     #delete the submission
     time.sleep(1)
+    print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
     os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

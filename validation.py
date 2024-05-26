@@ -47,6 +47,7 @@ def run_agent_simulation(code, team_name):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     if test_league.game == "greedy_pig":
         file_path = os.path.join(current_dir,'games', 'greedy_pig', test_league.folder, f"{team_name}.py")
+        print("greedy pig file path", file_path)
     else:
         file_path = os.path.join(current_dir,'games', 'greedy_pig', test_league.folder, f"{team_name}.py")
     print("file path ATTEMPT TO WRITE", file_path)
@@ -63,4 +64,4 @@ def run_agent_simulation(code, team_name):
         return False
     finally:
         os.remove(file_path)
-        print("file removed")
+        print("file removed", file_path)
