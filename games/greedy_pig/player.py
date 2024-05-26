@@ -3,8 +3,7 @@ import random
 import json
 
 class Player(ABC):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
         self.banked_money = 0
         self.unbanked_money = 0
         self.has_banked_this_turn = False  # Track banking status within a turn

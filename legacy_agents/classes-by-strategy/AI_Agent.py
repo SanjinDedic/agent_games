@@ -1,4 +1,4 @@
-from player import Player
+from games.greedy_pig.player import Player
 import openai
 
 #WARNING DO NOT RUN THIS AGENT with more than 10 sims, API costs will be too high

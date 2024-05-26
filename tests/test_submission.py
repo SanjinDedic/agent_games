@@ -59,7 +59,7 @@ def test_submit_agent(client: TestClient, db_session: Session):
 
     # Submit code for the team
     code = """
-from player import Player
+from games.greedy_pig.player import Player
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):

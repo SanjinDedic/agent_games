@@ -143,23 +143,24 @@ class Game:
                 if self.verbose:
                     print(f"Module name: {module_name}")
                     print(f"Module path: {module_path}")
-                
+
                 spec = importlib.util.spec_from_file_location(module_name, module_path)
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
-                
+
                 if self.verbose:
                     print(f"Loaded module: {module}")
                     print(f"Module attributes: {dir(module)}")
-                
+
                 if hasattr(module, "CustomPlayer"):
                     player_class = getattr(module, "CustomPlayer")
                     if self.verbose:
                         print(f"Found CustomPlayer class: {player_class}")
-                    player = player_class(module_name)
+                    player = player_class()
+                    player.name = module_name  # Use the module name as is
                     if self.verbose:
                         print(f"Created player instance: {player}")
-                    player_classes.append(player)  # Append only the player instance
+                    player_classes.append(player)
                 elif self.verbose:
                     print(f"CustomPlayer class not found in module: {module_name}")
 

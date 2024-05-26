@@ -1,4 +1,4 @@
-from player import Player
+from games.greedy_pig.player import Player
 
 class Agent3(Player):
     def calculate_dynamic_threshold(self, game_state):
