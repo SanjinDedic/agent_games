@@ -8,6 +8,7 @@ class Player(ABC):
         self.unbanked_money = 0
         self.has_banked_this_turn = False  # Track banking status within a turn
         self.color = 'white'
+        self.name = '' # Assigned when files are loaded onto server
 
     def reset_unbanked_money(self):
         self.unbanked_money = 0
