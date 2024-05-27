@@ -178,3 +178,10 @@ def get_all_admin_leagues():
         statement = select(League).where(League.folder.like("leagues/admin/%"))
         leagues = session.exec(statement).all()
         return leagues
+    
+if __name__ == "__main__":
+    import uvicorn
+    from production_database_setup import setup_test_db
+    os.environ["TESTING"] = "0"
+    setup_test_db(engine)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
