@@ -8,7 +8,7 @@ import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
 from contextlib import asynccontextmanager
 from models import *
-from auth import get_current_user, create_access_token
+from auth import get_current_user, create_access_token, decode_id
 from datetime import timedelta
 from database import (
     create_database, 
@@ -65,11 +65,13 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None))
 
 @app.post("/league_join/{link}")
 async def league_join(link, user: TeamSignUp):
-    print("link" + link)
+    #ths will only apply to user created leagues
+    #find league_id from link
     try:
+        league_id = decode_id(link)
         user_data = TeamSignUp.model_validate(user)
         print(user_data)
-        return create_team(engine=engine, league_link=link, name=user.name, password=user.password, school=user.school)
+        return create_team(engine=engine, name=user.name, password=user.password, league_id=league_id, school=user.school)
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
     
@@ -85,7 +87,7 @@ def team_login(credentials: TeamLogin):
 @app.post("/team_create")
 async def agent_create(user: TeamBase):
     try:
-        return create_team(engine=engine, link=user.link, name=user.name, password=user.password, school=user.school_name)
+        return create_team(engine=engine, name=user.name, password=user.password, school=user.school_name)
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
 

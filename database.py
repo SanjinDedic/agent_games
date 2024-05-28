@@ -76,15 +76,11 @@ def create_league(engine, league_name, league_game, league_folder):
         return {"status": "failed", "message": str(e)}
 
 
-def create_team(engine, league_link, name, password, school=None):
+def create_team(engine, name, password, league_id=1, school=None):
     print("CREATE TEAM CALLED!")
     try:
         with Session(engine) as session:
-            print(f"Searching for league with signup link: {league_link}")  # Add this print statement
-            #league = session.get(League, league_link)
-            statement = select(League).where(League.signup_link == league_link)
-            league = session.exec(statement).one_or_none()
-
+            league = session.exec(select(League).where(League.id == league_id)).one_or_none()
             if league:
                 print(f"League found: {league}")  # Add this print statement
                 team = Team(name=name, school_name=school)
@@ -100,8 +96,8 @@ def create_team(engine, league_link, name, password, school=None):
                 )
                 return {"access_token": access_token, "token_type": "bearer"}
             else:
-                print(f"League '{league_link}' does not exist")
-                return {"status": "failed", "message": f"League '{league_link}' does not exist"}
+                print(f"League with id '{league_id}' does not exist")
+                return {"status": "failed", "message": f"League with id '{league_id}' does not exist"}
     except Exception as e:
         print(f"An error occurred: {str(e)}")
         return {"status": "failed", "message": "Server error"}
@@ -119,7 +115,7 @@ def add_teams_from_json(engine, league_link, teams_json_path):
             if not all(field in team_data for field in required_fields):
                 raise ValueError("Invalid team data in JSON: missing required fields")
 
-            create_result = create_team(engine, league_link, team_data["name"], team_data["password"], team_data.get("school", None))
+            create_result = create_team(engine=engine, name=team_data["name"], password=team_data["password"], school=team_data.get("school", None))
             
             # Check for errors in team creation
             if create_result.get("status") == "failed":
@@ -136,6 +132,7 @@ def get_team(engine, team_name, team_password):
     try:
         with Session(engine) as session:
             result = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+            print("RESULT: ", result)
             if result and result.verify_password(team_password):  # Use the verify_password method
                 access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
                 access_token = create_access_token(
