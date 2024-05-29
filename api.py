@@ -85,7 +85,7 @@ def team_login(credentials: TeamLogin):
         raise HTTPException(status_code=401, detail="Invalid team credentials")
 
 @app.post("/team_create")
-async def agent_create(user: TeamBase):
+async def agent_create(user: TeamSignup):
     try:
         return create_team(engine=engine, name=user.name, password=user.password, school=user.school_name)
     except Exception as e:

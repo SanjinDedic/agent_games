@@ -16,20 +16,8 @@ class LeagueSignUp(SQLModel):
     name: str
     game: str
 
-class AdminBase(SQLModel):
-    username: str = Field(unique=True, index=True)
-    password_hash: str
 
-class LeagueBase(SQLModel):
-    name: str = Field(unique=True, index=True)
-    created_date: datetime
-    expiry_date: datetime
-    deleted_date: datetime | None = None
-    active: bool
-    signup_link: str | None = None
-
-
-class TeamBase(SQLModel):
+class TeamSignup(SQLModel):
     name: str = Field(index=True)
     school_name: str
     password_hash: str
@@ -76,15 +64,24 @@ class SubmissionCode(SQLModel):
 #---                                 TABLES                                    ---#
 #---------------------------------------------------------------------------------#
 
-class League(LeagueBase, table=True):
+
+class League(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
+    name: str = Field(unique=True, index=True)
+    created_date: datetime
+    expiry_date: datetime
+    deleted_date: datetime | None = None
+    active: bool
+    signup_link: str | None = None
     folder: str | None = None
     teams: List['Team'] = Relationship(back_populates='league')
     game: str
 
 
-class Admin(AdminBase, table=True):
+class Admin(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True)
+    password_hash: str
 
     def set_password(self, password: str):
         self.password_hash = get_password_hash(password)
@@ -93,7 +90,12 @@ class Admin(AdminBase, table=True):
         return verify_password(password, self.password_hash)
     
 
-class Team(TeamBase, table=True):
+class Team(SQLModel, table=True):
+    name: str = Field(index=True)
+    school_name: str
+    password_hash: str
+    score: int = 0
+    color: str = "rgb(171,239,177)"
     id: int = Field(primary_key=True)
     league_id: int = Field(default=None, foreign_key="league.id")
     league: League = Relationship(back_populates='teams')
