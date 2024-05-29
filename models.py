@@ -91,12 +91,12 @@ class Admin(SQLModel, table=True):
     
 
 class Team(SQLModel, table=True):
+    id: int = Field(primary_key=True)
     name: str = Field(index=True)
     school_name: str
     password_hash: str
     score: int = 0
     color: str = "rgb(171,239,177)"
-    id: int = Field(primary_key=True)
     league_id: int = Field(default=None, foreign_key="league.id")
     league: League = Relationship(back_populates='teams')
     submissions: List['Submission'] = Relationship(back_populates='team')
