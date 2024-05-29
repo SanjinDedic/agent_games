@@ -134,8 +134,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             session.add(db_submission)
             session.commit()
             submission_id = db_submission.id
-
-        return {"message": f"Code submitted successfully. Submission ID: {submission_id}", "results": results}
+        #return {"message": f"Code submitted successfully. Submission ID: {submission_id}", "results": results}
+        return {"message": f"Code submitted successfully. Submission ID: {submission_id}", "results": results, "team_name": team_name}
 
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
