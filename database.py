@@ -50,7 +50,7 @@ def create_league(engine, league_name, league_game, league_folder):
                 deleted_date=(datetime.now() + timedelta(days=7)),
                 active=True,
                 signup_link=None,
-                folder=league_folder,  # this needs to start with /leagues and end with the league name (need a validator for this )
+                folder=league_folder,
                 game=league_game
             )
             session.add(league)
@@ -60,7 +60,6 @@ def create_league(engine, league_name, league_game, league_folder):
             session.commit()
         #create the folder for the league
         absolute_folder = ROOT_DIR +"/games/" +f"{league.game}/"+league_folder
-        #print("/games/" +f"{league.game}")
         print("ROOT DIR: ", ROOT_DIR)
         print("LEAGUE FOLDER: ", league_folder)
         print("MAKING FOLDER FOR LEAGUE: ", absolute_folder)
@@ -76,34 +75,29 @@ def create_league(engine, league_name, league_game, league_folder):
         return {"status": "failed", "message": str(e)}
 
 
-def create_team(engine, name, password, league_id=1, school=None):
+def create_team(engine, name, password, league=None, school=None):
     print("CREATE TEAM CALLED!")
     try:
         with Session(engine) as session:
-            league = session.exec(select(League).where(League.id == league_id)).one_or_none()
+            team = Team(name=name, school_name=school)
+            team.set_password(password)
+            session.add(team)
             if league:
-                print(f"League found: {league}")  # Add this print statement
-                team = Team(name=name, school_name=school)
-                team.set_password(password)
-                session.add(team)
                 team.league = league
-                session.commit()
+            session.commit()
 
-                access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-                access_token = create_access_token(
-                    data={"sub": name, "role": "student"},
-                    expires_delta=access_token_expires
-                )
-                return {"access_token": access_token, "token_type": "bearer"}
-            else:
-                print(f"League with id '{league_id}' does not exist")
-                return {"status": "failed", "message": f"League with id '{league_id}' does not exist"}
+            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": name, "role": "student"},
+                expires_delta=access_token_expires
+            )
+            return {"access_token": access_token, "token_type": "bearer"}
     except Exception as e:
         print(f"An error occurred: {str(e)}")
         return {"status": "failed", "message": "Server error"}
 
 
-def add_teams_from_json(engine, league_link, teams_json_path):
+def add_teams_from_json(engine, teams_json_path):
     try:
         with open(teams_json_path, 'r') as file:
             data = json.load(file)
@@ -184,4 +178,3 @@ def create_administrator(engine, username, password):
     except Exception as e:
         print(f"An error occurred while creating admin: {e}")
         return {"status": "failed", "message": "Server error"}
-

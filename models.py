@@ -28,7 +28,6 @@ class LeagueBase(SQLModel):
     active: bool
     signup_link: str | None = None
 
-
 class TeamBase(SQLModel):
     name: str = Field(index=True)
     school_name: str
@@ -36,12 +35,10 @@ class TeamBase(SQLModel):
     score: int = 0
     color: str = "rgb(171,239,177)"
 
-
 class SubmissionBase(SQLModel):
     code: str = Field(unique=True)
     timestamp: datetime 
-    
-    
+
 class TeamLogin(SQLModel):
     name: str
     password: str
@@ -82,7 +79,6 @@ class League(LeagueBase, table=True):
     teams: List['Team'] = Relationship(back_populates='league')
     game: str
 
-
 class Admin(AdminBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -91,12 +87,10 @@ class Admin(AdminBase, table=True):
 
     def verify_password(self, password: str):
         return verify_password(password, self.password_hash)
-    
 
 class Team(TeamBase, table=True):
     id: int = Field(primary_key=True)
-    league_id: int = Field(default=None, foreign_key="league.id")
-    league: League = Relationship(back_populates='teams')
+    league: Optional[League] = Relationship(back_populates='teams')
     submissions: List['Submission'] = Relationship(back_populates='team')
     __table_args__ = (UniqueConstraint("name", "league_id"),)
 
@@ -105,10 +99,8 @@ class Team(TeamBase, table=True):
 
     def verify_password(self, password: str):
         return verify_password(password, self.password_hash)
-    
 
 class Submission(SubmissionBase, table=True):
     id: int = Field(primary_key=True, default=None)
-    team_id: int = Field(default=None, foreign_key='team.id')
-    team: Team = Relationship(back_populates='submissions')
+    team: Optional[Team] = Relationship(back_populates='submissions')
     code: str

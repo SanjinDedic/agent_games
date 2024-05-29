@@ -146,7 +146,6 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
 def admin_login(login: AdminLogin):
     print("calling get_admin with" + login.username + " " + login.password)
     print("database" + str(engine))
-    print_database(engine)
     result = get_admin(engine, login.username, login.password)
     if "detail" in result:
         raise HTTPException(status_code=401, detail=result["detail"])
