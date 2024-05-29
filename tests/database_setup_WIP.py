@@ -5,7 +5,7 @@ from auth import get_password_hash
 from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
 from datetime import datetime, timedelta
 
-def create_and_populate_database():
+def set_up_test_db():
     os.environ["TESTING"] = "1"  # Set the TESTING environment variable to "0"
     
     engine = create_engine(f"sqlite:///{CURRENT_DB}")
@@ -73,7 +73,7 @@ def create_and_populate_database():
         print("Database populated successfully.")
 
 if __name__ == "__main__":
-    create_and_populate_database()
+    set_up_test_db()
 
 """
 TO DO:
