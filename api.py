@@ -118,7 +118,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         if team.league.folder:
             league_folder = team.league.folder
         else:
-            league_folder = f"games/{game}/leagues/user/{league.name}"
+            league_folder = f"leagues/user/{league.name}"
         print(team_name, user_role, league.name)
 
         # Save the submitted code in a Python file named after the team
