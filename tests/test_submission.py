@@ -2,45 +2,33 @@ import os
 import sys
 import pytest
 import time
-import shutil
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
-from sqlmodel import Session, select
-
+from sqlmodel import Session
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from config import ROOT_DIR
 from api import app
 from database import get_db_engine
-from models import League, Team, Submission
+from models import League, Submission
 from tests.database_setup import setup_test_db
-from config import ROOT_DIR
-
+from sqlmodel import select
 os.environ["TESTING"] = "1"
 
-TEAM_TOKEN = ""
+ADMIN_VALID_TOKEN = ""
 
-@pytest.fixture(scope="session")
-def db_engine():
-    engine = setup_test_db(verbose=True)
-    yield engine
-    try:
-        if os.path.exists("../test.db"):
-            os.remove("../test.db")
-        else:
-            os.remove("test.db")
-    except FileNotFoundError:
-        pass
-    finally:
-        time.sleep(1)
+@pytest.fixture(scope="function", autouse=True)
+def setup_database():
+    setup_test_db()
 
 @pytest.fixture(scope="function")
-def db_session(db_engine: Engine):
-    with Session(db_engine) as session:
+def db_session():
+    engine = get_db_engine()
+    with Session(engine) as session:
         yield session
         session.rollback()
 
 @pytest.fixture(scope="function")
-def client(db_session: Session):
+def client(db_session):
     def get_db_session_override():
         return db_session
 
@@ -86,6 +74,5 @@ class CustomPlayer(Player):
     print(submission_response.json()["results"])
 
     #delete the submission
-    time.sleep(1)
     print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
     os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

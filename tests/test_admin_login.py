@@ -15,35 +15,14 @@ os.environ["TESTING"] = "1"
 
 ADMIN_VALID_TOKEN = ""
 
-@pytest.fixture(scope="session")
-def db_engine():
-    engine = setup_test_db(verbose=True)
-    yield engine
-    if os.path.exists("../test.db"):
-        os.remove("../test.db")
-    if os.path.exists("/test.db"):
-        os.remove("/test.db")
-        time.sleep(1)
-
-
-@pytest.fixture(scope="session")
-def db_engine():
-    engine = setup_test_db(verbose=True)
-    yield engine
-    try:
-        if os.path.exists("../test.db"):
-            os.remove("../test.db")
-        else:
-            os.remove("test.db")
-    except FileNotFoundError:
-        pass
-    finally:
-        time.sleep(1)
-
+@pytest.fixture(scope="function", autouse=True)
+def setup_database():
+    setup_test_db()
 
 @pytest.fixture(scope="function")
-def db_session(db_engine):
-    with Session(db_engine) as session:
+def db_session():
+    engine = get_db_engine()
+    with Session(engine) as session:
         yield session
         session.rollback()
 

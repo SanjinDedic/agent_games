@@ -1,87 +1,95 @@
 import os
 import sys
+import pytest
 import json
 import time
-import sqlalchemy.exc
+from sqlmodel import Session, SQLModel, create_engine, select, delete
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-os.environ["TESTING"] = "1"  # Set the TESTING environment variable
+from models import League, Team, Admin, Submission
+from auth import get_password_hash
+from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
+from datetime import datetime, timedelta
+from database import add_teams_from_json, League, create_administrator, get_database_url
 
-from config import get_database_url
-from sqlmodel import create_engine, select
-from models import Admin
-from database import create_database, create_league, add_teams_from_json, print_database, League, create_administrator
 
-def setup_test_db(verbose=False):
+def db_engine():
+    os.environ["TESTING"] = "1"  # Set the TESTING environment variable to "1"
     DB_URL = get_database_url()
-    TEST_DB_FILE = DB_URL.split("///")[1]
-    if verbose:
-        print(f"Test Database File: {TEST_DB_FILE}")
-    
-    engine = create_engine(DB_URL)
-    
-    retries = 5
-    retry_delay = 1
-
-    for attempt in range(retries):
-        try:
-            # Create the database if it doesn't exist
-            if not os.path.exists(TEST_DB_FILE):
-                create_database(engine)
-            
-            with engine.connect() as conn:
-                league_name = "comp_test"
-                league_create_result = create_league(engine, league_name, league_game="greedy_pig", league_folder="leagues/admin/comp_test")
-
-                if league_create_result["status"] == "success":
-                    league_link = league_create_result["link"]
-                    if verbose:
-                        print(f"League '{league_name}' created with signup link: {league_link}")
-
-                    teams_json_path = os.path.join(os.path.dirname(__file__), "test_teams.json")
-                    try:
-                        add_teams_from_json(engine, league_link, teams_json_path)
-                        if verbose:
-                            print(f"Teams added successfully from 'test_teams.json'")
-                    except FileNotFoundError as e:
-                        print(f"Error: 'test_teams.json' not found: {e}")
-                    except json.JSONDecodeError as e:
-                        print(f"Error: Invalid JSON in 'test_teams.json': {e}")
-                    except sqlalchemy.exc.IntegrityError as e:
-                        print(f"Error: Duplicate team name or other DB issue: {e}")
-                    except Exception as e:
-                        print(f"An unexpected error occurred: {e}")
-                else:
-                    print(f"Error creating league '{league_name}': {league_create_result.get('message', 'Unknown error')}")
-                    if "exception" in league_create_result:
-                        raise league_create_result["exception"]
-
-                # Create Admin User using create_administrator function
-                admin_username = "Administrator"
-                admin_password = "BOSSMAN"
-                admin_create_result = create_administrator(engine, admin_username, admin_password)
-
-                if admin_create_result["status"] == "success":
-                    if verbose:
-                        print(f"\nAdmin user '{admin_username}' created successfully.")
-                else:
-                    print(f"Error creating admin user: {admin_create_result.get('message', 'Unknown error')}")
-
-                # Verify that the admin user is created
-                admin_query = conn.execute(select(Admin)).all()
-                if verbose:
-                    print(f"Admin users in the database: {admin_query}")
-                assert len(admin_query) == 1, "Admin user was not created successfully"
-
-            break  # Break the loop if the operation is successful
-        except sqlalchemy.exc.OperationalError as e:
-            if attempt < retries - 1:
-                print(f"Database locked. Retrying in {retry_delay} second(s)...")
-                time.sleep(retry_delay)
-            else:
-                raise e
-        finally:
-        # Close the database connection
-            engine.dispose()
-
+    engine = create_engine(f"sqlite:///{DB_URL.split('///')[1]}")
+    SQLModel.metadata.create_all(engine)
     return engine
+
+
+def setup_test_db(engine = db_engine()):
+    with Session(engine) as session:
+        if not os.path.exists(get_database_url()):
+            session.exec(delete(Team))
+            session.exec(delete(League))
+            session.exec(delete(Admin))
+            session.exec(delete(Submission))
+            session.commit()
+
+        # Create an admin league called unassigned
+        unnassigned = League(
+            name="unassigned",
+            created_date=datetime.now(),
+            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            active=True,
+            folder="leagues/admin/unassigned",
+            game="greedy_pig"
+        )
+        session.add(unnassigned)
+        print("Unassigned league created.")
+
+        comp_test = League(
+            name="comp_test",
+            created_date=datetime.now(),
+            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            active=True,
+            folder="leagues/admin/comp_test",
+            game="greedy_pig"
+        )
+        session.add(comp_test)
+        session.commit()
+
+        admin_username = "Administrator"
+        admin_password = "BOSSMAN"
+        hashed_password = get_password_hash(admin_password) 
+        print("hashedpw",hashed_password)
+        admin = Admin(username=admin_username, password_hash=hashed_password)
+        session.add(admin)
+
+        # Create teams from test_teams.json
+        teams_json_path = os.path.join(os.path.dirname(__file__), "test_teams.json")
+        with open (teams_json_path, "r") as file:
+            data = json.load(file)
+            teams = data["teams"]
+            for team in teams:
+                name = team["name"]
+                password = team["password"]
+                school = team["school"]
+                new_team = Team(name=name, password_hash=get_password_hash(password), school_name=school, league_id=2)
+                session.add(new_team)
+
+
+        print("Teams added from test_teams.json")
+        session.commit()
+
+    """
+    TO DO:
+    1. create a test db file
+    2. create a test db engine
+    3. use with Session(engine) as session:
+    4. create an admin league called unassigned
+    5. create an admin league called comp_test
+    6. Create an Administrator if it doesn't exist 
+    7. Creaate teams from test_teams.json
+
+    """
+
+
+
+if __name__ == "__main__":
+    setup_test_db()
+    print("Database setup complete.")
