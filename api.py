@@ -181,6 +181,20 @@ def get_all_admin_leagues():
         leagues = session.exec(statement).all()
         return leagues
     
+
+@app.get("/league_assign")
+def league_assign(league, current_user: dict = Depends(get_current_user)):
+    team = current_user["team_name"]
+    with Session(engine) as session:
+        league = session.exec(select(League).where(League.name == league)).one_or_none()
+        if not league:
+            raise HTTPException(status_code=404, detail="League not found") 
+        team = session.exec(select(Team).where(Team.name == team)).one_or_none()
+        team.league_id = league.id
+        session.add(team)
+        session.commit()
+        return {"message": f"Team '{team.name}' assigned to league '{league.name}'"}
+
 if __name__ == "__main__":
     import uvicorn
     from production_database_setup import setup_test_db
