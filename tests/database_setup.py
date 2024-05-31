@@ -10,7 +10,8 @@ from models import League, Team, Admin, Submission
 from auth import get_password_hash
 from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
 from datetime import datetime, timedelta
-from database import add_teams_from_json, League, create_administrator, get_database_url
+from database import  get_database_url
+
 
 
 def db_engine():

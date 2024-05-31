@@ -86,31 +86,6 @@ def create_team(session, name, password, league_id=1, school=None):
         return {"status": "failed", "message": "Server error"}
 
 
-def add_teams_from_json(session, league_link, teams_json_path):
-    try:
-        with open(teams_json_path, 'r') as file:
-            data = json.load(file)
-            teams_list = data.get('teams', [])  # Use .get to safely handle missing 'teams' key
-
-        for team_data in teams_list:
-            # Check if all required fields are present in team_data
-            required_fields = ["name", "password"]
-            if not all(field in team_data for field in required_fields):
-                raise ValueError("Invalid team data in JSON: missing required fields")
-
-            create_result = create_team(session=session, name=team_data["name"], password=team_data["password"], school=team_data.get("school", None))
-            
-            # Check for errors in team creation
-            if create_result.get("status") == "failed":
-                raise ValueError(f"Failed to create team '{team_data['name']}': {create_result['message']}")
-            
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Error: 'teams_json_path' not found at: {teams_json_path}")
-    except json.JSONDecodeError as e:
-        raise json.JSONDecodeError(f"Error: Invalid JSON format in '{teams_json_path}': {e}")
-    except (ValueError, KeyError) as e:  # Catch specific errors for better messages
-        raise ValueError(f"Error processing team data from JSON: {e}")
-
 def get_team_token(session, team_name, team_password):
     try:
         result = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
@@ -158,6 +133,8 @@ def get_team(session, team_name):
 
 
 def create_administrator(session, username, password):
+    if len(username) == 0 or len(password) == 0:
+        return {"status": "failed", "message": "Username and password are required"}
     try:
         # Check if an admin with the same username already exists
         existing_admin = session.exec(select(Admin).where(Admin.username == username)).one_or_none()
