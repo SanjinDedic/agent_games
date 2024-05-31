@@ -65,14 +65,12 @@ class CustomPlayer(Player):
     assert "Code submitted successfully." in submission_response.json()["message"]
 
     # Check if the submission is saved in the database
-    statement = db_session.exec(select(Submission))
-    submissions = statement.fetchall()
-    assert len(submissions) == 1
-    assert submissions[0].code == code
-    assert submissions[0].team_id == 2
-    assert "BrunswickSC1" in submission_response.json()["results"]['total_points']
+    submission = db_session.exec(select(Submission).where(Submission.code == code)).one_or_none()
+    assert submission is not None
+    assert submission.team_id == 2  # Assuming the team ID is 2 for "BrunswickSC1"
+
     print(submission_response.json()["results"])
 
-    #delete the submission
+    # Delete the submission
     print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
     os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

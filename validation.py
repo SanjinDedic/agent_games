@@ -58,6 +58,7 @@ def run_agent_simulation(code, team_name):
     try:
         results = run_simulations(100, test_league)
         print("simulations run")
+        print(results)
         return results
     except Exception as e:
         print(e)
