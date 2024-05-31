@@ -17,7 +17,9 @@ from database import (
     get_team,
     get_db_engine,
     save_submission,
-    assign_team_to_league
+    assign_team_to_league,
+    get_league,
+    get_all_admin_leagues
 )
 
 @asynccontextmanager
@@ -145,23 +147,15 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 
     league_name = simulation_config.league_name
     num_simulations = simulation_config.num_simulations
-
-    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
-
-    if not league:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"League '{league_name}' not found")
-
     try:
-        results = run_simulations(num_simulations, league)
+        results = run_simulations(num_simulations, get_league(session, league_name))
         return SimulationResult(results=results)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
 @app.get("/get_all_admin_leagues")
 def get_all_admin_leagues(session: Session = Depends(get_db)):
-    statement = select(League).where(League.folder.like("leagues/admin/%"))
-    leagues = session.exec(statement).all()
-    return leagues
+    return get_all_admin_leagues(session)
     
 
 @app.post("/league_assign")
