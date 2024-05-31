@@ -5,6 +5,11 @@ from config import CURRENT_DB
 from datetime import datetime
 from auth import get_password_hash, verify_password
 
+
+class LeagueAssignRequest(BaseModel):
+    name: str
+    
+
 class SimulationConfig(SQLModel):
     num_simulations: int
     league_name: str
@@ -24,11 +29,6 @@ class TeamSignup(SQLModel):
     score: int = 0
     color: str = "rgb(171,239,177)"
 
-
-class SubmissionBase(SQLModel):
-    code: str = Field(unique=True)
-    timestamp: datetime 
-    
     
 class TeamLogin(SQLModel):
     name: str
@@ -109,8 +109,9 @@ class Team(SQLModel, table=True):
         return verify_password(password, self.password_hash)
     
 
-class Submission(SubmissionBase, table=True):
+class Submission(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
+    code: str
+    timestamp: datetime
     team_id: int = Field(default=None, foreign_key='team.id')
     team: Team = Relationship(back_populates='submissions')
-    code: str
