@@ -2,3 +2,4 @@ ignore:
   - "legacy_agents/*"
   - "test/*"
   - "local_sim.py"
+  - "production_database_setup.py"
