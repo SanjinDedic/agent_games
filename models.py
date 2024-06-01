@@ -7,7 +7,7 @@ from auth import get_password_hash, verify_password
 
 
 class TeamDelete(SQLModel):
-    name: int
+    name: str
 
 class LeagueActive(SQLModel):
     name: str
@@ -30,7 +30,7 @@ class LeagueSignUp(SQLModel):
 class TeamSignup(SQLModel):
     name: str = Field(index=True)
     school_name: str
-    password_hash: str
+    password: str
     score: int = 0
     color: str = "rgb(171,239,177)"
 

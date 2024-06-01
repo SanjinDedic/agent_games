@@ -93,10 +93,13 @@ def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
 
 @app.post("/team_create")
 async def agent_create(user: TeamSignup, session: Session = Depends(get_db)):
+    print("calling /team_create with" + user.name + " " + user.password + " " + user.school_name)
     try:
         return create_team(session=session, name=user.name, password=user.password, school=user.school_name)
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
+
+
 
 
 @app.post("/submit_agent")
@@ -170,7 +173,8 @@ async def submit_agent(league: LeagueAssignRequest, current_user: dict = Depends
 
 
 @app.post("/delete_team")
-async def delete_team_from_db(team: TeamDelete, session: Session = Depends(get_db)):
+async def delete_team(team: TeamDelete, session: Session = Depends(get_db)):
+    print("delete_team_from_db called")
     return delete_team_from_db(session, team.name)
 
 
