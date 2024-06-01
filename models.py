@@ -6,10 +6,15 @@ from datetime import datetime
 from auth import get_password_hash, verify_password
 
 
-class LeagueAssignRequest(BaseModel):
+class TeamDelete(SQLModel):
+    name: int
+
+class LeagueActive(SQLModel):
+    name: str
+
+class LeagueAssignRequest(SQLModel):
     name: str
     
-
 class SimulationConfig(SQLModel):
     num_simulations: int
     league_name: str
@@ -92,7 +97,7 @@ class Admin(SQLModel, table=True):
 
 class Team(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    name: str = Field(index=True)
+    name: str = Field(unique=True, index=True)
     school_name: str
     password_hash: str
     score: int = 0

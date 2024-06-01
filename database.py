@@ -2,7 +2,7 @@ import logging
 import json
 import os
 import pytz
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from sqlalchemy.exc import OperationalError
 from sqlmodel import select, SQLModel
 from config import CURRENT_DB, ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
@@ -180,3 +180,22 @@ def get_league(session, league_name):
 def get_all_admin_leagues(session):
     leagues = session.exec(select(League)).all()
     return leagues
+
+def delete_team_from_db(session, team_name):
+    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    if team:
+        session.delete(team)
+        session.commit()
+        return {"status": "success", "message": f"Team '{team_name}' deleted successfully"}
+    else:
+        return {"status": "failed", "message": f"Team '{team_name}' not found"}
+    
+def toggle_league_active_status(session, league_name):
+    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    if league:
+        league.active = not league.active
+        session.add(league)
+        session.commit()
+        return {"status": "success", "message": f"League '{league_name}' active status toggled", "active": league.active}
+    else:
+        return {"status": "failed", "message": f"League '{league_name}' not found"}

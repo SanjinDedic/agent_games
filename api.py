@@ -19,7 +19,9 @@ from database import (
     save_submission,
     assign_team_to_league,
     get_league,
-    get_all_admin_leagues
+    get_all_admin_leagues,
+    delete_team_from_db,
+    toggle_league_active_status
 )
 
 @asynccontextmanager
@@ -167,6 +169,14 @@ async def submit_agent(league: LeagueAssignRequest, current_user: dict = Depends
     return assignment_status
 
 
+@app.post("/delete_team")
+async def delete_team_from_db(team: TeamDelete, session: Session = Depends(get_db)):
+    return delete_team_from_db(session, team.name)
+
+
+@app.post("/toggle_league_active")
+async def toggle_league_active(league: LeagueActive, session: Session = Depends(get_db)):
+    return toggle_league_active_status(session, league.name)
 
 
 if __name__ == "__main__":

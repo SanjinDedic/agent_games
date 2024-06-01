@@ -74,3 +74,25 @@ def test_league_assign(client: TestClient, db_session):
     print("League Assign Response:", response.json())
     assert response.status_code == 200
     assert response.json() == {"message": f"Team '{team_name}' assigned to league '{league_name}'"}
+
+
+
+def test_delete_team(client: TestClient, db_session):
+    # Create a team
+    team_name = "test_team"
+    team_password = "test_password"
+    team_school = "test_school"
+    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
+    assert response.status_code == 200
+
+    # Delete the team
+    response = client.post("/delete_team", json={"name": team_name})
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert response.json()["message"] == f"Team '{team_name}' deleted successfully"
+
+    # Try to delete a non-existent team
+    response = client.post("/delete_team", json={"name": "non_existent_team"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == "Team 'non_existent_team' not found"
