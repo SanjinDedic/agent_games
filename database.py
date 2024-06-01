@@ -199,3 +199,10 @@ def toggle_league_active_status(session, league_name):
         return {"status": "success", "message": f"League '{league_name}' active status toggled", "active": league.active}
     else:
         return {"status": "failed", "message": f"League '{league_name}' not found"}
+    
+def get_all_teams_from_db(session):
+    teams = session.exec(select(Team)).all()
+    #return team name, team_id and league_id
+    curated_teams = [{"name": team.name, "id": team.id, "league_id": team.league_id} for team in teams]
+    print(curated_teams)
+    return curated_teams

@@ -21,7 +21,8 @@ from database import (
     get_league,
     get_all_admin_leagues,
     delete_team_from_db,
-    toggle_league_active_status
+    toggle_league_active_status,
+    get_all_teams_from_db
 )
 
 @asynccontextmanager
@@ -183,8 +184,6 @@ async def toggle_league_active(league: LeagueActive, session: Session = Depends(
     return toggle_league_active_status(session, league.name)
 
 
-if __name__ == "__main__":
-    import uvicorn
-    from production_database_setup import setup_test_db
-    os.environ["TESTING"] = "0"
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/get_all_teams")
+def get_all_teams(session: Session = Depends(get_db)):
+    return get_all_teams_from_db(session)
