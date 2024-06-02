@@ -6,10 +6,14 @@ from datetime import datetime
 from auth import get_password_hash, verify_password
 
 
+
 class TeamDelete(SQLModel):
     name: str
 
 class LeagueActive(SQLModel):
+    name: str
+
+class LeagueResults(SQLModel):
     name: str
 
 class LeagueAssignRequest(SQLModel):
@@ -120,3 +124,10 @@ class Submission(SQLModel, table=True):
     timestamp: datetime
     team_id: int = Field(default=None, foreign_key='team.id')
     team: Team = Relationship(back_populates='submissions')
+
+
+class SimulationResult(SQLModel, table=True):
+    id: int = Field(primary_key=True, default=None)
+    league_name: str
+    results: str
+    timestamp: datetime

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import OperationalError
 from sqlmodel import select, SQLModel
 from config import CURRENT_DB, ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
-from models import Admin, League, Team, Submission
+from models import Admin, League, Team, Submission, SimulationResult
 from sqlalchemy import create_engine
 from sqlmodel import Session, select
 from auth import (
@@ -206,3 +206,17 @@ def get_all_teams_from_db(session):
     curated_teams = [{"name": team.name, "id": team.id, "league_id": team.league_id} for team in teams]
     print(curated_teams)
     return curated_teams
+
+def save_simulation_results(session, league_name, results):
+    aest_timezone = pytz.timezone('Australia/Sydney')
+    timestamp = datetime.now(aest_timezone)
+    simulation_result = SimulationResult(league_name=league_name, results=json.dumps(results), timestamp=timestamp)
+    session.add(simulation_result)
+    session.commit()
+
+
+def get_all_league_results_from_db(session, league_name):
+    #get all simulation results sorted by timestamp newest firstfor a given league
+    statement = select(SimulationResult).where(SimulationResult.league_name == league_name).order_by(SimulationResult.timestamp.desc())
+    results = session.exec(statement).all()
+    return results

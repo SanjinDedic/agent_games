@@ -22,7 +22,9 @@ from database import (
     get_all_admin_leagues,
     delete_team_from_db,
     toggle_league_active_status,
-    get_all_teams_from_db
+    get_all_teams_from_db,
+    save_simulation_results,
+    get_all_league_results_from_db
 )
 
 @asynccontextmanager
@@ -154,11 +156,13 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
     num_simulations = simulation_config.num_simulations
     try:
         results = run_simulations(num_simulations, get_league(session, league_name))
+        if league_name != "test_league":
+            save_simulation_results(session, league_name, results)
         return SimulationResult(results=results)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
-    
+
 @app.get("/get_all_admin_leagues")
 def get_all_admin_leagues(session: Session = Depends(get_db)):
     return get_all_admin_leagues(session)
@@ -192,3 +196,9 @@ async def toggle_league_active(league: LeagueActive, current_user: dict = Depend
 @app.get("/get_all_teams")
 def get_all_teams(session: Session = Depends(get_db)):
     return get_all_teams_from_db(session)
+
+@app.post("/get_all_league_results")
+def get_all_league_results(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can view league results")
+    return get_all_league_results_from_db(session, league.name)
