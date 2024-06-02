@@ -177,7 +177,7 @@ def get_league(session, league_name):
     else:
         return {"status": "failed", "message": f"League '{league_name}' not found"}
     
-def get_all_admin_leagues(session):
+def get_all_admin_leagues_from_db(session):
     leagues = session.exec(select(League)).all()
     return leagues
 

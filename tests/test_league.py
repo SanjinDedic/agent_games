@@ -122,3 +122,24 @@ def test_toggle_league_active(client: TestClient):
     # Toggle league active status without admin
     response = client.post("/toggle_league_active", json={"name": league_name})
     assert response.status_code == 401
+
+
+def test_get_all_admin_leagues(client: TestClient):
+    response = client.get("/get_all_admin_leagues")
+    print(response.json())
+    assert response.status_code == 200
+    '''
+    test for this:
+    [{'expiry_date': '2024-06-10T19:42:48.135167', 'active': True, 'folder': 'leagues/admin/unassigned', 'game': 'greedy_pig', 'id': 1, 'created_date': '2024-06-03T07:42:48.135163', 'name': 'unassigned', 'deleted_date': None, 'signup_link': None}, {'expiry_date': '2024-06-10T19:42:48.135263', 'active': True, 'folder': 'leagues/admin/comp_test', 'game': 'greedy_pig', 'id': 2, 'created_date': '2024-06-03T07:42:48.135262', 'name': 'comp_test', 'deleted_date': None, 'signup_link': None}]
+    '''
+    assert len(response.json()) == 2
+    assert response.json()[0]["name"] == "unassigned"
+    assert response.json()[1]["name"] == "comp_test"
+    assert response.json()[0]["active"] == True
+    assert response.json()[1]["active"] == True
+    assert response.json()[0]["game"] == "greedy_pig"
+    assert response.json()[1]["game"] == "greedy_pig"
+    assert response.json()[0]["folder"] == "leagues/admin/unassigned"
+    assert response.json()[1]["folder"] == "leagues/admin/comp_test"
+
+    

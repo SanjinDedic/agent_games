@@ -19,7 +19,7 @@ from database import (
     save_submission,
     assign_team_to_league,
     get_league,
-    get_all_admin_leagues,
+    get_all_admin_leagues_from_db,
     delete_team_from_db,
     toggle_league_active_status,
     get_all_teams_from_db,
@@ -165,7 +165,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 
 @app.get("/get_all_admin_leagues")
 def get_all_admin_leagues(session: Session = Depends(get_db)):
-    return get_all_admin_leagues(session)
+    return get_all_admin_leagues_from_db(session)
     
 
 @app.post("/league_assign")
