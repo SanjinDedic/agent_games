@@ -93,14 +93,13 @@ def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid team credentials")
 
 @app.post("/team_create")
-async def agent_create(user: TeamSignup, session: Session = Depends(get_db)):
-    print("calling /team_create with" + user.name + " " + user.password + " " + user.school_name)
+async def agent_create(user: TeamSignup, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Only admin users can create teams")
     try:
         return create_team(session=session, name=user.name, password=user.password, school=user.school_name)
     except Exception as e:
-        return {"status": "failed", "message": "Server error"}
-
-
+        return {"status": "failed", "message": "Server error {e}"}
 
 
 @app.post("/submit_agent")
@@ -159,6 +158,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
+    
 @app.get("/get_all_admin_leagues")
 def get_all_admin_leagues(session: Session = Depends(get_db)):
     return get_all_admin_leagues(session)
@@ -169,18 +169,23 @@ async def submit_agent(league: LeagueAssignRequest, current_user: dict = Depends
     print("winner")
     team_name = current_user["team_name"]
     print("team_name", team_name, "about to assign to league", league.name)
+    if current_user["role"] not in ["admin", "student"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can assign teams to leagues")
     assignment_status = assign_team_to_league(session, team_name, league.name)
     return assignment_status
 
 
 @app.post("/delete_team")
-async def delete_team(team: TeamDelete, session: Session = Depends(get_db)):
-    print("delete_team_from_db called")
+async def delete_team(team: TeamDelete, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can delete teams")
     return delete_team_from_db(session, team.name)
 
 
 @app.post("/toggle_league_active")
-async def toggle_league_active(league: LeagueActive, session: Session = Depends(get_db)):
+async def toggle_league_active(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can toggle league active status")
     return toggle_league_active_status(session, league.name)
 
 

@@ -97,24 +97,28 @@ def test_league_folder_creation_no_auth(client: TestClient):
 def test_toggle_league_active(client: TestClient):
     # Create a league
     league_name = "test_league"
-    response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"})
+    response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
 
     # Toggle league active status
-    response = client.post("/toggle_league_active", json={"name": league_name})
+    response = client.post("/toggle_league_active", json={"name": league_name}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert response.json()["active"] == False
 
     # Toggle league active status again
-    response = client.post("/toggle_league_active", json={"name": league_name})
+    response = client.post("/toggle_league_active", json={"name": league_name},headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert response.json()["message"] == f"League '{league_name}' active status toggled"
     assert response.json()["active"] == True
 
     # Try to toggle a non-existent league
-    response = client.post("/toggle_league_active", json={"name": "non_existent_league"})
+    response = client.post("/toggle_league_active", json={"name": "non_existent_league"},headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
     assert response.json()["message"] == "League 'non_existent_league' not found"
+
+    # Toggle league active status without admin
+    response = client.post("/toggle_league_active", json={"name": league_name})
+    assert response.status_code == 401

@@ -37,6 +37,14 @@ def client(db_session):
     yield client
     app.dependency_overrides.clear()
 
+def test_get_token(client: TestClient):
+    global ADMIN_VALID_TOKEN
+
+    login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+    ADMIN_VALID_TOKEN = token
+
 def test_team_login(client: TestClient):
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
     assert response.status_code == 200
@@ -57,11 +65,11 @@ def test_team_login(client: TestClient):
 
 
 def test_league_assign(client: TestClient, db_session):
-    global TEAM_TOKEN
+    global TEAM_TOKEN, ADMIN_VALID_TOKEN
     # Get the token for the team
     team_name = "BrunswickSC1"
     team_login_response = client.post(
-        "/team_login", json={"name": f"{team_name}", "password": "ighEMkOP"})
+        "/team_login", json={"name": f"{team_name}", "password": "ighEMkOP"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert team_login_response.status_code == 200
     TEAM_TOKEN = team_login_response.json()["access_token"]
     print("Team Token:", TEAM_TOKEN)
@@ -79,11 +87,12 @@ def test_league_assign(client: TestClient, db_session):
 
 
 def test_team_create(client: TestClient, db_session):
+    global ADMIN_VALID_TOKEN
     # Create a team
     team_name = "new_test_team"
     team_password = "new_test_password"
     team_school = "new_test_school"
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
+    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert "access_token" in response.json()
     assert response.json()["token_type"] == "bearer"
@@ -96,39 +105,42 @@ def test_team_create(client: TestClient, db_session):
     assert team.verify_password(team_password)
 
     # Try to create a team with the same name
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
+    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
 
     # Try to create a team with missing fields
-    response = client.post("/team_create", json={"name": "missing_fields_team", "password": team_password})
+    response = client.post("/team_create", json={"name": "missing_fields_team"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 422
 
-    response = client.post("/team_create", json={"name": "missing_fields_team", "school": team_school})
+    response = client.post("/team_create", json={"name": "missing_fields_team", "school": team_school}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 422
 
-    response = client.post("/team_create", json={"password": team_password, "school": team_school})
+    response = client.post("/team_create", json={"password": team_password, "school": team_school}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 422
 
-
+    # Try to create a team with no authorization
+    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
+    assert response.status_code == 401
 
 def test_delete_team(client: TestClient):
+    global ADMIN_VALID_TOKEN
     # Create a team
     team_name = "test_team"
     team_password = "test_password"
     team_school = "test_school"
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
+    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
 
     # Delete the team
-    response = client.post("/delete_team", json={"name": team_name})
+    response = client.post("/delete_team", json={"name": team_name}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     print("Delete Team Response:", response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert response.json()["message"] == f"Team '{team_name}' deleted successfully"
 
     # Try to delete a non-existent team
-    response = client.post("/delete_team", json={"name": "non_existent_team"})
+    response = client.post("/delete_team", json={"name": "non_existent_team"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
     assert response.json()["message"] == "Team 'non_existent_team' not found"

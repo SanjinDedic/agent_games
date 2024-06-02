@@ -26,10 +26,10 @@ class LeagueSignUp(SQLModel):
     name: str
     game: str
 
-
+#name and password are required!
 class TeamSignup(SQLModel):
-    name: str = Field(index=True)
-    school_name: str
+    name: str
+    school_name: str = "Not Available"
     password: str
     score: int = 0
     color: str = "rgb(171,239,177)"
