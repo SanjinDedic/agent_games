@@ -38,3 +38,6 @@ gen_prompt_project.py
 gen_prompt_game.py
 project_code.md
 league_code.md
+
+# Ignore all db files
+*.db
