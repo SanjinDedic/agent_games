@@ -6,7 +6,6 @@ from datetime import datetime
 from auth import get_password_hash, verify_password
 
 
-
 class TeamDelete(SQLModel):
     name: str
 
@@ -38,7 +37,7 @@ class TeamSignup(SQLModel):
     score: int = 0
     color: str = "rgb(171,239,177)"
 
-    
+
 class TeamLogin(SQLModel):
     name: str
     password: str

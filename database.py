@@ -168,7 +168,7 @@ def assign_team_to_league(session, team_name, league_name):
     team_name.league_id = league.id
     session.add(team_name)
     session.commit()
-    return {"message": f"Team '{team_name.name}' assigned to league '{league.name}'"}
+    return {"status": "success", "message": f"Team '{team_name.name}' assigned to league '{league.name}'"}
 
 def get_league(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()

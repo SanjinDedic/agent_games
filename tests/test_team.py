@@ -63,7 +63,7 @@ def test_team_login(client: TestClient):
     response = client.post("/team_login", json={"name": " ", "password": "ighEMkOP"})
     assert response.status_code == 422
 
-
+## Review the test (sending admin token instead of team token on team_login)
 def test_league_assign(client: TestClient, db_session):
     global TEAM_TOKEN, ADMIN_VALID_TOKEN
     # Get the token for the team
