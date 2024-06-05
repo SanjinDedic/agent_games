@@ -4,6 +4,7 @@ from models import League, Team, Admin
 from auth import get_password_hash
 from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
 from datetime import datetime, timedelta
+from database import create_administrator
 
 def create_and_populate_database():
     os.environ["TESTING"] = "0"  # Set the TESTING environment variable to "0"
@@ -14,6 +15,7 @@ def create_and_populate_database():
 
     with Session(engine) as session:
         # Create an admin league called unnassigned
+        create_administrator(session, 'Administrator', 'BOSSMAN')
         admin_leagues = []
         unnassigned = League(
             name="unassigned",
