@@ -216,7 +216,27 @@ def save_simulation_results(session, league_name, results):
 
 
 def get_all_league_results_from_db(session, league_name):
-    #get all simulation results sorted by timestamp newest firstfor a given league
+    # Get all simulation results sorted by timestamp (newest first) for a given league
     statement = select(SimulationResult).where(SimulationResult.league_name == league_name).order_by(SimulationResult.timestamp.desc())
     results = session.exec(statement).all()
-    return results
+
+    # Deserialize the 'results' column and return the updated results
+    return [
+        {
+            "id": result.id,
+            "league_name": result.league_name,
+            "results": transform_result(json.loads(result.results)),
+            "timestamp": result.timestamp
+        }
+        for result in results
+    ]
+
+def transform_result(result_data):
+    # Sort the total_points dictionary by values
+    sorted_total_points = dict(sorted(result_data["total_points"].items(), key=lambda item: item[1], reverse=True))
+
+    # Construct the new dictionary
+    return {
+        "total_points": sorted_total_points,
+        "total_wins": result_data["total_wins"]
+    }

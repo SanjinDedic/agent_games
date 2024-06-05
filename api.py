@@ -202,3 +202,32 @@ def get_all_league_results(league: LeagueActive, current_user: dict = Depends(ge
     if current_user["role"] != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can view league results")
     return get_all_league_results_from_db(session, league.name)
+
+@app.post("/get_all_league_results2")
+def get_all_league_results2(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    import json
+    #get all simulation results sorted by timestamp newest firstfor a given league
+    statement = select(SimulationResult).where(SimulationResult.league_name == league.name).order_by(SimulationResult.timestamp.desc())
+    results = session.exec(statement).all()
+    transformed_results = []
+    for result in results:
+        # Parse the JSON string
+        result_data = json.loads(result.results)
+
+        # Sort the total_points dictionary by values
+        sorted_total_points = dict(sorted(result_data["total_points"].items(), key=lambda item: item[1], reverse=True))
+
+        # Construct the new dictionary
+        transformed_result = {
+            "total_points": sorted_total_points,
+            "total_wins": result_data["total_wins"]
+        }
+
+        # Add the transformed result to the list
+        transformed_results.append({
+            "id": result.id,
+            "league_name": result.league_name,
+            "results": transformed_result,
+            "timestamp": result.timestamp
+        })
+    return transformed_results

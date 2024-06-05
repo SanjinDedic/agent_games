@@ -72,6 +72,8 @@ def test_get_all_league_results(client: TestClient):
         json={"name": "comp_test"},
         headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
 )
+    print("Version 1")
+    print(league_results_response.json())
     assert league_results_response.status_code == 200
     assert isinstance(league_results_response.json(), list)
 
