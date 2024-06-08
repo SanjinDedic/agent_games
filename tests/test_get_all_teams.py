@@ -38,7 +38,8 @@ def test_get_all_teams(client: TestClient, db_session: Session):
     # Get all teams from the database
     response = client.get("/get_all_teams")
     assert response.status_code == 200
-
+    print("Response JSON:")
+    print(response.json())
     # Check if the response contains all the teams
     teams = db_session.exec(select(Team)).all()
     assert len(response.json()) == len(teams)

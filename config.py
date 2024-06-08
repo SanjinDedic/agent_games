@@ -17,7 +17,6 @@ def get_database_url():
     if os.environ.get("TESTING"):
         test_db_path = os.path.join(ROOT_DIR, "test.db")  # Use a relative path for the test database
         return f"sqlite:///{test_db_path}"
-        #Try an in memory db
-        #return "sqlite:///:memory:"
     else:
-        return f"sqlite:///{CURRENT_DB}"
+        teams_db_path = os.path.join(ROOT_DIR, "teams.db")  # Use a relative path for the production database
+        return f"sqlite:///{teams_db_path}"
