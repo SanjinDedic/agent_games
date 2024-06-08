@@ -14,7 +14,7 @@ GUEST_LEAGUE_EXPIRY = 24 #hours
 ADMIN_LEAGUE_EXPIRY = 180 #1 week and 12 hours
 
 def get_database_url():
-    if os.environ.get("TESTING"):
+    if os.environ.get("TESTING") == "1":
         test_db_path = os.path.join(ROOT_DIR, "test.db")  # Use a relative path for the test database
         return f"sqlite:///{test_db_path}"
     else:
