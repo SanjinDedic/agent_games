@@ -1,147 +1,100 @@
-# 🐷 Greedy Pig Game Simulation Project
+# 🎮 Multi-Game Simulation Platform
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)  [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml)  [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
 ## 🌟 Overview
-The Greedy Pig Game Simulation is a Python-based project that simulates the popular dice game, Greedy Pig. It's a simple dice game with very interesting and unpredictable dynamics when played by a large number of players. This primary school game's optimal play has been a subject of many academic papers and discussions. More information can be found here:
+The Multi-Game Simulation Platform is a Python-based project that allows users to simulate and play various games, starting with the popular dice game, Greedy Pig. The platform has been expanded to support multiple games and includes a front-end interface for enhanced user experience.
+
+## 🚀 Getting Started
+To get started with the Multi-Game Simulation Platform, follow these steps:
+
+1. Clone the repository: `git clone https://github.com/your-username/multi-game-simulation.git`
+2. Install the required dependencies: `pip install -r requirements.txt`
+3. Set up the database by running the database initialization script: `python initialize_db.py`
+4. Start the FastAPI server: `uvicorn api:app --reload`
+5. Access the platform through the provided front-end interface.
+
+## 🎲 Greedy Pig Game
+Greedy Pig is the first game implemented on the platform. It's a simple dice game with interesting and unpredictable dynamics when played by a large number of players. The game's optimal play has been a subject of many academic papers and discussions. More information can be found here:
 
 - [The Statistical Problem of Greedy Pigs](https://www.smh.com.au/education/the-statistical-problem-of-greedy-pigs-20140728-3cpk8.html)
 - [Optimal Play of the Dice Game "Pig"](https://cupola.gettysburg.edu/cgi/viewcontent.cgi?article=1003&context=csfac)
 
-## 🚀 Getting Started
-The simplest way to play:
-- Use `single_file_game`.
-- Modify one or more of the players.
-- Modify the `assign_points()` function.
+## 🏗️ Project Structure
+The project is structured as follows:
 
-👥 To play with friends or against other people:
-- Fork this repl: [agentSIMX](https://replit.com/@SanjinDedic/agentSIMX).
-- Use Replit in multiplayer mode. This allows each player to edit an agent and run a simulation.
+- `api.py`: The main FastAPI application file that handles API endpoints and request handling.
+- `auth.py`: Contains authentication-related functions and utilities.
+- `config.py`: Stores configuration variables and settings for the project.
+- `database.py`: Handles database operations and interactions.
+- `models.py`: Defines the database models and schemas used in the project.
+- `games/`: A directory that contains game-specific files and implementations.
+  - `greedy_pig/`: The Greedy Pig game implementation.
+    - `greedy_pig.py`: The main game logic for Greedy Pig.
+    - `greedy_pig_sim.py`: Simulation and animation functions for Greedy Pig.
+    - `leagues/`: A directory that stores league-specific files and player implementations.
+- `validation.py`: Contains validation functions for agent code and simulations.
+- `requirements.txt`: Lists the project dependencies.
 
-## 🏠 How to Host a Game
-To host the Greedy Pig Game Simulation, you will need:
-- A Linux server (nginx or Apache2).
-- Run `python3 api.py` to start the FastAPI application.
-- For 24/7 agent reception, configure `systemd` to manage the FastAPI app as a service.
-- Ensure all agents are located in the `classes` folder.
-- Create credentials for each participant by modifying `teams.json`
-- Provide each player with credentials and a link to the `agent_send.py` script from this repo to send their agents
-- To run a simulation:
-  ```bash
-  python3 live_table.py -sims 20000 -refresh 500
-  ```
+## 🌐 API Endpoints
+The following API endpoints are available:
 
-## 📚 Project Structure
+- `/`: Root endpoint for testing server status.
+- `/league_create`: Creates a new league.
+- `/league_join/{link}`: Allows users to join a league using a specific link.
+- `/team_login`: Handles team login and authentication.
+- `/team_create`: Creates a new team (admin only).
+- `/submit_agent`: Submits an agent code for a specific team.
+- `/admin_login`: Handles admin login and authentication.
+- `/run_simulation`: Runs a simulation for a specific league (admin only).
+- `/get_all_admin_leagues`: Retrieves all admin leagues.
+- `/league_assign`: Assigns a team to a league.
+- `/delete_team`: Deletes a team (admin only).
+- `/toggle_league_active`: Toggles the active status of a league (admin only).
+- `/get_all_teams`: Retrieves all teams.
+- `/get_all_league_results`: Retrieves results for a specific league (admin only).
 
+## 🔒 Security Features
+The platform includes the following security features:
 
-### `player.py`
-This file defines the `Player` class, which serves as the base class for all agents in the game. Key aspects include:
+- Authentication and authorization using JSON Web Tokens (JWT).
+- Password hashing using the `bcrypt` algorithm.
+- Input validation and sanitization to prevent script injection and unauthorized access.
+- CORS (Cross-Origin Resource Sharing) middleware for secure cross-origin requests.
 
-- **`Player` Class**: Abstract base class for players in the game.
-  - **`__init__` Method**: Initializes player with name, password, banked and unbanked money, banking status, and color.
+## 🌐 Front-end Interface
+The platform includes a user-friendly front-end interface built with modern web technologies. The front-end communicates with the FastAPI backend through API requests and provides an intuitive way for users to interact with the platform, create and join leagues, submit agents, and view simulation results.
 
-- **Methods**:
-  - **`reset_unbanked_money` Method**: Resets the player's unbanked money to zero.
-  - **`bank_money` Method**: Transfers unbanked money to banked money and resets unbanked money.
-  - **`reset_turn` Method**: Resets the player's banking status for the new turn.
-  - **`my_rank` Method**: Determines the player's rank based on total points in comparison to others.
-  - **`make_decision` Method**: Abstract method to be implemented in subclasses for player decision-making.
+## 🔧 Customization and Expansion
+The Multi-Game Simulation Platform is designed to be easily customizable and expandable. You can add new games by following these steps:
 
+1. Create a new directory for the game inside the `games/` directory.
+2. Implement the game logic and simulation functions in separate Python files.
+3. Define the necessary API endpoints and request handlers in `api.py`.
+4. Update the front-end interface to include the new game and its features.
 
-### `game.py`
-Runs a single game of Greedy Pig. It needs a list of player objects to run.
-
-- **`Game` Class**: Manages the simulation of the game.
-  - **`__init__` Method**: Initializes the game with players, active players list, player banked list, round number, and roll number.
-
-- **Methods**:
-  - **`roll_dice` Method**: Returns a random number between 1 and 6, simulating a dice roll.
-  - **`get_game_state` Method**: Retrieves the current state of the game including active players, round number, etc.
-  - **`play_round` Method**: Conducts a single round, managing player turns and scoring.
-  - **`play_game` Method**: Controls the overall flow of the game, initiating and ending rounds.
-
-
-### `game_simulation.py`
-Runs a specified numbber of games and contains several methods of displaying the result
-
-- **`GameSimulation` Class**: Manages the simulation of the game.
-  - **`__init__` Method**: list attributes
-
-- **Methods**:
-  - **`set_folder`**: Sets the folder name for loading player classes.
-  - **`load_team_colors`**: Assigns a unique color to each team (colors will work on most terminals) 
-  - **`run_simulation_many_times()`**: Runs the game simulation multiple times, with parameters for the number of simulations, verbosity, and class file location.
-  - **`run_simulation_with_animation()`**:
-  - The script includes a formatted table printout with colors to enhance readability and user engagement. This is achieved using the `Table` class from the `rich.table` module. The table dynamically updates during the game, showing player positions, scores, and other relevant information in a visually appealing manner.
-  - **`assign_points()`**: Assigns points to players based on game results, with an optional maximum score parameter.
-  - **`get_all_player_classes_from_folder()`**: Retrieves all player class definitions from a specified folder, aiding in dynamic player class integration.
-  - **`format_results()`**: formats the results for use in the animated table
+## 🤝 Contributing
+Contributions to the Multi-Game Simulation Platform are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request on the project's GitHub repository.
 
 
-### `agent_send.py`
+## 📄 License
+This work is licensed under a [Creative Commons Attribution-NonCommercial 4.0 International License](http://creativecommons.org/licenses/by-nc/4.0/).
 
-This script deals with sending the agent to the server for participation in the game. It includes:
+You are free to:
+- Share — copy and redistribute the material in any medium or format
+- Adapt — remix, transform, and build upon the material
 
-- **HTTP Request**: Sends the agent's code to the server using an HTTP POST request. The request requires credentials (`team_name` and `password`).
-- **Server Response**: The server's response indicates whether the agent is accepted and validated. It also provides feedback on the agent's performance.
+Under the following terms:
+- Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+- NonCommercial — You may not use the material for commercial purposes.
 
-### `live_table.py`
+No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
 
-- Utilizes command-line arguments for simulation customization, including number of simulations, refresh rate, and player class folder.
-- Uses `run_simulation_with_animation()` from the `game_simulation.py` to create a visually appealing table
+Notices:
+- You do not have to comply with the license for elements of the material in the public domain or where your use is permitted by an applicable exception or limitation.
+- No warranties are given. The license may not give you all of the permissions necessary for your intended use. For example, other rights such as publicity, privacy, or moral rights may limit how you use the material.
 
-To run the script, use the following command in the terminal:
+For more information, please see the full text of the [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/legalcode).
 
-```bash
-python3 live_table.py -sims 12000 -refresh 500 -folder classes-by-strategy
-```
-![Animated Ranking Table](table.PNG)
+Make sure to include a link to the full text of the CC BY-NC 4.0 license, as provided above. You can also include a separate `LICENSE` file in your project repository containing the complete license text.
 
-- `-sims 12000`: Specifies the number of game simulations to run. In this example, it will run 20,000 simulations.
-- `-refresh 500`: Sets the refresh rate for the animation in milliseconds. Here, it's set to 500 milliseconds.
-- `-folder classes-by-strategy`: Indicates the folder where the player class files are located. This allows the script to access different player strategies for the simulations.
-
-
-## 🖥️ api.py
-Serves as the backbone for agent validation and game management. Includes:
-
-### Endpoints
-- **Agent Upload**: For uploading agent files.
-- **Simulation Trigger**: To start a simulation.
-- **Status Check**: For current game status.
-
-### Validation of Agents
-Includes checks for script injection prevention, file system access control, and game logic adherence.
-
-### Security Features
-- **Rate Limiting**: To prevent API abuse.
-- **CORS Middleware**: For secure cross-origin requests.
-- **Error Handling**: For clear feedback and preventing sensitive information leakage.
-
-## 📁 Repository Structure
-
-```sh
-└── agent_games/
-    ├── agent_send.py
-    ├── animated_multi_player_game.py
-    ├── api.py
-    ├── colors.json
-    ├── live_table.py
-    ├── multi_player_game.py
-    ├── player_base.py
-    ├── single_file_game.py
-    ├── stress_tests/
-    │   └── stress_test.py
-    ├── teams.json
-    ├── classes/
-    │   └── .nothing
-    ├── classes-by-strategy/
-    │   ├── AI_Agent.py
-    │   ├── . . 11 more player classes
-    ├── test_classes/
-    │   ├── AlwaysBank.py
-    │   ├── . . 8 more player classes
-    └── vcc_classes/
-        ├── .nothing
-        ├── AlwaysBank.py
-        ├── . . 16 more player classes
-```
+Please note that while this license allows for non-commercial use, sharing, and adaptation of your work, it does not explicitly grant permissions for educational institutions. If you want to specifically allow educational use, you may consider using the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) license instead, which includes provisions for educational purposes.
