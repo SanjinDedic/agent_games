@@ -24,7 +24,8 @@ from database import (
     toggle_league_active_status,
     get_all_teams_from_db,
     save_simulation_results,
-    get_all_league_results_from_db
+    get_all_league_results_from_db,
+    allow_submission
 )
 
 @asynccontextmanager
@@ -122,6 +123,10 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         else:
             league_folder = f"leagues/user/{team.league.name}"
         print(team_name, user_role, team.league.name)
+
+        # Check if the team can make a submission
+        if not allow_submission(session, team.id):
+            return {"status": "error", "message": "You can only make 2 submissions per minute."}
 
         # Save the submitted code in a Python file named after the team
         file_path = os.path.join(ROOT_DIR,"games","greedy_pig",league_folder, f"{team_name}.py")

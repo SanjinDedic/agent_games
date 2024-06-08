@@ -75,7 +75,8 @@ def run_simulations(num_simulations, league):
     # Create a dictionary to store the results
     results = {
         "total_points": dict(sorted_total_points),
-        "total_wins": total_wins
+        "total_wins": total_wins,
+        "num_simulations": num_simulations
     }
 
     return results

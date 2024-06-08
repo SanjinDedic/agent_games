@@ -56,7 +56,7 @@ def run_agent_simulation(code, team_name):
     print("file written")
     #step 2 run 100 simulations
     try:
-        results = run_simulations(100, test_league)
+        results = run_simulations(500, test_league)
         print("simulations run")
         print(results)
         return results

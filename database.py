@@ -215,6 +215,18 @@ def save_simulation_results(session, league_name, results):
     session.commit()
 
 
+def allow_submission(session, team_id):
+    one_minute_ago = datetime.now(pytz.timezone('Australia/Sydney')) - timedelta(minutes=1)
+    recent_submissions = session.exec(
+        select(Submission)
+        .where(Submission.team_id == team_id)
+        .where(Submission.timestamp >= one_minute_ago)
+    ).all()
+
+    return len(recent_submissions) <= 2
+
+
+
 def get_all_league_results_from_db(session, league_name):
     # Get all simulation results sorted by timestamp (newest first) for a given league
     statement = select(SimulationResult).where(SimulationResult.league_name == league_name).order_by(SimulationResult.timestamp.desc())
