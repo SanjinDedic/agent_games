@@ -27,6 +27,9 @@ from database import (
     get_all_league_results_from_db
 )
 
+os.environ["TESTING"] = "0"  # Set the TESTING environment variable to "0"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
