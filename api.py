@@ -42,6 +42,7 @@ app.add_middleware(
 
 def get_db():
     engine = get_db_engine()
+    print(f"Database URL: {engine.url}")  # Add this line
     with Session(engine) as session:
         yield session
 
