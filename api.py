@@ -163,7 +163,9 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
     try:
         results = run_simulations(num_simulations, get_league(session, league_name))
         if league_name != "test_league":
-            save_simulation_results(session, league_name, results)
+            league = get_league(session, league_name)
+            print("league", league, league.id, results)
+            save_simulation_results(session, league.id, results)
         return SimulationResult(results=results)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

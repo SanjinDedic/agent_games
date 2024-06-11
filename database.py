@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import OperationalError
 from sqlmodel import select, SQLModel
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
-from models import Admin, League, Team, Submission, SimulationResult
+from models import Admin, League, Team, Submission, SimulationResult, SimulationResultItem
 from sqlalchemy import create_engine
 from sqlmodel import Session, select
 from auth import (
@@ -207,11 +207,23 @@ def get_all_teams_from_db(session):
     print(curated_teams)
     return curated_teams
 
-def save_simulation_results(session, league_name, results):
-    aest_timezone = pytz.timezone('Australia/Sydney')
+def save_simulation_results(session, league_id, results):
+    aest_timezone = pytz.timezone("Australia/Sydney")
     timestamp = datetime.now(aest_timezone)
-    simulation_result = SimulationResult(league_name=league_name, results=json.dumps(results), timestamp=timestamp)
+    print("SAVING SIMULATION RESULTS")
+    simulation_result = SimulationResult(league_id=league_id, timestamp=timestamp)
     session.add(simulation_result)
+    print("SAVED SIMULATION RESULT: ", simulation_result)
+    session.flush()  # Flush to generate the simulation_result_id
+    print("FLUSHED SIMULATION RESULT ")
+    for team_name, score in results.items():
+        team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+        if team:
+            print("TEAM FOUND: ", team.name)
+            result_item = SimulationResultItem(simulation_result_id=simulation_result.id, team_id=team.id, score=score)
+            print("CREATED RESULT ITEM: ")
+            session.add(result_item)
+
     session.commit()
 
 
@@ -227,28 +239,7 @@ def allow_submission(session, team_id):
 
 
 
-def get_all_league_results_from_db(session, league_name):
-    # Get all simulation results sorted by timestamp (newest first) for a given league
-    statement = select(SimulationResult).where(SimulationResult.league_name == league_name).order_by(SimulationResult.timestamp.desc())
+def get_all_league_results_from_db(session, league_id):
+    statement = select(SimulationResult).where(SimulationResult.league_id == league_id).order_by(SimulationResult.timestamp.desc())
     results = session.exec(statement).all()
-
-    # Deserialize the 'results' column and return the updated results
-    return [
-        {
-            "id": result.id,
-            "league_name": result.league_name,
-            "results": transform_result(json.loads(result.results)),
-            "timestamp": result.timestamp
-        }
-        for result in results
-    ]
-
-def transform_result(result_data):
-    # Sort the total_points dictionary by values
-    sorted_total_points = dict(sorted(result_data["total_points"].items(), key=lambda item: item[1], reverse=True))
-
-    # Construct the new dictionary
-    return {
-        "total_points": sorted_total_points,
-        "total_wins": result_data["total_wins"]
-    }
+    return results
