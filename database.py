@@ -210,19 +210,16 @@ def get_all_teams_from_db(session):
 def save_simulation_results(session, league_id, results):
     aest_timezone = pytz.timezone("Australia/Sydney")
     timestamp = datetime.now(aest_timezone)
-    print("SAVING SIMULATION RESULTS")
-    simulation_result = SimulationResult(league_id=league_id, timestamp=timestamp)
+    simulation_result = SimulationResult(league_id=league_id, timestamp=timestamp, num_simulations=results["num_simulations"])
     session.add(simulation_result)
     print("SAVED SIMULATION RESULT: ", simulation_result)
     session.flush()  # Flush to generate the simulation_result_id
-    print("FLUSHED SIMULATION RESULT ")
     for team_name, score in results["total_points"].items():
         print("TEAM NAME: ", team_name, "SCORE: ", score)
         team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
         if team:
-            print("TEAM FOUND: ", team.name)
-            result_item = SimulationResultItem(simulation_result_id=simulation_result.id, team_id=team.id, score=score)
-            print("CREATED RESULT ITEM: ")
+            wins = results["total_wins"][team.name]
+            result_item = SimulationResultItem(simulation_result_id=simulation_result.id, team_id=team.id, score=score, wins=wins)
             session.add(result_item)
 
     session.commit()
@@ -269,5 +266,14 @@ def get_published_result(session,league_name):
         return {"status": "failed", "message": f"League with name '{league_name}' not found"}
     for sim in league.simulation_results:
         if sim.published:
-            return sim
+            print("HERE IS THE SIMULATION: ", sim)
+            # we need to reconstruc this structure {'total_points': {'Bank10': 42, 'Bank15': 39, 'BankRoll3': 35, 'Bank5': 25, 'AlwaysBank': 10}, 'total_wins': {'Bank15': 5, 'BankRoll3': 1, 'AlwaysBank': 0, 'Bank5': 0, 'Bank10': 5}, 'num_simulations': 10}
+            total_points = {}
+            total_wins = {}
+            num_simulations = sim.num_simulations
+            for result in sim.simulation_results:
+                total_points[result.team.name] = result.score
+                total_wins[result.team.name] = result.wins
+
+            return {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
     return {"status": "failed", "message": f"Published result for league '{league_name}' not found"}

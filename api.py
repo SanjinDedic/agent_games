@@ -222,6 +222,6 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
     return {"status": "success", "message": "Results published successfully"}
 
 
-app.post("/get_published_results_for_league")
-def get_published_results_for_league(league: LeagueResults, session: Session = Depends(get_db)):
-    return get_published_result(session, league.league_name)
+@app.post("/get_published_results_for_league")
+def get_published_results_for_league(league: LeagueActive, session: Session = Depends(get_db)):
+    return get_published_result(session, league.name)

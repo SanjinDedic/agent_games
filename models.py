@@ -134,6 +134,7 @@ class SimulationResult(SQLModel, table=True):
     timestamp: datetime
     simulation_results: List["SimulationResultItem"] = Relationship(back_populates="simulation_result")
     published: bool = False # this needs to be restricted to only one result per league
+    num_simulations: int = 0 #has to be there
 
 
 class SimulationResultItem(SQLModel, table=True):
@@ -142,4 +143,5 @@ class SimulationResultItem(SQLModel, table=True):
     simulation_result: SimulationResult = Relationship(back_populates="simulation_results")
     team_id: int = Field(foreign_key="team.id")
     team: Team = Relationship()
-    score: int
+    score: int = 0
+    wins: int = 0

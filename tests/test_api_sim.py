@@ -189,3 +189,37 @@ def test_publish_one_simulation_per_league(client: TestClient, db_session: Sessi
     # Check if the second simulation results are not marked as published in the database
     simulation_result2 = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id2)).one()
     assert simulation_result2.published == True
+
+def test_get_published_results_for_league(client: TestClient, db_session: Session):
+    global ADMIN_TOKEN
+    # Run a simulation
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 10},
+        headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
+    )
+    assert simulation_response.status_code == 200
+    simulation_id = simulation_response.json()["simulation_id"]
+
+    # Publish the simulation results
+    publish_response = client.post(
+        "/publish_results",
+        json={"league_name": "comp_test", "id": simulation_id},
+        headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
+    )
+    assert publish_response.status_code == 200
+    assert publish_response.json()["status"] == "success"
+    assert publish_response.json()["message"] == "Results published successfully"
+
+    # Get the published results for the league
+    get_published_response = client.post(
+        "/get_published_results_for_league",
+        json={"name": "comp_test"}
+    )
+    assert get_published_response.status_code == 200
+    published_result = get_published_response.json()
+    print(published_result)
+    assert "id" in published_result
+    # Check if the simulation results are marked as published in the database
+    simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
+    assert simulation_result.published == True
