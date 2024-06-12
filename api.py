@@ -8,6 +8,7 @@ import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
 from contextlib import asynccontextmanager
 from models import *
+from utils import transform_result
 from auth import get_current_user, create_access_token, decode_id
 from database import (
     create_league,
@@ -25,7 +26,9 @@ from database import (
     get_all_teams_from_db,
     save_simulation_results,
     get_all_league_results_from_db,
-    allow_submission
+    allow_submission,
+    publish_sim_results,
+    get_published_result
 )
 
 @asynccontextmanager
@@ -153,7 +156,7 @@ def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
     return result
 
 
-@app.post("/run_simulation", response_model=SimulationResult)
+@app.post("/run_simulation")
 def run_simulation(simulation_config: SimulationConfig, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can run simulations")
@@ -164,12 +167,11 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         results = run_simulations(num_simulations, get_league(session, league_name))
         if league_name != "test_league":
             league = get_league(session, league_name)
-            print("league", league, league.id, results)
-            save_simulation_results(session, league.id, results)
-        return SimulationResult(results=results)
+            sim_id = save_simulation_results(session, league.id, results)
+            print("results saved", results)
+        return transform_result(results,sim_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    
+        print(f"Error running simulation: {str(e)}")  # Add logging statement
 
 @app.get("/get_all_admin_leagues")
 def get_all_admin_leagues(session: Session = Depends(get_db)):
@@ -210,3 +212,16 @@ def get_all_league_results(league: LeagueActive, current_user: dict = Depends(ge
     if current_user["role"] != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can view league results")
     return get_all_league_results_from_db(session, league.name)
+
+
+@app.post("/publish_results")
+def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can publish league results")
+    publish_sim_results(session, sim.league_name, sim.id)
+    return {"status": "success", "message": "Results published successfully"}
+
+
+app.post("/get_published_results_for_league")
+def get_published_results_for_league(league: LeagueResults, session: Session = Depends(get_db)):
+    return get_published_result(session, league.league_name)

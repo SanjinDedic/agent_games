@@ -216,7 +216,8 @@ def save_simulation_results(session, league_id, results):
     print("SAVED SIMULATION RESULT: ", simulation_result)
     session.flush()  # Flush to generate the simulation_result_id
     print("FLUSHED SIMULATION RESULT ")
-    for team_name, score in results.items():
+    for team_name, score in results["total_points"].items():
+        print("TEAM NAME: ", team_name, "SCORE: ", score)
         team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
         if team:
             print("TEAM FOUND: ", team.name)
@@ -225,6 +226,7 @@ def save_simulation_results(session, league_id, results):
             session.add(result_item)
 
     session.commit()
+    return simulation_result.id
 
 
 def allow_submission(session, team_id):
@@ -243,3 +245,29 @@ def get_all_league_results_from_db(session, league_id):
     statement = select(SimulationResult).where(SimulationResult.league_id == league_id).order_by(SimulationResult.timestamp.desc())
     results = session.exec(statement).all()
     return results
+
+def publish_sim_results(session, league_name, sim_id):
+    simulation = session.exec(select(SimulationResult).where(SimulationResult.id == sim_id)).one_or_none()
+    if not simulation:
+        return {"status": "failed", "message": f"Simulation with ID '{sim_id}' not found"}
+    # set all published results to false for this league
+    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    if not league:
+        return {"status": "failed", "message": f"League with name '{league_name}' not found"}
+    for sim in league.simulation_results:
+        sim.published = False
+
+    simulation.published = True
+    session.add(simulation)
+    session.commit()
+    return {"status": "success", "message": f"Simulation results for league '{league_name}' published successfully"}
+
+
+def get_published_result(session,league_name):
+    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    if not league:
+        return {"status": "failed", "message": f"League with name '{league_name}' not found"}
+    for sim in league.simulation_results:
+        if sim.published:
+            return sim
+    return {"status": "failed", "message": f"Published result for league '{league_name}' not found"}
