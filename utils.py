@@ -27,3 +27,16 @@ def add_teams_from_json(session, teams_json_path):
         raise ValueError(f"Error: Invalid JSON format in '{teams_json_path}': {str(e)}")
     except (ValueError, KeyError) as e:  # Catch specific errors for better messages
         raise ValueError(f"Error processing team data from JSON: {str(e)}")
+    
+
+def transform_result(result_data, sim_id):
+    # Sort the total_points dictionary by values
+    sorted_total_points = dict(sorted(result_data["total_points"].items(), key=lambda item: item[1], reverse=True))
+
+    # Construct the new dictionary
+    return {
+        "total_points": sorted_total_points,
+        "total_wins": result_data["total_wins"],
+        "num_simulations": result_data["num_simulations"],
+        "simulation_id": sim_id
+    }

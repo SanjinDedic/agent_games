@@ -13,7 +13,8 @@ class LeagueActive(SQLModel):
     name: str
 
 class LeagueResults(SQLModel):
-    name: str
+    league_name: str
+    id: int
 
 class LeagueAssignRequest(SQLModel):
     name: str
@@ -84,6 +85,7 @@ class League(SQLModel, table=True):
     folder: str | None = None
     teams: List['Team'] = Relationship(back_populates='league')
     game: str
+    simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
 
 
 class Admin(SQLModel, table=True):
@@ -127,6 +129,17 @@ class Submission(SQLModel, table=True):
 
 class SimulationResult(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    league_name: str
-    results: str
+    league_id: int = Field(foreign_key="league.id")
+    league: League = Relationship(back_populates="simulation_results")
     timestamp: datetime
+    simulation_results: List["SimulationResultItem"] = Relationship(back_populates="simulation_result")
+    published: bool = False # this needs to be restricted to only one result per league
+
+
+class SimulationResultItem(SQLModel, table=True):
+    id: int = Field(primary_key=True, default=None)
+    simulation_result_id: int = Field(foreign_key="simulationresult.id")
+    simulation_result: SimulationResult = Relationship(back_populates="simulation_results")
+    team_id: int = Field(foreign_key="team.id")
+    team: Team = Relationship()
+    score: int
