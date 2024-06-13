@@ -42,7 +42,7 @@ def test_get_token(client: TestClient):
 
     login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
     assert login_response.status_code == 200
-    token = login_response.json()["access_token"]
+    token = login_response.json()["data"]["access_token"]
     ADMIN_VALID_TOKEN = token
 
 
@@ -66,9 +66,9 @@ def test_league_creation(client: TestClient):
 
 
 def test_league_join(client: TestClient):
-
     response = client.post("/league_join/MQ%3D%3D", json={"name": "std", "password": "pass", "school": "abc"})
     assert response.status_code == 200
+    print(response.json())
     assert "access_token" in response.json()
 
 

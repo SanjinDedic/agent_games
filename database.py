@@ -19,6 +19,12 @@ from auth import (
 class LeagueNotFoundError(Exception):
     pass
 
+class TeamNotFoundError(Exception):
+    pass
+
+class InvalidCredentialsError(Exception):
+    pass
+
 def get_db_engine():
     return create_engine(get_database_url())
 
@@ -73,38 +79,33 @@ def create_team(session, name, password, league_id=1, school=None):
 
 
 def get_team_token(session, team_name, team_password):
-    try:
-        result = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
-        print("RESULT: ", result)
-        if result and result.verify_password(team_password):  # Use the verify_password method
-            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = create_access_token(
-                data={"sub": team_name, "role": "student"}, 
-                expires_delta=access_token_expires
-            )
-            return {"access_token": access_token, "token_type": "bearer"}
-        else:
-            return False
-    except Exception as e:
-        raise e
+    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    if not team:
+        raise TeamNotFoundError(f"Team '{team_name}' not found")
+    
+    if not team.verify_password(team_password):
+        raise InvalidCredentialsError("Invalid team password")
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": team_name, "role": "student"}, 
+        expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
-def get_admin(session, username, password):
-    try:
-        statement = select(Admin).where(Admin.username == username)
-        admin = session.exec(statement).one_or_none()
+def get_admin_token(session, username, password):
+    statement = select(Admin).where(Admin.username == username)
+    admin = session.exec(statement).one_or_none()
 
-        if admin and admin.verify_password(password):
-            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = create_access_token(
-                data={"sub": "admin", "role": "admin"},
-                expires_delta=access_token_expires
-            )
-            return {"access_token": access_token, "token_type": "bearer"}
-        else:
-            return {"detail": "Invalid credentials"}
-    except Exception as e:
-        print(f"An error occurred while fetching admin: {e}")
-        return {"detail": "Server error"}
+    if admin and admin.verify_password(password):
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": "admin", "role": "admin"},
+            expires_delta=access_token_expires
+        )
+        return {"access_token": access_token, "token_type": "bearer"}
+    else:
+        return {"detail": "Invalid credentials"}
 
 def get_team(session, team_name):
     try:

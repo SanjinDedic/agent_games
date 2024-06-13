@@ -43,7 +43,7 @@ def test_submit_agent(client: TestClient, db_session: Session):
     # Get the token for the team
     team_login_response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
     assert team_login_response.status_code == 200
-    TEAM_TOKEN = team_login_response.json()["access_token"]
+    TEAM_TOKEN = team_login_response.json()["data"]["access_token"]
 
     # Submit code for the team
     code = """

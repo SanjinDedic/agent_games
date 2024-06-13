@@ -41,7 +41,8 @@ def test_admin_login(client: TestClient):
     # Get the token for the admin
     admin_login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
     assert admin_login_response.status_code == 200
-    ADMIN_TOKEN = admin_login_response.json()["access_token"]
+    print("This is the admin login response", admin_login_response.json())
+    ADMIN_TOKEN = admin_login_response.json()["data"]["access_token"]
     assert ADMIN_TOKEN != ""
 
 def test_run_simulation(client: TestClient, db_session: Session):
@@ -80,7 +81,7 @@ def test_get_all_league_results(client: TestClient):
 
 
     # Test with non-admin user
-    non_admin_token = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}).json()["access_token"]
+    non_admin_token = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}).json()["data"]["access_token"]
     unauthorized_response = client.post(
         "/get_all_league_results",
         json={"name": "comp_test"},
@@ -129,7 +130,7 @@ def test_publish_results(client: TestClient, db_session: Session):
     assert simulation_result.published == True
 
     # Test with non-admin user
-    non_admin_token = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}).json()["access_token"]
+    non_admin_token = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}).json()["data"]["access_token"]
     unauthorized_response = client.post(
         "/publish_results",
         json={"league_name": "comp_test", "id": simulation_id},

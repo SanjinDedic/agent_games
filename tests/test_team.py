@@ -42,17 +42,16 @@ def test_get_token(client: TestClient):
 
     login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
     assert login_response.status_code == 200
-    token = login_response.json()["access_token"]
+    token = login_response.json()["data"]["access_token"]
     ADMIN_VALID_TOKEN = token
 
 def test_team_login(client: TestClient):
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
     assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert "access_token" in response.json()["data"]
 
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "wrongpass"})
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid team credentials"}
+    assert response.json() == {'status': 'failed', 'message': 'Invalid team password', 'data': None}
 
     response = client.post("/team_login", json={"team": "BrunswickSC1", "password": "wrongpass"})
     assert response.status_code == 422
@@ -71,7 +70,7 @@ def test_league_assign(client: TestClient, db_session):
     team_login_response = client.post(
         "/team_login", json={"name": f"{team_name}", "password": "ighEMkOP"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert team_login_response.status_code == 200
-    TEAM_TOKEN = team_login_response.json()["access_token"]
+    TEAM_TOKEN = team_login_response.json()["data"]["access_token"]
     print("Team Token:", TEAM_TOKEN)
     league_name = "unassigned"
     # Assign the team to the league

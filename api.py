@@ -14,7 +14,7 @@ from auth import get_current_user, create_access_token, decode_id
 from database import (
     create_league,
     get_team_token,
-    get_admin,
+    get_admin_token,
     create_team,
     get_team,
     get_db_engine,
@@ -91,15 +91,27 @@ async def league_join(link, user: TeamSignUp, session: Session = Depends(get_db)
         return create_team(session=session, name=user.name, password=user.password, league_id=league_id, school=user.school)
     except Exception as e:
         return {"status": "failed", "message": "Server error"}
-    
 
-@app.post("/team_login")
+@app.post("/admin_login")
+def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
+    try:
+        print("calling get_admin with" + login.username + " " + login.password)
+        token = get_admin_token(session, login.username, login.password)
+        return ResponseModel(status="success", message="Login successful", data=token)
+    except Exception as e:
+        return ResponseModel(status="failed", message=str(e))
+
+
+@app.post("/team_login", response_model=ResponseModel)
 def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
-    team_token = get_team_token(session, credentials.name, credentials.password)
-    if team_token:
-        return team_token
-    else:
-        raise HTTPException(status_code=401, detail="Invalid team credentials")
+    try:
+        team_token = get_team_token(session, credentials.name, credentials.password)
+        if team_token:
+            return ResponseModel(status="success", message="Login successful", data=team_token)
+        else:
+            return ResponseModel(status="failed", message="Invalid team credentials")
+    except Exception as e:
+        return ResponseModel(status="failed", message=str(e))
 
 @app.post("/team_create", response_model=ResponseModel)
 async def agent_create(user: TeamSignup, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
@@ -150,15 +162,6 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
         raise HTTPException(status_code=500, detail="Error updating submission")
-
-
-@app.post("/admin_login")
-def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
-    print("calling get_admin with" + login.username + " " + login.password)
-    result = get_admin(session, login.username, login.password)
-    if "detail" in result:
-        raise HTTPException(status_code=401, detail=result["detail"])
-    return result
 
 
 @app.post("/run_simulation")

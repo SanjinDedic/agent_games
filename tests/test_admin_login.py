@@ -39,11 +39,19 @@ def client(db_session):
 def test_team_login(client: TestClient):
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
     assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert response.json()["status"] == "success"
+    assert "access_token" in response.json()["data"]
 
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "wrongpass"})
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid team credentials"}
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == "Invalid team password"
+
+    # Test with non-existent team
+    response = client.post("/team_login", json={"name": "NonExistentTeam", "password": "somepass"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == "Team 'NonExistentTeam' not found"
 
 def test_admin_login_missing_fields(client: TestClient):
     login_response = client.post("/admin_login", json={"username": "Administrator"})
