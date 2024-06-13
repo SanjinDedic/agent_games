@@ -51,9 +51,10 @@ def get_db():
     with Session(engine) as session:
         yield session
 
-@app.get("/")
+@app.get("/", response_model=ResponseModel)
 async def root():
-    return {"message": "Success, server is up and running (deploy.yml works1)"}
+    return ResponseModel(status="success", message="Server is up and running (deploy.yml works1)")
+
 
 @app.post("/league_create")
 async def league_create(league: LeagueSignUp, authorization: str = Header(None), session: Session = Depends(get_db)):
