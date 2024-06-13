@@ -277,3 +277,14 @@ def get_published_result(session,league_name):
 
             return {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
     return {"status": "failed", "message": f"Published result for league '{league_name}' not found"}
+
+
+def update_expiry_date(session, league_name):
+    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    if league:
+        league.expiry_date = datetime.now(pytz.timezone('Australia/Sydney')) + timedelta(hours=GUEST_LEAGUE_EXPIRY)
+        session.add(league)
+        session.commit()
+        return {"status": "success", "message": f"Expiry date for league '{league_name}' updated successfully"}
+    else:
+        return {"status": "failed", "message": f"League '{league_name}' not found"}

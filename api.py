@@ -29,7 +29,8 @@ from database import (
     get_all_league_results_from_db,
     allow_submission,
     publish_sim_results,
-    get_published_result
+    get_published_result,
+    update_expiry_date,
 )
 
 @asynccontextmanager
@@ -227,3 +228,10 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
 @app.post("/get_published_results_for_league")
 def get_published_results_for_league(league: LeagueActive, session: Session = Depends(get_db)):
     return get_published_result(session, league.name)
+
+
+@app.post("/update_expiry_date")
+def update_expiry_date(expiry_date: ExpiryDate, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can update the expiry date")
+    return update_expiry_date(session, expiry_date.date)
