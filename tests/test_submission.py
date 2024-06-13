@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import ROOT_DIR
 from api import app
 from database import get_db_engine
-from models import League, Submission
+from models_db import League, Submission
 from tests.database_setup import setup_test_db
 from sqlmodel import select
 os.environ["TESTING"] = "1"

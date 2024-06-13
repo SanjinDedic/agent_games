@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import OperationalError
 from sqlmodel import select, SQLModel
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
-from models import Admin, League, Team, Submission, SimulationResult, SimulationResultItem
+from models_db import Admin, League, Team, Submission, SimulationResult, SimulationResultItem
 from sqlalchemy import create_engine
 from sqlmodel import Session, select
 from auth import (

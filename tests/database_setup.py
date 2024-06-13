@@ -6,7 +6,7 @@ import time
 from sqlmodel import Session, SQLModel, create_engine, select, delete
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models import League, Team, Admin, Submission
+from models_db import League, Team, Admin, Submission
 from auth import get_password_hash
 from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
 from datetime import datetime, timedelta

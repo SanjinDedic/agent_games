@@ -6,7 +6,7 @@ import pytest
 import json
 from sqlmodel import Session, select
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models import Team
+from models_db import Team
 
 from database import get_db_engine, create_team
 from utils import add_teams_from_json

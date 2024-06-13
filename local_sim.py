@@ -2,7 +2,7 @@ import os
 import sys
 from games.greedy_pig.greedy_pig import Game
 from games.greedy_pig.greedy_pig_sim import animate_simulations, run_simulations
-from models import League
+from models_db import League
 
 
 

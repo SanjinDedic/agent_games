@@ -6,7 +6,7 @@ import pytest
 from sqlmodel import Session, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models import Admin
+from models_db import Admin
 from database import create_administrator, get_db_engine
 from tests.database_setup import setup_test_db
 

@@ -1,73 +1,11 @@
-from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict
-from sqlmodel import Field, Session, SQLModel, create_engine, Relationship, UniqueConstraint
+from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint
 from config import CURRENT_DB
 from datetime import datetime
 from auth import get_password_hash, verify_password
 
 
-class TeamDelete(SQLModel):
-    name: str
 
-class LeagueActive(SQLModel):
-    name: str
-
-class LeagueResults(SQLModel):
-    league_name: str
-    id: int
-
-class LeagueAssignRequest(SQLModel):
-    name: str
-    
-class SimulationConfig(SQLModel):
-    num_simulations: int
-    league_name: str
-
-class SimulationResult(SQLModel):
-    results: dict
-
-class LeagueSignUp(SQLModel):
-    name: str
-    game: str
-
-#name and password are required!
-class TeamSignup(SQLModel):
-    name: str
-    school_name: str = "Not Available"
-    password: str
-    score: int = 0
-    color: str = "rgb(171,239,177)"
-
-
-class TeamLogin(SQLModel):
-    name: str
-    password: str
-
-    @field_validator('*')
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError(f"{v} must not be empty or just whitespace.")
-        return v
-
-class TeamSignUp(SQLModel):
-    name: str
-    password: str
-    school: str
-
-    @field_validator('*')
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError(f"{v} must not be empty or just whitespace.")
-        return v
-
-class AdminLogin(SQLModel):
-    username: str
-    password: str
-
-class SubmissionCode(SQLModel):
-    code: str
-    team_id: int = Field(default=None, foreign_key='team.id')
-    league_id: int = Field(default=None, foreign_key='league.id')
 
 #---------------------------------------------------------------------------------#
 #---                                 TABLES                                    ---#

@@ -1,6 +1,6 @@
 import ast
 from games.greedy_pig.greedy_pig_sim import run_simulations
-from models import League
+from models_db import League
 import os
 
 # List of dangerous modules and risky functions

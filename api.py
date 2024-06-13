@@ -7,7 +7,8 @@ import asyncio
 import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
 from contextlib import asynccontextmanager
-from models import *
+from models_db import *
+from models_api import *
 from utils import transform_result
 from auth import get_current_user, create_access_token, decode_id
 from database import (

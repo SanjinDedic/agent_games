@@ -2,7 +2,7 @@ import random
 import time
 import os
 import importlib.util
-from models import League
+from models_db import League
 
 class Game:
     def __init__(self, league, verbose=False):

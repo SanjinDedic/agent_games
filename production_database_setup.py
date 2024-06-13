@@ -1,6 +1,6 @@
 import os
 from sqlmodel import Session, SQLModel, create_engine
-from models import League, Team, Admin
+from models_db import League, Team, Admin
 from auth import get_password_hash
 from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
 from datetime import datetime, timedelta

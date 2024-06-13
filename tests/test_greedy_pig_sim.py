@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from games.greedy_pig.greedy_pig_sim import draw_table, animate_simulations
 from games.greedy_pig.greedy_pig import Game
-from models import League
+from models_db import League
 
 def test_draw_table(capsys):
     rankings = [
