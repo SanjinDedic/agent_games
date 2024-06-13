@@ -16,6 +16,9 @@ from auth import (
     encode_id
 )
 
+class LeagueNotFoundError(Exception):
+    pass
+
 def get_db_engine():
     return create_engine(get_database_url())
 
@@ -23,67 +26,50 @@ def create_database(engine, prnt=False):
     SQLModel.metadata.create_all(engine)
 
 def create_league(session, league_name, league_game, league_folder):
-    print("CREATE LEAGUE CALLED!")
-    try:
-        aest_timezone = pytz.timezone('Australia/Sydney')
-        
-        league = League(
-            name=league_name,
-            created_date=datetime.now(aest_timezone),
-            expiry_date=(datetime.now(aest_timezone) + timedelta(hours=GUEST_LEAGUE_EXPIRY)),
-            deleted_date=(datetime.now(aest_timezone) + timedelta(days=7)),
-            active=True,
-            signup_link=None,
-            folder=league_folder,  # this needs to start with /leagues and end with the league name (need a validator for this )
-            game=league_game
-        )
-        session.add(league)
-        session.flush()  # Flush to generate the league ID
-        
-        league.signup_link = encode_id(league.id)
-        session.commit()
-        #create the folder for the league
-        absolute_folder = ROOT_DIR +"/games/" +f"{league.game}/"+league_folder
-        #print("/games/" +f"{league.game}")
-        print("ROOT DIR: ", ROOT_DIR)
-        print("LEAGUE FOLDER: ", league_folder)
-        print("MAKING FOLDER FOR LEAGUE: ", absolute_folder)
-        if league_folder:
-            os.makedirs(absolute_folder, exist_ok=True)
-            #insert a README file with the league name
-            with open(os.path.join(absolute_folder, "README.md"), "w") as file:
-                file.write(f"# {league_name}\n\nThis folder contains files for the {league_name} league.")
+    aest_timezone = pytz.timezone('Australia/Sydney')
+    
+    league = League(
+        name=league_name,
+        created_date=datetime.now(aest_timezone),
+        expiry_date=(datetime.now(aest_timezone) + timedelta(hours=GUEST_LEAGUE_EXPIRY)),
+        deleted_date=(datetime.now(aest_timezone) + timedelta(days=7)),
+        active=True,
+        signup_link=None,
+        folder=league_folder,
+        game=league_game
+    )
+    session.add(league)
+    session.flush()  # Flush to generate the league ID
+    
+    league.signup_link = encode_id(league.id)
+    session.commit()
 
-            
-            return {"status": "success", "link": league.signup_link}
-    except Exception as e:
-        return {"status": "failed", "message": str(e)}
+    absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league_folder.lstrip("/"))
+    os.makedirs(absolute_folder, exist_ok=True)
+
+    with open(os.path.join(absolute_folder, "README.md"), "w") as file:
+        file.write(f"# {league_name}\n\nThis folder contains files for the {league_name} league.")
+
+    return {"link": league.signup_link}
 
 
 def create_team(session, name, password, league_id=1, school=None):
-    print("CREATE TEAM CALLED!")
-    try:
-        league = session.exec(select(League).where(League.id == league_id)).one_or_none()
-        if league:
-            print(f"League found: {league}")  # Add this print statement
-            team = Team(name=name, school_name=school)
-            team.set_password(password)
-            session.add(team)
-            team.league = league
-            session.commit()
+    league = session.exec(select(League).where(League.id == league_id)).one_or_none()
+    if not league:
+        raise LeagueNotFoundError(f"League with id '{league_id}' does not exist")
+    
+    team = Team(name=name, school_name=school)
+    team.set_password(password)
+    session.add(team)
+    team.league = league
+    session.commit()
 
-            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = create_access_token(
-                data={"sub": name, "role": "student"},
-                expires_delta=access_token_expires
-            )
-            return {"access_token": access_token, "token_type": "bearer"}
-        else:
-            print(f"League with id '{league_id}' does not exist")
-            return {"status": "failed", "message": f"League with id '{league_id}' does not exist"}
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        return {"status": "failed", "message": "Server error"}
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": name, "role": "student"},
+        expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 def get_team_token(session, team_name, team_password):
@@ -277,7 +263,6 @@ def get_published_result(session,league_name):
 
             return {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
     return {"status": "failed", "message": f"Published result for league '{league_name}' not found"}
-
 
 def update_expiry_date(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()

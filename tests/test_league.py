@@ -58,12 +58,11 @@ def test_league_creation(client: TestClient):
     
     response = client.post("/league_create", json={"name": "", "game": "greedy_pig"})
     assert response.status_code == 200
-    assert response.json() == {"status": "failed", "message": "Name is Empty"}
+    assert response.json() == {'status': 'failed', 'message': 'Name is Empty', 'data': None}
 
     response = client.post("/league_create", json={"name": "week2", "game": "greedy_pig"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
-    #cleanup
 
 
 def test_league_join(client: TestClient):

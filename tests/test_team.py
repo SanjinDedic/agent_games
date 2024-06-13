@@ -94,8 +94,8 @@ def test_team_create(client: TestClient, db_session):
     team_school = "new_test_school"
     response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
     assert response.status_code == 200
-    assert "access_token" in response.json()
-    assert response.json()["token_type"] == "bearer"
+    assert "access_token" in response.json()["data"]
+    assert response.json()["data"]["token_type"] == "bearer"
 
     # Check if the team is created in the database
     team = db_session.exec(select(Team).where(Team.name == team_name)).one_or_none()

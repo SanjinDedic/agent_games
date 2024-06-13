@@ -31,6 +31,7 @@ from database import (
     publish_sim_results,
     get_published_result,
     update_expiry_date,
+    LeagueNotFoundError
 )
 
 @asynccontextmanager
@@ -57,29 +58,27 @@ async def root():
     return ResponseModel(status="success", message="Server is up and running (deploy.yml works1)")
 
 
-@app.post("/league_create")
+@app.post("/league_create", response_model=ResponseModel)
 async def league_create(league: LeagueSignUp, authorization: str = Header(None), session: Session = Depends(get_db)):
+    if not league.name:
+        return ResponseModel(status="failed", message="Name is Empty")
+
+    user_role = "user"
+    if authorization and authorization.startswith("Bearer "):
+        user = get_current_user(authorization.split(" ")[1])
+        if user["role"] == "admin":
+            user_role = "admin"
+
+    if user_role == "admin":
+        league_folder = f"/leagues/admin/{league.name}"
+    else:
+        league_folder = f"/leagues/user/{league.name}"
+
     try:
-        if not league.name:
-            return {"status": "failed", "message": "Name is Empty"}
-
-        user_role = "user"
-        if authorization and authorization.startswith("Bearer "):
-            user = get_current_user(authorization.split(" ")[1])
-            if user["role"] == "admin":
-                user_role = "admin"
-        #Do we need to give a token to a visior that has not logged in and call them a visitor??
-        if user_role == "admin":
-            league_folder = f"/leagues/admin/{league.name}"
-        else:
-            league_folder = f"/leagues/user/{league.name}"
-
-        return create_league(session=session, league_name=league.name, league_game=league.game, league_folder=league_folder)
-
-    except HTTPException as e:
-        raise e
+        data = create_league(session=session, league_name=league.name, league_game=league.game, league_folder=league_folder)
+        return ResponseModel(status="success", message="League created successfully", data=data)
     except Exception as e:
-        return {"status": "failed", "message": "Server error"}
+        return ResponseModel(status="failed", message=str(e))
 
 @app.post("/league_join/{link}") #rename to user_league_join
 async def league_join(link, user: TeamSignUp, session: Session = Depends(get_db)):
@@ -102,14 +101,17 @@ def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=401, detail="Invalid team credentials")
 
-@app.post("/team_create")
+@app.post("/team_create", response_model=ResponseModel)
 async def agent_create(user: TeamSignup, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Only admin users can create teams")
+        return ResponseModel(status="failed", message="Only admin users can create teams")
     try:
-        return create_team(session=session, name=user.name, password=user.password, school=user.school_name)
+        data = create_team(session=session, name=user.name, password=user.password, school=user.school_name)
+        return ResponseModel(status="success", message="Team created successfully", data=data)
+    except LeagueNotFoundError as e:
+        return ResponseModel(status="failed", message=str(e))
     except Exception as e:
-        return {"status": "failed", "message": "Server error {e}"}
+        return ResponseModel(status="failed", message=f"Server error: {str(e)}")
 
 
 @app.post("/submit_agent")
@@ -229,9 +231,10 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
 def get_published_results_for_league(league: LeagueActive, session: Session = Depends(get_db)):
     return get_published_result(session, league.name)
 
-
+'''
 @app.post("/update_expiry_date")
 def update_expiry_date(expiry_date: ExpiryDate, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can update the expiry date")
     return update_expiry_date(session, expiry_date.date)
+'''
