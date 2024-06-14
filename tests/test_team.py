@@ -80,7 +80,7 @@ def test_league_assign(client: TestClient, db_session):
         headers={"Authorization": f"Bearer {TEAM_TOKEN}"})
     print("League Assign Response:", response.json())
     assert response.status_code == 200
-    assert response.json() == {"status":"success", "message": f"Team '{team_name}' assigned to league '{league_name}'"}
+    assert response.json() == {"status":"success", "message": f"Team '{team_name}' assigned to league '{league_name}'", "data": None}
 
 
 

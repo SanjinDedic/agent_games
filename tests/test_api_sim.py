@@ -55,7 +55,7 @@ def test_run_simulation(client: TestClient, db_session: Session):
     )
     assert simulation_response.status_code == 200
     print("This is the simulation response", simulation_response.json())
-    assert "total_points" in simulation_response.json()
+    assert "total_points" in simulation_response.json()["data"]
 
     # Check if the simulation results are logged in the database
     simulation_results = db_session.exec(select(SimulationResult)).all()
@@ -77,7 +77,7 @@ def test_get_all_league_results(client: TestClient):
     print("Version 1")
     print(league_results_response.json())
     assert league_results_response.status_code == 200
-    assert isinstance(league_results_response.json(), list)
+    assert isinstance(league_results_response.json()["data"]["all_results"], list)
 
 
     # Test with non-admin user
@@ -87,8 +87,7 @@ def test_get_all_league_results(client: TestClient):
         json={"name": "comp_test"},
         headers={"Authorization": f"Bearer {non_admin_token}"}
     )
-    assert unauthorized_response.status_code == 403
-    assert unauthorized_response.json()["detail"] == "Only admin users can view league results"
+    assert unauthorized_response.json()["message"] == "Only admin users can view league results"
 
 def test_publish_results(client: TestClient, db_session: Session):
     global ADMIN_TOKEN
@@ -99,7 +98,7 @@ def test_publish_results(client: TestClient, db_session: Session):
         headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
     )
     assert simulation_response.status_code == 200
-    simulation_id = simulation_response.json()["simulation_id"]
+    simulation_id = simulation_response.json()["data"]["simulation_id"]
 
     # Publish the simulation results
     publish_response = client.post(
@@ -109,7 +108,7 @@ def test_publish_results(client: TestClient, db_session: Session):
     )
     assert publish_response.status_code == 200
     assert publish_response.json()["status"] == "success"
-    assert publish_response.json()["message"] == "Results published successfully"
+    assert publish_response.json()["message"] == "Simulation results for league 'comp_test' published successfully"
 
     # Check if the simulation results are marked as published in the database
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
@@ -123,7 +122,7 @@ def test_publish_results(client: TestClient, db_session: Session):
     )
     assert publish_again_response.status_code == 200
     assert publish_again_response.json()["status"] == "success"
-    assert publish_again_response.json()["message"] == "Results published successfully"
+    assert publish_again_response.json()["message"] == "Simulation results for league 'comp_test' published successfully"
 
     # Check if the simulation results are still marked as published in the database
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
@@ -136,8 +135,7 @@ def test_publish_results(client: TestClient, db_session: Session):
         json={"league_name": "comp_test", "id": simulation_id},
         headers={"Authorization": f"Bearer {non_admin_token}"}
     )
-    assert unauthorized_response.status_code == 403
-    assert unauthorized_response.json()["detail"] == "Only admin users can publish league results"
+    assert unauthorized_response.json()["message"] == "Only admin users can publish league results"
 
     # Check if the simulation results are still marked as published in the database
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
@@ -153,7 +151,7 @@ def test_publish_one_simulation_per_league(client: TestClient, db_session: Sessi
         headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
     )
     assert simulation_response1.status_code == 200
-    simulation_id1 = simulation_response1.json()["simulation_id"]
+    simulation_id1 = simulation_response1.json()["data"]["simulation_id"]
 
     # Publish the first simulation results
     publish_response1 = client.post(
@@ -163,7 +161,7 @@ def test_publish_one_simulation_per_league(client: TestClient, db_session: Sessi
     )
     assert publish_response1.status_code == 200
     assert publish_response1.json()["status"] == "success"
-    assert publish_response1.json()["message"] == "Results published successfully"
+    assert publish_response1.json()["message"] == "Simulation results for league 'comp_test' published successfully"
 
     # Run the second simulation
     simulation_response2 = client.post(
@@ -172,7 +170,7 @@ def test_publish_one_simulation_per_league(client: TestClient, db_session: Sessi
         headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
     )
     assert simulation_response2.status_code == 200
-    simulation_id2 = simulation_response2.json()["simulation_id"]
+    simulation_id2 = simulation_response2.json()["data"]["simulation_id"]
 
     # Try to publish the second simulation results
     publish_response2 = client.post(
@@ -200,7 +198,7 @@ def test_get_published_results_for_league(client: TestClient, db_session: Sessio
         headers={"Authorization": f"Bearer {ADMIN_TOKEN}"}
     )
     assert simulation_response.status_code == 200
-    simulation_id = simulation_response.json()["simulation_id"]
+    simulation_id = simulation_response.json()["data"]["simulation_id"]
 
     # Publish the simulation results
     publish_response = client.post(
@@ -210,7 +208,7 @@ def test_get_published_results_for_league(client: TestClient, db_session: Sessio
     )
     assert publish_response.status_code == 200
     assert publish_response.json()["status"] == "success"
-    assert publish_response.json()["message"] == "Results published successfully"
+    assert publish_response.json()["message"] == "Simulation results for league 'comp_test' published successfully"
 
     # Get the published results for the league
     get_published_response = client.post(
@@ -218,9 +216,8 @@ def test_get_published_results_for_league(client: TestClient, db_session: Sessio
         json={"name": "comp_test"}
     )
     assert get_published_response.status_code == 200
-    published_result = get_published_response.json()
+    published_result = get_published_response.json()["data"]
     print(published_result)
-    assert "id" in published_result
     # Check if the simulation results are marked as published in the database
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True

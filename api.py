@@ -11,29 +11,7 @@ from models_db import *
 from models_api import *
 from utils import transform_result
 from auth import get_current_user, create_access_token, decode_id
-from database import (
-    create_league,
-    get_team_token,
-    get_admin_token,
-    create_team,
-    get_team,
-    get_db_engine,
-    save_submission,
-    assign_team_to_league,
-    get_league,
-    get_all_admin_leagues_from_db,
-    delete_team_from_db,
-    toggle_league_active_status,
-    get_all_teams_from_db,
-    save_simulation_results,
-    get_all_league_results_from_db,
-    allow_submission,
-    publish_sim_results,
-    get_published_result,
-    update_expiry_date,
-    LeagueNotFoundError
-)
-
+from database import *
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -167,78 +145,148 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error updating submission")
+        raise HTTPException(status_code=500, detail="Error updating submission") #should this change to be consistent?
 
 
-@app.post("/run_simulation")
+@app.post("/run_simulation", response_model=ResponseModel)
 def run_simulation(simulation_config: SimulationConfig, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can run simulations")
+        return ErrorResponseModel(status="error", message="Only admin users can run simulations")
 
     league_name = simulation_config.league_name
     num_simulations = simulation_config.num_simulations
+    
     try:
-        results = run_simulations(num_simulations, get_league(session, league_name))
+        league = get_league(session, league_name)
+        if not league:
+            return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
+        
+        results = run_simulations(num_simulations, league)
+        
         if league_name != "test_league":
-            league = get_league(session, league_name)
             sim_id = save_simulation_results(session, league.id, results)
             print("results saved", results)
-        return transform_result(results,sim_id)
+        
+        return ResponseModel(status="success", message="Simulation run successfully", data=transform_result(results, sim_id))
+    
     except Exception as e:
-        print(f"Error running simulation: {str(e)}")  # Add logging statement
+        print(f"Error running simulation: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while running the simulation")
 
-@app.get("/get_all_admin_leagues")
+@app.get("/get_all_admin_leagues", response_model=ResponseModel)
 def get_all_admin_leagues(session: Session = Depends(get_db)):
-    return get_all_admin_leagues_from_db(session)
+    try:
+        leagues = get_all_admin_leagues_from_db(session)
+        return ResponseModel(status="success", message="Admin leagues retrieved successfully", data=leagues)
+    except Exception as e:
+        print(f"Error retrieving admin leagues: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving admin leagues")
     
 
-@app.post("/league_assign")
-async def submit_agent(league: LeagueAssignRequest, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
-    print("winner")
+@app.post("/league_assign", response_model=ResponseModel)
+async def assign_team_to_league(league: LeagueAssignRequest, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     team_name = current_user["team_name"]
     print("team_name", team_name, "about to assign to league", league.name)
+    
     if current_user["role"] not in ["admin", "student"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can assign teams to leagues")
-    assignment_status = assign_team_to_league(session, team_name, league.name)
-    return assignment_status
+        return ErrorResponseModel(status="error", message="Only admin and student users can assign teams to leagues")
+    
+    try:
+        msg = assign_team_to_league_in_db(session, team_name, league.name)
+        return ResponseModel(status="success", message=msg)
+    except LeagueNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except TeamNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except Exception as e:
+        print(f"Error assigning team to league: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while assigning team to league")
 
 
-@app.post("/delete_team")
+@app.post("/delete_team", response_model=ResponseModel)
 async def delete_team(team: TeamDelete, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can delete teams")
-    return delete_team_from_db(session, team.name)
+        return ErrorResponseModel(status="error", message="Only admin users can delete teams")
+    
+    try:
+        msg= delete_team_from_db(session, team.name)
+        return ResponseModel(status="success", message=msg)
+    except TeamNotFoundError as e:
+        return ErrorResponseModel(status="failed", message=str(e))
+    except Exception as e:
+        print(f"Error deleting team: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while deleting the team")
 
 
-@app.post("/toggle_league_active")
+@app.post("/toggle_league_active", response_model=ResponseModel)
 async def toggle_league_active(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can toggle league active status")
-    return toggle_league_active_status(session, league.name)
+        return ErrorResponseModel(status="error", message="Only admin users can toggle league active status")
+    
+    try:
+        msg, active_status = toggle_league_active_status_in_db(session, league.name)
+        return ResponseModel(status="success", message=msg, data= active_status)
+    except LeagueNotFoundError as e:
+        return ErrorResponseModel(status="failed", message=str(e))
+    except Exception as e:
+        print(f"Error toggling league active status: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while toggling league active status")
 
 
-@app.get("/get_all_teams")
+@app.get("/get_all_teams", response_model=ResponseModel)
 def get_all_teams(session: Session = Depends(get_db)):
-    return get_all_teams_from_db(session)
+    try:
+        teams = get_all_teams_from_db(session)
+        return ResponseModel(status="success", message="Teams retrieved successfully", data=teams)
+    except Exception as e:
+        print(f"Error retrieving teams: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving teams")
 
-@app.post("/get_all_league_results")
+@app.post("/get_all_league_results", response_model=ResponseModel)
 def get_all_league_results(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can view league results")
-    return get_all_league_results_from_db(session, league.name)
+        return ErrorResponseModel(status="error", message="Only admin users can view league results")
+    
+    try:
+        league_results = get_all_league_results_from_db(session, league.name)
+        return ResponseModel(status="success", message="League results retrieved successfully", data=league_results)
+    except LeagueNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except Exception as e:
+        print(f"Error retrieving league results: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving league results")
 
 
-@app.post("/publish_results")
+@app.post("/publish_results", response_model=ResponseModel)
 def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can publish league results")
-    publish_sim_results(session, sim.league_name, sim.id)
-    return {"status": "success", "message": "Results published successfully"}
+        return ErrorResponseModel(status="error", message="Only admin users can publish league results")
+    
+    try:
+        msg,data = publish_sim_results(session, sim.league_name, sim.id)
+        return ResponseModel(status="success", message=msg, data=data)
+    except LeagueNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except SimulationResultNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except Exception as e:
+        print(f"Error publishing results: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while publishing results")
 
 
-@app.post("/get_published_results_for_league")
+@app.post("/get_published_results_for_league", response_model=ResponseModel)
 def get_published_results_for_league(league: LeagueActive, session: Session = Depends(get_db)):
-    return get_published_result(session, league.name)
+    try:
+        published_results = get_published_result(session, league.name)
+        if published_results:
+            return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
+        else:
+            return ResponseModel(status="success", message="No published results found for the specified league", data=None)
+    except LeagueNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except Exception as e:
+        print(f"Error retrieving published results: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving published results")
 
 '''
 @app.post("/update_expiry_date")

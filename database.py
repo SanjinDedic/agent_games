@@ -15,7 +15,6 @@ from auth import (
     create_access_token,
     encode_id
 )
-
 class LeagueNotFoundError(Exception):
     pass
 
@@ -26,6 +25,9 @@ class InvalidCredentialsError(Exception):
     pass
 
 class SubmissionLimitExceededError(Exception):
+    pass
+
+class SimulationResultNotFoundError(Exception):
     pass
 
 def get_db_engine():
@@ -156,52 +158,57 @@ def save_submission(session, submission_code, team_id):
     session.commit()  # Commit the changes to the database
     return db_submission.id
 
-def assign_team_to_league(session, team_name, league_name):
-    print("ASSIGN TEAM TO LEAGUE CALLED!")
+def assign_team_to_league_in_db(session, team_name, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
-        return {"message": f"League '{league_name}' not found"}
-    team_name = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
-    team_name.league_id = league.id
-    session.add(team_name)
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
+    
+    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    if not team:
+        raise TeamNotFoundError(f"Team '{team_name}' not found")
+    
+    team.league_id = league.id
+    session.add(team)
     session.commit()
-    return {"status": "success", "message": f"Team '{team_name.name}' assigned to league '{league.name}'"}
+    return  f"Team '{team.name}' assigned to league '{league.name}'"
 
 def get_league(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
-    if league:
-        return league
-    else:
-        return {"status": "failed", "message": f"League '{league_name}' not found"}
+    if not league:
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
+    return league
     
 def get_all_admin_leagues_from_db(session):
     leagues = session.exec(select(League)).all()
-    return leagues
+    #must return a dictionary:
+    return { "admin_leagues": [league.model_dump() for league in leagues]}
 
 def delete_team_from_db(session, team_name):
     team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
-    if team:
-        session.delete(team)
-        session.commit()
-        return {"status": "success", "message": f"Team '{team_name}' deleted successfully"}
-    else:
-        return {"status": "failed", "message": f"Team '{team_name}' not found"}
+    if not team:
+        raise TeamNotFoundError(f"Team '{team_name}' not found")
     
-def toggle_league_active_status(session, league_name):
+    session.delete(team)
+    session.commit()
+    msg  = f"Team '{team_name}' deleted successfully"
+    return msg
+    
+    
+def toggle_league_active_status_in_db(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
-    if league:
-        league.active = not league.active
-        session.add(league)
-        session.commit()
-        return {"status": "success", "message": f"League '{league_name}' active status toggled", "active": league.active}
-    else:
-        return {"status": "failed", "message": f"League '{league_name}' not found"}
+    if not league:
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
     
+    league.active = not league.active
+    session.add(league)
+    session.commit()
+    msg = f"League '{league_name}' active status toggled"
+    data = {"active": league.active}
+    return msg, data
+
 def get_all_teams_from_db(session):
     teams = session.exec(select(Team)).all()
-    #return team name, team_id and league_id
-    curated_teams = [{"name": team.name, "id": team.id, "league_id": team.league_id} for team in teams]
-    print(curated_teams)
+    curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id} for team in teams]}
     return curated_teams
 
 def save_simulation_results(session, league_id, results):
@@ -211,6 +218,7 @@ def save_simulation_results(session, league_id, results):
     session.add(simulation_result)
     print("SAVED SIMULATION RESULT: ", simulation_result)
     session.flush()  # Flush to generate the simulation_result_id
+    
     for team_name, score in results["total_points"].items():
         print("TEAM NAME: ", team_name, "SCORE: ", score)
         team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
@@ -223,36 +231,52 @@ def save_simulation_results(session, league_id, results):
     return simulation_result.id
 
 
-def get_all_league_results_from_db(session, league_id):
-    statement = select(SimulationResult).where(SimulationResult.league_id == league_id).order_by(SimulationResult.timestamp.desc())
-    results = session.exec(statement).all()
-    return results
-
-def publish_sim_results(session, league_name, sim_id):
-    simulation = session.exec(select(SimulationResult).where(SimulationResult.id == sim_id)).one_or_none()
-    if not simulation:
-        return {"status": "failed", "message": f"Simulation with ID '{sim_id}' not found"}
-    # set all published results to false for this league
+def get_all_league_results_from_db(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
-        return {"status": "failed", "message": f"League with name '{league_name}' not found"}
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
+    all_results = []
+    for sim in league.simulation_results:
+        #we need to get data from SimulationResultItem and return it in this format {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
+        total_points = {}
+        total_wins = {}
+        num_simulations = sim.num_simulations
+        for result in sim.simulation_results:
+            total_points[result.team.name] = result.score
+            total_wins[result.team.name] = result.wins
+        all_results.append({"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations})
+        #sort all results by id in reverse with the highest first
+        all_results = sorted(all_results, key=lambda x: x["id"], reverse=True)
+    return {"all_results": all_results}
+
+
+
+def publish_sim_results(session, league_name, sim_id):
+    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    if not league:
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
+    
+    simulation = session.exec(select(SimulationResult).where(SimulationResult.id == sim_id)).one_or_none()
+    if not simulation:
+        raise SimulationResultNotFoundError(f"Simulation result with ID '{sim_id}' not found")
+    
+    # Set all published results to false for this league
     for sim in league.simulation_results:
         sim.published = False
 
     simulation.published = True
     session.add(simulation)
     session.commit()
-    return {"status": "success", "message": f"Simulation results for league '{league_name}' published successfully"}
+    return f"Simulation results for league '{league_name}' published successfully", {"id": simulation.id, "league_name": league_name, "published": True}
 
 
-def get_published_result(session,league_name):
+def get_published_result(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
-        return {"status": "failed", "message": f"League with name '{league_name}' not found"}
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
+    
     for sim in league.simulation_results:
         if sim.published:
-            print("HERE IS THE SIMULATION: ", sim)
-            # we need to reconstruc this structure {'total_points': {'Bank10': 42, 'Bank15': 39, 'BankRoll3': 35, 'Bank5': 25, 'AlwaysBank': 10}, 'total_wins': {'Bank15': 5, 'BankRoll3': 1, 'AlwaysBank': 0, 'Bank5': 0, 'Bank10': 5}, 'num_simulations': 10}
             total_points = {}
             total_wins = {}
             num_simulations = sim.num_simulations
@@ -260,8 +284,9 @@ def get_published_result(session,league_name):
                 total_points[result.team.name] = result.score
                 total_wins[result.team.name] = result.wins
 
-            return {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
-    return {"status": "failed", "message": f"Published result for league '{league_name}' not found"}
+            return {"league_name": league_name, "id": sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
+    
+    return None
 
 def update_expiry_date(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()

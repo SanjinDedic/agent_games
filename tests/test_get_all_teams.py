@@ -42,9 +42,13 @@ def test_get_all_teams(client: TestClient, db_session: Session):
     print(response.json())
     # Check if the response contains all the teams
     teams = db_session.exec(select(Team)).all()
-    assert len(response.json()) == len(teams)
+    assert len(response.json()["data"]["all_teams"]) == len(teams)
 
     # Check if the team names match
     team_names = [team.name for team in teams]
-    response_names = [team["name"] for team in response.json()]
+    response_names = [team["name"] for team in response.json()["data"]["all_teams"]]
+    print("Team names:")
+    print(team_names)
+    print("Response names:")
+    print(response_names)
     assert sorted(team_names) == sorted(response_names)
