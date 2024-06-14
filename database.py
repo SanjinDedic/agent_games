@@ -25,6 +25,9 @@ class TeamNotFoundError(Exception):
 class InvalidCredentialsError(Exception):
     pass
 
+class SubmissionLimitExceededError(Exception):
+    pass
+
 def get_db_engine():
     return create_engine(get_database_url())
 
