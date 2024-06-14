@@ -126,15 +126,15 @@ async def agent_create(user: TeamSignup, current_user: dict = Depends(get_curren
         return ResponseModel(status="failed", message=f"Server error: {str(e)}")
 
 
-@app.post("/submit_agent")
+@app.post("/submit_agent", response_model=ResponseModel)
 async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     team_name = current_user["team_name"]
     user_role = current_user["role"]
     if not is_agent_safe(submission.code):
-        return {"status": "error", "message": "Agent code is not safe."}
+        return ErrorResponseModel(status="error", message="Agent code is not safe.")
     results = run_agent_simulation(submission.code, team_name)
     if not results:
-        return {"status": "error", "message": "Agent simulation failed."}
+        return ErrorResponseModel(status="error", message="Agent simulation failed.")
     try:
         team = get_team(session, team_name)
         print("team found", team.name, team.league.name, team.league.folder)
@@ -146,7 +146,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
 
         # Check if the team can make a submission
         if not allow_submission(session, team.id):
-            return {"status": "error", "message": "You can only make 3 submissions per minute."}
+            return ErrorResponseModel(status="error", message="You can only make 3 submissions per minute.")
 
         # Save the submitted code in a Python file named after the team
         file_path = os.path.join(ROOT_DIR,"games","greedy_pig",league_folder, f"{team_name}.py")
@@ -157,8 +157,14 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         print(submission.code)
         print(team.id)
         submission_id = save_submission(session, submission.code, team.id)
-        return {"message": f"Code submitted successfully. Submission ID: {submission_id}", "results": results, "team_name": team_name}
+        return ResponseModel(
+            status="success",
+            message=f"Code submitted successfully. Submission ID: {submission_id}",
+            data={"results": results, "team_name": team_name}
+        )
 
+    except TeamNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
         raise HTTPException(status_code=500, detail="Error updating submission")
@@ -241,3 +247,4 @@ def update_expiry_date(expiry_date: ExpiryDate, current_user: dict = Depends(get
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can update the expiry date")
     return update_expiry_date(session, expiry_date.date)
 '''
+

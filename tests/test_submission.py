@@ -69,8 +69,6 @@ class CustomPlayer(Player):
     assert submission is not None
     assert submission.team_id == 2  # Assuming the team ID is 2 for "BrunswickSC1"
 
-    print(submission_response.json()["results"])
-
     # Delete the submission
     print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
     os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")

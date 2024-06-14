@@ -108,15 +108,10 @@ def get_admin_token(session, username, password):
         return {"detail": "Invalid credentials"}
 
 def get_team(session, team_name):
-    try:
-        team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
-        if team:
-            return team
-        else:
-            return {"status": "failed", "message": f"Team '{team_name}' not found"}
-    except Exception as e:
-        print(f"An error occurred while fetching team: {e}")
-        return {"status": "failed", "message": "Server error"}
+    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    if not team:
+        raise TeamNotFoundError(f"Team '{team_name}' not found")
+    return team
 
 
 def create_administrator(session, username, password):
@@ -139,6 +134,18 @@ def create_administrator(session, username, password):
         print(f"An error occurred while creating admin: {e}")
         return {"status": "failed", "message": "Server error"}
     
+def allow_submission(session, team_id):
+    one_minute_ago = datetime.now(pytz.timezone('Australia/Sydney')) - timedelta(minutes=1)
+    recent_submissions = session.exec(
+        select(Submission)
+        .where(Submission.team_id == team_id)
+        .where(Submission.timestamp >= one_minute_ago)
+    ).all()
+
+    if len(recent_submissions) > 2:
+        raise SubmissionLimitExceededError("You can only make 3 submissions per minute.")
+    return True
+
 def save_submission(session, submission_code, team_id):
     aest_timezone = pytz.timezone('Australia/Sydney')
     db_submission = Submission(code=submission_code, timestamp=datetime.now(aest_timezone), team_id=team_id)
@@ -211,18 +218,6 @@ def save_simulation_results(session, league_id, results):
 
     session.commit()
     return simulation_result.id
-
-
-def allow_submission(session, team_id):
-    one_minute_ago = datetime.now(pytz.timezone('Australia/Sydney')) - timedelta(minutes=1)
-    recent_submissions = session.exec(
-        select(Submission)
-        .where(Submission.team_id == team_id)
-        .where(Submission.timestamp >= one_minute_ago)
-    ).all()
-
-    return len(recent_submissions) <= 2
-
 
 
 def get_all_league_results_from_db(session, league_id):
