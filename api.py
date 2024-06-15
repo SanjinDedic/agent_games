@@ -145,8 +145,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error updating submission") #should this change to be consistent?
-
+        #raise HTTPException(status_code=500, detail="Error updating submission") #should this change to be consistent?
+        return ErrorResponseModel(status="error", message=f"An error occurred while updating submission: {str(e)}")
 
 @app.post("/run_simulation", response_model=ResponseModel)
 def run_simulation(simulation_config: SimulationConfig, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):

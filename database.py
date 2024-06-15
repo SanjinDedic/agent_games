@@ -65,7 +65,10 @@ def create_league(session, league_name, league_game, league_folder):
 
 
 def create_team(session, name, password, league_id=1, school=None):
-    league = session.exec(select(League).where(League.id == league_id)).one_or_none()
+    league = session.exec(
+        select(League)
+        .where(League.id == league_id)
+    ).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League with id '{league_id}' does not exist")
     
@@ -84,7 +87,10 @@ def create_team(session, name, password, league_id=1, school=None):
 
 
 def get_team_token(session, team_name, team_password):
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    team = session.exec(
+        select(Team)
+        .where(Team.name == team_name)
+    ).one_or_none()
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     
@@ -99,8 +105,10 @@ def get_team_token(session, team_name, team_password):
     return {"access_token": access_token, "token_type": "bearer"}
 
 def get_admin_token(session, username, password):
-    statement = select(Admin).where(Admin.username == username)
-    admin = session.exec(statement).one_or_none()
+    admin = session.exec(
+        select(Admin)
+        .where(Admin.username == username)
+    ).one_or_none()
 
     if admin and admin.verify_password(password):
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -113,7 +121,10 @@ def get_admin_token(session, username, password):
         return {"detail": "Invalid credentials"}
 
 def get_team(session, team_name):
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    team = session.exec(
+        select(Team)
+        .where(Team.name == team_name)
+    ).one_or_none()
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     return team
@@ -159,7 +170,10 @@ def save_submission(session, submission_code, team_id):
     return db_submission.id
 
 def assign_team_to_league_in_db(session, team_name, league_name):
-    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    league = session.exec(
+        select(League)
+        .where(League.name == league_name)
+    ).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     
@@ -173,7 +187,10 @@ def assign_team_to_league_in_db(session, team_name, league_name):
     return  f"Team '{team.name}' assigned to league '{league.name}'"
 
 def get_league(session, league_name):
-    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    league = session.exec(
+        select(League)
+        .where(League.name == league_name)
+    ).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     return league
@@ -184,7 +201,9 @@ def get_all_admin_leagues_from_db(session):
     return { "admin_leagues": [league.model_dump() for league in leagues]}
 
 def delete_team_from_db(session, team_name):
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    team = session.exec(
+        select(Team)
+        .where(Team.name == team_name)).one_or_none()
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     
@@ -195,7 +214,9 @@ def delete_team_from_db(session, team_name):
     
     
 def toggle_league_active_status_in_db(session, league_name):
-    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    league = session.exec(
+        select(League)
+        .where(League.name == league_name)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     
