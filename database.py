@@ -177,13 +177,16 @@ def assign_team_to_league_in_db(session, team_name, league_name):
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    team = session.exec(
+        select(Team)
+        .where(Team.name == team_name)).one_or_none()
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     
     team.league_id = league.id
     session.add(team)
     session.commit()
+    session.refresh(team)
     return  f"Team '{team.name}' assigned to league '{league.name}'"
 
 def get_league(session, league_name):
