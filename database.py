@@ -264,11 +264,12 @@ def get_all_league_results_from_db(session, league_name):
         #we need to get data from SimulationResultItem and return it in this format {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
         total_points = {}
         total_wins = {}
+        timestamp = sim.timestamp
         num_simulations = sim.num_simulations
         for result in sim.simulation_results:
             total_points[result.team.name] = result.score
             total_wins[result.team.name] = result.wins
-        all_results.append({"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations})
+        all_results.append({"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations, "timestamp": timestamp})
         #sort all results by id in reverse with the highest first
         all_results = sorted(all_results, key=lambda x: x["id"], reverse=True)
     return {"all_results": all_results}
@@ -312,12 +313,17 @@ def get_published_result(session, league_name):
     
     return None
 
-def update_expiry_date(session, league_name):
-    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+def update_expiry_date_in_db(session, league_name, expiry_date):
+    print("EXPIRY DATE: ", expiry_date, "LEAGUE NAME: ", league_name)
+    league = session.exec(
+        select(League)
+        .where(League.name == league_name)).one_or_none()
     if league:
-        league.expiry_date = datetime.now(pytz.timezone('Australia/Sydney')) + timedelta(hours=GUEST_LEAGUE_EXPIRY)
+        print("LEAGUE FOUND", league)
+        league.expiry_date = expiry_date
         session.add(league)
         session.commit()
-        return {"status": "success", "message": f"Expiry date for league '{league_name}' updated successfully"}
+        return f"Expiry date for league '{league_name}' updated successfully"
     else:
-        return {"status": "failed", "message": f"League '{league_name}' not found"}
+        print("LEAGUE NOT FOUND", league_name)
+        return f"League '{league_name}' not found"

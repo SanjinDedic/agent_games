@@ -15,6 +15,7 @@ from tests.database_setup import setup_test_db
 os.environ["TESTING"] = "1"
 
 ADMIN_VALID_TOKEN = ""
+USER_VALID_TOKEN = ""
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_database():
@@ -38,12 +39,17 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 def test_get_token(client: TestClient):
-    global ADMIN_VALID_TOKEN
+    global ADMIN_VALID_TOKEN, USER_VALID_TOKEN
 
     login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
     assert login_response.status_code == 200
     token = login_response.json()["data"]["access_token"]
     ADMIN_VALID_TOKEN = token
+    team_name = "BrunswickSC1"
+    team_login_response = client.post(
+        "/team_login", json={"name": f"{team_name}", "password": "ighEMkOP"}, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
+    assert team_login_response.status_code == 200
+    USER_VALID_TOKEN = team_login_response.json()["data"]["access_token"]
 
 
 def test_league_creation(client: TestClient):
@@ -141,4 +147,34 @@ def test_get_all_admin_leagues(client: TestClient):
     assert response.json()["data"]["admin_leagues"][0]["folder"] == "leagues/admin/unassigned"
     assert response.json()["data"]["admin_leagues"][1]["folder"] == "leagues/admin/comp_test"
 
-    
+def test_update_expiry_date(client: TestClient):
+    league_name = "unassigned"
+    date = "2024-06-10T19:42:48.135167"
+    response = client.post("/update_expiry_date", json={"date": f"{date}", "league":f"{league_name}" } , headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert response.json()["message"] == f"Expiry date for league '{league_name}' updated successfully"
+
+def test_update_expiry_date_user_token(client: TestClient):
+    league_name = "unassigned"
+    date = "2024-06-10T19:42:48.135167"
+    response = client.post("/update_expiry_date", json={"date": f"{date}", "league":f"{league_name}" } , headers={"Authorization": f"Bearer {USER_VALID_TOKEN}"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == "Only admin users can update the expiry date"
+
+def test_update_expiry_date_not_existing(client: TestClient):
+    league_name = "dont exist"
+    date = "2024-06-10T19:42:48.135167"
+    response = client.post("/update_expiry_date", json={"date": f"{date}", "league":f"{league_name}" }, headers={"Authorization": f"Bearer {ADMIN_VALID_TOKEN}"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == "League 'dont exist' not found"
+
+def test_update_expiry_date_not_invalid_token(client: TestClient):
+    date = "2024-06-10T19:42:48.135167"
+    league_name = "unassigned"
+    response = client.post("/update_expiry_date", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer dsfdsfds"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid token"
+

@@ -288,11 +288,17 @@ def get_published_results_for_league(league: LeagueActive, session: Session = De
         print(f"Error retrieving published results: {str(e)}")
         return ErrorResponseModel(status="error", message="An error occurred while retrieving published results")
 
-'''
+
 @app.post("/update_expiry_date")
 def update_expiry_date(expiry_date: ExpiryDate, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin users can update the expiry date")
-    return update_expiry_date(session, expiry_date.date)
-'''
+        return ResponseModel(status="failed", message="Only admin users can update the expiry date")
+    try:
+        message = update_expiry_date_in_db(session, expiry_date.league, expiry_date.date)
+        if "not found" in message:
+            return ErrorResponseModel(status="failed", message = message)
+        return ResponseModel(status="success", message = message)
+    except Exception as e:
+        ErrorResponseModel(status="error", message= str(e))
+
 

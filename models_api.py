@@ -1,4 +1,5 @@
 from pydantic import BaseModel, field_validator, Field
+from datetime import datetime
 
 class TeamDelete(BaseModel):
     name: str
@@ -71,3 +72,7 @@ class ResponseModel(BaseModel):
 class ErrorResponseModel(BaseModel):
     status: str
     message: str
+
+class ExpiryDate(BaseModel):
+    date: datetime
+    league: str 
