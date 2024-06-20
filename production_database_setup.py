@@ -43,11 +43,11 @@ def create_and_populate_database():
 
         # Create 12 teams with their passwords
         teams = [
-            {"name": "team1", "password": "pass1"},
-            {"name": "team2", "password": "pass2"},
-            {"name": "team3", "password": "pass3"},
-            {"name": "team4", "password": "pass4"},
-            {"name": "team5", "password": "pass5"},
+            {"name": "AlwaysBank", "password": "pass1"},
+            {"name": "Bank5", "password": "pass2"},
+            {"name": "Bank10", "password": "pass3"},
+            {"name": "Bank15", "password": "pass4"},
+            {"name": "BankRoll3", "password": "pass5"},
             {"name": "team6", "password": "pass6"},
             {"name": "team7", "password": "pass7"},
             {"name": "team8", "password": "pass8"},
@@ -62,13 +62,12 @@ def create_and_populate_database():
                 name=team_data["name"],
                 school_name=f"School {team_data['name']}",
                 password_hash=get_password_hash(team_data["password"]),
-                league_id=1
+                league_id=2
             )
             session.add(team)
 
         session.commit()
-
-        print("Database populated successfully.")
+        print("Database created and populated successfully")
 
 if __name__ == "__main__":
     create_and_populate_database()
