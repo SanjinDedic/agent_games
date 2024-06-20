@@ -6,9 +6,10 @@ from sqlmodel import Session, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from config import ROOT_DIR
 from api import app
 from database import get_db_engine
-from models_db import Team
+from models_db import Team, Submission
 from tests.database_setup import setup_test_db
 os.environ["TESTING"] = "1"
 
@@ -64,16 +65,6 @@ def test_team_login(client):
     response = client.post("/team_login", json={"name": " ", "password": "ighEMkOP"})
     assert response.status_code == 422
 
-def test_league_assign(client, team_token):
-    league_name = "unassigned"
-    team_name = "BrunswickSC1"
-    response = client.post(
-        "/league_assign",
-        json={"name": league_name},
-        headers={"Authorization": f"Bearer {team_token}"}
-    )
-    assert response.status_code == 200
-    assert response.json() == {"status": "success", "message": f"Team '{team_name}' assigned to league '{league_name}'", "data": None}
 
 def test_team_create(client, db_session, admin_token):
     team_name = "new_test_team"
@@ -122,3 +113,63 @@ def test_delete_team(client, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
     assert response.json()["message"] == "Team 'non_existent_team' not found"
+
+def test_submit_agent(client, db_session, team_token):
+    # Submit code for the team
+    code = """
+from games.greedy_pig.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        if game_state["unbanked_money"][self.name] > 15:
+            return 'bank'
+        return 'continue'
+"""
+    submission_response = client.post(
+        "/submit_agent",
+        json={"code": code, "team_name": "BrunswickSC1", "league_name": "comp_test"},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    print("Submission Response:", submission_response.json()) 
+    assert submission_response.status_code == 200
+    assert "Code submitted successfully." in submission_response.json()["message"]
+
+    # Check if the submission is saved in the database
+    submission = db_session.exec(select(Submission).where(Submission.code == code)).one_or_none()
+    assert submission is not None
+    assert submission.team_id == 2  # Assuming the team ID is 2 for "BrunswickSC1"
+
+    # Delete the submission
+    print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
+    os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
+
+def test_get_all_teams(client, db_session):
+    # Get all teams from the database
+    response = client.get("/get_all_teams")
+    assert response.status_code == 200
+    print("Response JSON:")
+    print(response.json())
+    # Check if the response contains all the teams
+    teams = db_session.exec(select(Team)).all()
+    assert len(response.json()["data"]["all_teams"]) == len(teams)
+
+    # Check if the team names match
+    team_names = [team.name for team in teams]
+    response_names = [team["name"] for team in response.json()["data"]["all_teams"]]
+    print("Team names:")
+    print(team_names)
+    print("Response names:")
+    print(response_names)
+    assert sorted(team_names) == sorted(response_names)
+
+
+def test_league_assign(client, team_token):
+    league_name = "unassigned"
+    team_name = "BrunswickSC1"
+    response = client.post(
+        "/league_assign",
+        json={"name": league_name},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"status": "success", "message": f"Team '{team_name}' assigned to league '{league_name}'", "data": None}
