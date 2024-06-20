@@ -4,7 +4,7 @@ import os
 import pytz
 from datetime import datetime, timedelta
 from sqlalchemy.exc import OperationalError
-from sqlmodel import select, SQLModel
+from sqlmodel import select, SQLModel, delete
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
 from models_db import Admin, League, Team, Submission, SimulationResult, SimulationResultItem
 from sqlalchemy import create_engine
@@ -210,9 +210,12 @@ def delete_team_from_db(session, team_name):
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     
+    # Delete associated submissions
+    session.exec(delete(Submission).where(Submission.team_id == team.id))
+    
     session.delete(team)
     session.commit()
-    msg  = f"Team '{team_name}' deleted successfully"
+    msg = f"Team '{team_name}' deleted successfully"
     return msg
     
     

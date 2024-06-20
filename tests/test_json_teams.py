@@ -12,11 +12,11 @@ from database import get_db_engine, create_team
 from utils import add_teams_from_json
 from tests.database_setup import setup_test_db
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def setup_database():
     setup_test_db()
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def db_session():
     engine = get_db_engine()
     with Session(engine) as session:

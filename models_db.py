@@ -61,7 +61,7 @@ class Submission(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     code: str
     timestamp: datetime
-    team_id: int = Field(default=None, foreign_key='team.id')
+    team_id: int = Field(default=None, foreign_key='team.id', nullable=True)
     team: Team = Relationship(back_populates='submissions')
 
 
