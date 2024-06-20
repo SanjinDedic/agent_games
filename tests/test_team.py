@@ -97,6 +97,13 @@ def test_team_create(client, db_session, admin_token):
     response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
     assert response.status_code == 401
 
+    #test logging in as the created team
+    response = client.post("/team_login", json={"name": team_name, "password": team_password})
+    print(response.json())
+    assert response.status_code == 200
+    assert "access_token" in response.json()["data"]
+
+
 def test_delete_team(client, admin_token):
     team_name = "test_team"
     team_password = "test_password"
