@@ -81,3 +81,15 @@ def test_create_administrator_duplicate(db_session):
     create_administrator(db_session, 'Administrator', 'BOSSMAN')
     result = create_administrator(db_session, 'Administrator', 'BOSSMAN')
     assert result == {"status": "failed", "message": "Admin with username 'Administrator' already exists"}
+
+def test_admin_login_exception(client, mocker):
+    # Mock the get_admin_token function to raise an exception
+    mocker.patch("api.get_admin_token", side_effect=Exception("Database connection error"))
+
+    login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
+    assert login_response.status_code == 200
+    assert login_response.json() == {
+        "status": "failed",
+        "message": "Database connection error",
+        "data": None
+    }

@@ -65,7 +65,6 @@ def test_team_login(client):
     response = client.post("/team_login", json={"name": " ", "password": "ighEMkOP"})
     assert response.status_code == 422
 
-
 def test_team_create(client, db_session, admin_token):
     team_name = "new_test_team"
     team_password = "new_test_password"

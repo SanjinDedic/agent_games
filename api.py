@@ -88,6 +88,8 @@ def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
             return ResponseModel(status="success", message="Login successful", data=team_token)
         else:
             return ResponseModel(status="failed", message="Invalid team credentials")
+    except InvalidCredentialsError as e:
+        return ResponseModel(status="failed", message=str(e))
     except Exception as e:
         return ResponseModel(status="failed", message=str(e))
 

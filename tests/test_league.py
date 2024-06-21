@@ -129,3 +129,23 @@ def test_update_expiry_date_invalid_token(client):
     response = client.post("/update_expiry_date", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer dsfdsfds"})
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid token"
+
+
+def test_league_creation_exception(client, admin_token, monkeypatch):
+    
+    def mock_create_league(*args, **kwargs):
+        raise Exception("Database error")
+
+    monkeypatch.setattr("api.create_league", mock_create_league)
+
+    response = client.post("/league_create", 
+                           json={"name": "exception_league", "game": "greedy_pig"},
+                           headers={"Authorization": f"Bearer {admin_token}"})
+    
+    assert response.status_code == 200
+    print(response.json())
+    assert response.json() == {
+        "status": "failed",
+        "message": "Database error",
+        "data": None
+    }
