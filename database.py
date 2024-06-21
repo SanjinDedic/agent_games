@@ -221,7 +221,7 @@ def delete_team_from_db(session, team_name):
 
 def get_all_teams_from_db(session):
     teams = session.exec(select(Team)).all()
-    curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id} for team in teams]}
+    curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name} for team in teams]}
     return curated_teams
 
 def save_simulation_results(session, league_id, results):
