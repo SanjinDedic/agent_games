@@ -32,7 +32,6 @@ def create_and_populate_database():
                 name=league_name,
                 created_date=datetime.now(),
                 expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-                active=True,
                 folder=f"leagues/admin/{league_name}",
                 game="greedy_pig"
             )
