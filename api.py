@@ -274,7 +274,7 @@ def get_published_results_for_league(league: LeagueName, session: Session = Depe
         return ErrorResponseModel(status="error", message="An error occurred while retrieving published results")
 
 
-@app.post("/get_published_results_for_all_leagues", response_model=ResponseModel)
+@app.get("/get_published_results_for_all_leagues", response_model=ResponseModel)
 def get_published_results_for_all_leagues(session: Session = Depends(get_db)):
     try:
         published_results = get_all_published_results(session)

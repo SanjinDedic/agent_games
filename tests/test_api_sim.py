@@ -194,7 +194,7 @@ def test_get_published_results_for_league(client, db_session, admin_token):
 
 def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     # Test getting published results for all leagues
-    response = client.post("/get_published_results_for_all_leagues")
+    response = client.get("/get_published_results_for_all_leagues")
     print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
