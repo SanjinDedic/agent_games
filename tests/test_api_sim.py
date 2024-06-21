@@ -191,7 +191,7 @@ def test_get_published_results_for_league(client, db_session, admin_token):
     assert simulation_result.published == True
 
 
-'''
+
 def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     # Test getting published results for all leagues
     response = client.post("/get_published_results_for_all_leagues")
@@ -199,4 +199,4 @@ def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
-    '''
+    

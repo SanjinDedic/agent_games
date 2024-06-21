@@ -289,7 +289,10 @@ def get_published_result(session, league_name):
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     active = False
-    if league.expiry_date > datetime.now(pytz.timezone("Australia/Sydney")):
+    expiry_date = league.expiry_date
+    if expiry_date.tzinfo is None:
+        expiry_date = pytz.timezone("Australia/Sydney").localize(expiry_date)
+    if expiry_date > datetime.now(pytz.timezone("Australia/Sydney")):
         active = True
     
     for sim in league.simulation_results:
@@ -310,7 +313,10 @@ def get_all_published_results(session):
     current_time = datetime.now(pytz.timezone("Australia/Sydney"))
     all_results = []
     for league in session.exec(select(League)).all():
-        active = league.expiry_date > current_time
+        expiry_date = league.expiry_date
+        if expiry_date.tzinfo is None:
+            expiry_date = pytz.timezone("Australia/Sydney").localize(expiry_date)
+        active = expiry_date >= current_time
         for sim in league.simulation_results:
             if sim.published:
                 total_points = {}
