@@ -218,20 +218,6 @@ def delete_team_from_db(session, team_name):
     msg = f"Team '{team_name}' deleted successfully"
     return msg
     
-    
-def toggle_league_active_status_in_db(session, league_name):
-    league = session.exec(
-        select(League)
-        .where(League.name == league_name)).one_or_none()
-    if not league:
-        raise LeagueNotFoundError(f"League '{league_name}' not found")
-    
-    league.active = not league.active
-    session.add(league)
-    session.commit()
-    msg = f"League '{league_name}' active status toggled"
-    data = {"active": league.active}
-    return msg, data
 
 def get_all_teams_from_db(session):
     teams = session.exec(select(Team)).all()
@@ -302,6 +288,9 @@ def get_published_result(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
+    active = False
+    if league.expiry_date > datetime.now(pytz.timezone("Australia/Sydney")):
+        active = True
     
     for sim in league.simulation_results:
         if sim.published:
@@ -312,9 +301,36 @@ def get_published_result(session, league_name):
                 total_points[result.team.name] = result.score
                 total_wins[result.team.name] = result.wins
 
-            return {"league_name": league_name, "id": sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
+            return {"league_name": league_name, "id": sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations, "active": active}
     
     return None
+
+
+def get_all_published_results(session):
+    current_time = datetime.now(pytz.timezone("Australia/Sydney"))
+    all_results = []
+    for league in session.exec(select(League)).all():
+        active = league.expiry_date > current_time
+        for sim in league.simulation_results:
+            if sim.published:
+                total_points = {}
+                total_wins = {}
+                num_simulations = sim.num_simulations
+                for result in sim.simulation_results:
+                    total_points[result.team.name] = result.score
+                    total_wins[result.team.name] = result.wins
+
+                all_results.append({
+                    "league_name": league.name, 
+                    "id": sim.id, 
+                    "total_points": total_points, 
+                    "total_wins": total_wins, 
+                    "num_simulations": num_simulations, 
+                    "active": active
+                })
+    return {"all_results": all_results}
+
+
 
 def update_expiry_date_in_db(session, league_name, expiry_date):
     print("EXPIRY DATE: ", expiry_date, "LEAGUE NAME: ", league_name)

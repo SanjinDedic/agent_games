@@ -87,29 +87,6 @@ def test_league_folder_creation_no_auth(client):
     shutil.rmtree(f"games/greedy_pig/leagues/user/{league_name}")
     assert not os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
 
-def test_toggle_league_active(client, admin_token):
-    league_name = "test_league"
-    response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer {admin_token}"})
-    assert response.status_code == 200
-
-    response = client.post("/toggle_league_active", json={"name": league_name}, headers={"Authorization": f"Bearer {admin_token}"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
-    assert response.json()["data"]["active"] == False
-
-    response = client.post("/toggle_league_active", json={"name": league_name}, headers={"Authorization": f"Bearer {admin_token}"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
-    assert response.json()["message"] == f"League '{league_name}' active status toggled"
-    assert response.json()["data"]["active"] == True
-
-    response = client.post("/toggle_league_active", json={"name": "non_existent_league"}, headers={"Authorization": f"Bearer {admin_token}"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "failed"
-    assert response.json()["message"] == "League 'non_existent_league' not found"
-
-    response = client.post("/toggle_league_active", json={"name": league_name})
-    assert response.status_code == 401
 
 def test_get_all_admin_leagues(client):
     response = client.get("/get_all_admin_leagues")
@@ -117,8 +94,6 @@ def test_get_all_admin_leagues(client):
     assert len(response.json()) == 3
     assert response.json()["data"]["admin_leagues"][0]["name"] == "unassigned"
     assert response.json()["data"]["admin_leagues"][1]["name"] == "comp_test"
-    assert response.json()["data"]["admin_leagues"][0]["active"] == True
-    assert response.json()["data"]["admin_leagues"][1]["active"] == True
     assert response.json()["data"]["admin_leagues"][0]["game"] == "greedy_pig"
     assert response.json()["data"]["admin_leagues"][1]["game"] == "greedy_pig"
     assert response.json()["data"]["admin_leagues"][0]["folder"] == "leagues/admin/unassigned"

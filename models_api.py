@@ -4,7 +4,7 @@ from datetime import datetime
 class TeamDelete(BaseModel):
     name: str
 
-class LeagueActive(BaseModel):
+class LeagueName(BaseModel):
     name: str
 
 class LeagueResults(BaseModel):

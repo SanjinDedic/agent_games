@@ -218,21 +218,6 @@ async def delete_team(team: TeamDelete, current_user: dict = Depends(get_current
         return ErrorResponseModel(status="error", message="An error occurred while deleting the team")
 
 
-@app.post("/toggle_league_active", response_model=ResponseModel)
-async def toggle_league_active(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
-    if current_user["role"] != "admin":
-        return ErrorResponseModel(status="error", message="Only admin users can toggle league active status")
-    
-    try:
-        msg, active_status = toggle_league_active_status_in_db(session, league.name)
-        return ResponseModel(status="success", message=msg, data= active_status)
-    except LeagueNotFoundError as e:
-        return ErrorResponseModel(status="failed", message=str(e))
-    except Exception as e:
-        print(f"Error toggling league active status: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while toggling league active status")
-
-
 @app.get("/get_all_teams", response_model=ResponseModel)
 def get_all_teams(session: Session = Depends(get_db)):
     try:
@@ -243,7 +228,7 @@ def get_all_teams(session: Session = Depends(get_db)):
         return ErrorResponseModel(status="error", message="An error occurred while retrieving teams")
 
 @app.post("/get_all_league_results", response_model=ResponseModel)
-def get_all_league_results(league: LeagueActive, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+def get_all_league_results(league: LeagueName, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
         return ErrorResponseModel(status="error", message="Only admin users can view league results")
     
@@ -275,9 +260,24 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
 
 
 @app.post("/get_published_results_for_league", response_model=ResponseModel)
-def get_published_results_for_league(league: LeagueActive, session: Session = Depends(get_db)):
+def get_published_results_for_league(league: LeagueName, session: Session = Depends(get_db)):
     try:
         published_results = get_published_result(session, league.name)
+        if published_results:
+            return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
+        else:
+            return ResponseModel(status="success", message="No published results found for the specified league", data=None)
+    except LeagueNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except Exception as e:
+        print(f"Error retrieving published results: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving published results")
+
+
+@app.post("/get_published_results_for_all_leagues", response_model=ResponseModel)
+def get_published_results_for_all_leagues(session: Session = Depends(get_db)):
+    try:
+        published_results = get_all_published_results(session)
         if published_results:
             return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
         else:

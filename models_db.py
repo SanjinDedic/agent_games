@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict
-from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint
+from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint, DateTime, Column
 from config import CURRENT_DB
 from datetime import datetime
 from auth import get_password_hash, verify_password
@@ -15,10 +15,9 @@ from auth import get_password_hash, verify_password
 class League(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     name: str = Field(unique=True, index=True)
-    created_date: datetime
-    expiry_date: datetime
+    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     deleted_date: datetime | None = None
-    active: bool
     signup_link: str | None = None
     folder: str | None = None
     teams: List['Team'] = Relationship(back_populates='league')
