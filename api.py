@@ -86,8 +86,6 @@ def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
         team_token = get_team_token(session, credentials.name, credentials.password)
         if team_token:
             return ResponseModel(status="success", message="Login successful", data=team_token)
-    except InvalidCredentialsError as e:
-        return ResponseModel(status="failed", message=str(e))
     except Exception as e:
         return ResponseModel(status="failed", message=str(e))
 
@@ -98,8 +96,6 @@ async def agent_create(user: TeamSignup, current_user: dict = Depends(get_curren
     try:
         data = create_team(session=session, name=user.name, password=user.password, school=user.school_name)
         return ResponseModel(status="success", message="Team created successfully", data=data)
-    except LeagueNotFoundError as e:
-        return ResponseModel(status="failed", message=str(e))
     except Exception as e:
         return ResponseModel(status="failed", message=f"Server error: {str(e)}")
 
@@ -140,9 +136,6 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             message=f"Code submitted successfully. Submission ID: {submission_id}",
             data={"results": results, "team_name": team_name}
         )
-
-    except TeamNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
         #raise HTTPException(status_code=500, detail="Error updating submission") #should this change to be consistent?
@@ -194,13 +187,9 @@ async def assign_team_to_league(league: LeagueAssignRequest, current_user: dict 
     try:
         msg = assign_team_to_league_in_db(session, team_name, league.name)
         return ResponseModel(status="success", message=msg)
-    except LeagueNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
-    except TeamNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
         print(f"Error assigning team to league: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while assigning team to league")
+        return ErrorResponseModel(status="error", message="An error occurred while assigning team to league"+str(e))
 
 
 @app.post("/delete_team", response_model=ResponseModel)
@@ -211,11 +200,8 @@ async def delete_team(team: TeamDelete, current_user: dict = Depends(get_current
     try:
         msg= delete_team_from_db(session, team.name)
         return ResponseModel(status="success", message=msg)
-    except TeamNotFoundError as e:
-        return ErrorResponseModel(status="failed", message=str(e))
     except Exception as e:
-        print(f"Error deleting team: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while deleting the team")
+        return ErrorResponseModel(status="error", message="An error occurred while deleting the team "+str(e))
 
 
 @app.get("/get_all_teams", response_model=ResponseModel)
@@ -235,28 +221,19 @@ def get_all_league_results(league: LeagueName, current_user: dict = Depends(get_
     try:
         league_results = get_all_league_results_from_db(session, league.name)
         return ResponseModel(status="success", message="League results retrieved successfully", data=league_results)
-    except LeagueNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
-        print(f"Error retrieving league results: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while retrieving league results")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving league results "+str(e))
 
 
 @app.post("/publish_results", response_model=ResponseModel)
 def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if current_user["role"] != "admin":
-        return ErrorResponseModel(status="error", message="Only admin users can publish league results")
-    
+        return ErrorResponseModel(status="error", message="Only admin users can publish league results") 
     try:
         msg,data = publish_sim_results(session, sim.league_name, sim.id)
         return ResponseModel(status="success", message=msg, data=data)
-    except LeagueNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
-    except SimulationResultNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
-        print(f"Error publishing results: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while publishing results")
+        return ErrorResponseModel(status="error", message="An error occurred while publishing results "+str(e))
 
 
 @app.post("/get_published_results_for_league", response_model=ResponseModel)
@@ -267,11 +244,8 @@ def get_published_results_for_league(league: LeagueName, session: Session = Depe
             return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
         else:
             return ResponseModel(status="success", message="No published results found for the specified league", data=None)
-    except LeagueNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
-        print(f"Error retrieving published results: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while retrieving published results")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving published results " + str(e))
 
 
 @app.get("/get_published_results_for_all_leagues", response_model=ResponseModel)
@@ -282,11 +256,9 @@ def get_published_results_for_all_leagues(session: Session = Depends(get_db)):
             return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
         else:
             return ResponseModel(status="success", message="No published results found for the specified league", data=None)
-    except LeagueNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
     except Exception as e:
         print(f"Error retrieving published results: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while retrieving published results")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving published results " + str(e))
 
 
 @app.post("/update_expiry_date")

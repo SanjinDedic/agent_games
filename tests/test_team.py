@@ -52,9 +52,11 @@ def test_team_login(client):
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
     assert response.status_code == 200
     assert "access_token" in response.json()["data"]
+    print("valid credentials",response.json())
 
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "wrongpass"})
     assert response.json() == {'status': 'failed', 'message': 'Invalid team password', 'data': None}
+    print("invalid creds", response.json()) 
 
     response = client.post("/team_login", json={"team": "BrunswickSC1", "password": "wrongpass"})
     assert response.status_code == 422
@@ -117,8 +119,8 @@ def test_delete_team(client, admin_token):
 
     response = client.post("/delete_team", json={"name": "non_existent_team"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
-    assert response.json()["status"] == "failed"
-    assert response.json()["message"] == "Team 'non_existent_team' not found"
+    assert response.json()["status"] == "error"
+    assert "Team 'non_existent_team' not found" in response.json()["message"]
 
 def test_submit_agent(client, db_session, team_token):
     # Submit code for the team
