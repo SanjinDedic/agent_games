@@ -67,6 +67,23 @@ def test_team_login(client):
     response = client.post("/team_login", json={"name": " ", "password": "ighEMkOP"})
     assert response.status_code == 422
 
+    response = client.post("/team_login", json={"name": "", "password": "password"})
+    assert response.status_code == 422
+    assert "must not be empty" in response.json()["detail"][0]["msg"]
+
+    response = client.post("/team_login", json={"name": "   ", "password": "password"})
+    assert response.status_code == 422
+    assert "must not be empty" in response.json()["detail"][0]["msg"]
+
+    response = client.post("/team_login", json={"name": "username", "password": ""})
+    assert response.status_code == 422
+    assert "must not be empty" in response.json()["detail"][0]["msg"]
+
+    response = client.post("/team_login", json={"name": "username", "password": "  "})
+    assert response.status_code == 422
+    assert "must not be empty" in response.json()["detail"][0]["msg"]
+
+    
 def test_team_create(client, db_session, admin_token):
     team_name = "new_test_team"
     team_password = "new_test_password"

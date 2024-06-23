@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import create_engine, select, Session
 from validation import is_agent_safe, run_agent_simulation
 from games.greedy_pig.greedy_pig_sim import run_simulations
+from games.forty_two.forty_two import run_simulations as run_forty_two_simulations
 import asyncio
 import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
@@ -154,11 +155,15 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
         
-        results = run_simulations(num_simulations, league)
+        if league.game == "greedy_pig":
+            results = run_simulations(num_simulations, league)
+        elif league.game == "forty_two":
+            results = run_forty_two_simulations(num_simulations, league)
+        else:
+            return ErrorResponseModel(status="error", message=f"Unsupported game: {league.game}")
         
         if league_name != "test_league":
             sim_id = save_simulation_results(session, league.id, results)
-            print("results saved", results)
         
         return ResponseModel(status="success", message="Simulation run successfully", data=transform_result(results, sim_id))
     
