@@ -3,11 +3,13 @@ import sys
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
-from games.forty_two.forty_two import Game as FortyTwoGame
-from games.forty_two.forty_two import run_simulations as run_forty_two_simulations
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+
+from games.forty_two.forty_two import Game as FortyTwoGame
+from games.forty_two.forty_two import run_simulations as run_forty_two_simulations
 from api import app
 from database import get_db_engine
 from models_db import League, SimulationResult
@@ -197,7 +199,7 @@ def test_get_published_results_for_league(client, db_session, admin_token):
 def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     # Test getting published results for all leagues
     response = client.get("/get_published_results_for_all_leagues")
-    print(response.json())
+    print("ALL PUBLISHED",response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
