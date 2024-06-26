@@ -277,6 +277,7 @@ def publish_sim_results(session, league_name, sim_id):
     # Set all published results to false for this league
     for sim in league.simulation_results:
         sim.published = False
+        session.add(sim)
 
     simulation.published = True
     session.add(simulation)
