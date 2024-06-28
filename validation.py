@@ -56,7 +56,8 @@ def run_agent_simulation(code, game, team_name):
     print("file written")
     #step 2 run 100 simulations
     try:
-        results = run_simulations(500, game, test_league)
+        #this needs a switch to determine which game to run!!!
+        results = run_simulations(500, test_league)
         print("simulations run")
         print(results)
         return results
