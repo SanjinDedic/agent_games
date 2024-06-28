@@ -1,19 +1,17 @@
+from games.base_game import BaseGame
 import random
-import time
 import os
-import importlib.util
-from models_db import League
+import time
 
-class Game:
+class GreedyPigGame(BaseGame):
     def __init__(self, league, verbose=False):
-        self.verbose = verbose
-        self.players = self.get_all_player_classes_from_folder(league.folder)
+        super().__init__(league, verbose)
         self.active_players = list(self.players)
         self.players_banked_this_round = []
         self.round_no = 0
         self.roll_no = 0
         self.game_over = False
-
+        
     def roll_dice(self):
         return random.randint(1, 6)
 
@@ -70,14 +68,11 @@ class Game:
 
     def play_game(self):
         random.shuffle(self.players)
-        while self.game_over == False:
+        while not self.game_over:
             self.active_players = list(self.players)
             if self.verbose:
                 print('\nSTART ROUND #' + str(self.round_no))
-            winner = self.play_round()
-            if winner and self.verbose:
-                print(f"\nGame Over: {winner} has won the game!")
-                break
+            self.play_round()
             if self.verbose:
                 print('  END OF ROUND #' + str(self.round_no))
                 print(self.get_game_state())
@@ -89,86 +84,20 @@ class Game:
         return results
 
     def assign_points(self, game_state):
-        score_aggregate = dict()
-        for player in game_state['banked_money']:
-            score_aggregate[player] = game_state['banked_money'][player] + game_state['unbanked_money'][player]
-        
+        score_aggregate = {player: game_state['banked_money'][player] + game_state['unbanked_money'][player] for player in game_state['banked_money']}
         sorted_players = sorted(score_aggregate.items(), key=lambda x: x[1], reverse=True)
         
-        points = dict()
-        points_on_offer = len(score_aggregate)
-        tie=True
-        if self.verbose:
-            print("sorted_players")
-            print(sorted_players)
-        for player in sorted_players:
-            points[player[0]] = points_on_offer
-            if self.verbose:
-                print(player, points_on_offer)  
-            points_on_offer -= 1
-        while tie:
-            tie = False
-            for i in range(1, len(sorted_players)):
-                if sorted_players[i][1] == sorted_players[i-1][1] and points[sorted_players[i][0]] < points[sorted_players[i-1][0]]:
-                    points[sorted_players[i][0]] += 1
-                    tie = True
+        points = {player[0]: len(score_aggregate) - i for i, player in enumerate(sorted_players)}
+        
+        # Handle ties
+        for i in range(1, len(sorted_players)):
+            if sorted_players[i][1] == sorted_players[i-1][1] and points[sorted_players[i][0]] < points[sorted_players[i-1][0]]:
+                points[sorted_players[i][0]] = points[sorted_players[i-1][0]]
 
         return {"points": points, "score_aggregate": score_aggregate}
 
-    def get_all_player_classes_from_folder(self, folder_name):
-        #folder_name is relative path
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        league_directory = os.path.join(current_dir, folder_name)
-
-        if self.verbose:
-            print("Current directory:", current_dir)
-            print("League:", league_directory)
-
-        if not os.path.exists(league_directory):
-            if self.verbose:
-                print(f"The folder '{league_directory}' does not exist.")
-            return []
-
-        if self.verbose:
-            print("Files and directories in the league folder:")
-        player_classes = []
-        for item in os.listdir(league_directory):
-            if self.verbose:
-                print(item)
-            if item.endswith(".py"):
-                if self.verbose:
-                    print(f"Found a Python file: {item}")
-                module_name = item[:-3]
-                module_path = os.path.join(league_directory, item)
-                if self.verbose:
-                    print(f"Module name: {module_name}")
-                    print(f"Module path: {module_path}")
-
-                spec = importlib.util.spec_from_file_location(module_name, module_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-
-                if self.verbose:
-                    print(f"Loaded module: {module}")
-                    print(f"Module attributes: {dir(module)}")
-
-                if hasattr(module, "CustomPlayer"):
-                    player_class = getattr(module, "CustomPlayer")
-                    if self.verbose:
-                        print(f"Found CustomPlayer class: {player_class}")
-                    player = player_class()
-                    player.name = module_name  # Use the module name as is
-                    if self.verbose:
-                        print(f"Created player instance: {player}")
-                    player_classes.append(player)
-                elif self.verbose:
-                    print(f"CustomPlayer class not found in module: {module_name}")
-
-        if self.verbose:
-            print(f"Found {len(player_classes)} player classes.")
-        return player_classes
-    
     def reset(self):
+        super().reset()
         self.active_players = list(self.players)
         self.players_banked_this_round = []
         self.round_no = 0
@@ -179,3 +108,33 @@ class Game:
             player.banked_money = 0
             player.unbanked_money = 0
             player.has_banked_this_turn = False
+
+
+def run_simulations(num_simulations, league):
+    return BaseGame.run_simulations(num_simulations, GreedyPigGame, league)
+
+def draw_table(rankings):
+    os.system('clear')
+    print("-" * 50)
+    print(f"{'Player':^20} | {'Points':^10} | {'Rank':^10}")
+    print("-" * 50)
+    for rank, (player, points) in enumerate(rankings, start=1):
+        print(f"{player:^20} | {points:^10} | {rank:^10}")
+    print("-" * 50)
+    time.sleep(0.3)
+
+def animate_simulations(num_simulations, refresh_number, league):
+    game = GreedyPigGame(league, verbose=True)
+    total_points = {player.name: 0 for player in game.players}
+    
+    for i in range(1, num_simulations + 1):
+        game.reset()
+        results = game.play_game()
+        
+        for player, points in results["points"].items():
+            total_points[player] += points
+        
+        if i % refresh_number == 0 or i == num_simulations:
+            print(f"\nRankings after {i} simulations:")
+            sorted_total_points = sorted(total_points.items(), key=lambda x: x[1], reverse=True)
+            draw_table(sorted_total_points)

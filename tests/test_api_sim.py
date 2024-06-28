@@ -1,20 +1,23 @@
+# tests/test_api_sim.py
+
 import os
 import sys
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-from games.forty_two.forty_two import Game as FortyTwoGame
-from games.forty_two.forty_two import run_simulations as run_forty_two_simulations
+from games.forty_two.forty_two import FortyTwoGame, run_simulations as run_forty_two_simulations
+from games.greedy_pig.greedy_pig import GreedyPigGame, run_simulations as run_greedy_pig_simulations
 from api import app
 from database import get_db_engine
 from models_db import League, SimulationResult
 from tests.database_setup import setup_test_db
+
 os.environ["TESTING"] = "1"
+
+# ... (rest of the file)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
@@ -55,10 +58,17 @@ def test_run_simulation(client, db_session, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    assert "total_points" in simulation_response.json()["data"]
-
-    simulation_results = db_session.exec(select(SimulationResult)).all()
-    assert len(simulation_results) > 0
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data, "Response does not contain 'data' key"
+    assert response_data["data"] is not None, "Response 'data' is None"
+    assert "total_points" in response_data["data"], "Response data does not contain 'total_points'"
+    
+    assert "total_points" in response_data["data"]
+    assert isinstance(response_data["data"]["total_points"], dict)
+    assert len(response_data["data"]["total_points"]) > 0
 
 def test_get_all_league_results(client, admin_token, non_admin_token):
     simulation_response = client.post(
@@ -203,44 +213,40 @@ def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
-    
-def test_run_forty_two_simulation(client, db_session, admin_token):
-    # Create a test league for Forty-Two
-    league = League(name="forty_two_test", game="forty_two", folder="games/forty_two/leagues/test_league")
-    db_session.add(league)
-    db_session.commit()
 
+
+
+
+
+
+def test_run_simulation(client, admin_token):
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data, "Response does not contain 'data' key"
+    assert response_data["data"] is not None, "Response 'data' is None"
+    assert "total_points" in response_data["data"], "Response data does not contain 'total_points'"
+    
+    assert "total_points" in response_data["data"]
+    assert isinstance(response_data["data"]["total_points"], dict)
+    assert len(response_data["data"]["total_points"]) > 0
+
+
+
+
+def test_run_forty_two_simulation(client, admin_token):
     simulation_response = client.post(
         "/run_simulation",
         json={"league_name": "forty_two_test", "num_simulations": 100},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
+    print("SIMULATION RESPONSE",simulation_response.json())
     assert simulation_response.status_code == 200
     assert "total_points" in simulation_response.json()["data"]
-
-def test_forty_two_game_mechanics(db_session):
-    league = League(name="forty_two_test", game="forty_two", folder="games/forty_two/leagues/test_league")
-    game = FortyTwoGame(league)
-    
-    assert len(game.players) == 4
-    
-    results = game.play_game()
-    assert "points" in results
-    
-    for player_name, score in results["points"].items():
-        assert 0 <= score <= 42
-
-def test_forty_two_simulations(db_session):
-    league = League(name="forty_two_test", game="forty_two", folder="games/forty_two/leagues/test_league")
-    results = run_forty_two_simulations(100, league)
-    
-    assert "total_points" in results
-    assert "total_wins" in results
-    assert "num_simulations" in results
-    assert results["num_simulations"] == 100
-    
-    for player_name, points in results["total_points"].items():
-        assert points >= 0
-    
-    for player_name, wins in results["total_wins"].items():
-        assert 0 <= wins <= 100

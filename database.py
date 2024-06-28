@@ -212,6 +212,8 @@ def delete_team_from_db(session, team_name):
     
     # Delete associated submissions
     session.exec(delete(Submission).where(Submission.team_id == team.id))
+
+    #search and delete every every team_name.py file in the games / game folder
     
     session.delete(team)
     session.commit()
