@@ -1,5 +1,5 @@
 import ast
-from games.greedy_pig.greedy_pig_sim import run_simulations
+from games.greedy_pig.greedy_pig import run_simulations
 from models_db import League
 import os
 
@@ -40,7 +40,7 @@ def is_agent_safe(code):
     checker.visit(tree)
     return checker.safe
 
-def run_agent_simulation(code, team_name):
+def run_agent_simulation(code, game, team_name):
     test_league_folder = "leagues/test_league"
 
     test_league = League(folder=test_league_folder, name="Test League")
@@ -56,6 +56,7 @@ def run_agent_simulation(code, team_name):
     print("file written")
     #step 2 run 100 simulations
     try:
+        #this needs a switch to determine which game to run!!!
         results = run_simulations(500, test_league)
         print("simulations run")
         print(results)

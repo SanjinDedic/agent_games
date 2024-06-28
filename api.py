@@ -1,9 +1,11 @@
+# api.py
+
 from fastapi import FastAPI, HTTPException, status, File, Query, Depends, Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import create_engine, select, Session
 from validation import is_agent_safe, run_agent_simulation
-from games.greedy_pig.greedy_pig_sim import run_simulations
-from games.forty_two.forty_two import run_simulations as run_forty_two_simulations
+from games.greedy_pig.greedy_pig import GreedyPigGame, run_simulations as run_greedy_pig_simulations
+from games.forty_two.forty_two import FortyTwoGame, run_simulations as run_forty_two_simulations
 import asyncio
 import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
@@ -13,6 +15,10 @@ from models_api import *
 from utils import transform_result
 from auth import get_current_user, create_access_token, decode_id
 from database import *
+
+# ... (rest of the file)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -107,7 +113,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     user_role = current_user["role"]
     if not is_agent_safe(submission.code):
         return ErrorResponseModel(status="error", message="Agent code is not safe.")
-    results = run_agent_simulation(submission.code, team_name)
+    results = run_agent_simulation(submission.code, GreedyPigGame ,team_name)
     if not results:
         return ErrorResponseModel(status="error", message="Agent simulation failed.")
     try:
@@ -156,7 +162,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
         
         if league.game == "greedy_pig":
-            results = run_simulations(num_simulations, league)
+            results = run_greedy_pig_simulations(num_simulations, league)
         elif league.game == "forty_two":
             results = run_forty_two_simulations(num_simulations, league)
         else:
