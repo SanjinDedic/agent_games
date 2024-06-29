@@ -4,8 +4,10 @@ from games.base_game import BaseGame
 from games.game_factory import GameFactory
 from models_db import League
 
-# List of dangerous modules and risky functions
-DANGEROUS_MODULES = ['os', 'sys', 'subprocess', 'shutil']
+# List of allowed modules
+ALLOWED_MODULES = ['random']
+
+# List of risky functions
 RISKY_FUNCTIONS = ['eval', 'exec', 'open', 'compile', 'execfile', 'input']
 
 class SafeVisitor(ast.NodeVisitor):
@@ -14,13 +16,13 @@ class SafeVisitor(ast.NodeVisitor):
 
     def visit_Import(self, node):
         for alias in node.names:
-            if alias.name.split('.')[0] in DANGEROUS_MODULES:
+            if alias.name not in ALLOWED_MODULES:
                 self.safe = False
                 return
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
-        if node.module and node.module.split('.')[0] in DANGEROUS_MODULES:
+        if node.module not in ALLOWED_MODULES:
             self.safe = False
             return
         self.generic_visit(node)
