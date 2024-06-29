@@ -53,10 +53,10 @@ def test_assign_points(test_league):
         "unbanked_money": {"Player1": 10, "Player2": 20, "Player3": 5, "Player4": 15}
     }
     results = game.assign_points(game_state)
-    assert results["points"]["Player2"] == 4
-    assert results["points"]["Player4"] == 3
-    assert results["points"]["Player1"] == 2
-    assert results["points"]["Player3"] == 1
+    assert results["points"]["Player2"] == 10
+    assert results["points"]["Player4"] == 8
+    assert results["points"]["Player1"] == 6
+    assert results["points"]["Player3"] == 4
 
 def test_get_all_player_classes_from_folder(test_league):
     game = GreedyPigGame(test_league, verbose=True)

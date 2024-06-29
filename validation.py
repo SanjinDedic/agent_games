@@ -4,8 +4,14 @@ from games.base_game import BaseGame
 from games.game_factory import GameFactory
 from models_db import League
 
-# List of allowed modules
-ALLOWED_MODULES = ['random']
+# List of allowed modules and their allowed sub-modules
+ALLOWED_MODULES = {
+    'random': None,  # None means no specific sub-modules are allowed
+    'games': {
+        'greedy_pig': {'player': None}
+    },
+    'player': None  # Allow direct import from player
+}
 
 # List of risky functions
 RISKY_FUNCTIONS = ['eval', 'exec', 'open', 'compile', 'execfile', 'input']
@@ -16,13 +22,13 @@ class SafeVisitor(ast.NodeVisitor):
 
     def visit_Import(self, node):
         for alias in node.names:
-            if alias.name not in ALLOWED_MODULES:
+            if not self.is_allowed_import(alias.name):
                 self.safe = False
                 return
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
-        if node.module not in ALLOWED_MODULES:
+        if not self.is_allowed_import(node.module, node.names[0].name):
             self.safe = False
             return
         self.generic_visit(node)
@@ -32,6 +38,20 @@ class SafeVisitor(ast.NodeVisitor):
             self.safe = False
             return
         self.generic_visit(node)
+
+    def is_allowed_import(self, module, submodule=None):
+        parts = module.split('.')
+        current = ALLOWED_MODULES
+        for part in parts:
+            if part not in current:
+                return False
+            if current[part] is None:
+                return True
+            current = current[part]
+        
+        if submodule:
+            return submodule in current
+        return True
 
 def is_agent_safe(code):
     try:

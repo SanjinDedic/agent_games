@@ -83,16 +83,25 @@ class GreedyPigGame(BaseGame):
         results = self.assign_points(game_state)
         return results
 
-    def assign_points(self, game_state):
+    def assign_points(self, game_state, rewards=[10, 8, 6, 4, 3, 2, 1]):
         score_aggregate = {player: game_state['banked_money'][player] + game_state['unbanked_money'][player] for player in game_state['banked_money']}
         sorted_players = sorted(score_aggregate.items(), key=lambda x: x[1], reverse=True)
         
-        points = {player[0]: len(score_aggregate) - i for i, player in enumerate(sorted_players)}
-        
-        # Handle ties
-        for i in range(1, len(sorted_players)):
-            if sorted_players[i][1] == sorted_players[i-1][1] and points[sorted_players[i][0]] < points[sorted_players[i-1][0]]:
-                points[sorted_players[i][0]] = points[sorted_players[i-1][0]]
+        points = {}
+        last_score = None
+        last_reward = 0
+        reward_index = 0
+
+        for i, (player, score) in enumerate(sorted_players):
+            if score != last_score:
+                if reward_index < len(rewards):
+                    last_reward = rewards[reward_index]
+                    reward_index += 1
+                else:
+                    last_reward = 0
+            
+            points[player] = last_reward
+            last_score = score
 
         return {"points": points, "score_aggregate": score_aggregate}
 
