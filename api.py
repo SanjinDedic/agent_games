@@ -1,11 +1,8 @@
-# api.py
-
 from fastapi import FastAPI, HTTPException, status, File, Query, Depends, Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import create_engine, select, Session
 from validation import is_agent_safe, run_agent_simulation
-from games.greedy_pig.greedy_pig import GreedyPigGame, run_simulations as run_greedy_pig_simulations
-from games.forty_two.forty_two import FortyTwoGame, run_simulations as run_forty_two_simulations
+from games.game_factory import GameFactory
 import asyncio
 import os
 from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
@@ -16,7 +13,6 @@ from utils import transform_result
 from auth import get_current_user, create_access_token, decode_id
 from database import *
 
-# ... (rest of the file)
 
 
 @asynccontextmanager
@@ -113,11 +109,16 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     user_role = current_user["role"]
     if not is_agent_safe(submission.code):
         return ErrorResponseModel(status="error", message="Agent code is not safe.")
-    results = run_agent_simulation(submission.code, GreedyPigGame ,team_name)
+    
+    team = get_team(session, team_name)
+    if not team.league:
+        return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
+    
+    results = run_agent_simulation(submission.code, team.league.game, team_name)
     if not results:
         return ErrorResponseModel(status="error", message="Agent simulation failed.")
+    
     try:
-        team = get_team(session, team_name)
         print("team found", team.name, team.league.name, team.league.folder)
         if team.league.folder:
             league_folder = team.league.folder
@@ -130,7 +131,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             return ErrorResponseModel(status="error", message="You can only make 3 submissions per minute.")
 
         # Save the submitted code in a Python file named after the team
-        file_path = os.path.join(ROOT_DIR,"games","greedy_pig",league_folder, f"{team_name}.py")
+        file_path = os.path.join(ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py")
         with open(file_path, "w") as file:
             file.write(submission.code)
         print("are we here")
@@ -145,8 +146,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         )
     except Exception as e:
         print(f"Error updating submission: {str(e)}")
-        #raise HTTPException(status_code=500, detail="Error updating submission") #should this change to be consistent?
         return ErrorResponseModel(status="error", message=f"An error occurred while updating submission: {str(e)}")
+
 
 @app.post("/run_simulation", response_model=ResponseModel)
 def run_simulation(simulation_config: SimulationConfig, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
@@ -161,12 +162,8 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
         
-        if league.game == "greedy_pig":
-            results = run_greedy_pig_simulations(num_simulations, league)
-        elif league.game == "forty_two":
-            results = run_forty_two_simulations(num_simulations, league)
-        else:
-            return ErrorResponseModel(status="error", message=f"Unsupported game: {league.game}")
+        game_class = GameFactory.get_game_class(league.game)
+        results = game_class.run_simulations(num_simulations, game_class, league)
         
         if league_name != "test_league":
             sim_id = save_simulation_results(session, league.id, results)

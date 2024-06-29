@@ -17,8 +17,6 @@ from tests.database_setup import setup_test_db
 
 os.environ["TESTING"] = "1"
 
-# ... (rest of the file)
-
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
     setup_test_db()

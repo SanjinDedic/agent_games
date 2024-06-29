@@ -3,3 +3,4 @@ ignore:
   - "test/*"
   - "local_sim.py"
   - "production_database_setup.py"
+  - "create_5_test_players.py"

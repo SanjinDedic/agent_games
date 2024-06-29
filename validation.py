@@ -1,7 +1,8 @@
 import ast
-from games.greedy_pig.greedy_pig import run_simulations
-from models_db import League
 import os
+from games.base_game import BaseGame
+from games.game_factory import GameFactory
+from models_db import League
 
 # List of dangerous modules and risky functions
 DANGEROUS_MODULES = ['os', 'sys', 'subprocess', 'shutil']
@@ -40,30 +41,33 @@ def is_agent_safe(code):
     checker.visit(tree)
     return checker.safe
 
-def run_agent_simulation(code, game, team_name):
+def run_agent_simulation(code, game_name, team_name):
     test_league_folder = "leagues/test_league"
-
-    test_league = League(folder=test_league_folder, name="Test League")
+    test_league = League(folder=test_league_folder, name="Test League", game=game_name)
+    
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    if test_league.game == "greedy_pig":
-        file_path = os.path.join(current_dir,'games', 'greedy_pig', test_league.folder, f"{team_name}.py")
-        print("greedy pig file path", file_path)
-    else:
-        file_path = os.path.join(current_dir,'games', 'greedy_pig', test_league.folder, f"{team_name}.py")
-    print("file path ATTEMPT TO WRITE", file_path)
-    with open(file_path, "w") as file:
-        file.write(code)
-    print("file written")
-    #step 2 run 100 simulations
+    file_path = os.path.join(current_dir, 'games', game_name, test_league.folder, f"{team_name}.py")
+    
     try:
-        #this needs a switch to determine which game to run!!!
-        results = run_simulations(500, test_league)
-        print("simulations run")
+        with open(file_path, "w") as file:
+            file.write(code)
+        print(f"File written: {file_path}")
+
+        game_class = GameFactory.get_game_class(game_name)
+        results = BaseGame.run_simulations(500, game_class, test_league)
+        print("Simulations run")
         print(results)
         return results
     except Exception as e:
-        print(e)
+        print(f"Error during simulation: {e}")
         return False
     finally:
-        os.remove(file_path)
-        print("file removed", file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"File removed: {file_path}")
+
+def ensure_test_league_folder(game_name):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    test_league_folder = os.path.join(current_dir, 'games', game_name, 'leagues', 'test_league')
+    os.makedirs(test_league_folder, exist_ok=True)
+    return test_league_folder
