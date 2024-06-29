@@ -132,7 +132,7 @@ def test_delete_team(client, admin_token):
     response = client.post("/delete_team", json={"name": team_name}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
     assert response.json()["status"] == "success"
-    assert response.json()["message"] == f"Team '{team_name}' deleted successfully"
+    assert response.json()["message"] == f"Team '{team_name}' and its associated files deleted successfully"
 
     response = client.post("/delete_team", json={"name": "non_existent_team"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200

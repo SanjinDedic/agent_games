@@ -203,6 +203,7 @@ def get_all_admin_leagues_from_db(session):
     #must return a dictionary:
     return { "admin_leagues": [league.model_dump() for league in leagues]}
 
+
 def delete_team_from_db(session, team_name):
     team = session.exec(
         select(Team)
@@ -213,11 +214,21 @@ def delete_team_from_db(session, team_name):
     # Delete associated submissions
     session.exec(delete(Submission).where(Submission.team_id == team.id))
 
-    #search and delete every every team_name.py file in the games / game folder
-    
+    # Delete team's code file
+    if team.league_id:
+        league = session.get(League, team.league_id)
+        if league:
+            for game_name in ["greedy_pig", "forty_two"]:  # Add more games if needed
+                team_file_path = os.path.join(ROOT_DIR, "games", game_name, league.folder, f"{team_name}.py")
+                if os.path.exists(team_file_path):
+                    os.remove(team_file_path)
+                    print(f"Deleted file: {team_file_path}")
+
+    # Delete team from database
     session.delete(team)
     session.commit()
-    msg = f"Team '{team_name}' deleted successfully"
+    
+    msg = f"Team '{team_name}' and its associated files deleted successfully"
     return msg
     
 
