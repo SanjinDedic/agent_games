@@ -40,86 +40,21 @@ def create_and_populate_database():
         session.commit()
 
         # Create teams
-        players = [
-            {
-                "name": "OptimalPlayer",
-                "password": "optimal123",
-                "code": """
+        players = []
+        for i in range(5, 30, 2):
+            players.append({
+                "name": f"Bank{i}",
+                "password": f"bank{i}pass",
+                "code": f"""
 from games.greedy_pig.player import Player
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):
-        my_total = game_state["banked_money"][self.name] + game_state["unbanked_money"][self.name]
-        leader_total = max(game_state["banked_money"].values())
-
-        if game_state["unbanked_money"][self.name] >= 20 or (my_total >= leader_total and game_state["unbanked_money"][self.name] > 0):
+        if game_state["unbanked_money"][self.name] >= {i}:
             return 'bank'
         return 'continue'
 """
-            },
-            {
-                "name": "ConservativePlayer",
-                "password": "conservative123",
-                "code": """
-from games.greedy_pig.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        if game_state["unbanked_money"][self.name] >= 15:
-            return 'bank'
-        return 'continue'
-"""
-            },
-            {
-                "name": "AggressivePlayer",
-                "password": "aggressive123",
-                "code": """
-from games.greedy_pig.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        if game_state["unbanked_money"][self.name] >= 25:
-            return 'bank'
-        return 'continue'
-"""
-            },
-            {
-                "name": "AdaptivePlayer",
-                "password": "adaptive123",
-                "code": """
-from games.greedy_pig.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        leader_score = max(game_state["banked_money"].values())
-        my_total = game_state["banked_money"][self.name] + game_state["unbanked_money"][self.name]
-
-        if leader_score >= 70:
-            if game_state["unbanked_money"][self.name] >= 15:
-                return 'bank'
-        elif leader_score >= 50:
-            if game_state["unbanked_money"][self.name] >= 20:
-                return 'bank'
-        else:
-            if game_state["unbanked_money"][self.name] >= 25:
-                return 'bank'
-
-        return 'continue'
-"""
-            },
-            {
-                "name": "RandomPlayer",
-                "password": "random123",
-                "code": """
-from games.greedy_pig.player import Player
-import random
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return random.choice(['bank', 'continue'])
-"""
-            }
-        ]
+            })
 
         week1_league = session.exec(select(League).where(League.name == "week1")).one()
 
