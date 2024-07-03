@@ -156,6 +156,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 
     league_name = simulation_config.league_name
     num_simulations = simulation_config.num_simulations
+    custom_rewards = simulation_config.custom_rewards
     
     try:
         league = get_league(session, league_name)
@@ -163,7 +164,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
         
         game_class = GameFactory.get_game_class(league.game)
-        results = game_class.run_simulations(num_simulations, game_class, league)
+        results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
         
         if league_name != "test_league":
             sim_id = save_simulation_results(session, league.id, results)
@@ -173,6 +174,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
     except Exception as e:
         print(f"Error running simulation: {str(e)}")
         return ErrorResponseModel(status="error", message="An error occurred while running the simulation")
+
 
 @app.get("/get_all_admin_leagues", response_model=ResponseModel)
 def get_all_admin_leagues(session: Session = Depends(get_db)):

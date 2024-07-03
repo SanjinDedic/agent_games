@@ -64,14 +64,14 @@ class BaseGame(ABC):
         self.scores = {player.name: 0 for player in self.players}
 
     @staticmethod
-    def run_simulations(num_simulations, game_class, league):
+    def run_simulations(num_simulations, game_class, league, custom_rewards=None):
         game = game_class(league)
         total_points = {player.name: 0 for player in game.players}
         total_wins = {player.name: 0 for player in game.players}
 
         for _ in range(num_simulations):
             game.reset()
-            results = game.play_game()
+            results = game.play_game(custom_rewards)
             
             for player, points in results["points"].items():
                 total_points[player] += points

@@ -4,13 +4,14 @@ import os
 import time
 
 class GreedyPigGame(BaseGame):
-    def __init__(self, league, verbose=False):
+    def __init__(self, league, verbose=False, custom_rewards=None):
         super().__init__(league, verbose)
         self.active_players = list(self.players)
         self.players_banked_this_round = []
         self.round_no = 0
         self.roll_no = 0
         self.game_over = False
+        self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
         
     def roll_dice(self):
         return random.randint(1, 6)
@@ -66,7 +67,7 @@ class GreedyPigGame(BaseGame):
         for player in self.players:
             player.reset_turn()
 
-    def play_game(self):
+    def play_game(self, custom_rewards=None):
         random.shuffle(self.players)
         while not self.game_over:
             self.active_players = list(self.players)
@@ -80,10 +81,11 @@ class GreedyPigGame(BaseGame):
                     print('  ' + player.name + ': $' + str(player.banked_money))
 
         game_state = self.get_game_state()
-        results = self.assign_points(game_state)
+        results = self.assign_points(game_state, custom_rewards)
         return results
 
-    def assign_points(self, game_state, rewards=[10, 8, 6, 4, 3, 2, 1]):
+    def assign_points(self, game_state, custom_rewards=None):
+        rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
         score_aggregate = {player: game_state['banked_money'][player] + game_state['unbanked_money'][player] for player in game_state['banked_money']}
         sorted_players = sorted(score_aggregate.items(), key=lambda x: x[1], reverse=True)
         

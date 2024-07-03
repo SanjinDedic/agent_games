@@ -32,7 +32,7 @@ class FortyTwoGame(BaseGame):
             "scores": self.scores
         }
 
-    def play_game(self):
+    def play_game(self, custom_rewards=None):  # Add custom_rewards parameter
         for player in self.players:
             hand = self.play_round(player)
             if hand <= 42:
@@ -43,5 +43,5 @@ class FortyTwoGame(BaseGame):
 
         return {"points": self.scores}
 
-def run_simulations(num_simulations, league):
-    return BaseGame.run_simulations(num_simulations, FortyTwoGame, league)
+def run_simulations(num_simulations, league, custom_rewards=None):  # Add custom_rewards parameter
+    return BaseGame.run_simulations(num_simulations, FortyTwoGame, league, custom_rewards)

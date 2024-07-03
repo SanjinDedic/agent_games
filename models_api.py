@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator, Field
 from datetime import datetime
+from typing import List, Optional
 
 class TeamDelete(BaseModel):
     name: str
@@ -14,9 +15,11 @@ class LeagueResults(BaseModel):
 class LeagueAssignRequest(BaseModel):
     name: str
     
+
 class SimulationConfig(BaseModel):
     num_simulations: int
     league_name: str
+    custom_rewards: Optional[List[int]] = None
 
 class SimulationResult(BaseModel):
     results: dict
