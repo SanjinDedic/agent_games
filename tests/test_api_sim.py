@@ -1,5 +1,3 @@
-# tests/test_api_sim.py
-
 import os
 import sys
 import pytest
@@ -49,6 +47,7 @@ def non_admin_token(client):
     non_admin_token = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}).json()["data"]["access_token"]
     return non_admin_token
 
+
 def test_run_simulation(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
@@ -67,6 +66,7 @@ def test_run_simulation(client, db_session, admin_token):
     assert "total_points" in response_data["data"]
     assert isinstance(response_data["data"]["total_points"], dict)
     assert len(response_data["data"]["total_points"]) > 0
+
 
 def test_get_all_league_results(client, admin_token, non_admin_token):
     simulation_response = client.post(
@@ -90,6 +90,7 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {non_admin_token}"}
     )
     assert unauthorized_response.json()["message"] == "Only admin users can view league results"
+
 
 def test_publish_results(client, db_session, admin_token, non_admin_token):
     simulation_response = client.post(
@@ -134,6 +135,7 @@ def test_publish_results(client, db_session, admin_token, non_admin_token):
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True
 
+
 def test_publish_one_simulation_per_league(client, db_session, admin_token):
     simulation_response1 = client.post(
         "/run_simulation",
@@ -174,6 +176,7 @@ def test_publish_one_simulation_per_league(client, db_session, admin_token):
     simulation_result2 = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id2)).one()
     assert simulation_result2.published == True
 
+
 def test_get_published_results_for_league(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
@@ -203,7 +206,6 @@ def test_get_published_results_for_league(client, db_session, admin_token):
     assert simulation_result.published == True
 
 
-
 def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     # Test getting published results for all leagues
     response = client.get("/get_published_results_for_all_leagues")
@@ -211,10 +213,6 @@ def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
-
-
-
-
 
 
 def test_run_simulation(client, admin_token):
@@ -248,3 +246,125 @@ def test_run_forty_two_simulation(client, admin_token):
     print("SIMULATION RESPONSE",simulation_response.json())
     assert simulation_response.status_code == 200
     assert "total_points" in simulation_response.json()["data"]
+
+
+
+def test_run_simulation_with_custom_rewards(client, admin_token):
+    custom_rewards = [15, 10, 5, 3, 2, 1]
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "custom_rewards" in response_data["data"]
+    assert response_data["data"]["custom_rewards"] == custom_rewards
+
+def test_run_simulation_with_default_rewards(client, admin_token):
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "custom_rewards" not in response_data["data"]
+
+def test_run_simulation_with_invalid_custom_rewards(client, admin_token):
+    invalid_custom_rewards = [10, 5, "invalid", 2, 1]
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": invalid_custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 422  # Unprocessable Entity
+
+def test_run_simulation_with_empty_custom_rewards(client, admin_token):
+    empty_custom_rewards = []
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": empty_custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "custom_rewards" in response_data["data"]
+    assert response_data["data"]["custom_rewards"] == []
+
+def test_run_greedy_pig_simulation_with_custom_rewards(client, admin_token):
+    custom_rewards = [20, 15, 10, 5, 3, 2, 1]
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "custom_rewards" in response_data["data"]
+    assert response_data["data"]["custom_rewards"] == custom_rewards
+
+def test_run_forty_two_simulation_with_custom_rewards(client, admin_token):
+    custom_rewards = [20, 15, 10, 5, 3, 2, 1]
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "forty_two_test", "num_simulations": 100, "custom_rewards": custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "custom_rewards" in response_data["data"]
+    assert response_data["data"]["custom_rewards"] == custom_rewards
+
+def test_custom_rewards_consistency(client, admin_token):
+    custom_rewards = [15, 10, 5, 3, 2, 1]
+    simulation_response1 = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    simulation_response2 = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": custom_rewards},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    
+    assert simulation_response1.status_code == 200
+    assert simulation_response2.status_code == 200
+    
+    response_data1 = simulation_response1.json()
+    response_data2 = simulation_response2.json()
+    
+    assert response_data1["data"]["custom_rewards"] == custom_rewards
+    assert response_data2["data"]["custom_rewards"] == custom_rewards
+    assert response_data1["data"]["custom_rewards"] == response_data2["data"]["custom_rewards"]

@@ -14,7 +14,6 @@ class LeagueResults(BaseModel):
 
 class LeagueAssignRequest(BaseModel):
     name: str
-    
 
 class SimulationConfig(BaseModel):
     num_simulations: int

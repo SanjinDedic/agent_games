@@ -33,7 +33,6 @@ def transform_result(result_data, sim_id):
     # Sort the total_points dictionary by values
     sorted_total_points = dict(sorted(result_data["total_points"].items(), key=lambda item: item[1], reverse=True))
 
-    # Construct the new dictionary
     return {
         "total_points": sorted_total_points,
         "total_wins": result_data["total_wins"],
