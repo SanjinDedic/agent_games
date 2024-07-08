@@ -237,10 +237,19 @@ def get_all_teams_from_db(session):
     curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name} for team in teams]}
     return curated_teams
 
-def save_simulation_results(session, league_id, results, rewards='[10, 8, 6, 4, 3, 2, 1]'):
+def save_simulation_results(session, league_id, results, rewards=None):
     aest_timezone = pytz.timezone("Australia/Sydney")
     timestamp = datetime.now(aest_timezone)
-    simulation_result = SimulationResult(league_id=league_id, timestamp=timestamp, num_simulations=results["num_simulations"], custom_rewards=rewards)
+    
+    # Convert rewards to string if it's not None
+    rewards_str = json.dumps(rewards) if rewards is not None else '[10, 8, 6, 4, 3, 2, 1]'
+    
+    simulation_result = SimulationResult(
+        league_id=league_id, 
+        timestamp=timestamp, 
+        num_simulations=results["num_simulations"], 
+        custom_rewards=rewards_str
+    )
     session.add(simulation_result)
     print("SAVED SIMULATION RESULT: ", simulation_result)
     session.flush()  # Flush to generate the simulation_result_id
