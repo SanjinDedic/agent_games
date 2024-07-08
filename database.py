@@ -237,10 +237,10 @@ def get_all_teams_from_db(session):
     curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name} for team in teams]}
     return curated_teams
 
-def save_simulation_results(session, league_id, results):
+def save_simulation_results(session, league_id, results, rewards='[10, 8, 6, 4, 3, 2, 1]'):
     aest_timezone = pytz.timezone("Australia/Sydney")
     timestamp = datetime.now(aest_timezone)
-    simulation_result = SimulationResult(league_id=league_id, timestamp=timestamp, num_simulations=results["num_simulations"])
+    simulation_result = SimulationResult(league_id=league_id, timestamp=timestamp, num_simulations=results["num_simulations"], custom_rewards=rewards)
     session.add(simulation_result)
     print("SAVED SIMULATION RESULT: ", simulation_result)
     session.flush()  # Flush to generate the simulation_result_id
@@ -271,7 +271,7 @@ def get_all_league_results_from_db(session, league_name):
         for result in sim.simulation_results:
             total_points[result.team.name] = result.score
             total_wins[result.team.name] = result.wins
-        all_results.append({"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations, "timestamp": timestamp})
+        all_results.append({"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations, "timestamp": timestamp, "rewards": sim.custom_rewards})
         #sort all results by id in reverse with the highest first
         all_results = sorted(all_results, key=lambda x: x["id"], reverse=True)
     return {"all_results": all_results}

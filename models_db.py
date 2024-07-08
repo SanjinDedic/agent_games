@@ -70,8 +70,9 @@ class SimulationResult(SQLModel, table=True):
     league: League = Relationship(back_populates="simulation_results")
     timestamp: datetime
     simulation_results: List["SimulationResultItem"] = Relationship(back_populates="simulation_result")
-    published: bool = False # this needs to be restricted to only one result per league
-    num_simulations: int = 0 #has to be there
+    published: bool = False
+    num_simulations: int = 0
+    custom_rewards: str = '[10, 8, 6, 4, 3, 2, 1]'
 
 
 class SimulationResultItem(SQLModel, table=True):
