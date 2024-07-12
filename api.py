@@ -289,3 +289,17 @@ def update_expiry_date(expiry_date: ExpiryDate, current_user: dict = Depends(get
         ErrorResponseModel(status="error", message= str(e))
 
 
+@app.post("/get_game_instructions", response_model=ResponseModel)
+async def get_game_instructions(game: GameName):
+    try:
+        game_class = GameFactory.get_game_class(game.game_name)
+        return ResponseModel(
+            status="success",
+            message="Game instructions retrieved successfully",
+            data={
+                "starter_code": game_class.starter_code,
+                "game_instructions": game_class.game_instructions
+            }
+        )
+    except Exception as e:
+        return ErrorResponseModel(status="error", message=f"An error occurred: {str(e)}")
