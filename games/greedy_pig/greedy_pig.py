@@ -4,6 +4,68 @@ import os
 import time
 
 class GreedyPigGame(BaseGame):
+    starter_code = '''
+from games.greedy_pig.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        # Your code here
+        return 'continue'  # or 'bank'
+'''
+
+    game_instructions = '''
+<h1>Greedy Pig Game Instructions</h1>
+
+<p>Welcome to the Greedy Pig game! Your task is to implement the <code>make_decision</code> method in the <code>CustomPlayer</code> class.</p>
+
+<h2>1. Game Objective</h2>
+<p>Be the first player to bank 100 points.</p>
+
+<h2>2. Your Task</h2>
+<p>Implement the <code>make_decision</code> method to decide whether to 'continue' rolling or 'bank' your current unbanked money.</p>
+
+<h2>3. Available Information</h2>
+<p>The <code>game_state</code> parameter provides you with the following information:</p>
+<ul>
+    <li><code>round_no</code>: The current round number</li>
+    <li><code>roll_no</code>: The number of rolls in the current turn</li>
+    <li><code>players_banked_this_round</code>: List of players who have banked in this round</li>
+    <li><code>banked_money</code>: Dictionary of each player's banked money</li>
+    <li><code>unbanked_money</code>: Dictionary of each player's unbanked money</li>
+</ul>
+
+<h2>4. Helpful Methods</h2>
+<p>You can use the following methods in your implementation:</p>
+<ul>
+    <li><code>self.my_rank(game_state)</code>: Returns your current rank based on total money (banked + unbanked)</li>
+</ul>
+
+<h2>5. Implementation Example</h2>
+<pre><code>
+def make_decision(self, game_state):
+    my_unbanked = game_state["unbanked_money"][self.name]
+    my_banked = game_state["banked_money"][self.name]
+    my_current_rank = self.my_rank(game_state)
+
+    if my_unbanked > 20 or (my_banked + my_unbanked >= 100):
+        return 'bank'
+    elif my_current_rank > 2 and game_state["roll_no"] > 3:
+        return 'bank'
+    else:
+        return 'continue'
+</code></pre>
+
+<h2>6. Strategy Tips</h2>
+<ul>
+    <li>Consider your current rank when making decisions</li>
+    <li>Be aware of how close you are to winning (100 points)</li>
+    <li>Balance the risk of rolling again with the potential reward</li>
+    <li>Observe other players' strategies through the <code>players_banked_this_round</code> list</li>
+</ul>
+
+<p>Good luck and have fun!</p>
+'''
+
     def __init__(self, league, verbose=False, custom_rewards=None):
         super().__init__(league, verbose)
         self.active_players = list(self.players)

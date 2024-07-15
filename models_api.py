@@ -65,7 +65,6 @@ class SubmissionCode(BaseModel):
     team_id: int = Field(default=None)
     league_id: int = Field(default=None)
 
-
 class ResponseModel(BaseModel):
     status: str
     message: str
@@ -77,4 +76,13 @@ class ErrorResponseModel(BaseModel):
 
 class ExpiryDate(BaseModel):
     date: datetime
-    league: str 
+    league: str
+
+class GameName(BaseModel):
+    game_name: str
+
+    @field_validator('game_name')
+    def game_name_must_not_be_empty(cls, v):
+        if not v.strip():
+            raise ValueError('Game name must not be empty or just whitespace')
+        return v

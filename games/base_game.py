@@ -1,9 +1,20 @@
+from abc import ABC, abstractmethod
 import random
 import os
 import importlib.util
-from abc import ABC, abstractmethod
 
 class BaseGame(ABC):
+    starter_code = '''
+# This is a base starter code.
+# Each game should override this with its specific starter code.
+'''
+
+    game_instructions = '''
+<h1>Base Game Instructions</h1>
+
+<p>These are generic game instructions. Each game should provide its own specific instructions.</p>
+'''
+
     def __init__(self, league, verbose=False):
         self.verbose = verbose
         self.league = league
@@ -84,3 +95,11 @@ class BaseGame(ABC):
             "total_wins": total_wins,
             "num_simulations": num_simulations
         }
+
+    @classmethod
+    def get_starter_code(cls):
+        return cls.starter_code
+
+    @classmethod
+    def get_game_instructions(cls):
+        return cls.game_instructions
