@@ -41,3 +41,6 @@ league_code.md
 
 # Ignore all db files
 *.db
+
+# Ignore all log files
+.DS_Store
