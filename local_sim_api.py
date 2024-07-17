@@ -12,7 +12,7 @@ from api import app
 from config import ROOT_DIR
 
 # Connect to local copy of prod database
-#If you have errors run python3 production_database_setup.py
+# If you have errors run python3 production_database_setup.py
 db_path = os.path.join(ROOT_DIR, "teams.db")
 engine = create_engine(f"sqlite:///{db_path}")
 
