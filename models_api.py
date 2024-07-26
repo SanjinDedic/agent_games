@@ -68,7 +68,7 @@ class SubmissionCode(BaseModel):
 class ResponseModel(BaseModel):
     status: str
     message: str
-    data: dict = None
+    data: Optional[dict] = None
 
 class ErrorResponseModel(BaseModel):
     status: str

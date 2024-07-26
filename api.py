@@ -1,16 +1,15 @@
-from fastapi import FastAPI, HTTPException, status, File, Query, Depends, Body, Header
+from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import create_engine, select, Session
+from sqlmodel import Session
 from validation import is_agent_safe, run_agent_simulation
 from games.game_factory import GameFactory
-import asyncio
 import os
-from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
+from config import ROOT_DIR
 from contextlib import asynccontextmanager
 from models_db import *
 from models_api import *
 from utils import transform_result
-from auth import get_current_user, create_access_token, decode_id
+from auth import get_current_user, decode_id
 from database import *
 
 
@@ -70,7 +69,7 @@ async def league_join(link, user: TeamSignUp, session: Session = Depends(get_db)
         user_data = TeamSignUp.model_validate(user)
         print(user_data)
         return create_team(session=session, name=user.name, password=user.password, league_id=league_id, school=user.school)
-    except Exception as e:
+    except Exception:
         return {"status": "failed", "message": "Server error"}
 
 @app.post("/admin_login")
