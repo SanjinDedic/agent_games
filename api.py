@@ -167,13 +167,10 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
         
         if league_name != "test_league":
-            sim_id = save_simulation_results(session, league.id, results, custom_rewards)
+            sim_result = save_simulation_results(session, league.id, results, custom_rewards)
         
         # Only include custom_rewards in the response if they were provided
-        response_data = transform_result(results, sim_id)
-        if custom_rewards is not None:
-            response_data["custom_rewards"] = custom_rewards
-        
+        response_data = transform_result(results, sim_result, league.name) 
         return ResponseModel(status="success", message="Simulation run successfully", data=response_data)
     
     except Exception as e:

@@ -90,9 +90,11 @@ def test_team_create(client, db_session, admin_token):
     team_school = "new_test_school"
     response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
-    assert "access_token" in response.json()["data"]
-    assert response.json()["data"]["token_type"] == "bearer"
-
+    assert "name" in response.json()["data"]
+    assert "id" in response.json()["data"]
+    assert "league_id" in response.json()["data"]
+    assert "league" in response.json()["data"]
+    
     team = db_session.exec(select(Team).where(Team.name == team_name)).one_or_none()
     assert team is not None
     assert team.name == team_name

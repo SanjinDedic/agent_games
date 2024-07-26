@@ -78,12 +78,8 @@ def create_team(session, name, password, league_id=1, school=None):
     team.league = league
     session.commit()
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": name, "role": "student"},
-        expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    return {"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name}
 
 
 def get_team_token(session, team_name, team_password):
@@ -263,7 +259,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
             session.add(result_item)
 
     session.commit()
-    return simulation_result.id
+    return simulation_result
 
 
 def get_all_league_results_from_db(session, league_name):
