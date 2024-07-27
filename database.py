@@ -170,7 +170,7 @@ def save_submission(session, submission_code, team_id):
     session.commit()  # Commit the changes to the database
     return db_submission.id
 
-def assign_team_to_league_in_db(session, team_name, league_name):
+def assign_team_to_league(session, team_name, league_name):
     league = session.exec(
         select(League)
         .where(League.name == league_name)
@@ -199,13 +199,13 @@ def get_league(session, league_name):
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     return league
     
-def get_all_admin_leagues_from_db(session):
+def get_all_admin_leagues(session):
     leagues = session.exec(select(League)).all()
     #must return a dictionary:
     return { "admin_leagues": [league.model_dump() for league in leagues]}
 
 
-def delete_team_from_db(session, team_name):
+def delete_team(session, team_name):
     team = session.exec(
         select(Team)
         .where(Team.name == team_name)).one_or_none()
@@ -233,7 +233,7 @@ def delete_team_from_db(session, team_name):
     return msg
     
 
-def get_all_teams_from_db(session):
+def get_all_teams(session):
     teams = session.exec(select(Team)).all()
     curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name} for team in teams]}
     return curated_teams
@@ -266,7 +266,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
     return simulation_result.id
 
 
-def get_all_league_results_from_db(session, league_name):
+def get_all_league_results(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
@@ -360,7 +360,7 @@ def get_all_published_results(session):
 
 
 
-def update_expiry_date_in_db(session, league_name, expiry_date):
+def update_expiry_date(session, league_name, expiry_date):
     print("EXPIRY DATE: ", expiry_date, "LEAGUE NAME: ", league_name)
     league = session.exec(
         select(League)
