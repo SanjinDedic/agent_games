@@ -22,6 +22,9 @@ AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
 class LeagueNotFoundError(Exception):
     pass
 
+class TeamAlreadyExistsError(Exception):
+    pass
+
 class TeamNotFoundError(Exception):
     pass
 
@@ -74,18 +77,21 @@ def create_team(session, name, password, league_id=1, school=None):
     if not league:
         raise LeagueNotFoundError(f"League with id '{league_id}' does not exist")
     
+    existing_team = session.exec(
+        select(Team)
+        .where(Team.name == name)
+    ).one_or_none()
+    if existing_team:
+        raise TeamAlreadyExistsError("Team already exists")
+
     team = Team(name=name, school_name=school)
     team.set_password(password)
     session.add(team)
     team.league = league
     session.commit()
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": name, "role": "student"},
-        expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    return {"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name}
 
 
 def get_team_token(session, team_name, team_password):
@@ -263,7 +269,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
             session.add(result_item)
 
     session.commit()
-    return simulation_result.id
+    return simulation_result
 
 
 def get_all_league_results(session, league_name):

@@ -6,7 +6,7 @@ from games.game_factory import GameFactory
 import os
 from config import ROOT_DIR
 from contextlib import asynccontextmanager
-from utils import transform_result
+from utils import transform_result, get_games_names
 from auth import get_current_user, decode_id
 import database
 from models_api import (
@@ -167,13 +167,10 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
         
         if league_name != "test_league":
-            sim_id = database.save_simulation_results(session, league.id, results, custom_rewards)
+            sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
         
         # Only include custom_rewards in the response if they were provided
-        response_data = transform_result(results, sim_id)
-        if custom_rewards is not None:
-            response_data["custom_rewards"] = custom_rewards
-        
+        response_data = transform_result(results, sim_result, league.name) 
         return ResponseModel(status="success", message="Simulation run successfully", data=response_data)
     
     except Exception as e:
@@ -300,6 +297,20 @@ async def get_game_instructions(game: GameName):
                 "starter_code": game_class.starter_code,
                 "game_instructions": game_class.game_instructions
             }
+        )
+    except Exception as e:
+        return ErrorResponseModel(status="error", message=f"An error occurred: {str(e)}")
+    
+
+@app.post("/get_available_games", response_model=ResponseModel)
+async def get_available_game():
+    try:
+        game_names = get_games_names()
+        
+        return ResponseModel(
+            status="success",
+            message="Game instructions retrieved successfully",
+            data={ "games" :game_names }
         )
     except Exception as e:
         return ErrorResponseModel(status="error", message=f"An error occurred: {str(e)}")
