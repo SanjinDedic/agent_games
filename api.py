@@ -1,18 +1,30 @@
-from fastapi import FastAPI, HTTPException, status, File, Query, Depends, Body, Header
+from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import create_engine, select, Session
+from sqlmodel import Session
 from validation import is_agent_safe, run_agent_simulation
 from games.game_factory import GameFactory
-import asyncio
 import os
-from config import get_database_url, ACCESS_TOKEN_EXPIRE_MINUTES, ROOT_DIR
+from config import ROOT_DIR
 from contextlib import asynccontextmanager
-from models_db import *
-from models_api import *
 from utils import transform_result
-from auth import get_current_user, create_access_token, decode_id
-from database import *
-
+from auth import get_current_user, decode_id
+import database
+from models_api import (
+    ResponseModel,
+    ErrorResponseModel,
+    LeagueSignUp,
+    TeamSignup,
+    AdminLogin,
+    TeamLogin,
+    SubmissionCode,
+    SimulationConfig,
+    LeagueAssignRequest,
+    TeamDelete,
+    ExpiryDate,
+    LeagueName,
+    LeagueResults,
+    GameName
+)
 
 
 @asynccontextmanager
@@ -29,7 +41,7 @@ app.add_middleware(
 )
 
 def get_db():
-    engine = get_db_engine()
+    engine = database.get_db_engine()
     print(f"Database URL: {engine.url}")  # Add this line
     with Session(engine) as session:
         yield session
@@ -56,28 +68,16 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None),
         league_folder = f"/leagues/user/{league.name}"
 
     try:
-        data = create_league(session=session, league_name=league.name, league_game=league.game, league_folder=league_folder)
+        data = database.create_league(session=session, league_name=league.name, league_game=league.game, league_folder=league_folder)
         return ResponseModel(status="success", message="League created successfully", data=data)
     except Exception as e:
         return ResponseModel(status="failed", message=str(e))
-
-@app.post("/league_join/{link}") #rename to user_league_join
-async def league_join(link, user: TeamSignUp, session: Session = Depends(get_db)):
-    #ths will only apply to user created leagues
-    #find league_id from link
-    try:
-        league_id = decode_id(link)
-        user_data = TeamSignUp.model_validate(user)
-        print(user_data)
-        return create_team(session=session, name=user.name, password=user.password, league_id=league_id, school=user.school)
-    except Exception as e:
-        return {"status": "failed", "message": "Server error"}
 
 @app.post("/admin_login")
 def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
     try:
         print("calling get_admin with" + login.username + " " + login.password)
-        token = get_admin_token(session, login.username, login.password)
+        token = database.get_admin_token(session, login.username, login.password)
         return ResponseModel(status="success", message="Login successful", data=token)
     except Exception as e:
         return ResponseModel(status="failed", message=str(e))
@@ -86,7 +86,7 @@ def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
 @app.post("/team_login", response_model=ResponseModel)
 def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
     try:
-        team_token = get_team_token(session, credentials.name, credentials.password)
+        team_token = database.get_team_token(session, credentials.name, credentials.password)
         if team_token:
             return ResponseModel(status="success", message="Login successful", data=team_token)
     except Exception as e:
@@ -97,7 +97,7 @@ async def agent_create(user: TeamSignup, current_user: dict = Depends(get_curren
     if current_user["role"] != "admin":
         return ResponseModel(status="failed", message="Only admin users can create teams")
     try:
-        data = create_team(session=session, name=user.name, password=user.password, school=user.school_name)
+        data = database.create_team(session=session, name=user.name, password=user.password, school=user.school_name)
         return ResponseModel(status="success", message="Team created successfully", data=data)
     except Exception as e:
         return ResponseModel(status="failed", message=f"Server error: {str(e)}")
@@ -110,7 +110,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     if not is_agent_safe(submission.code):
         return ErrorResponseModel(status="error", message="Agent code is not safe.")
     
-    team = get_team(session, team_name)
+    team = database.get_team(session, team_name)
     if not team.league:
         return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
     
@@ -127,7 +127,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         print(team_name, user_role, team.league.name)
 
         # Check if the team can make a submission
-        if not allow_submission(session, team.id):
+        if not database.allow_submission(session, team.id):
             return ErrorResponseModel(status="error", message="You can only make 3 submissions per minute.")
 
         # Save the submitted code in a Python file named after the team
@@ -138,7 +138,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         # Log the submission in the database
         print(submission.code)
         print(team.id)
-        submission_id = save_submission(session, submission.code, team.id)
+        submission_id = database.save_submission(session, submission.code, team.id)
         return ResponseModel(
             status="success",
             message=f"Code submitted successfully. Submission ID: {submission_id}",
@@ -159,7 +159,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
     custom_rewards = simulation_config.custom_rewards
     
     try:
-        league = get_league(session, league_name)
+        league = database.get_league(session, league_name)
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
         
@@ -167,7 +167,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
         
         if league_name != "test_league":
-            sim_result = save_simulation_results(session, league.id, results, custom_rewards)
+            sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
         
         # Only include custom_rewards in the response if they were provided
         response_data = transform_result(results, sim_result, league.name) 
@@ -181,7 +181,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 @app.get("/get_all_admin_leagues", response_model=ResponseModel)
 def get_all_admin_leagues(session: Session = Depends(get_db)):
     try:
-        leagues = get_all_admin_leagues_from_db(session)
+        leagues = database.get_all_admin_leagues(session)
         return ResponseModel(status="success", message="Admin leagues retrieved successfully", data=leagues)
     except Exception as e:
         print(f"Error retrieving admin leagues: {str(e)}")
@@ -197,7 +197,7 @@ async def assign_team_to_league(league: LeagueAssignRequest, current_user: dict 
         return ErrorResponseModel(status="error", message="Only admin and student users can assign teams to leagues")
     
     try:
-        msg = assign_team_to_league_in_db(session, team_name, league.name)
+        msg = database.assign_team_to_league(session, team_name, league.name)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         print(f"Error assigning team to league: {str(e)}")
@@ -210,7 +210,7 @@ async def delete_team(team: TeamDelete, current_user: dict = Depends(get_current
         return ErrorResponseModel(status="error", message="Only admin users can delete teams")
     
     try:
-        msg= delete_team_from_db(session, team.name)
+        msg= database.delete_team(session, team.name)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         return ErrorResponseModel(status="error", message="An error occurred while deleting the team "+str(e))
@@ -219,7 +219,7 @@ async def delete_team(team: TeamDelete, current_user: dict = Depends(get_current
 @app.get("/get_all_teams", response_model=ResponseModel)
 def get_all_teams(session: Session = Depends(get_db)):
     try:
-        teams = get_all_teams_from_db(session)
+        teams = database.get_all_teams(session)
         return ResponseModel(status="success", message="Teams retrieved successfully", data=teams)
     except Exception as e:
         print(f"Error retrieving teams: {str(e)}")
@@ -231,7 +231,7 @@ def get_all_league_results(league: LeagueName, current_user: dict = Depends(get_
         return ErrorResponseModel(status="error", message="Only admin users can view league results")
     
     try:
-        league_results = get_all_league_results_from_db(session, league.name)
+        league_results = database.get_all_league_results(session, league.name)
         return ResponseModel(status="success", message="League results retrieved successfully", data=league_results)
     except Exception as e:
         return ErrorResponseModel(status="error", message="An error occurred while retrieving league results "+str(e))
@@ -242,7 +242,7 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
     if current_user["role"] != "admin":
         return ErrorResponseModel(status="error", message="Only admin users can publish league results") 
     try:
-        msg,data = publish_sim_results(session, sim.league_name, sim.id)
+        msg,data = database.publish_sim_results(session, sim.league_name, sim.id)
         return ResponseModel(status="success", message=msg, data=data)
     except Exception as e:
         return ErrorResponseModel(status="error", message="An error occurred while publishing results "+str(e))
@@ -251,7 +251,7 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
 @app.post("/get_published_results_for_league", response_model=ResponseModel)
 def get_published_results_for_league(league: LeagueName, session: Session = Depends(get_db)):
     try:
-        published_results = get_published_result(session, league.name)
+        published_results = database.get_published_result(session, league.name)
         if published_results:
             return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
         else:
@@ -263,7 +263,7 @@ def get_published_results_for_league(league: LeagueName, session: Session = Depe
 @app.get("/get_published_results_for_all_leagues", response_model=ResponseModel)
 def get_published_results_for_all_leagues(session: Session = Depends(get_db)):
     try:
-        published_results = get_all_published_results(session)
+        published_results = database.get_all_published_results(session)
         if published_results:
             return ResponseModel(status="success", message="Published results retrieved successfully", data=published_results)
         else:
@@ -278,7 +278,7 @@ def update_expiry_date(expiry_date: ExpiryDate, current_user: dict = Depends(get
     if current_user["role"] != "admin":
         return ResponseModel(status="failed", message="Only admin users can update the expiry date")
     try:
-        message = update_expiry_date_in_db(session, expiry_date.league, expiry_date.date)
+        message = database.update_expiry_date(session, expiry_date.league, expiry_date.date)
         if "not found" in message:
             return ErrorResponseModel(status="failed", message = message)
         return ResponseModel(status="success", message = message)

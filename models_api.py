@@ -45,17 +45,6 @@ class TeamLogin(BaseModel):
             raise ValueError(f"{v} must not be empty or just whitespace.")
         return v
 
-class TeamSignUp(BaseModel):
-    name: str
-    password: str
-    school: str
-
-    @field_validator('*')
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError(f"{v} must not be empty or just whitespace.")
-        return v
-
 class AdminLogin(BaseModel):
     username: str
     password: str
@@ -68,7 +57,7 @@ class SubmissionCode(BaseModel):
 class ResponseModel(BaseModel):
     status: str
     message: str
-    data: dict = None
+    data: Optional[dict] = None
 
 class ErrorResponseModel(BaseModel):
     status: str

@@ -64,11 +64,6 @@ def test_league_creation(client, admin_token):
     assert response.status_code == 200
     assert "success" in response.json()["status"]
 
-def test_league_join(client):
-    response = client.post("/league_join/MQ%3D%3D", json={"name": "std", "password": "pass", "school": "abc"})
-    assert response.status_code == 200
-    assert "access_token" in response.json()
-
 def test_league_folder_creation(client, admin_token):
     league_name = "test_league_admin"
     response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer {admin_token}"})
@@ -136,7 +131,7 @@ def test_league_creation_exception(client, admin_token, monkeypatch):
     def mock_create_league(*args, **kwargs):
         raise Exception("Database error")
 
-    monkeypatch.setattr("api.create_league", mock_create_league)
+    monkeypatch.setattr("database.create_league", mock_create_league)
 
     response = client.post("/league_create", 
                            json={"name": "exception_league", "game": "greedy_pig"},

@@ -42,5 +42,5 @@ def encode_id(id: int) -> str:
 
 def decode_id(encoded_id: str) -> int:
     id_bytes = base64.urlsafe_b64decode(encoded_id)
-    id = int(id_bytes.decode('utf-8'))
-    return id
+    decoded_id = int(id_bytes.decode('utf-8'))
+    return decoded_id

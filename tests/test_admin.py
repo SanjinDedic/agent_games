@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from api import app
 from database import create_administrator, get_db_engine
-from models_db import Admin, League
+from models_db import Admin
 from tests.database_setup import setup_test_db
 os.environ["TESTING"] = "1"
 
@@ -84,7 +84,7 @@ def test_create_administrator_duplicate(db_session):
 
 def test_admin_login_exception(client, mocker):
     # Mock the get_admin_token function to raise an exception
-    mocker.patch("api.get_admin_token", side_effect=Exception("Database connection error"))
+    mocker.patch("database.get_admin_token", side_effect=Exception("Database connection error"))
 
     login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
     assert login_response.status_code == 200
