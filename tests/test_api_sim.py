@@ -92,6 +92,8 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
     assert unauthorized_response.json()["message"] == "Only admin users can view league results"
 
 
+#####   PUBLISH RESULTS  #####
+
 def test_publish_results(client, db_session, admin_token, non_admin_token):
     simulation_response = client.post(
         "/run_simulation",
@@ -99,7 +101,7 @@ def test_publish_results(client, db_session, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    simulation_id = simulation_response.json()["data"]["simulation_id"]
+    simulation_id = simulation_response.json()["data"]["id"]
 
     publish_response = client.post(
         "/publish_results",
@@ -135,6 +137,7 @@ def test_publish_results(client, db_session, admin_token, non_admin_token):
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True
 
+#####   ONE SIMULATION PER LEAGUE  #####
 
 def test_publish_one_simulation_per_league(client, db_session, admin_token):
     simulation_response1 = client.post(
@@ -143,7 +146,7 @@ def test_publish_one_simulation_per_league(client, db_session, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response1.status_code == 200
-    simulation_id1 = simulation_response1.json()["data"]["simulation_id"]
+    simulation_id1 = simulation_response1.json()["data"]["id"]
 
     publish_response1 = client.post(
         "/publish_results",
@@ -160,7 +163,7 @@ def test_publish_one_simulation_per_league(client, db_session, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response2.status_code == 200
-    simulation_id2 = simulation_response2.json()["data"]["simulation_id"]
+    simulation_id2 = simulation_response2.json()["data"]["id"]
 
     publish_response2 = client.post(
         "/publish_results",
@@ -176,6 +179,7 @@ def test_publish_one_simulation_per_league(client, db_session, admin_token):
     simulation_result2 = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id2)).one()
     assert simulation_result2.published == True
 
+#####   PUBLISH RESULTS FOR LEAGUE  #####
 
 def test_get_published_results_for_league(client, db_session, admin_token):
     simulation_response = client.post(
@@ -184,7 +188,7 @@ def test_get_published_results_for_league(client, db_session, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    simulation_id = simulation_response.json()["data"]["simulation_id"]
+    simulation_id = simulation_response.json()["data"]["id"]
 
     publish_response = client.post(
         "/publish_results",
@@ -205,6 +209,7 @@ def test_get_published_results_for_league(client, db_session, admin_token):
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True
 
+#####   PUBLISH RESULTS FOR ALL LEAGUES  #####
 
 def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     # Test getting published results for all leagues
@@ -214,6 +219,8 @@ def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
 
+
+#####   RUN SIMULATION  #####
 
 def test_run_simulation(client, admin_token):
     simulation_response = client.post(
@@ -235,7 +242,7 @@ def test_run_simulation(client, admin_token):
     assert len(response_data["data"]["total_points"]) > 0
 
 
-
+#####   FORTY TWO RUN SIMULATION  #####
 
 def test_run_forty_two_simulation(client, admin_token):
     simulation_response = client.post(
@@ -247,7 +254,7 @@ def test_run_forty_two_simulation(client, admin_token):
     assert simulation_response.status_code == 200
     assert "total_points" in simulation_response.json()["data"]
 
-
+#####   RUN SIMULATION WITH CUSTOM REWARDS  #####
 
 def test_run_simulation_with_custom_rewards(client, admin_token):
     custom_rewards = [15, 10, 5, 3, 2, 1]
@@ -264,8 +271,11 @@ def test_run_simulation_with_custom_rewards(client, admin_token):
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
-    assert "custom_rewards" in response_data["data"]
-    assert response_data["data"]["custom_rewards"] == custom_rewards
+    assert "rewards" in response_data["data"]
+    assert response_data["data"]["rewards"] == str(custom_rewards)
+
+#####   RUN SIMULATION WITH DEFAULT REWARDS  #####
+
 
 def test_run_simulation_with_default_rewards(client, admin_token):
     simulation_response = client.post(
@@ -281,7 +291,10 @@ def test_run_simulation_with_default_rewards(client, admin_token):
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
-    assert "custom_rewards" not in response_data["data"]
+    assert "rewards" in response_data["data"]
+
+#####   RUN SIMULATION WITH INVALID REWARDS  #####
+
 
 def test_run_simulation_with_invalid_custom_rewards(client, admin_token):
     invalid_custom_rewards = [10, 5, "invalid", 2, 1]
@@ -291,6 +304,9 @@ def test_run_simulation_with_invalid_custom_rewards(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 422  # Unprocessable Entity
+
+#####   RUN SIMULATION WITH EMPTY REWARDS  #####
+
 
 def test_run_simulation_with_empty_custom_rewards(client, admin_token):
     empty_custom_rewards = []
@@ -307,8 +323,8 @@ def test_run_simulation_with_empty_custom_rewards(client, admin_token):
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
-    assert "custom_rewards" in response_data["data"]
-    assert response_data["data"]["custom_rewards"] == []
+    assert "rewards" in response_data["data"]
+    assert response_data["data"]["rewards"] == '[]'
 
 def test_run_greedy_pig_simulation_with_custom_rewards(client, admin_token):
     custom_rewards = [20, 15, 10, 5, 3, 2, 1]
@@ -325,8 +341,8 @@ def test_run_greedy_pig_simulation_with_custom_rewards(client, admin_token):
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
-    assert "custom_rewards" in response_data["data"]
-    assert response_data["data"]["custom_rewards"] == custom_rewards
+    assert "rewards" in response_data["data"]
+    assert response_data["data"]["rewards"] == str(custom_rewards)
 
 def test_run_forty_two_simulation_with_custom_rewards(client, admin_token):
     custom_rewards = [20, 15, 10, 5, 3, 2, 1]
@@ -343,8 +359,8 @@ def test_run_forty_two_simulation_with_custom_rewards(client, admin_token):
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
-    assert "custom_rewards" in response_data["data"]
-    assert response_data["data"]["custom_rewards"] == custom_rewards
+    assert "rewards" in response_data["data"]
+    assert response_data["data"]["rewards"] == str(custom_rewards)
 
 def test_custom_rewards_consistency(client, admin_token):
     custom_rewards = [15, 10, 5, 3, 2, 1]
@@ -365,6 +381,6 @@ def test_custom_rewards_consistency(client, admin_token):
     response_data1 = simulation_response1.json()
     response_data2 = simulation_response2.json()
     
-    assert response_data1["data"]["custom_rewards"] == custom_rewards
-    assert response_data2["data"]["custom_rewards"] == custom_rewards
-    assert response_data1["data"]["custom_rewards"] == response_data2["data"]["custom_rewards"]
+    assert response_data1["data"]["rewards"] == str(custom_rewards)
+    assert response_data2["data"]["rewards"] == str(custom_rewards)
+    assert response_data1["data"]["rewards"] == response_data2["data"]["rewards"]

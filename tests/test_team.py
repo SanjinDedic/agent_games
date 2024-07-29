@@ -104,6 +104,7 @@ def test_team_create(client, db_session, admin_token):
     response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
+    assert response.json()["message"] == "Server error: Team already exists"
 
     response = client.post("/team_create", json={"name": "missing_fields_team"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 422

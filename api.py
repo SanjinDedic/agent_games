@@ -6,7 +6,7 @@ from games.game_factory import GameFactory
 import os
 from config import ROOT_DIR
 from contextlib import asynccontextmanager
-from utils import transform_result
+from utils import transform_result, get_games_names
 from auth import get_current_user, decode_id
 import database
 from models_api import (
@@ -297,6 +297,20 @@ async def get_game_instructions(game: GameName):
                 "starter_code": game_class.starter_code,
                 "game_instructions": game_class.game_instructions
             }
+        )
+    except Exception as e:
+        return ErrorResponseModel(status="error", message=f"An error occurred: {str(e)}")
+    
+
+@app.post("/get_available_games", response_model=ResponseModel)
+async def get_available_game():
+    try:
+        game_names = get_games_names()
+        
+        return ResponseModel(
+            status="success",
+            message="Game instructions retrieved successfully",
+            data={ "games" :game_names }
         )
     except Exception as e:
         return ErrorResponseModel(status="error", message=f"An error occurred: {str(e)}")

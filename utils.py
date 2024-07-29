@@ -1,6 +1,6 @@
 # utils.py
 
-import json
+import json, os
 from database import create_team
 
 def add_teams_from_json(session, teams_json_path):
@@ -44,3 +44,15 @@ def transform_result(result_data, sim_result, league_name):
         "total_wins": result_data["total_wins"],
 
     }
+
+def get_games_names():
+    games_directory = "./games"
+    if not os.path.exists(games_directory):
+        raise FileNotFoundError(f"The directory '{games_directory}' does not exist.")
+    
+    # List the contents of the games directory and filter only directories
+    game_names = [
+        folder for folder in os.listdir(games_directory)
+        if os.path.isdir(os.path.join(games_directory, folder)) and folder != "__pycache__"
+    ]
+    return game_names

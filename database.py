@@ -22,6 +22,9 @@ AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
 class LeagueNotFoundError(Exception):
     pass
 
+class TeamAlreadyExistsError(Exception):
+    pass
+
 class TeamNotFoundError(Exception):
     pass
 
@@ -74,6 +77,13 @@ def create_team(session, name, password, league_id=1, school=None):
     if not league:
         raise LeagueNotFoundError(f"League with id '{league_id}' does not exist")
     
+    existing_team = session.exec(
+        select(Team)
+        .where(Team.name == name)
+    ).one_or_none()
+    if existing_team:
+        raise TeamAlreadyExistsError("Team already exists")
+
     team = Team(name=name, school_name=school)
     team.set_password(password)
     session.add(team)
