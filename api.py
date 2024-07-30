@@ -1,4 +1,3 @@
-import subprocess
 from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
