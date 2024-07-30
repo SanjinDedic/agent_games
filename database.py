@@ -15,7 +15,14 @@ from auth import (
     create_access_token,
     encode_id
 )
+
+# Define a constant for the timezone
+AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
+
 class LeagueNotFoundError(Exception):
+    pass
+
+class TeamAlreadyExistsError(Exception):
     pass
 
 class TeamNotFoundError(Exception):
@@ -33,17 +40,15 @@ class SimulationResultNotFoundError(Exception):
 def get_db_engine():
     return create_engine(get_database_url())
 
-def create_database(engine, prnt=False):
+def create_database(engine):
     SQLModel.metadata.create_all(engine)
 
 def create_league(session, league_name, league_game, league_folder):
-    aest_timezone = pytz.timezone('Australia/Sydney')
-    
     league = League(
         name=league_name,
-        created_date=datetime.now(aest_timezone),
-        expiry_date=(datetime.now(aest_timezone) + timedelta(hours=GUEST_LEAGUE_EXPIRY)),
-        deleted_date=(datetime.now(aest_timezone) + timedelta(days=7)),
+        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        expiry_date=(datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=GUEST_LEAGUE_EXPIRY)),
+        deleted_date=(datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7)),
         active=True,
         signup_link=None,
         folder=league_folder,
@@ -72,18 +77,21 @@ def create_team(session, name, password, league_id=1, school=None):
     if not league:
         raise LeagueNotFoundError(f"League with id '{league_id}' does not exist")
     
+    existing_team = session.exec(
+        select(Team)
+        .where(Team.name == name)
+    ).one_or_none()
+    if existing_team:
+        raise TeamAlreadyExistsError("Team already exists")
+
     team = Team(name=name, school_name=school)
     team.set_password(password)
     session.add(team)
     team.league = league
     session.commit()
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": name, "role": "student"},
-        expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    return {"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name}
 
 
 def get_team_token(session, team_name, team_password):
@@ -151,7 +159,7 @@ def create_administrator(session, username, password):
         return {"status": "failed", "message": "Server error"}
     
 def allow_submission(session, team_id):
-    one_minute_ago = datetime.now(pytz.timezone('Australia/Sydney')) - timedelta(minutes=1)
+    one_minute_ago = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=1)
     recent_submissions = session.exec(
         select(Submission)
         .where(Submission.team_id == team_id)
@@ -163,13 +171,12 @@ def allow_submission(session, team_id):
     return True
 
 def save_submission(session, submission_code, team_id):
-    aest_timezone = pytz.timezone('Australia/Sydney')
-    db_submission = Submission(code=submission_code, timestamp=datetime.now(aest_timezone), team_id=team_id)
+    db_submission = Submission(code=submission_code, timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ), team_id=team_id)
     session.add(db_submission)
     session.commit()  # Commit the changes to the database
     return db_submission.id
 
-def assign_team_to_league_in_db(session, team_name, league_name):
+def assign_team_to_league(session, team_name, league_name):
     league = session.exec(
         select(League)
         .where(League.name == league_name)
@@ -198,13 +205,13 @@ def get_league(session, league_name):
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     return league
     
-def get_all_admin_leagues_from_db(session):
+def get_all_admin_leagues(session):
     leagues = session.exec(select(League)).all()
     #must return a dictionary:
     return { "admin_leagues": [league.model_dump() for league in leagues]}
 
 
-def delete_team_from_db(session, team_name):
+def delete_team(session, team_name):
     team = session.exec(
         select(Team)
         .where(Team.name == team_name)).one_or_none()
@@ -232,14 +239,13 @@ def delete_team_from_db(session, team_name):
     return msg
     
 
-def get_all_teams_from_db(session):
+def get_all_teams(session):
     teams = session.exec(select(Team)).all()
     curated_teams = {"all_teams": [{"name": team.name, "id": team.id, "league_id": team.league_id, "league": team.league.name} for team in teams]}
     return curated_teams
 
 def save_simulation_results(session, league_id, results, rewards=None):
-    aest_timezone = pytz.timezone("Australia/Sydney")
-    timestamp = datetime.now(aest_timezone)
+    timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
     
     # Convert rewards to string if it's not None
     rewards_str = json.dumps(rewards) if rewards is not None else '[10, 8, 6, 4, 3, 2, 1]'
@@ -263,10 +269,10 @@ def save_simulation_results(session, league_id, results, rewards=None):
             session.add(result_item)
 
     session.commit()
-    return simulation_result.id
+    return simulation_result
 
 
-def get_all_league_results_from_db(session, league_name):
+def get_all_league_results(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
@@ -314,8 +320,8 @@ def get_published_result(session, league_name):
     active = False
     expiry_date = league.expiry_date
     if expiry_date.tzinfo is None:
-        expiry_date = pytz.timezone("Australia/Sydney").localize(expiry_date)
-    if expiry_date > datetime.now(pytz.timezone("Australia/Sydney")):
+        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
+    if expiry_date > datetime.now(AUSTRALIA_SYDNEY_TZ):
         active = True
     
     for sim in league.simulation_results:
@@ -331,14 +337,13 @@ def get_published_result(session, league_name):
     
     return None
 
-
 def get_all_published_results(session):
-    current_time = datetime.now(pytz.timezone("Australia/Sydney"))
+    current_time = datetime.now(AUSTRALIA_SYDNEY_TZ)
     all_results = []
     for league in session.exec(select(League)).all():
         expiry_date = league.expiry_date
         if expiry_date.tzinfo is None:
-            expiry_date = pytz.timezone("Australia/Sydney").localize(expiry_date)
+            expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
         active = expiry_date >= current_time
         for sim in league.simulation_results:
             if sim.published:
@@ -361,7 +366,7 @@ def get_all_published_results(session):
 
 
 
-def update_expiry_date_in_db(session, league_name, expiry_date):
+def update_expiry_date(session, league_name, expiry_date):
     print("EXPIRY DATE: ", expiry_date, "LEAGUE NAME: ", league_name)
     league = session.exec(
         select(League)
