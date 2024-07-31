@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
+from docker_simulation import run_docker_simulation
 from validation import is_agent_safe, run_agent_simulation
 from games.game_factory import GameFactory
 import os
@@ -162,9 +163,8 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         league = database.get_league(session, league_name)
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
-        
-        game_class = GameFactory.get_game_class(league.game)
-        results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
+
+        results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
         
         if league_name != "test_league":
             sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
