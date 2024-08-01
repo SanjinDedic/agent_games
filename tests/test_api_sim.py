@@ -326,6 +326,8 @@ def test_run_simulation_with_empty_custom_rewards(client, admin_token):
     assert "rewards" in response_data["data"]
     assert response_data["data"]["rewards"] == '[]'
 
+#####   RUN SIMULATION FOR GREEDY PIG WITH CUSTOM REWARDS  #####
+
 def test_run_greedy_pig_simulation_with_custom_rewards(client, admin_token):
     custom_rewards = [20, 15, 10, 5, 3, 2, 1]
     simulation_response = client.post(
