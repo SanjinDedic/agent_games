@@ -164,7 +164,9 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
 
-        results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
+        is_successful, results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
+        if not is_successful:
+            return ErrorResponseModel(status="error", message=results)
         
         if league_name != "test_league":
             sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
