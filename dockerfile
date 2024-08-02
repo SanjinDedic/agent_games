@@ -7,10 +7,10 @@ COPY models_db.py /agent_games
 COPY utils.py /agent_games
 COPY config.py /agent_games
 COPY auth.py /agent_games
-COPY docker_script.py /agent_games
+COPY dockerfile_script.py /agent_games
 
 WORKDIR /agent_games
 
 RUN pip install -r requirements.txt
 
-ENTRYPOINT ["timeout", "20s", "python", "docker_script.py"]
+ENTRYPOINT ["timeout", "20s", "python", "dockerfile_script.py"]
