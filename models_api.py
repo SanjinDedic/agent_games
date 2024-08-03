@@ -19,6 +19,7 @@ class SimulationConfig(BaseModel):
     num_simulations: int
     league_name: str
     custom_rewards: Optional[List[int]] = None
+    use_docker: bool = True
 
 class SimulationResult(BaseModel):
     results: dict

@@ -4,6 +4,7 @@ import json
 from jsonschema import validate, ValidationError
 
 DOCKER_REPO = "matthewhee/agent_games:latest"
+DOCKER_TIMEOUT = 80  # 5 minutes timeout
 
 SIMULATION_RESULTS_SCHEMA = {
         "type": "object",
@@ -30,12 +31,18 @@ SIMULATION_RESULTS_SCHEMA = {
 
 def run_docker_simulation(num_simulations, league_name, league_game, league_folder, custom_rewards):
     pull_command = ["docker", "pull", DOCKER_REPO]
-    if subprocess.run(pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).returncode != 0:
-        return False, "An error occurred while pulling the docker image"
+    try:
+        if subprocess.run(pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=DOCKER_TIMEOUT).returncode != 0:
+            return False, "An error occurred while pulling the docker image"
+    except subprocess.TimeoutExpired:
+        return False, "Timeout occurred while pulling the docker image"
     
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
-    command = ["docker", "run", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str]
-    docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    command = ["docker", "run", "--rm", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str]
+    try:
+        docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=DOCKER_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return False, "Timeout occurred while running the docker container"
 
     if docker_results.returncode != 0:
         return False, "An error occurred while running the docker container"
