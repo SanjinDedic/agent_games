@@ -386,3 +386,70 @@ def test_custom_rewards_consistency(client, admin_token):
     assert response_data1["data"]["rewards"] == str(custom_rewards)
     assert response_data2["data"]["rewards"] == str(custom_rewards)
     assert response_data1["data"]["rewards"] == response_data2["data"]["rewards"]
+
+
+def test_run_simulation_without_docker(client, db_session, admin_token):
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert isinstance(response_data["data"]["total_points"], dict)
+    assert len(response_data["data"]["total_points"]) > 0
+
+def test_run_forty_two_simulation_without_docker(client, admin_token):
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "forty_two_test", "num_simulations": 100, "use_docker": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    print("SIMULATION RESPONSE", simulation_response.json())
+    assert simulation_response.status_code == 200
+    assert "total_points" in simulation_response.json()["data"]
+
+def test_run_simulation_with_custom_rewards_without_docker(client, admin_token):
+    custom_rewards = [15, 10, 5, 3, 2, 1]
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": custom_rewards, "use_docker": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "rewards" in response_data["data"]
+    assert response_data["data"]["rewards"] == str(custom_rewards)
+
+def test_compare_docker_and_non_docker_simulations(client, admin_token):
+    docker_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": True},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    non_docker_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    
+    assert docker_response.status_code == 200
+    assert non_docker_response.status_code == 200
+    
+    docker_data = docker_response.json()["data"]
+    non_docker_data = non_docker_response.json()["data"]
+    
+    assert set(docker_data["total_points"].keys()) == set(non_docker_data["total_points"].keys())
+    assert docker_data["num_simulations"] == non_docker_data["num_simulations"]
