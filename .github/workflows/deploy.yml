@@ -1,3 +1,19 @@
+# Name: Deploy to EC2
+# Description: This GitHub Actions workflow automates the deployment process to an EC2 instance.
+# It runs on every push to the main branch and performs the following tasks:
+#   1. Checks out the latest code from the repository
+#   2. Connects to the EC2 instance via SSH
+#   3. Checks if Docker is installed, and installs it if not present
+#   4. Ensures Docker is running and updates to the required version if necessary
+#   5. Pulls the latest Docker image for the application
+#   6. Updates the application code on the EC2 instance
+#   7. Restarts the application using PM2
+#
+# Prerequisites:
+#   - EC2 instance must be set up with the necessary permissions
+#   - GitHub repository secrets must be configured with EC2 connection details
+#   - PM2 should be installed on the EC2 instance to manage the Node.js application
+
 name: Deploy to EC2
 
 on:
