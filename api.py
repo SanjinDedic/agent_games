@@ -168,22 +168,20 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         league = database.get_league(session, league_name)
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
-        print('h2')
+        
         if use_docker:
             is_successful, results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
         else:
             game_class = GameFactory.get_game_class(league.game)
-            print(game_class)
             results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
-            print(results)
             is_successful = True
-        print('h3')
+        
         if not is_successful:
             return ErrorResponseModel(status="error", message=results)
-        print('h4')
+        
         if league_name != "test_league":
             sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
-        print('h5')
+        
         # Only include custom_rewards in the response if they were provided
         response_data = transform_result(results, sim_result, league.name) 
         return ResponseModel(status="success", message="Simulation run successfully", data=response_data)
