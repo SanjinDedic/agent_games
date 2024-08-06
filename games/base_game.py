@@ -25,7 +25,7 @@ class BaseGame(ABC):
         players = []
         current_dir = os.path.dirname(os.path.abspath(__file__))
         game_name = self.__class__.__module__.split('.')[-2]  # Get the game name from the module path
-        league_directory = os.path.join(current_dir, game_name, self.league.folder)
+        league_directory = os.path.join(current_dir, game_name, os.path.normpath(self.league.folder).lstrip('\\'))
 
         if self.verbose:
             print(f"Searching for player classes in: {league_directory}")

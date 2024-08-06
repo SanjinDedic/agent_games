@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from docker_simulation import run_docker_simulation
-from validation import is_agent_safe, run_agent_simulation
+from validation import is_agent_safe, run_agent_simulation, ensure_test_league_folder
 from games.game_factory import GameFactory
 import os
 from config import ROOT_DIR
@@ -111,10 +111,11 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     if not is_agent_safe(submission.code):
         return ErrorResponseModel(status="error", message="Agent code is not safe.")
     
+
     team = database.get_team(session, team_name)
     if not team.league:
         return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
-    
+    ensure_test_league_folder(team.league.game)
     results = run_agent_simulation(submission.code, team.league.game, team_name)
     if not results:
         return ErrorResponseModel(status="error", message="Agent simulation failed.")
@@ -122,9 +123,9 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     try:
         print("team found", team.name, team.league.name, team.league.folder)
         if team.league.folder:
-            league_folder = team.league.folder
+            league_folder = os.path.normpath(team.league.folder).lstrip('\\')
         else:
-            league_folder = f"leagues/user/{team.league.name}"
+            league_folder = f"leagues\\user\\{team.league.name}"
         print(team_name, user_role, team.league.name)
 
         # Check if the team can make a submission
@@ -133,6 +134,9 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
 
         # Save the submitted code in a Python file named after the team
         file_path = os.path.join(ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py")
+        file_path = os.path.normpath(file_path)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
         with open(file_path, "w") as file:
             file.write(submission.code)
         print("are we here")
@@ -164,20 +168,22 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         league = database.get_league(session, league_name)
         if not league:
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
-
+        print('h2')
         if use_docker:
             is_successful, results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
         else:
             game_class = GameFactory.get_game_class(league.game)
+            print(game_class)
             results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
+            print(results)
             is_successful = True
-
+        print('h3')
         if not is_successful:
             return ErrorResponseModel(status="error", message=results)
-        
+        print('h4')
         if league_name != "test_league":
             sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
-        
+        print('h5')
         # Only include custom_rewards in the response if they were provided
         response_data = transform_result(results, sim_result, league.name) 
         return ResponseModel(status="success", message="Simulation run successfully", data=response_data)
