@@ -8,18 +8,21 @@ This guide will walk you through the process of creating a new game for the agen
 2. [Implement the Game Class](#2-implement-the-game-class)
 3. [Create the Player Class](#3-create-the-player-class)
 4. [Update the Game Factory](#4-update-the-game-factory)
-5. [Add Game-Specific Files](#5-add-game-specific-files)
-6. [Testing Your Game](#6-testing-your-game)
-7. [Documentation](#7-documentation)
+5. [Add bot or adversary examples](#5-add-bots-on-test-league)
+6. [Add Game-Specific Files](#6-add-game-specific-files)
+7. [Testing Your Game](#7-testing-your-game)
+8. [Documentation](#8-documentation)
 
 ## 1. Create the Game Directory
 
-First, create a new directory for your game inside the `games` folder. Name it after your game, using snake_case.
+First, create a new directory for your game inside the `games` folder. Name it after your game, using snake_case. Create two directories as well for testing out the league on submission.
 
 ```
 agent_games/
 └── games/
     └── your_game_name/
+    └── leagues/
+        └── test_league/
 ```
 
 ## 2. Implement the Game Class
@@ -107,18 +110,22 @@ class GameFactory:
             raise ValueError(f"Unknown game: {game_name}")
 ```
 
-## 5. Add Game-Specific Files
+## 5. Add Bots on Test League
+
+Inside the test_league folder of your game. Add adversary examples that will against the submitted code. The results against them would be displayed on submission page. If none is added then the submitted code will always win in test league.
+
+## 6. Add Game-Specific Files
 
 If your game requires any additional files (e.g., game assets, configuration files), add them to your game directory.
 
-## 6. Testing Your Game
+## 7. Testing Your Game
 
 Create test files for your game in the `tests` directory. At minimum, you should have:
 
 - `test_your_game_name.py`: Unit tests for your game logic
 - Update `test_api_sim.py` to include tests for your game's API integration
 
-## 7. Documentation
+## 8. Documentation
 
 Update the project documentation to include information about your new game:
 
