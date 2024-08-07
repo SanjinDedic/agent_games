@@ -61,7 +61,7 @@ def is_agent_safe(code):
     return checker.safe
 
 def run_agent_simulation(code, game_name, team_name):
-    test_league_folder = "leagues\\test_league"
+    test_league_folder = "leagues/test_league"
     test_league = League(folder=test_league_folder, name="Test League", game=game_name)
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
