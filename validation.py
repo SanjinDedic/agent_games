@@ -7,6 +7,12 @@ from models_db import League
 # List of risky functions
 RISKY_FUNCTIONS = ['eval', 'exec', 'open', 'compile', 'execfile', 'input']
 
+RISKY_IMPORTS = [
+    'os', 'sys', 'subprocess', 'shutil', 'socket', 'multiprocessing',
+    'threading', 'ctypes', 'platform', 'pwd', 'grp', 'resource', 'signal',
+    'sysconfig', 'psutil', 'tempfile', 'webbrowser', 'logging', 'configparser'
+]
+
 class SafeVisitor(ast.NodeVisitor):
     def __init__(self):
         self.safe = True
@@ -18,13 +24,30 @@ class SafeVisitor(ast.NodeVisitor):
                 return
         self.generic_visit(node)
 
-    
+    def visit_ImportFrom(self, node):
+        # Checking if the module or submodule is in the list of risky imports
+        module_name = node.module if node.module else ''
+        if module_name.split('.')[0] in RISKY_IMPORTS:
+            self.safe = False
+            return
+        for alias in node.names:
+            full_import_name = f"{module_name}.{alias.name}" if module_name else alias.name
+            if not self.is_allowed_import(full_import_name):
+                self.safe = False
+                return
+        self.generic_visit(node)
 
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name) and node.func.id in RISKY_FUNCTIONS:
             self.safe = False
             return
         self.generic_visit(node)
+
+    def is_allowed_import(self, module):
+        # Check if the import is in the list of risky imports
+        if module.split('.')[0] in RISKY_IMPORTS:
+            return False
+        return True
 
     
 def is_agent_safe(code):
