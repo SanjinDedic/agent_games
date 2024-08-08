@@ -4,6 +4,7 @@ from games.base_game import BaseGame
 from games.game_factory import GameFactory
 from models_db import League
 from utils import get_games_names
+from config import ROOT_DIR
 
 
 # List of allowed modules and their allowed sub-modules
@@ -65,7 +66,7 @@ def is_agent_safe(code):
     return checker.safe
 
 def run_agent_simulation(code, game_name, team_name):
-    test_league_folder = "leagues/test_league"
+    test_league_folder = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league')
     test_league = League(folder=test_league_folder, name="Test League", game=game_name)
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
