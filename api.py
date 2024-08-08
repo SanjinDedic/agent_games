@@ -133,7 +133,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
 
         # Save the submitted code in a Python file named after the team
         file_path = os.path.join(ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py")
-        print("file_path", file_path)
+        print("Rooot directory", ROOT_DIR, "file_path", file_path)
         with open(file_path, "w") as file:
             file.write(submission.code)
         print("are we here")
