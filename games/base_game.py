@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import random
 import os
 import importlib.util
+from config import ROOT_DIR
 
 class BaseGame(ABC):
     starter_code = '''
@@ -23,9 +24,7 @@ class BaseGame(ABC):
 
     def get_all_player_classes_from_folder(self):
         players = []
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        game_name = self.__class__.__module__.split('.')[-2]  # Get the game name from the module path
-        league_directory = os.path.join(current_dir, game_name, self.league.folder)
+        league_directory = os.path.join(ROOT_DIR, "games", self.league.game, self.league.folder)
 
         if self.verbose:
             print(f"Searching for player classes in: {league_directory}")
@@ -35,6 +34,7 @@ class BaseGame(ABC):
             return players
 
         for item in os.listdir(league_directory):
+            print("item: ", item)
             if item.endswith(".py"):
                 module_name = item[:-3]
                 module_path = os.path.join(league_directory, item)

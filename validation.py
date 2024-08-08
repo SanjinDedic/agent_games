@@ -66,19 +66,22 @@ def is_agent_safe(code):
     return checker.safe
 
 def run_agent_simulation(code, game_name, team_name):
+    print("game_name in run_agent_simulation: ", game_name)
     test_league_folder = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league')
     test_league = League(folder=test_league_folder, name="Test League", game=game_name)
     
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, 'games', game_name, test_league.folder, f"{team_name}.py")
-    
+    file_path = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league', f"{team_name}.py")
+    print("Root dir in validation.py: ", ROOT_DIR)
+    print(f"File path in validation.py: {file_path}")
+
     try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as file:
             file.write(code)
         print(f"File written: {file_path}")
 
         game_class = GameFactory.get_game_class(game_name)
-        results = BaseGame.run_simulations(500, game_class, test_league)
+        results = game_class.run_simulations(500, game_class, test_league)
         print("Simulations run")
         print(results)
         return results

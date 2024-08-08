@@ -63,10 +63,7 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None),
         if user["role"] == "admin":
             user_role = "admin"
 
-    if user_role == "admin":
-        league_folder = f"/leagues/admin/{league.name}"
-    else:
-        league_folder = f"/leagues/user/{league.name}"
+    league_folder = f"leagues/admin/{league.name}"
 
     try:
         data = database.create_league(session=session, league_name=league.name, league_game=league.game, league_folder=league_folder)

@@ -48,6 +48,92 @@ def non_admin_token(client):
     return non_admin_token
 
 
+def test_alpha_guess_submission_and_simulation(client, db_session, admin_token):
+    # Create a test league for Alpha Guess
+    league_response = client.post(
+        "/league_create",
+        json={"name": "alpha_guess_test", "game": "alpha_guess"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert league_response.status_code == 200
+    assert league_response.json()["status"] == "success"
+
+    # Create a test team
+    team_response = client.post(
+        "/team_create",
+        json={"name": "alpha_guess_team", "password": "testpass", "school_name": "Test School"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert team_response.status_code == 200
+    assert team_response.json()["status"] == "success"
+
+    # Login as the test team
+    login_response = client.post(
+        "/team_login",
+        json={"name": "alpha_guess_team", "password": "testpass"}
+    )
+    assert login_response.status_code == 200
+    team_token = login_response.json()["data"]["access_token"]
+
+    # Assign the team to the league
+    assign_response = client.post(
+        "/league_assign",
+        json={"name": "alpha_guess_test"},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    assert assign_response.status_code == 200
+    assert assign_response.json()["status"] == "success"
+
+    # Submit a custom player for Alpha Guess
+    code = """
+from games.alpha_guess.player import Player
+import random
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return random.choice('abcdefghijklmnopqrstuvwxyz')
+"""
+    submission_response = client.post(
+        "/submit_agent",
+        json={"code": code},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    print(f"Submission response for validation SIM: {submission_response.json()}")
+    assert submission_response.status_code == 200
+    assert "Code submitted successfully" in submission_response.json()["message"]
+
+    # Run a simulation for the Alpha Guess test league
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "alpha_guess_test", "num_simulations": 100, "use_docker": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    
+    response_data = simulation_response.json()
+    print("Alpha Guess Simulation Response:", response_data)
+    
+    assert "data" in response_data
+    assert response_data["data"] is not None
+    assert "total_points" in response_data["data"]
+    assert "alpha_guess_team" in response_data["data"]["total_points"]
+    assert 0 <= response_data["data"]["total_points"]["alpha_guess_team"] <= 100
+
+    # Clean up: Delete the test team and league
+    client.post("/delete_team", json={"name": "alpha_guess_team"}, headers={"Authorization": f"Bearer {admin_token}"})
+    # Note: There's no endpoint to delete a league, so it will remain in the database
+
+
+
+
+
+
+
+
+
+
+
+
 def test_run_simulation(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
