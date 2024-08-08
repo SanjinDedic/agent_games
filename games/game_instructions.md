@@ -1,129 +1,173 @@
+Certainly! Here's an expanded version of Part 1 with a folder map:
+
 # Creating a New Game for agent_games
 
-This guide will walk you through the process of creating a new game for the agent_games project. By following these steps, you'll be able to implement a game that integrates seamlessly with the existing framework.
+## Part 1: General Instructions
 
-## Table of Contents
+1. **Create the Game Directory**
+   - Create a new directory in the `games` folder, named after your game (use snake_case).
+   - Have your folder structure look like this:
 
-1. [Create the Game Directory](#1-create-the-game-directory)
-2. [Implement the Game Class](#2-implement-the-game-class)
-3. [Create the Player Class](#3-create-the-player-class)
-4. [Update the Game Factory](#4-update-the-game-factory)
-5. [Add Game-Specific Files](#5-add-game-specific-files)
-6. [Testing Your Game](#6-testing-your-game)
-7. [Documentation](#7-documentation)
+```
+agent_games/
+├── games/
+│   ├── your_game_name/
+│   │   ├── your_game_name.py
+│   │   ├── player.py
+│   │   └── leagues/
+│   │       └── test_league/
+│   │           └── example_bot.py
+│   └── game_factory.py
+├── tests/
+│   └── test_your_game_name.py
+└── README.md
+```
 
-## 1. Create the Game Directory
+2. **Implement the Game Class**
+   - Create a Python file named after your game (e.g., `your_game_name.py`).
+   - Implement your game class, inheriting from `BaseGame`. Include methods for game logic and state management.
 
-First, create a new directory for your game inside the `games` folder. Name it after your game, using snake_case.
+3. **Create the Player Class**
+   - Create a `player.py` file in your game directory.
+   - Define a base `Player` class with a `make_decision` method that subclasses will implement.
+
+4. **Update the Game Factory**
+   - Add your game to the `game_factory.py` file in the `games` directory.
+   - This allows the framework to instantiate your game when requested.
+
+5. **Add Test League Bots**
+   - Create example bots in the `test_league` folder.
+   - These bots will be used for testing and as opponents for submitted player code.
+
+6. **Create Unit Tests**
+   - Add a test file in the `tests` directory (e.g., `test_your_game_name.py`).
+   - Write tests to verify your game's logic, scoring, and integration with the framework.
+
+7. **Update Documentation**
+   - Add information about your new game to the project README.
+   - Include any specific instructions or rules for your game.
+
+
+## Part 2: Example - Adding AlphaGuess Game
+
+Let's create a simple letter guessing game called "AlphaGuess".
+
+1. **Create the Game Directory**
 
 ```
 agent_games/
 └── games/
-    └── your_game_name/
+    └── alpha_guess/
+        ├── alpha_guess.py
+        ├── player.py
+        └── leagues/
+            └── test_league/
 ```
 
-## 2. Implement the Game Class
-
-Create a new Python file in your game directory, named after your game (e.g., `your_game_name.py`). In this file, implement your game class, which should inherit from `BaseGame`.
+2. **Implement the Game Class (alpha_guess.py)**
 
 ```python
 from games.base_game import BaseGame
 import random
+import string
 
-class YourGameName(BaseGame):
+class AlphaGuessGame(BaseGame):
     starter_code = '''
-# Provide starter code for players here
+from games.alpha_guess.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return random.choice(string.ascii_lowercase)
 '''
 
     game_instructions = '''
-# Provide HTML-formatted game instructions here
+<h1>AlphaGuess Game Instructions</h1>
+<p>Guess the randomly selected letter (a-z). Correct guesses earn 1 point.</p>
 '''
 
-    def __init__(self, league, verbose=False):
-        super().__init__(league, verbose)
-        # Initialize game-specific attributes here
+    def __init__(self, league):
+        super().__init__(league)
+        self.correct_letter = None
 
     def play_round(self):
-        # Implement the logic for a single round of the game
+        self.correct_letter = random.choice(string.ascii_lowercase)
+        for player in self.players:
+            if player.make_decision(self.get_game_state()) == self.correct_letter:
+                self.scores[player.name] = 1
+            else:
+                self.scores[player.name] = 0
 
     def get_game_state(self):
-        # Return the current state of the game
+        return {"correct_letter": self.correct_letter}
 
     def play_game(self, custom_rewards=None):
-        # Implement the full game logic
-        # Return the results in the format: {"points": points, "score_aggregate": scores}
+        self.play_round()
+        return self.assign_points(self.scores, custom_rewards)
 
     def assign_points(self, scores, custom_rewards=None):
-        # Implement the point assignment logic
-
-    def reset(self):
-        super().reset()
-        # Reset any game-specific attributes
+        return {"points": scores, "score_aggregate": scores}
 
 def run_simulations(num_simulations, league, custom_rewards=None):
-    return BaseGame.run_simulations(num_simulations, YourGameName, league, custom_rewards)
+    return BaseGame.run_simulations(num_simulations, AlphaGuessGame, league, custom_rewards)
 ```
 
-Ensure that you implement all the required methods, including `play_round`, `get_game_state`, `play_game`, `assign_points`, and `reset`.
-
-## 3. Create the Player Class
-
-Create a `player.py` file in your game directory to define the base `Player` class for your game.
+3. **Create the Player Class (player.py)**
 
 ```python
 from abc import ABC, abstractmethod
 
 class Player(ABC):
-    def __init__(self):
-        self.name = None
-        # Initialize any player-specific attributes
-
     @abstractmethod
     def make_decision(self, game_state):
         pass
-    
-    # Add any helper methods that players might need
 ```
 
-## 4. Update the Game Factory
-
-Update the `game_factory.py` file in the `games` directory to include your new game:
+4. **Update the Game Factory (game_factory.py)**
 
 ```python
-from games.greedy_pig.greedy_pig import GreedyPigGame
-from games.forty_two.forty_two import FortyTwoGame
-from games.your_game_name.your_game_name import YourGameName
+from games.alpha_guess.alpha_guess import AlphaGuessGame
 
 class GameFactory:
     @staticmethod
     def get_game_class(game_name):
-        if game_name == "greedy_pig":
-            return GreedyPigGame
-        elif game_name == "forty_two":
-            return FortyTwoGame
-        elif game_name == "your_game_name":
-            return YourGameName
+        if game_name == "alpha_guess":
+            return AlphaGuessGame
         else:
             raise ValueError(f"Unknown game: {game_name}")
 ```
 
-## 5. Add Game-Specific Files
+5. **Add Test League Bot**
 
-If your game requires any additional files (e.g., game assets, configuration files), add them to your game directory.
+Create `games/alpha_guess/leagues/test_league/random_bot.py`:
 
-## 6. Testing Your Game
+```python
+from games.alpha_guess.player import Player
+import random
+import string
 
-Create test files for your game in the `tests` directory. At minimum, you should have:
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return random.choice(string.ascii_lowercase)
+```
 
-- `test_your_game_name.py`: Unit tests for your game logic
-- Update `test_api_sim.py` to include tests for your game's API integration
+6. **Testing**
 
-## 7. Documentation
+Create `tests/test_alpha_guess.py`:
 
-Update the project documentation to include information about your new game:
+```python
+import pytest
+from games.alpha_guess.alpha_guess import AlphaGuessGame
+from models_db import League
 
-- Add a section in the README.md file describing your game
-- Update any relevant API documentation
-- If necessary, create a separate markdown file with detailed game rules and strategies
+@pytest.fixture
+def test_league():
+    return League(name="test_league", folder="leagues/test_league", game="alpha_guess")
 
-By following these steps, you'll create a new game that integrates well with the existing agent_games framework. Remember to maintain consistency with the existing code style and structure throughout your implementation.
+def test_play_game(test_league):
+    game = AlphaGuessGame(test_league)
+    results = game.play_game()
+    assert "points" in results
+    assert "score_aggregate" in results
+    assert all(score >= 0 for score in results["score_aggregate"].values())
+```
+Add more tests!
