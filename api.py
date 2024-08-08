@@ -122,7 +122,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     try:
         print("team found", team.name, team.league.name, team.league.folder)
         if team.league.folder:
-            league_folder = team.league.folder
+            league_folder = team.league.folder.lstrip('/')
         else:
             league_folder = f"leagues/user/{team.league.name}"
         print(team_name, user_role, team.league.name)
