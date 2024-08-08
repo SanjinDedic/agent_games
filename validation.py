@@ -3,13 +3,14 @@ import os
 from games.base_game import BaseGame
 from games.game_factory import GameFactory
 from models_db import League
+from utils import get_games_names
+
 
 # List of allowed modules and their allowed sub-modules
+# Dynamically generate the ALLOWED_MODULES dictionary
 ALLOWED_MODULES = {
     'random': None,  # None means no specific sub-modules are allowed
-    'games': {
-        'greedy_pig': {'player': None}
-    },
+    'games': {game_name: {'player': None} for game_name in get_games_names()},
     'player': None  # Allow direct import from player
 }
 
