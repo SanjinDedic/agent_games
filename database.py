@@ -60,11 +60,20 @@ def create_league(session, league_name, league_game, league_folder):
     league.signup_link = encode_id(league.id)
     session.commit()
 
+    # Create the league folder
     absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league_folder.lstrip("/"))
     os.makedirs(absolute_folder, exist_ok=True)
 
+    # Create the test_league folder
+    test_league_folder = os.path.join(ROOT_DIR, "games", league.game, "leagues", "test_league")
+    os.makedirs(test_league_folder, exist_ok=True)
+
+    # Create README.md files
     with open(os.path.join(absolute_folder, "README.md"), "w") as file:
         file.write(f"# {league_name}\n\nThis folder contains files for the {league_name} league.")
+
+    with open(os.path.join(test_league_folder, "README.md"), "w") as file:
+        file.write(f"# Test League for {league_game}\n\nThis folder contains test files for the {league_game} game.")
 
     return {"link": league.signup_link}
 
