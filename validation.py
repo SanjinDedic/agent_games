@@ -89,9 +89,3 @@ def run_agent_simulation(code, game_name, team_name):
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"File removed: {file_path}")
-
-def ensure_test_league_folder(game_name):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    test_league_folder = os.path.join(current_dir, 'games', game_name, 'leagues', 'test_league')
-    os.makedirs(test_league_folder, exist_ok=True)
-    return test_league_folder
