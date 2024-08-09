@@ -49,14 +49,14 @@ def user_token(client, admin_token):
     return team_login_response.json()["data"]["access_token"]
 
 def test_league_creation(client, admin_token):
-    response = client.post("/league_create", json={"name": "week1", "game": "greedy_pig"})
+    response = client.post("/league_create", json={"name": "week1", "game": "greedy_pig"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
 
     response = client.post("/league_create")
-    assert response.status_code == 422
+    assert response.status_code == 401
     
-    response = client.post("/league_create", json={"name": "", "game": "greedy_pig"})
+    response = client.post("/league_create", json={"name": "", "game": "greedy_pig"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
     assert response.json() == {'status': 'failed', 'message': 'Name is Empty', 'data': None}
 
@@ -76,11 +76,8 @@ def test_league_folder_creation(client, admin_token):
 def test_league_folder_creation_no_auth(client):
     league_name = "test_league_user"
     response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"})
-    assert response.status_code == 200
-    assert "success" in response.json()["status"]
-    assert os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
-    shutil.rmtree(f"games/greedy_pig/leagues/user/{league_name}")
-    assert not os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
+    assert response.status_code == 401
+    print(response.json())
 
 
 def test_get_all_admin_leagues(client):

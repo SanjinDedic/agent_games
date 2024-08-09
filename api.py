@@ -53,15 +53,12 @@ async def root():
 
 
 @app.post("/league_create", response_model=ResponseModel)
-async def league_create(league: LeagueSignUp, authorization: str = Header(None), session: Session = Depends(get_db)):
+async def league_create(league: LeagueSignUp, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     if not league.name:
         return ResponseModel(status="failed", message="Name is Empty")
-
-    user_role = "user"
-    if authorization and authorization.startswith("Bearer "):
-        user = get_current_user(authorization.split(" ")[1])
-        if user["role"] == "admin":
-            user_role = "admin"
+    #if not role == "admin" then return error
+    if current_user["role"] != "admin":
+        return ResponseModel(status="failed", message="Unauthorized")
 
     league_folder = f"leagues/admin/{league.name}"
 
@@ -70,6 +67,7 @@ async def league_create(league: LeagueSignUp, authorization: str = Header(None),
         return ResponseModel(status="success", message="League created successfully", data=data)
     except Exception as e:
         return ResponseModel(status="failed", message=str(e))
+
 
 @app.post("/admin_login")
 def admin_login(login: AdminLogin, session: Session = Depends(get_db)):

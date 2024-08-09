@@ -54,8 +54,7 @@ class BaseGame(ABC):
                     if self.verbose:
                         print(f"Added player: {player.name}")
 
-        if self.verbose:
-            print(f"Total players found: {len(players)}")
+        print(f"Total players found: {len(players)}, {players}")
 
         return players
 
