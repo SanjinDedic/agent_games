@@ -13,4 +13,4 @@ WORKDIR /agent_games
 
 RUN pip install -r requirements.txt
 
-ENTRYPOINT ["timeout", "40s", "python", "dockerfile_script.py"]
+ENTRYPOINT ["python", "dockerfile_script.py"]
