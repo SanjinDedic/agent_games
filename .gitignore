@@ -20,6 +20,7 @@ venv.bak/
 agent_games/
 agent_game_env/
 new_env/
+agent_venv/
 
 # pip cache
 Pipfile.lock

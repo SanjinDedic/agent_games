@@ -34,7 +34,6 @@ class BaseGame(ABC):
             return players
 
         for item in os.listdir(league_directory):
-            print("item: ", item)
             if item.endswith(".py"):
                 module_name = item[:-3]
                 module_path = os.path.join(league_directory, item)
@@ -75,7 +74,9 @@ class BaseGame(ABC):
 
     @staticmethod
     def run_simulations(num_simulations, game_class, league, custom_rewards=None):
-        game = game_class(league)
+        
+        game = game_class(league).__name__
+        
         total_points = {player.name: 0 for player in game.players}
         total_wins = {player.name: 0 for player in game.players}
 
