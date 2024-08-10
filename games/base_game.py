@@ -75,7 +75,7 @@ class BaseGame(ABC):
     @staticmethod
     def run_simulations(num_simulations, game_class, league, custom_rewards=None):
         
-        game = game_class(league).__name__
+        game = game_class(league)
         
         total_points = {player.name: 0 for player in game.players}
         total_wins = {player.name: 0 for player in game.players}
