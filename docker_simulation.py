@@ -2,8 +2,9 @@ import subprocess
 import json
 
 from jsonschema import validate, ValidationError
+from config import ROOT_DIR
 
-DOCKER_REPO = "matthewhee/agent_games:latest"
+DOCKER_REPO = "run-with-docker"
 SUBPROCESS_TIMEOUT = 80  # 5 minutes timeout
 DOCKER_TIMEOUT = 40
 
@@ -31,15 +32,9 @@ SIMULATION_RESULTS_SCHEMA = {
     }
 
 def run_docker_simulation(num_simulations, league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT):
-    pull_command = ["docker", "pull", DOCKER_REPO]
-    try:
-        if subprocess.run(pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=SUBPROCESS_TIMEOUT).returncode != 0:
-            return False, "An error occurred while pulling the docker image"
-    except subprocess.TimeoutExpired:
-        return False, "Timeout occurred while pulling the docker image"
-    
+
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
-    command = ["docker", "run", "--rm", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str, str(timeout)]
+    command = ["docker", "run", "--rm","-v",f"{ROOT_DIR}:/agent_games", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str, str(timeout)]
     try:
         docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=SUBPROCESS_TIMEOUT)
     except subprocess.TimeoutExpired:
@@ -47,11 +42,12 @@ def run_docker_simulation(num_simulations, league_name, league_game, league_fold
 
     if docker_results.returncode != 0:
         return False, "An error occurred while running the docker container"
-    
+    print(docker_results.stdout)
+
     try:
-        output_lines = docker_results.stdout.strip().split('\n')
-        simulation_results = output_lines[-1] if output_lines else ""
-        results = json.loads(simulation_results)
+        #read the results from results.json file in the current folder
+        with open(ROOT_DIR+"/docker_results.json", "r") as f:
+            results = json.load(f)
 
     except json.JSONDecodeError:
         return False, "An error occurred while parsing the simulation results"

@@ -137,7 +137,7 @@ class CustomPlayer(Player):
 def test_run_simulation(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
+        json={"league_name": "comp_test", "num_simulations": 100},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
@@ -304,28 +304,6 @@ def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
-
-
-#####   RUN SIMULATION  #####
-
-def test_run_simulation(client, admin_token):
-    simulation_response = client.post(
-        "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 100},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-    assert simulation_response.status_code == 200
-    
-    response_data = simulation_response.json()
-    print("Simulation Response:", response_data)
-    
-    assert "data" in response_data, "Response does not contain 'data' key"
-    assert response_data["data"] is not None, "Response 'data' is None"
-    assert "total_points" in response_data["data"], "Response data does not contain 'total_points'"
-    
-    assert "total_points" in response_data["data"]
-    assert isinstance(response_data["data"]["total_points"], dict)
-    assert len(response_data["data"]["total_points"]) > 0
 
 
 #####   FORTY TWO RUN SIMULATION  #####

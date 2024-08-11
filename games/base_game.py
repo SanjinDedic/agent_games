@@ -34,7 +34,6 @@ class BaseGame(ABC):
             return players
 
         for item in os.listdir(league_directory):
-            print("item: ", item)
             if item.endswith(".py"):
                 module_name = item[:-3]
                 module_path = os.path.join(league_directory, item)
@@ -54,7 +53,8 @@ class BaseGame(ABC):
                     if self.verbose:
                         print(f"Added player: {player.name}")
 
-        print(f"Total players found: {len(players)}, {players}")
+        if self.verbose:
+            print(f"Total players found: {len(players)}, {players}")
 
         return players
 
