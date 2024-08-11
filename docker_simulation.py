@@ -4,7 +4,8 @@ import json
 from jsonschema import validate, ValidationError
 
 DOCKER_REPO = "matthewhee/agent_games:latest"
-DOCKER_TIMEOUT = 80  # 5 minutes timeout
+SUBPROCESS_TIMEOUT = 80  # 5 minutes timeout
+DOCKER_TIMEOUT = 40
 
 SIMULATION_RESULTS_SCHEMA = {
         "type": "object",
@@ -29,18 +30,18 @@ SIMULATION_RESULTS_SCHEMA = {
         "additionalProperties": False
     }
 
-def run_docker_simulation(num_simulations, league_name, league_game, league_folder, custom_rewards):
+def run_docker_simulation(num_simulations, league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT):
     pull_command = ["docker", "pull", DOCKER_REPO]
     try:
-        if subprocess.run(pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=DOCKER_TIMEOUT).returncode != 0:
+        if subprocess.run(pull_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=SUBPROCESS_TIMEOUT).returncode != 0:
             return False, "An error occurred while pulling the docker image"
     except subprocess.TimeoutExpired:
         return False, "Timeout occurred while pulling the docker image"
     
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
-    command = ["docker", "run", "--rm", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str]
+    command = ["docker", "run", "--rm", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str, str(timeout)]
     try:
-        docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=DOCKER_TIMEOUT)
+        docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=SUBPROCESS_TIMEOUT)
     except subprocess.TimeoutExpired:
         return False, "Timeout occurred while running the docker container"
 
@@ -48,7 +49,10 @@ def run_docker_simulation(num_simulations, league_name, league_game, league_fold
         return False, "An error occurred while running the docker container"
     
     try:
-        results = json.loads(docker_results.stdout)
+        output_lines = docker_results.stdout.strip().split('\n')
+        simulation_results = output_lines[-1] if output_lines else ""
+        results = json.loads(simulation_results)
+
     except json.JSONDecodeError:
         return False, "An error occurred while parsing the simulation results"
     
