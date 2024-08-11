@@ -11,8 +11,3 @@ if ! [ -x "$(command -v docker)" ]; then
 fi
 
 docker build -t run-with-docker .
-
-docker stop simulation_container || true
-docker rm -f simulation_container || true
-
-docker run -d --name simulation_container run-with-docker

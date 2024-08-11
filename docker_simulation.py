@@ -34,7 +34,7 @@ def run_docker_simulation(num_simulations, league_name, league_game, league_fold
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
     command = ["docker", "run", "--rm", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str]
     try:
-        docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=DOCKER_TIMEOUT)
+        docker_results = subprocess.run("sudo",command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=DOCKER_TIMEOUT)
     except subprocess.TimeoutExpired:
         return False, "Timeout occurred while running the docker container"
 

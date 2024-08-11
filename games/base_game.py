@@ -52,8 +52,8 @@ class BaseGame(ABC):
                     players.append(player)
                     if self.verbose:
                         print(f"Added player: {player.name}")
-
-        print(f"Total players found: {len(players)}, {players}")
+        if self.verbose:
+            print(f"Total players found: {len(players)}, {players}")
 
         return players
 
