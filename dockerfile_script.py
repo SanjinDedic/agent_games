@@ -12,6 +12,7 @@ def timeout_handler(signum, frame):
     sys.exit(0)
 
 def run_docker_simulations():
+    print("Running docker simulation inside the container")
     if len(sys.argv) < 7:
         return
     
