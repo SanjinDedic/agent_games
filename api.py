@@ -162,8 +162,10 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
             return ErrorResponseModel(status="error", message=f"League '{league_name}' not found")
 
         if use_docker:
+            print("Running simulation using Docker")
             is_successful, results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
         else:
+            print("Running simulation without Docker")
             game_class = GameFactory.get_game_class(league.game)
             results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
             is_successful = True

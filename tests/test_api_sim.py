@@ -137,7 +137,7 @@ class CustomPlayer(Player):
 def test_run_simulation(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 100},
+        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
