@@ -2,13 +2,17 @@
 
 cd ..
 
-# Detect the current Python 3 version
-PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PYTHON_VERSION=$(python3 --version | awk '{print $2}' | cut -d. -f1,2)
+
+# Replace the dot (.) with nothing to match the naming convention (e.g., 3.10 becomes 310)
+PACKAGE_VERSION="python${PYTHON_VERSION}-venv"
 
 # Check if the appropriate venv package is installed for the detected Python version
-if ! dpkg -l | grep -q "python${PYTHON_VERSION}-venv"; then
-    echo "python${PYTHON_VERSION}-venv is not installed. Installing python${PYTHON_VERSION}-venv..."
-    sudo apt-get install -y "python${PYTHON_VERSION}-venv"
+if ! dpkg -l | grep -q "$PACKAGE_VERSION"; then
+    echo "$PACKAGE_VERSION is not installed. Installing $PACKAGE_VERSION..."
+    sudo apt-get install -y "$PACKAGE_VERSION"
+else
+    echo "$PACKAGE_VERSION is already installed."
 fi
 
 # Create a virtual environment
