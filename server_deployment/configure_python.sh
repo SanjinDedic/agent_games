@@ -10,6 +10,7 @@ PACKAGE_VERSION="python${PYTHON_VERSION}-venv"
 # Check if the appropriate venv package is installed for the detected Python version
 if ! dpkg -l | grep -q "$PACKAGE_VERSION"; then
     echo "$PACKAGE_VERSION is not installed. Installing $PACKAGE_VERSION..."
+    sudo apt-get update
     sudo apt-get install -y "$PACKAGE_VERSION"
 else
     echo "$PACKAGE_VERSION is already installed."

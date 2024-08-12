@@ -10,6 +10,10 @@ if ! [ -x "$(command -v certbot)" ]; then
     echo "cerbot is not installed. Installing certbot..."
     sudo snap install --classic certbot
     sudo ln -s /snap/bin/certbot /usr/bin/certbot
+fi 
+
+if ! dpkg -l | grep -q apache2; then
+    sudo systemctl stop apache2
 fi
 
 sudo certbot certonly -d $DOMAIN --standalone --non-interactive --agree-tos -m $EMAIL

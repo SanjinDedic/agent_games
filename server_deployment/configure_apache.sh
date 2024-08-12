@@ -14,6 +14,7 @@ if ! dpkg -l | grep -q apache2; then
     echo "apache2 has been installed."
 else
     echo "apache2 is already installed."
+    sudo systemctl start apache2
     sudo a2enmod proxy
     sudo a2enmod proxy_http
     sudo a2enmod headers
