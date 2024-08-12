@@ -1,13 +1,14 @@
 # Agent Games Server Setup Documentation
 
-This documentation provides an overview of the setup process for agent games server installation, which includes the creation and configuration of a Dockerized Python service, the setup of SSL certificates using Certbot, and the configuration of Apache. The setup is automated using a series of bash scripts.
+This documentation provides an overview of the setup process for agent games server installation, which includes the creation and configuration of a setting up python environment, Dockerized Python service, the setup of SSL certificates using Certbot, and the configuration of Apache. The setup is automated using a series of bash scripts.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Files and Their Purpose](#files-and-their-purpose)
   - [setup.sh](#setupsh)
-  - [setup_varaiables.sh](#setup_varaiablessh)
+  - [setup_variables.sh](#setup_variablessh)
+  - [configure_python.sh](#configure_python)
   - [configure_service.sh](#configure_servicesh)
   - [configure_certbot.sh](#configure_certbotsh)
   - [configure_apache.sh](#configure_apachesh)
@@ -19,7 +20,7 @@ This documentation provides an overview of the setup process for agent games ser
 
 The setup process for this project is managed through a series of bash scripts that automate the configuration and deployment of a Python-based application running on Uvicorn, with SSL support through Certbot, and served via Apache.
 
-The main entry point is the `setup.sh` script, which orchestrates the execution of other configuration scripts: `setup_varaiables.sh`, `configure_service.sh`, `configure_certbot.sh`, and `configure_apache.sh`. Each of these scripts performs specific tasks necessary to set up the environment and ensure the application is correctly configured and running.
+The main entry point is the `setup.sh` script, which orchestrates the execution of other configuration scripts: `setup_variables.sh`, `configure_python.sh`, `configure_service.sh`, `configure_certbot.sh`, and `configure_apache.sh`. Each of these scripts performs specific tasks necessary to set up the environment and ensure the application is correctly configured and running.
 
 ## Files and Their Purpose
 
@@ -27,25 +28,37 @@ The main entry point is the `setup.sh` script, which orchestrates the execution 
 
 `setup.sh` is the primary script that initiates the entire setup process. It performs the following functions:
 
+- **Environment Installation**: Executes `configure_python.sh` to configure python virtual environment with its dependencies.
 - **Docker Installation**: Checks if Docker is installed and installs it if necessary. It also builds the Docker image for the application.
-- **Variable Sourcing**: Sources environment variables from `setup_varaiables.sh`.
+- **Variable Sourcing**: Sources environment variables from `setup_variables.sh`.
 - **Service Configuration**: Executes `configure_service.sh` to set up and start the systemd service for the application.
 - **Certbot Configuration**: Runs `configure_certbot.sh` to obtain SSL certificates for the domain.
 - **Apache Configuration**: Executes `configure_apache.sh` to configure the Apache web server with SSL.
 
 ### setup_varaiables.sh
 
-`setup_varaiables.sh` contains the environment variables needed for the setup process. These variables are sourced by the `setup.sh` script and include:
+`setup_variables.sh` contains the environment variables needed for the setup process. These variables are sourced by the `setup.sh` script and include:
 
 - **Certbot Variables**: Defines the domain and email address used for obtaining SSL certificates.
 - **Service Variables**: Defines variables related to the systemd service configuration, such as the service name, user, working directory, and virtual environment directory.
+
+### configure_python.sh
+
+is a script designed to automate the setup of a Python virtual environment, ensuring that the correct version of Python and its associated `venv` package are used. The script performs the following tasks:
+
+- **Python Version Detection**: Detects the current version of Python 3 installed on the system to ensure compatibility with the virtual environment.
+- **Virtual Environment Package Installation**: Checks if the appropriate `python-venv` package is installed for the detected Python version. If not, it installs the necessary package to support the creation of virtual environments.
+- **Virtual Environment Creation**: Creates a new Python virtual environment in the `venv` directory using the detected Python version.
+- **Virtual Environment Activation**: Activates the newly created virtual environment, preparing it for use in the current shell session.
+- **Dependency Installation**: Checks for the presence of a `requirements.txt` file and installs any listed dependencies using `pip`. If `requirements.txt` is not found, it skips the installation step.
+
 
 ### configure_service.sh
 
 `configure_service.sh` is responsible for setting up the systemd service that runs the Uvicorn server for the Python application. The script performs the following tasks:
 
 - **Uvicorn Installation**: Checks if Uvicorn is installed and installs it if necessary.
-- **Service Creation**: Creates a systemd service file using the variables sourced from `setup_varaiables.sh`.
+- **Service Creation**: Creates a systemd service file using the variables sourced from `setup_variables.sh`.
 - **Service Management**: Reloads systemd to recognize the new service, enables it to start on boot, and starts the service.
 
 ### configure_certbot.sh
@@ -70,7 +83,7 @@ To set up the environment, follow these steps:
 
 1. **Ensure All Scripts Are in Place**: Make sure the following scripts are in the same directory:
    - `setup.sh`
-   - `setup_varaiables.sh`
+   - `setup_variables.sh`
    - `configure_service.sh`
    - `configure_certbot.sh`
    - `configure_apache.sh`

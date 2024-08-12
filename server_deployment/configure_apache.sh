@@ -8,13 +8,18 @@ if ! dpkg -l | grep -q apache2; then
     sudo a2enmod proxy
     sudo a2enmod proxy_http
     sudo a2enmod headers
-    
+    sudo a2enmod ssl
+    sudo a2enmod rewrite
+    sudo systemctl restart apache2
     echo "apache2 has been installed."
 else
     echo "apache2 is already installed."
     sudo a2enmod proxy
     sudo a2enmod proxy_http
     sudo a2enmod headers
+    sudo a2enmod ssl
+    sudo a2enmod rewrite
+    sudo systemctl restart apache2
     
 fi
 
@@ -28,14 +33,14 @@ DEFAULT_CONF="/etc/apache2/sites-available/000-default.conf"
 echo "Creating Apache virtual host configuration for $DOMAIN..."
 
 # Remove default configuration if it exists
-if [ -f "$DEFAULT_CONF" ]; then
+if sudo test -f "$DEFAULT_CONF" ; then
     echo "Removing default Apache configuration..."
     sudo a2dissite 000-default.conf
     sudo rm "$DEFAULT_CONF"
 fi
 
 # Check if SSL certificate files exist
-if [ -f "$CERT_DIR/fullchain.pem" ] && [ -f "$CERT_DIR/privkey.pem" ]; then
+if sudo test -f "$CERT_DIR/fullchain.pem"  && sudo test -f "$CERT_DIR/privkey.pem" ; then
     echo "SSL certificates found. Creating HTTPS configuration..."
     sudo tee "$CONF_FILE" > /dev/null << EOL
 <VirtualHost *:443>

@@ -3,20 +3,6 @@
 # Print a welcome message
 echo "Starting setup process..."
 
-if ! [ -x "$(command -v docker)" ]; then
-  echo "Docker is not installed. Installing Docker..."
-
-  sudo apt-get remove docker docker-engine docker.io
-  sudo apt install docker.io
-  sudo snap install docker
-  sudo usermod -aG docker $USER
-  newgrp docker
-
-fi
-
-echo "Building image with docker..."
-docker build -t run-with-docker ..
-
 
 # Source or execute the setup_variables.sh script
 if [ -f "./setup_variables.sh" ]; then
@@ -33,6 +19,21 @@ if [ -f "./configure_python.sh" ]; then
 else
     echo "configure_python.sh not found. Skipping..."
 fi
+
+if ! [ -x "$(command -v docker)" ]; then
+  echo "Docker is not installed. Installing Docker..."
+
+  sudo apt-get remove docker docker-engine docker.io
+  sudo apt install docker.io
+  sudo snap install docker
+  sudo usermod -aG docker $USER
+  newgrp docker
+
+fi
+
+echo "Building image with docker..."
+docker build -t run-with-docker ..
+
 
 
 if [ -f "./configure_service.sh" ]; then
