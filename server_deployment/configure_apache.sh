@@ -5,10 +5,17 @@ if ! dpkg -l | grep -q apache2; then
     
     # Install apache2
     sudo apt-get install -y apache2
+    sudo a2enmod proxy
+    sudo a2enmod proxy_http
+    sudo a2enmod headers
     
     echo "apache2 has been installed."
 else
     echo "apache2 is already installed."
+    sudo a2enmod proxy
+    sudo a2enmod proxy_http
+    sudo a2enmod headers
+    
 fi
 
 source ./setup_variables.sh

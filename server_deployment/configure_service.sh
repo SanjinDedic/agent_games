@@ -21,7 +21,6 @@ After=network.target
 
 [Service]
 User=$USER
-Group=www-data
 WorkingDirectory=$WORKING_DIRECTORY
 
 Restart=on-failure
