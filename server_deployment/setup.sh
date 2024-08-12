@@ -12,11 +12,10 @@ if ! [ -x "$(command -v docker)" ]; then
   sudo usermod -aG docker $USER
   newgrp docker
 
-
 fi
 
 echo "Building image with docker..."
-docker build -t run-with-docker .
+docker build -t run-with-docker ..
 
 
 # Source or execute the setup_variables.sh script
@@ -27,6 +26,14 @@ else
     echo "setup_variables.sh not found. Exiting..."
     exit 1
 fi
+
+if [ -f "./configure_python.sh" ]; then
+    echo "Running configure_python.sh..."
+    ./configure_python.sh
+else
+    echo "configure_python.sh not found. Skipping..."
+fi
+
 
 if [ -f "./configure_service.sh" ]; then
     echo "Running configure_service.sh..."
