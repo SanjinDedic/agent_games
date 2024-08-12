@@ -12,7 +12,7 @@ if ! [ -x "$(command -v certbot)" ]; then
     sudo ln -s /snap/bin/certbot /usr/bin/certbot
 fi
 
-sudo certbot certonly -d $DOMAIN - --standalone --non-interactive --agree-tos -m $EMAIL
+sudo certbot certonly -d $DOMAIN --standalone --non-interactive --agree-tos -m $EMAIL
 
 # Check if the SSL certificate was successfully obtained
 if sudo test -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem"  && sudo test -f "/etc/letsencrypt/live/$DOMAIN/privkey.pem" ; then
