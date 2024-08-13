@@ -90,7 +90,7 @@ To set up the environment, follow these steps:
 
 2. **Make Scripts Executable**: Ensure all scripts have executable permissions:
    ```bash
-   chmod +x setup.sh setup_varaiables.sh configure_service.sh configure_certbot.sh configure_apache.sh
+   chmod +x setup.sh setup_variables.sh configure_service.sh configure_certbot.sh configure_apache.sh configure_python.sh
    ```
 
 3. **Run the Setup Script**: Execute the `setup.sh` script to begin the setup process:
