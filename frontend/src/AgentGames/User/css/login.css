@@ -1,0 +1,78 @@
+.login-main-container {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  margin-top: 60px;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  
+}
+
+
+/* Container for the dropdown to position it or add margins */
+.dropdown-container {
+  margin: 20px;
+  width: 200px; /* Adjust width as needed */
+}
+
+/* Style for the <select> element */
+select {
+  width: 100%; /* Full width of the container */
+  padding: 8px 12px; /* Padding for a better touch area and aesthetics */
+  border: 1px solid #ccc; /* Subtle border */
+  border-radius: 8px; /* Rounded corners */
+  background-color: white; /* Background color */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Light shadow for depth */
+  color: #333; /* Text color */
+  cursor: pointer; /* Cursor indicates this is a clickable item */
+  outline: none; /* Remove default focus outline */
+}
+
+/* Style to change the appearance when the dropdown is focused */
+select:focus {
+  border-color: #0056b3; /* Change border color on focus */
+  box-shadow: 0 0 8px rgba(0,86,179,0.2); /* More pronounced shadow on focus */
+}
+
+/* Style for <option> elements inside the dropdown */
+select option {
+  padding: 10px; /* Padding inside options for better readability */
+  background: white; /* Background of options */
+  color: #333; /* Text color of options */
+}
+
+/* Additional styling for the disabled option */
+select option:disabled {
+  color: #aaa; /* Lighter color for disabled options */
+}
+
+/* Hover styles for options */
+select option:hover {
+  background-color: #f0f0f0; /* Light grey background on hover */
+}
+.toast-container .Toastify__close-button{
+  width: auto !important;
+}
+
+
+
+  .link {
+    text-decoration: none; /* Remove underline */
+    color: inherit; /* Inherit the color from the parent element */
+  }
+
+  .login-container {
+    box-sizing: border-box;
+    max-width: 1500px;
+    padding: 20px;
+    width: 740px;
+    line-height: 1.6;
+    text-align: left;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px #0000001a;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 40px;
+    margin-top: 40px;
+  }

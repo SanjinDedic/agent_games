@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base id="base" href="/"> 
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Victorian Coding Challenge</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html">Reset</a>
+    <a href="pages/rankings.html">Basic Rankings</a>
+    <a href="pages/tutorial.html">API Tutorial</a>
+    <a href="pages/agent_tutorial.html">Agent Tutorial</a>
+    <span id="team-name-display" class="team-name"></span>
+  </nav>
+  <div class="main-container">
+    <div id="top" class="top">
+      <textarea id="codeTextarea" name="code" class="code-textarea">
+# the program below takes in any number from the user
+# it attempts to return a times table but it has a conversion bug
+# The program should also handle non integer inputs 
+# Do this using .isnumeric()
+
+print('Enter a number:')
+num = input()
+print('Here is a times table for ', num)
+for i in range(1, 11):
+    print(i, 'X', num, '=', i * num)
+      </textarea><br>
+      <button id="getHintsButton">Get Hints</button>
+      <div id="introDiv"></div>
+      <div id="responseDiv"></div>
+      <div id="hintButtonsContainer" class="hidden">
+        <button id="smallHintButton" class="hintButton">Small Hint</button>
+        <button id="bigHintButton" class="hintButton">Big Hint</button>
+        <button id="logicalErrorHintButton" class="hintButton">Logical Error Hint</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/hints.js"></script>
+</body>
+</html>
