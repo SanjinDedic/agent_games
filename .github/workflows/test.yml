@@ -27,6 +27,7 @@ jobs:
 
     - name: Build Docker image
       run: |
+          cd backend
           docker build -t run-with-docker .
 
     - name: Run tests
