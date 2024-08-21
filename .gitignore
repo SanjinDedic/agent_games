@@ -17,9 +17,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-agent_games/
-agent_game_env/
-new_env/
+
 
 # pip cache
 Pipfile.lock

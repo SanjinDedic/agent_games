@@ -1,0 +1,110 @@
+
+.editor-container {
+  overflow: auto;
+  max-width: 800px;
+  /* Adjust the width as needed */
+  margin: auto;
+  /* Center the container */
+  padding: 20px;
+  /* Add some padding around the container */
+  /*border: 2px solid #0f2549; /* Optional: adds a border around the container */
+  border-radius: 4px;
+  /* Optional: rounds the corners of the container */
+  box-shadow: 0 4px 6px rgba(0.2, 0.2, 0.2, 0.2);
+  /* Optional: adds a shadow to the container */
+}
+
+.input-container {
+  margin: 10px 0;
+  /* Adds margin around each input container for spacing */
+}
+
+/* Label Styling */
+label {
+  display: block;
+  /* Ensures the label takes up the full width */
+  margin-bottom: 5px;
+  /* Adds a little space between the label and the input field */
+  font-weight: bold;
+  /* Makes the label text bold */
+}
+
+.output-container {
+  margin-top: 20px;
+  background-color: #333;
+  color: #fff;
+  padding: 20px;
+  font-family: monospace;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.error {
+  background-color: #ffdddd;
+  color: #d8000c;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.output {
+  white-space: pre-wrap;
+  /* Preserve whitespaces and line breaks */
+}
+
+.readOnly {
+  background-color: #f4f4f4;
+  color: #dcdcdc;
+}
+
+.results-container {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+  color: #000000;
+  background-color: #f4f4f4;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.results-container table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.results-container th,
+.results-container td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.results-container th {
+  background-color: #666;
+  color: white;
+}
+
+.results-container tbody tr.highlighted {
+  background-color: #ffff99;
+  /* Highlight color for the user's team */
+}
+
+.team-info-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 50px;
+  /* Aligns children on both ends */
+  padding: 10px 20px;
+  /* Adds some padding around the container */
+  background-color: #f0f0f0;
+  /* Optional: adds a background color */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  /* Optional: adds a subtle shadow */
+}
+
+.team-id,
+.team-league,
+.team-game {
+  margin: 0;
+  /* Removes default margin from h1 tags */
+}
