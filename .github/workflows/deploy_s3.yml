@@ -40,7 +40,7 @@ jobs:
 
       # Step 6: Sync build directory to S3
       - name: Sync build directory to S3
-        run: aws s3 sync frontend/build/ s3://vccfinal.com --delete
+        run: aws s3 sync frontend/build/ s3://agents.vccfinal.com --delete
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
