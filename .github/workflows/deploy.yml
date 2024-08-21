@@ -64,11 +64,27 @@ jobs:
             sudo systemctl start docker
           fi
 
-          # Pull the latest Docker image
-          sudo docker pull matthewhee/agent_games:latest
+          mkdir -p ~/main_application/agent_games
 
           cd ~/main_application/agent_games
-          git pull origin main
+        
+          # If the directory is not empty, pull the latest changes; otherwise, clone only the backend contents
+          if [ "$(ls -A .)" ]; then
+            echo "Directory is not empty. Pulling latest changes..."
+            git pull origin main --recurse-submodules
+          else
+            echo "Directory is empty. Cloning backend contents from the repository..."
+            git init
+            git remote add origin https://github.com/yourusername/yourrepo.git
+            git config core.sparseCheckout true
+            echo "backend/*" >> .git/info/sparse-checkout
+            echo "!backend/" >> .git/info/sparse-checkout  # This line tells git to exclude the backend folder itself, but include its contents
+            git pull origin main --recurse-submodules
+          fi
+          
+          # Pull the latest Docker image
+          docker build -t run-with-docker .
+
           pm2 restart Agent_Games
           pm2 save
         '
