@@ -47,7 +47,7 @@ def transform_result(result_data, sim_result, league_name):
     }
 
 def get_games_names():
-    games_directory = os.path.join(ROOT_DIR, "backend", "games")
+    games_directory = os.path.join(ROOT_DIR, "games")
     if not os.path.exists(games_directory):
         raise FileNotFoundError(f"The directory '{games_directory}' does not exist.")
     
