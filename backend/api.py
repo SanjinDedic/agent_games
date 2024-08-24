@@ -110,7 +110,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     if not team.league:
         return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
     
-    results = run_agent_simulation(submission.code, team.league.game, team_name)
+    results, feedback = run_agent_simulation(submission.code, team.league.game, team_name)
     if not results:
         return ErrorResponseModel(status="error", message="Agent simulation failed.")
     
@@ -139,7 +139,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         return ResponseModel(
             status="success",
             message=f"Code submitted successfully. Submission ID: {submission_id}",
-            data={"results": results, "team_name": team_name}
+            data={"results": results, "team_name": team_name, "feedback": feedback}
         )
     except Exception as e:
         print(f"Error updating submission: {str(e)}")

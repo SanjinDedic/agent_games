@@ -67,6 +67,7 @@ def is_agent_safe(code):
 
 def run_agent_simulation(code, game_name, team_name):
     print("game_name in run_agent_simulation: ", game_name)
+    feedback = "Your code is safe"
     test_league_folder = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league')
     test_league = League(folder=test_league_folder, name="Test League", game=game_name)
     
@@ -84,7 +85,7 @@ def run_agent_simulation(code, game_name, team_name):
         results = game_class.run_simulations(500, game_class, test_league)
         print("Simulations run")
         print(results)
-        return results
+        return results, feedback
     except Exception as e:
         print(f"Error during simulation: {e}")
         return False
