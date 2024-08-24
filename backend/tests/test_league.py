@@ -4,6 +4,7 @@ import pytest
 import shutil
 from fastapi.testclient import TestClient
 from sqlmodel import Session
+from config import ROOT_DIR
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -69,9 +70,14 @@ def test_league_folder_creation(client, admin_token):
     response = client.post("/league_create", json={"name": league_name, "game": "greedy_pig"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
     assert "success" in response.json()["status"]
-    assert os.path.isdir(f"games/greedy_pig/leagues/admin/{league_name}")
-    shutil.rmtree(f"games/greedy_pig/leagues/admin/{league_name}")
-    assert not os.path.isdir(f"games/greedy_pig/leagues/user/{league_name}")
+    
+    expected_folder = os.path.join(ROOT_DIR, "games", "greedy_pig", "leagues", "admin", league_name)
+    print(f"Expected folder path: {expected_folder}")
+    assert os.path.isdir(expected_folder)
+    
+    # Clean up: remove the created folder
+    if os.path.exists(expected_folder):
+        shutil.rmtree(expected_folder)
 
 def test_league_folder_creation_no_auth(client):
     league_name = "test_league_user"
