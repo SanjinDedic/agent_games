@@ -2,6 +2,7 @@
 
 import json, os
 from database import create_team
+from config import ROOT_DIR
 
 def add_teams_from_json(session, teams_json_path):
     try:
@@ -46,7 +47,7 @@ def transform_result(result_data, sim_result, league_name):
     }
 
 def get_games_names():
-    games_directory = "./games"
+    games_directory = os.path.join(ROOT_DIR, "backend", "games")
     if not os.path.exists(games_directory):
         raise FileNotFoundError(f"The directory '{games_directory}' does not exist.")
     
