@@ -73,16 +73,8 @@ jobs:
           # Clean up temporary directory
           rm -rf "$tmp_dir"
 
-          if [ -d "venv" ]; then
-            echo "Virtual environment found. Building Docker image and restarting service..."
-            docker build -t run-with-docker .
-            sudo systemctl restart Agent_Games_Service
-          else
-            echo "Virtual environment not found. Running configuration scripts..."
-            cd /server_deployment
-            sudo ./configure_python.sh
-            sudo ./configure_service.sh
-            cd ..
-            docker build -t run-with-docker .
-          fi
+        
+          docker build -t run-with-docker .
+          sudo systemctl restart Agent_Games_Service
+        
         EOF
