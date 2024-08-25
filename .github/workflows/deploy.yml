@@ -61,19 +61,17 @@ jobs:
           mkdir -p ~/agent_games
           cd ~/agent_games
 
-          # If the directory is not empty, pull the latest changes; otherwise, clone only the backend contents
-          if [ "$(ls -A .)" ]; then
-            echo "Directory is not empty. Pulling latest changes..."
-            git pull origin main --recurse-submodules
-          else
-            echo "Directory is empty. Cloning backend contents from the repository..."
-            git init
-            git remote add origin https://github.com/SanjinDedic/agent_games.git
-            git config core.sparseCheckout true
-            echo "backend/*" >> .git/info/sparse-checkout
-            echo "!backend/" >> .git/info/sparse-checkout  # This line tells git to exclude the backend folder itself, but include its contents
-            git pull origin main --recurse-submodules
-          fi
+          tmp_dir=$(mktemp -d)
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
+          cd "$tmp_dir"
+          git sparse-checkout set backend
+
+          # Copy backend contents to the current directory
+          cp -r backend/* ~/agent_games/
+          cp -r backend/.[^.]* ~/agent_games/ 2>/dev/null || true
+
+          # Clean up temporary directory
+          rm -rf "$tmp_dir"
 
           if [ -d "venv" ]; then
             echo "Virtual environment found. Building Docker image and restarting service..."
