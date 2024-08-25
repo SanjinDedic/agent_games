@@ -86,7 +86,8 @@ def test_team_login(client):
     assert response.status_code == 422
     assert "must not be empty" in response.json()["detail"][0]["msg"]
 
-    
+##### Team Creation #####
+
 def test_team_create(client, db_session, admin_token):
     team_name = "new_test_team"
     team_password = "new_test_password"
