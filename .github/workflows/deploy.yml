@@ -40,7 +40,7 @@ jobs:
         mkdir -p ~/.ssh
         echo "$KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh -o StrictHostKeyChecking=no $USERNAME@$HOST '
+        ssh -o StrictHostKeyChecking=no $USERNAME@$HOST << 'EOF'
           # Check if Docker is installed and running
           if ! command -v docker &> /dev/null; then
             echo "Docker not found. Installing Docker..."
@@ -59,9 +59,8 @@ jobs:
           fi
 
           mkdir -p ~/agent_games
-
           cd ~/agent_games
-        
+
           # If the directory is not empty, pull the latest changes; otherwise, clone only the backend contents
           if [ "$(ls -A .)" ]; then
             echo "Directory is not empty. Pulling latest changes..."
@@ -77,12 +76,15 @@ jobs:
           fi
 
           if [ -d "venv" ]; then
+            echo "Virtual environment found. Building Docker image and restarting service..."
             docker build -t run-with-docker .
             sudo systemctl restart Agent_Games_Service
           else
-              cd /server_deployment
-              sudo ./configure_python.sh
-              sudo ./configure_service.sh
-              cd ..
-              docker build -t run-with-docker .
+            echo "Virtual environment not found. Running configuration scripts..."
+            cd /server_deployment
+            sudo ./configure_python.sh
+            sudo ./configure_service.sh
+            cd ..
+            docker build -t run-with-docker .
           fi
+        EOF
