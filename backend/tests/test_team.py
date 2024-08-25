@@ -177,6 +177,8 @@ class CustomPlayer(Player):
     print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
     os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
 
+##### Get All Teams #####
+
 def test_get_all_teams(client, db_session):
     # Get all teams from the database
     response = client.get("/get_all_teams")
