@@ -146,6 +146,8 @@ def test_delete_team(client, admin_token):
     assert response.json()["status"] == "error"
     assert "Team 'non_existent_team' not found" in response.json()["message"]
 
+##### Agent Submission #####
+
 def test_submit_agent(client, db_session, team_token):
     # Submit code for the team
     code = """
