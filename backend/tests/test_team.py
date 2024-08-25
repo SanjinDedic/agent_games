@@ -198,6 +198,7 @@ def test_get_all_teams(client, db_session):
     print(response_names)
     assert sorted(team_names) == sorted(response_names)
 
+##### League Assign #####
 
 def test_league_assign(client, team_token):
     league_name = "unassigned"
