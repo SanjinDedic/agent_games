@@ -41,6 +41,9 @@ def admin_token(client):
     token = login_response.json()["data"]["access_token"]
     return token
 
+
+##### Team Login #####
+
 @pytest.fixture(scope="module")
 def team_token(client):
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
