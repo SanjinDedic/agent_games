@@ -52,24 +52,15 @@ jobs:
             echo "Docker is already installed."
           fi
 
-          # Check Docker version
-          docker_version=$(docker --version | cut -d " " -f 3 | cut -d "," -f 1)
-          required_version="24.0.7"
-          if [ "$docker_version" != "$required_version" ]; then
-            echo "Updating Docker to version $required_version..."
-            sudo apt-get update
-            sudo apt-get install -y docker.io=$required_version*
-          fi
-
           # Ensure Docker is running
           if ! sudo systemctl is-active --quiet docker; then
             echo "Starting Docker service..."
             sudo systemctl start docker
           fi
 
-          mkdir -p ~/main_application/agent_games
+          mkdir -p ~/agent_games
 
-          cd ~/main_application/agent_games
+          cd ~/agent_games
         
           # If the directory is not empty, pull the latest changes; otherwise, clone only the backend contents
           if [ "$(ls -A .)" ]; then
@@ -78,16 +69,20 @@ jobs:
           else
             echo "Directory is empty. Cloning backend contents from the repository..."
             git init
-            git remote add origin https://github.com/yourusername/yourrepo.git
+            git remote add origin https://github.com/SanjinDedic/agent_games.git
             git config core.sparseCheckout true
             echo "backend/*" >> .git/info/sparse-checkout
             echo "!backend/" >> .git/info/sparse-checkout  # This line tells git to exclude the backend folder itself, but include its contents
             git pull origin main --recurse-submodules
           fi
-          
-          # Pull the latest Docker image
-          docker build -t run-with-docker .
 
-          pm2 restart Agent_Games
-          pm2 save
-        '
+          if [ -d "venv" ]; then
+            docker build -t run-with-docker .
+            sudo systemctl restart Agent_Games_Service
+          else
+              cd /server_deployment
+              sudo ./configure_python.sh
+              sudo ./configure_service.sh
+              cd ..
+              docker build -t run-with-docker .
+          fi
