@@ -73,7 +73,7 @@ jobs:
           # Clean up temporary directory
           rm -rf "$tmp_dir"
 
-        
+          cd ~/agent_games
           docker build -t run-with-docker .
           sudo systemctl restart Agent_Games_Service
         
