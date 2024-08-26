@@ -93,7 +93,7 @@ def run_agent_simulation(code, game_name, team_name):
         feedback = f.getvalue()
         print("Feedback: ", feedback)
         # Run multiple simulations for the actual results
-        results = game_class.run_simulations(100, game_class, test_league) #needs to be docker sims
+        results = game_class.run_simulations(100, game_class, test_league) #needs to be docker_simulation (just testing CI/CD lol)
         print("Simulations run")
         print(results)
         return results, feedback
