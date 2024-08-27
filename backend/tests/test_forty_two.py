@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from games.forty_two.forty_two import FortyTwoGame, run_simulations as run_forty_two_simulations
+from games.forty_two.forty_two import FortyTwoGame
 from models_db import League
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def test_game_reset(test_league):
 
 def test_run_simulations(test_league):
     num_simulations = 10
-    results = run_forty_two_simulations(num_simulations, test_league)
+    results = FortyTwoGame.run_simulations(num_simulations, FortyTwoGame, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "total_wins" in results

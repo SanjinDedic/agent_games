@@ -121,6 +121,3 @@ def make_decision(self, game_state):
         super().reset()
         for player in self.players:
             player.hand = 0
-
-def run_simulations(num_simulations, league, custom_rewards=None):
-    return BaseGame.run_simulations(num_simulations, FortyTwoGame, league, custom_rewards)

@@ -6,8 +6,8 @@ from sqlmodel import Session, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from games.forty_two.forty_two import FortyTwoGame, run_simulations as run_forty_two_simulations
-from games.greedy_pig.greedy_pig import GreedyPigGame, run_simulations as run_greedy_pig_simulations
+from games.forty_two.forty_two import FortyTwoGame
+from games.greedy_pig.greedy_pig import GreedyPigGame
 from api import app
 from database import get_db_engine
 from models_db import League, SimulationResult

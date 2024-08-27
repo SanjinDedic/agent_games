@@ -52,6 +52,3 @@ class CustomPlayer(Player):
 
     def assign_points(self, scores, custom_rewards=None):
         return {"points": scores, "score_aggregate": scores}
-
-def run_simulations(num_simulations, league, custom_rewards=None):
-    return BaseGame.run_simulations(num_simulations, AlphaGuessGame, league, custom_rewards)

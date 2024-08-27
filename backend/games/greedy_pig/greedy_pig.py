@@ -182,32 +182,3 @@ def make_decision(self, game_state):
             player.unbanked_money = 0
             player.has_banked_this_turn = False
 
-
-def run_simulations(num_simulations, league):
-    return BaseGame.run_simulations(num_simulations, GreedyPigGame, league)
-
-def draw_table(rankings):
-    os.system('clear')
-    print("-" * 50)
-    print(f"{'Player':^20} | {'Points':^10} | {'Rank':^10}")
-    print("-" * 50)
-    for rank, (player, points) in enumerate(rankings, start=1):
-        print(f"{player:^20} | {points:^10} | {rank:^10}")
-    print("-" * 50)
-    time.sleep(0.3)
-
-def animate_simulations(num_simulations, refresh_number, league):
-    game = GreedyPigGame(league, verbose=True)
-    total_points = {player.name: 0 for player in game.players}
-    
-    for i in range(1, num_simulations + 1):
-        game.reset()
-        results = game.play_game()
-        
-        for player, points in results["points"].items():
-            total_points[player] += points
-        
-        if i % refresh_number == 0 or i == num_simulations:
-            print(f"\nRankings after {i} simulations:")
-            sorted_total_points = sorted(total_points.items(), key=lambda x: x[1], reverse=True)
-            draw_table(sorted_total_points)

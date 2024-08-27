@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from games.greedy_pig.greedy_pig import draw_table, animate_simulations, GreedyPigGame, run_simulations as run_greedy_pig_simulations
+from games.greedy_pig.greedy_pig import GreedyPigGame
 from models_db import League
 
 @pytest.fixture
@@ -87,51 +87,9 @@ def test_game_reset(test_league):
 @patch('sys.stdout', new_callable=StringIO)
 def test_run_simulations(mock_stdout, test_league):
     num_simulations = 10
-    results = run_greedy_pig_simulations(num_simulations, test_league)
+    results = GreedyPigGame.run_simulations(num_simulations, GreedyPigGame, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "total_wins" in results
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations
-
-
-def test_draw_table(capsys):
-    rankings = [
-        ("Player1", 100),
-        ("Player2", 90),
-        ("Player3", 80),
-        ("Player4", 70),
-    ]
-
-    draw_table(rankings)
-    captured = capsys.readouterr()
-
-    # Remove extra whitespace from the captured output
-    lines = [line.strip() for line in captured.out.split('\n') if line.strip()]
-
-    assert len(lines) >= 7  # Header, separator, 4 players, footer
-    assert lines[0] == "-" * 50
-    assert "Player" in lines[1] and "Points" in lines[1] and "Rank" in lines[1]  # Header line
-    assert lines[2] == "-" * 50  # Separator line
-    assert "Player1" in lines[3]
-    assert "Player2" in lines[4]
-    assert "Player3" in lines[5]
-    assert "Player4" in lines[6]
-    assert lines[-1] == "-" * 50  # Footer line
-
-    # Print the captured output for debugging
-    print("\nCaptured output:")
-    print(captured.out)
-
-
-@patch('time.sleep')  # Patch time.sleep to speed up the test
-def test_animate_simulations(mock_sleep, capsys, test_league):
-    num_simulations = 5
-    refresh_number = 2
-
-    animate_simulations(num_simulations, refresh_number, test_league)
-    captured = capsys.readouterr()
-
-    assert "Rankings after 2 simulations:" in captured.out
-    assert "Rankings after 4 simulations:" in captured.out
-    assert "Rankings after 5 simulations:" in captured.out
