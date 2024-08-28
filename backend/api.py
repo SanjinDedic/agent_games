@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
-from docker_simulation import run_docker_simulation
+from docker_simulation import run_docker_simulation, DOCKER_TIMEOUT
 from validation import is_agent_safe, run_agent_simulation
 from games.game_factory import GameFactory
 import os
@@ -102,7 +102,6 @@ async def agent_create(user: TeamSignup, current_user: dict = Depends(get_curren
 @app.post("/submit_agent", response_model=ResponseModel)
 async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
     team_name = current_user["team_name"]
-    user_role = current_user["role"]
     if not is_agent_safe(submission.code):
         return ErrorResponseModel(status="error", message="Agent code is not safe.")
     
@@ -110,17 +109,11 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     if not team.league:
         return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
     
-    results, feedback = run_agent_simulation(submission.code, team.league.game, team_name)
-    if not results:
-        return ErrorResponseModel(status="error", message="Agent simulation failed.")
-    
     try:
-        print("team found", team.name, team.league.name, team.league.folder)
         if team.league.folder:
             league_folder = team.league.folder.lstrip('/')
         else:
             league_folder = f"leagues/user/{team.league.name}"
-        print(team_name, user_role, team.league.name)
 
         # Check if the team can make a submission
         if not database.allow_submission(session, team.id):
@@ -128,13 +121,18 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
 
         # Save the submitted code in a Python file named after the team
         file_path = os.path.join(ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py")
-        print("Rooot directory", ROOT_DIR, "file_path", file_path)
         with open(file_path, "w") as file:
             file.write(submission.code)
-        print("are we here")
+        
+        # Run Docker simulation for both feedback and results
+        docker_result = run_docker_simulation(team.league.name, team.league.game, league_folder, None, timeout=DOCKER_TIMEOUT)
+        if not docker_result[0]:
+            return ErrorResponseModel(status="error", message="Docker simulation failed.")
+        
+        feedback = docker_result[1].get('feedback', 'No feedback available.')
+        results = docker_result[1].get('simulation_results', {})
+
         # Log the submission in the database
-        print(submission.code)
-        print(team.id)
         submission_id = database.save_submission(session, submission.code, team.id)
         return ResponseModel(
             status="success",
@@ -155,7 +153,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
     num_simulations = simulation_config.num_simulations
     custom_rewards = simulation_config.custom_rewards
     use_docker = simulation_config.use_docker if hasattr(simulation_config, 'use_docker') else True
-    
+
     try:
         league = database.get_league(session, league_name)
         if not league:
@@ -163,26 +161,28 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 
         if use_docker:
             print("Running simulation using Docker")
-            is_successful, results = run_docker_simulation(num_simulations, league_name, league.game, league.folder, custom_rewards)
+            is_successful, results = run_docker_simulation(league_name, league.game, league.folder, custom_rewards)
+            if not is_successful:
+                return ErrorResponseModel(status="error", message=results)
+            simulation_results = results['simulation_results']
         else:
             print("Running simulation without Docker")
             game_class = GameFactory.get_game_class(league.game)
-            results = game_class.run_simulations(num_simulations, league, custom_rewards)
-            is_successful = True
+            simulation_results = game_class.run_simulations(num_simulations, league, custom_rewards)
 
-        if not is_successful:
-            return ErrorResponseModel(status="error", message=results)
-        
         if league_name != "test_league":
-            sim_result = database.save_simulation_results(session, league.id, results, custom_rewards)
+            sim_result = database.save_simulation_results(session, league.id, simulation_results, custom_rewards)
+
+        response_data = transform_result(simulation_results, sim_result, league_name) 
+        if use_docker:
+            response_data['feedback'] = results['feedback']
         
-        # Only include custom_rewards in the response if they were provided
-        response_data = transform_result(results, sim_result, league.name) 
         return ResponseModel(status="success", message="Simulation run successfully", data=response_data)
-    
+
     except Exception as e:
         print(f"Error running simulation: {str(e)}")
-        return ErrorResponseModel(status="error", message="An error occurred while running the simulation")
+        return ErrorResponseModel(status="error", message=f"An error occurred while running the simulation: {str(e)}")
+
 
 
 @app.get("/get_all_admin_leagues", response_model=ResponseModel)

@@ -31,35 +31,34 @@ SIMULATION_RESULTS_SCHEMA = {
         "additionalProperties": False
     }
 
-def run_docker_simulation(num_simulations, league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT):
-
+def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT):
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
-    command = ["docker", "run", "--rm","-v",f"{ROOT_DIR}:/agent_games", DOCKER_REPO, str(num_simulations), league_name, league_game, league_folder, custom_rewards_str, str(timeout)]
+    command = ["docker", "run", "--rm", "-v", f"{ROOT_DIR}:/agent_games", DOCKER_REPO, 
+               league_name, league_game, league_folder, custom_rewards_str, str(timeout)]
+    
     try:
         docker_results = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=SUBPROCESS_TIMEOUT)
     except subprocess.TimeoutExpired:
         return False, "Timeout occurred while running the docker container"
 
     if docker_results.returncode != 0:
-        return False, "An error occurred while running the docker container"
+        return False, f"An error occurred while running the docker container: {docker_results.stderr}"
     print(docker_results.stdout)
 
     try:
-        #read the results from results.json file in the current folder
-        with open(ROOT_DIR+"/docker_results.json", "r") as f:
+        with open(ROOT_DIR + "/docker_results.json", "r") as f:
             results = json.load(f)
+
+        if not validate_docker_results(results):
+            return False, "Invalid results format"
+
+        return True, results
 
     except json.JSONDecodeError:
         return False, "An error occurred while parsing the simulation results"
-    
-    if not validate_docker_simulation_results(results):
-        return False, "An error occurred while validating the simulation results"
-    
-    return True, results
+    except FileNotFoundError:
+        return False, "Docker results file not found"
 
-def validate_docker_simulation_results(results):
-    try:
-        validate(instance=results, schema=SIMULATION_RESULTS_SCHEMA)
-    except ValidationError:
-        return False
-    return True
+def validate_docker_results(results):
+    required_keys = ['feedback', 'simulation_results']
+    return all(key in results for key in required_keys)
