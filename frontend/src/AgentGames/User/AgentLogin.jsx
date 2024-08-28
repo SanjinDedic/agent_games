@@ -3,11 +3,12 @@ import './css/login.css';
 import React, { useState,useEffect } from 'react';
 import { useNavigate} from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { login } from '../../slices/authSlice';
+import { login, logout, checkTokenExpiry } from '../../slices/authSlice';
 import { setCurrentTeam, clearTeam } from '../../slices/teamsSlice';
 import UserTooltip from '../Utilities/UserTooltips';
 import InstructionPopup from '../Utilities/InstructionPopup';
 import { jwtDecode } from 'jwt-decode';
+
 
 function AgentLogin() {
     const navigate = useNavigate();
@@ -17,12 +18,14 @@ function AgentLogin() {
     const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
  
     useEffect(() => {
-      if (!isAuthenticated || currentUser.role !== "student") {
+      const tokenExpired = dispatch(checkTokenExpiry());
+      if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
         navigate('/AgentLogin');
       }
       else if (isAuthenticated || currentUser.role === "student") {
         navigate('/AgentLeagueSignUp');
       }
+      
     }, [navigate]);
 
 
@@ -56,7 +59,8 @@ function AgentLogin() {
         .then(data => {        
           if (data.status === "success") {
             const decoded = jwtDecode(data.data.access_token);
-            dispatch(login({ token: data.data.access_token, name: decoded.sub, role: decoded.role }));
+            console.log(decoded);
+            dispatch(login({ token: data.data.access_token, name: decoded.sub, role: decoded.role, exp: decoded.exp }));
             dispatch(setCurrentTeam(Team.name));
             navigate("/AgentLeagueSignUp")
           } else if (data.status === "failed"){

@@ -8,9 +8,7 @@ import './css/submission.css'
 import UserTooltip from '../Utilities/UserTooltips';
 import InstructionPopup from '../Utilities/InstructionPopup';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../../slices/authSlice';
-import { clearLeagues } from '../../slices/leaguesSlice';
-import { clearTeam } from '../../slices/teamsSlice';
+import { checkTokenExpiry } from '../../slices/authSlice';
 
 const AgentSubmission = () => {
   const monacoRef = useRef(null);
@@ -33,11 +31,15 @@ const AgentSubmission = () => {
 
 
   useEffect(() => {
+    const tokenExpired = dispatch(checkTokenExpiry());
+    console.log(tokenExpired);
     handleInstructions();
-    if (!isAuthenticated || currentUser.role !== "student") {
+    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       // Redirect to the home page if not authenticated
+      console.log("not authenticated");
       navigate('/AgentLogin');
     }
+
   }, [navigate]);
 
 
@@ -131,9 +133,9 @@ const AgentSubmission = () => {
   return (
     <div>
       <div className="team-info-container">
-        <h1 className="team-id">TEAM: {currentUser.name}</h1>
-        <h1 className="team-game">GAME: {currentLeague.game}</h1>
-        <h1 className="team-league">LEAGUE: {currentLeague.name}</h1>
+      {currentUser.name && <h1 className="team-id">TEAM: {currentUser.name}</h1>}
+      {currentLeague.game &&   <h1 className="team-game">GAME: {currentLeague.game}</h1>}
+      {currentLeague.name &&   <h1 className="team-league">LEAGUE: {currentLeague.name}</h1>}
       </div>
       <div className="editor-container">
 

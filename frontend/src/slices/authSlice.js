@@ -1,4 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
+import moment from 'moment-timezone';
+import { clearLeagues } from './leaguesSlice'; 
+import { clearTeam } from './teamsSlice';
+
+moment.tz.setDefault("Australia/Sydney");
 
 const authSlice = createSlice({
   name: 'auth',
@@ -7,6 +12,7 @@ const authSlice = createSlice({
     currentUser: {
       name: null,
       role: null,
+      exp: null,
     },
     isAuthenticated: false,
   },
@@ -18,18 +24,35 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
     },
     login: (state, action) => {
-      const { token, name, role } = action.payload;
+      const { token, name, role, exp } = action.payload;
       state.token = token;
-      state.currentUser = { name, role };
+      state.currentUser = { name, role, exp };
       state.isAuthenticated = true;
     },
     logout: (state) => {
       state.token = null;
-      state.currentUser = { name: null, role: null };
+      state.currentUser = { name: null, role: null, exp: null };
       state.isAuthenticated = false;
     },
   },
 });
+
+export const checkTokenExpiry = () => (dispatch, getState) => {
+  const { currentUser } = getState().auth;
+
+  if (currentUser.exp) {
+    const expiryDate = moment.unix(currentUser.exp);
+    const currentDate = moment();
+
+    if (currentDate.isAfter(expiryDate)) {
+      dispatch(authSlice.actions.logout());
+      dispatch(clearLeagues());
+      dispatch(clearTeam());
+      return true;
+    }
+  }
+  return false;
+};
 
 export const { setCredentials, login, logout } = authSlice.actions;
 export default authSlice.reducer;
