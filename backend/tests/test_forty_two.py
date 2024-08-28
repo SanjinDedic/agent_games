@@ -59,7 +59,7 @@ def test_game_reset(test_league):
 
 def test_run_simulations(test_league):
     num_simulations = 10
-    results = FortyTwoGame.run_simulations(num_simulations, FortyTwoGame, test_league)
+    results = FortyTwoGame.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "total_wins" in results

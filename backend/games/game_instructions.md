@@ -108,7 +108,7 @@ class CustomPlayer(Player):
         return {"points": scores, "score_aggregate": scores}
 
 def run_simulations(num_simulations, league, custom_rewards=None):
-    return BaseGame.run_simulations(num_simulations, AlphaGuessGame, league, custom_rewards)
+    return BaseGame.run_simulations(num_simulations, league, custom_rewards)
 ```
 
 3. **Create the Player Class (player.py)**

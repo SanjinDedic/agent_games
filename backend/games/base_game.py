@@ -73,9 +73,9 @@ class BaseGame(ABC):
     def reset(self):
         self.scores = {player.name: 0 for player in self.players}
 
-    @staticmethod
-    def run_simulations(num_simulations, game_class, league, custom_rewards=None):
-        game = game_class(league)
+    @classmethod
+    def run_simulations(cls, num_simulations, league, custom_rewards=None):
+        game = cls(league)
         total_points = {player.name: 0 for player in game.players}
         total_wins = {player.name: 0 for player in game.players}
 

@@ -23,7 +23,7 @@ def run_docker_simulations():
     game_class = GameFactory.get_game_class(league.game)
     signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout)
-    results = game_class.run_simulations(num_simulations, game_class, league, custom_rewards)
+    results = game_class.run_simulations(num_simulations, league, custom_rewards)
     signal.alarm(0)
     
     with open(ROOT_DIR+"/docker_results.json", "w") as f:

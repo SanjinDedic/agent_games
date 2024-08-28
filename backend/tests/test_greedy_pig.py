@@ -87,7 +87,7 @@ def test_game_reset(test_league):
 @patch('sys.stdout', new_callable=StringIO)
 def test_run_simulations(mock_stdout, test_league):
     num_simulations = 10
-    results = GreedyPigGame.run_simulations(num_simulations, GreedyPigGame, test_league)
+    results = GreedyPigGame.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "total_wins" in results
