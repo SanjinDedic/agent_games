@@ -6,8 +6,8 @@ from sqlmodel import Session, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from games.forty_two.forty_two import FortyTwoGame, run_simulations as run_forty_two_simulations
-from games.greedy_pig.greedy_pig import GreedyPigGame, run_simulations as run_greedy_pig_simulations
+from games.forty_two.forty_two import FortyTwoGame
+from games.greedy_pig.greedy_pig import GreedyPigGame
 from api import app
 from database import get_db_engine
 from models_db import League, SimulationResult
@@ -46,7 +46,6 @@ def admin_token(client):
 def non_admin_token(client):
     non_admin_token = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}).json()["data"]["access_token"]
     return non_admin_token
-
 
 def test_alpha_guess_submission_and_simulation(client, db_session, admin_token):
     # Create a test league for Alpha Guess
@@ -109,10 +108,10 @@ class CustomPlayer(Player):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Alpha Guess Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
@@ -123,17 +122,6 @@ class CustomPlayer(Player):
     client.post("/delete_team", json={"name": "alpha_guess_team"}, headers={"Authorization": f"Bearer {admin_token}"})
     # Note: There's no endpoint to delete a league, so it will remain in the database
 
-
-
-
-
-
-
-
-
-
-
-
 def test_run_simulation(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
@@ -141,18 +129,15 @@ def test_run_simulation(client, db_session, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data, "Response does not contain 'data' key"
     assert response_data["data"] is not None, "Response 'data' is None"
     assert "total_points" in response_data["data"], "Response data does not contain 'total_points'"
-    
-    assert "total_points" in response_data["data"]
     assert isinstance(response_data["data"]["total_points"], dict)
     assert len(response_data["data"]["total_points"]) > 0
-
 
 def test_get_all_league_results(client, admin_token, non_admin_token):
     simulation_response = client.post(
@@ -161,7 +146,7 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     league_results_response = client.post(
         "/get_all_league_results",
         json={"name": "comp_test"},
@@ -176,9 +161,6 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {non_admin_token}"}
     )
     assert unauthorized_response.json()["message"] == "Only admin users can view league results"
-
-
-#####   PUBLISH RESULTS  #####
 
 def test_publish_results(client, db_session, admin_token, non_admin_token):
     simulation_response = client.post(
@@ -223,8 +205,6 @@ def test_publish_results(client, db_session, admin_token, non_admin_token):
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True
 
-#####   ONE SIMULATION PER LEAGUE  #####
-
 def test_publish_one_simulation_per_league(client, db_session, admin_token):
     simulation_response1 = client.post(
         "/run_simulation",
@@ -265,8 +245,6 @@ def test_publish_one_simulation_per_league(client, db_session, admin_token):
     simulation_result2 = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id2)).one()
     assert simulation_result2.published == True
 
-#####   PUBLISH RESULTS FOR LEAGUE  #####
-
 def test_get_published_results_for_league(client, db_session, admin_token):
     simulation_response = client.post(
         "/run_simulation",
@@ -295,8 +273,6 @@ def test_get_published_results_for_league(client, db_session, admin_token):
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True
 
-#####   PUBLISH RESULTS FOR ALL LEAGUES  #####
-
 def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     # Test getting published results for all leagues
     response = client.get("/get_published_results_for_all_leagues")
@@ -304,9 +280,6 @@ def test_get_published_results_for_all_leagues(client, db_session, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert len(response.json()["data"]) == 1
-
-
-#####   FORTY TWO RUN SIMULATION  #####
 
 def test_run_forty_two_simulation(client, admin_token):
     simulation_response = client.post(
@@ -318,8 +291,6 @@ def test_run_forty_two_simulation(client, admin_token):
     assert simulation_response.status_code == 200
     assert "total_points" in simulation_response.json()["data"]
 
-#####   RUN SIMULATION WITH CUSTOM REWARDS  #####
-
 def test_run_simulation_with_custom_rewards(client, admin_token):
     custom_rewards = [15, 10, 5, 3, 2, 1]
     simulation_response = client.post(
@@ -328,18 +299,15 @@ def test_run_simulation_with_custom_rewards(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
     assert "rewards" in response_data["data"]
     assert response_data["data"]["rewards"] == str(custom_rewards)
-
-#####   RUN SIMULATION WITH DEFAULT REWARDS  #####
-
 
 def test_run_simulation_with_default_rewards(client, admin_token):
     simulation_response = client.post(
@@ -348,10 +316,10 @@ def test_run_simulation_with_default_rewards(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
@@ -380,17 +348,15 @@ def test_run_simulation_with_empty_custom_rewards(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
     assert "rewards" in response_data["data"]
     assert response_data["data"]["rewards"] == '[]'
-
-#####   RUN SIMULATION FOR GREEDY PIG WITH CUSTOM REWARDS  #####
 
 def test_run_greedy_pig_simulation_with_custom_rewards(client, admin_token):
     custom_rewards = [20, 15, 10, 5, 3, 2, 1]
@@ -400,10 +366,10 @@ def test_run_greedy_pig_simulation_with_custom_rewards(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
@@ -418,10 +384,10 @@ def test_run_forty_two_simulation_with_custom_rewards(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
@@ -440,17 +406,16 @@ def test_custom_rewards_consistency(client, admin_token):
         json={"league_name": "comp_test", "num_simulations": 100, "custom_rewards": custom_rewards},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-    
+
     assert simulation_response1.status_code == 200
     assert simulation_response2.status_code == 200
-    
+
     response_data1 = simulation_response1.json()
     response_data2 = simulation_response2.json()
-    
+
     assert response_data1["data"]["rewards"] == str(custom_rewards)
     assert response_data2["data"]["rewards"] == str(custom_rewards)
     assert response_data1["data"]["rewards"] == response_data2["data"]["rewards"]
-
 
 def test_run_simulation_without_docker(client, db_session, admin_token):
     simulation_response = client.post(
@@ -459,10 +424,10 @@ def test_run_simulation_without_docker(client, db_session, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
@@ -487,10 +452,10 @@ def test_run_simulation_with_custom_rewards_without_docker(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    
+
     response_data = simulation_response.json()
     print("Simulation Response:", response_data)
-    
+
     assert "data" in response_data
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
@@ -508,12 +473,20 @@ def test_compare_docker_and_non_docker_simulations(client, admin_token):
         json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-    
+
     assert docker_response.status_code == 200
     assert non_docker_response.status_code == 200
-    
+
     docker_data = docker_response.json()["data"]
     non_docker_data = non_docker_response.json()["data"]
-    
+
     assert set(docker_data["total_points"].keys()) == set(non_docker_data["total_points"].keys())
     assert docker_data["num_simulations"] == non_docker_data["num_simulations"]
+
+    # Check for feedback in Docker response
+    assert "feedback" in docker_data
+    assert isinstance(docker_data["feedback"], str)
+    assert len(docker_data["feedback"]) > 0
+
+    # Non-Docker response should not have feedback
+    assert "feedback" not in non_docker_data

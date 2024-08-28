@@ -89,7 +89,7 @@ def test_add_teams_from_json_invalid_json(db_session, tmpdir):
           "school": "TestSchool2"
         }
       ]
-    ''')  # Missing closing bracket to make the JSON invalid
+    ''')
 
     with pytest.raises(ValueError) as excinfo:
         add_teams_from_json(db_session, str(teams_json_path))

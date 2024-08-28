@@ -34,7 +34,7 @@ class CustomPlayer(Player):
 <pre><code>
 def make_decision(self, game_state):
     current_hand = game_state["current_hand"]
-    
+
     if current_hand < 30:
         return 'hit'
     elif current_hand < 36:
@@ -54,27 +54,35 @@ def make_decision(self, game_state):
 <p>Good luck and have fun!</p>
 '''
 
-    def __init__(self, league, verbose=False):
+    def __init__(self, league, verbose=False, custom_rewards=None):
         super().__init__(league, verbose)
+        self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
+        self.feedback = []
+
+    def add_feedback(self, message):
+        if self.verbose:
+            self.feedback.append(message)
 
     def play_round(self, player):
         hand = 0
+        self.add_feedback(f"\n### {player.name}'s turn")
         while True:
             game_state = self.get_game_state(player.name, hand)
             decision = player.make_decision(game_state)
-            
+
             if decision == 'stand':
+                self.add_feedback(f"  - {player.name} stands with {hand}")
                 break
-            
+
             card = random.randint(1, 10)
             hand += card
-            
+
+            self.add_feedback(f"  - {player.name} hits and draws {card}, hand is now {hand}")
+
             if hand > 42:
+                self.add_feedback(f"  - {player.name} busts with {hand}")
                 break
-            
-            if self.verbose:
-                print(f"{player.name} drew {card}, hand is now {hand}")
-        
+
         return min(hand, 42)
 
     def get_game_state(self, player_name, current_hand):
@@ -85,20 +93,35 @@ def make_decision(self, game_state):
         }
 
     def play_game(self, custom_rewards=None):
+        self.add_feedback("# Forty-Two Game")
+        self.add_feedback("\n## Player order:")
+        for i, player in enumerate(self.players, 1):
+            self.add_feedback(f"{i}. {player.name}")
+
+        self.add_feedback("\n## Game Play")
         for player in self.players:
             hand = self.play_round(player)
             if hand <= 42:
                 self.scores[player.name] += hand
-            
-            if self.verbose:
-                print(f"{player.name} finished with {hand}")
 
-        return self.assign_points(self.scores, custom_rewards)
+            self.add_feedback(f"  - {player.name} finished with {hand}")
+
+        results = self.assign_points(self.scores, custom_rewards)
+        
+        self.add_feedback("\n## Final Scores")
+        for player, score in self.scores.items():
+            self.add_feedback(f"- {player}: {score}")
+        
+        self.add_feedback("\n## Points Awarded")
+        for player, points in results["points"].items():
+            self.add_feedback(f"- {player}: {points} points")
+
+        return results
 
     def assign_points(self, scores, custom_rewards=None):
-        rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
+        rewards = custom_rewards or self.custom_rewards
         sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        
+
         points = {}
         last_score = None
         last_reward = 0
@@ -111,7 +134,7 @@ def make_decision(self, game_state):
                     reward_index += 1
                 else:
                     last_reward = 0
-            
+
             points[player] = last_reward
             last_score = score
 
@@ -119,8 +142,16 @@ def make_decision(self, game_state):
 
     def reset(self):
         super().reset()
+        self.feedback = []
         for player in self.players:
             player.hand = 0
 
-def run_simulations(num_simulations, league, custom_rewards=None):
-    return BaseGame.run_simulations(num_simulations, FortyTwoGame, league, custom_rewards)
+    @classmethod
+    def run_single_game_with_feedback(cls, league, custom_rewards=None):
+        game = cls(league, verbose=True, custom_rewards=custom_rewards)
+        results = game.play_game(custom_rewards)
+        feedback = "\n".join(game.feedback)
+        return {
+            "results": results,
+            "feedback": feedback
+        }

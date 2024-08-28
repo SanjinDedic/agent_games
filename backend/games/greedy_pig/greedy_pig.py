@@ -74,7 +74,12 @@ def make_decision(self, game_state):
         self.roll_no = 0
         self.game_over = False
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
-        
+        self.feedback = []
+
+    def add_feedback(self, message):
+        if self.verbose:
+            self.feedback.append(message)
+
     def roll_dice(self):
         return random.randint(1, 6)
 
@@ -92,30 +97,28 @@ def make_decision(self, game_state):
         self.round_no += 1
         self.roll_no = 0
 
+        self.add_feedback(f"\n## Round {self.round_no}")
+
         while True:
             self.roll_no += 1
             roll = self.roll_dice()
-            if self.verbose:
-                print(f' Dice says {roll}')
+            self.add_feedback(f"\n### Roll {self.roll_no}: Dice shows {roll}")
 
             if roll == 1:
-                if self.verbose:
-                    print("  Oops! Rolled a 1. All players lose their unbanked money.")
+                self.add_feedback("  - Oops! Rolled a 1. All players lose their unbanked money.")
                 for player in self.active_players:
-                    if player.unbanked_money > 0 and self.verbose:
-                        print(f"    * {player.name} loses ${player.unbanked_money} of unbanked money.")
+                    if player.unbanked_money > 0:
+                        self.add_feedback(f"    * {player.name} loses ${player.unbanked_money} of unbanked money.")
                     player.reset_unbanked_money()
                 break
 
             for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
-                    if self.verbose:
-                        print(f"{player.name} now has ${player.unbanked_money} unbanked.")
+                    self.add_feedback(f"  - {player.name} now has ${player.unbanked_money} unbanked.")
                     decision = player.make_decision(self.get_game_state())
                     if decision == 'bank':
-                        if self.verbose:
-                            print(f"    * {player.name} decides to bank ${player.unbanked_money}.")
+                        self.add_feedback(f"    * {player.name} decides to bank ${player.unbanked_money}.")
                         player.bank_money()
                         player.has_banked_this_turn = True
                         self.players_banked_this_round.append(player.name)
@@ -130,27 +133,33 @@ def make_decision(self, game_state):
             player.reset_turn()
 
     def play_game(self, custom_rewards=None):
+        self.add_feedback("# Greedy Pig Game")
         random.shuffle(self.players)
+        self.add_feedback("\n## Initial player order:")
+        for i, player in enumerate(self.players, 1):
+            self.add_feedback(f"{i}. {player.name}")
+
         while not self.game_over:
             self.active_players = list(self.players)
-            if self.verbose:
-                print('\nSTART ROUND #' + str(self.round_no))
             self.play_round()
-            if self.verbose:
-                print('  END OF ROUND #' + str(self.round_no))
-                print(self.get_game_state())
-                for player in self.players:
-                    print('  ' + player.name + ': $' + str(player.banked_money))
+            self.add_feedback("\n### End of Round Summary")
+            for player in self.players:
+                self.add_feedback(f"  - {player.name}: ${player.banked_money}")
 
         game_state = self.get_game_state()
         results = self.assign_points(game_state, custom_rewards)
+        
+        self.add_feedback("\n## Final Results")
+        for player, points in results["points"].items():
+            self.add_feedback(f"- {player}: {points} points")
+        
         return results
 
     def assign_points(self, game_state, custom_rewards=None):
-        rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
+        rewards = custom_rewards or self.custom_rewards
         score_aggregate = {player: game_state['banked_money'][player] + game_state['unbanked_money'][player] for player in game_state['banked_money']}
         sorted_players = sorted(score_aggregate.items(), key=lambda x: x[1], reverse=True)
-        
+
         points = {}
         last_score = None
         last_reward = 0
@@ -163,7 +172,7 @@ def make_decision(self, game_state):
                     reward_index += 1
                 else:
                     last_reward = 0
-            
+
             points[player] = last_reward
             last_score = score
 
@@ -176,38 +185,19 @@ def make_decision(self, game_state):
         self.round_no = 0
         self.roll_no = 0
         self.game_over = False
-        
+        self.feedback = []
+
         for player in self.players:
             player.banked_money = 0
             player.unbanked_money = 0
             player.has_banked_this_turn = False
 
-
-def run_simulations(num_simulations, league):
-    return BaseGame.run_simulations(num_simulations, GreedyPigGame, league)
-
-def draw_table(rankings):
-    os.system('clear')
-    print("-" * 50)
-    print(f"{'Player':^20} | {'Points':^10} | {'Rank':^10}")
-    print("-" * 50)
-    for rank, (player, points) in enumerate(rankings, start=1):
-        print(f"{player:^20} | {points:^10} | {rank:^10}")
-    print("-" * 50)
-    time.sleep(0.3)
-
-def animate_simulations(num_simulations, refresh_number, league):
-    game = GreedyPigGame(league, verbose=True)
-    total_points = {player.name: 0 for player in game.players}
-    
-    for i in range(1, num_simulations + 1):
-        game.reset()
-        results = game.play_game()
-        
-        for player, points in results["points"].items():
-            total_points[player] += points
-        
-        if i % refresh_number == 0 or i == num_simulations:
-            print(f"\nRankings after {i} simulations:")
-            sorted_total_points = sorted(total_points.items(), key=lambda x: x[1], reverse=True)
-            draw_table(sorted_total_points)
+    @classmethod
+    def run_single_game_with_feedback(cls, league, custom_rewards=None):
+        game = cls(league, verbose=True, custom_rewards=custom_rewards)
+        results = game.play_game(custom_rewards)
+        feedback = "\n".join(game.feedback)
+        return {
+            "results": results,
+            "feedback": feedback
+        }
