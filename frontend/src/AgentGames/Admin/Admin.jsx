@@ -3,7 +3,7 @@ import '../User/css/login.css';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { login } from '../../slices/authSlice';
+import { login, checkTokenExpiry } from '../../slices/authSlice';
 import { jwtDecode } from 'jwt-decode';
 
 function Admin() {
@@ -17,7 +17,8 @@ function Admin() {
   const [shake, setShake] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || currentUser.role !== "admin") {
+    const tokenExpired = dispatch(checkTokenExpiry());
+    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
       // Redirect to the home page if not authenticated
       navigate('/Admin');
     }

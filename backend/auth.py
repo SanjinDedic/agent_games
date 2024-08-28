@@ -4,9 +4,10 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from passlib.context import CryptContext
-
+import pytz
 import base64
 
+AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,7 +20,7 @@ def get_password_hash(password):
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
-    expire = datetime.now() + expires_delta if expires_delta else datetime.now() + timedelta(minutes=15)
+    expire = datetime.now(AUSTRALIA_SYDNEY_TZ) + expires_delta if expires_delta else datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

@@ -1,5 +1,5 @@
 import './css/adminleague.css';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ResultsDisplay from '../Utilities/ResultsDisplay';
@@ -13,7 +13,7 @@ import AdminLeaguePublish from './AdminLeaguePublish';
 import CustomRewards from './CustomRewards';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCurrentLeague, setLeagues, updateExpiryDate,setCurrentSimulation, setResults, clearResults } from '../../slices/leaguesSlice';
-
+import { checkTokenExpiry } from '../../slices/authSlice';
 
 function AdminLeague() {
   const navigate = useNavigate();
@@ -30,7 +30,8 @@ function AdminLeague() {
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    if (!isAuthenticated || currentUser.role !== "admin") {
+    const tokenExpired = dispatch(checkTokenExpiry());
+    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
       // Redirect to the home page if not authenticated
       navigate('/Admin');
     }
