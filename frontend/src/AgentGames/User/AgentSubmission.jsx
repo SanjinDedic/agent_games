@@ -32,13 +32,9 @@ const AgentSubmission = () => {
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    console.log(tokenExpired);
     handleInstructions();
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       // Redirect to the home page if not authenticated
-      console.log("not authenticated");
-      console.log("not authenticated");
       navigate('/AgentLogin');
     }
 
