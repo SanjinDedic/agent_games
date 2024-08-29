@@ -8,7 +8,7 @@ import AgentLeagueSignUp from './AgentGames/User/LeagueSignup';
 import Admin from './AgentGames/Admin/Admin';
 import AdminLeague from './AgentGames/Admin/AdminLeague';
 import AdminTeam from './AgentGames/Admin/AdminTeam';
-import { BrowserRouter, Routes, Route, Navigate  } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
 import { useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';

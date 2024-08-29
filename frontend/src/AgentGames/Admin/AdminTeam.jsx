@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTeams, addTeam, removeTeam  } from '../../slices/teamsSlice'
-
+import { checkTokenExpiry } from '../../slices/authSlice';
 
 function AdminTeam() {
   const navigate = useNavigate();
@@ -17,11 +17,11 @@ function AdminTeam() {
   const [isLoading, setIsLoading] = useState(false);
   const [Team, setTeam] = useState({ name: '', password: '' });
   const [showAddTeamForm, setShowAddTeamForm] = useState(false);
-  const state = useSelector((state) => state);
-  
+
 
   useEffect(() => {
-    if (!isAuthenticated || currentUser.role !== "admin") {
+    const tokenExpired = dispatch(checkTokenExpiry());
+    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
       // Redirect to the home page if not authenticated
       navigate('/Admin');
     }

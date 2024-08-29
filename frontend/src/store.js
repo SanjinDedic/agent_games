@@ -10,21 +10,21 @@ import feedbackReducer from './slices/feedbackSlice';
 const saveState = (state) => {
   try {
     const serializedState = JSON.stringify(state);
-    localStorage.setItem('reduxState', serializedState);
+    sessionStorage.setItem('reduxState', serializedState); // Use sessionStorage instead of localStorage
   } catch (e) {
-    console.warn('Error saving state to local storage:', e);
+    console.warn('Error saving state to session storage:', e);
   }
 };
 
 const loadState = () => {
   try {
-    const serializedState = localStorage.getItem('reduxState');
+    const serializedState = sessionStorage.getItem('reduxState'); // Use sessionStorage instead of localStorage
     if (serializedState === null) {
       return undefined;
     }
     return JSON.parse(serializedState);
   } catch (e) {
-    console.warn('Error loading state from local storage:', e);
+    console.warn('Error loading state from session storage:', e);
     return undefined;
   }
 };

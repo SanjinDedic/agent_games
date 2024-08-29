@@ -1,13 +1,12 @@
 import './css/leaguesignup.css';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../../slices/authSlice';
 import moment from 'moment-timezone';
 import UserTooltip from '../Utilities/UserTooltips';
-import { setCurrentLeague, setLeagues, clearLeagues } from '../../slices/leaguesSlice';
-import { clearTeam } from '../../slices/teamsSlice';
+import { setCurrentLeague, setLeagues } from '../../slices/leaguesSlice';
+import { checkTokenExpiry } from '../../slices/authSlice';
 
 function AgentLeagueSignUp() {
   const navigate = useNavigate();
@@ -22,7 +21,8 @@ function AgentLeagueSignUp() {
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    if (!isAuthenticated || currentUser.role !== "student") {
+    const tokenExpired = dispatch(checkTokenExpiry());
+    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       // Redirect to the home page if not authenticated
       navigate('/AgentLogin');
     }
