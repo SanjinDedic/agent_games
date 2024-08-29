@@ -116,7 +116,7 @@ class CustomPlayer(Player):
     assert response_data["data"] is not None
     assert "total_points" in response_data["data"]
     assert "alpha_guess_team" in response_data["data"]["total_points"]
-    assert 0 <= response_data["data"]["total_points"]["alpha_guess_team"] <= 100
+    assert 0 <= response_data["data"]["total_points"]["alpha_guess_team"] <= 10000
 
     # Clean up: Delete the test team and league
     client.post("/delete_team", json={"name": "alpha_guess_team"}, headers={"Authorization": f"Bearer {admin_token}"})

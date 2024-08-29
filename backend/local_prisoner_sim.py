@@ -24,6 +24,8 @@ print("\nFinal Results:")
 print(f"Points: {game_result['results']['points']}")
 print(f"Score Aggregate: {game_result['results']['score_aggregate']}")
 
+
+'''
 # Run multiple simulations
 num_simulations = 100
 print(f"\nRunning {num_simulations} simulations:")
@@ -37,3 +39,4 @@ for player, points in simulation_results['total_points'].items():
 print("\nTotal Wins:")
 for player, wins in simulation_results['total_wins'].items():
     print(f"  {player}: {wins}")
+'''

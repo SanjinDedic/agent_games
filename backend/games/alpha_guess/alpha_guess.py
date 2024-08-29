@@ -5,98 +5,101 @@ import string
 class AlphaGuessGame(BaseGame):
     starter_code = '''
 from games.alpha_guess.player import Player
+import random
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):
-        return random.choice(string.ascii_lowercase)
+        return random.choice('abcdefghijklmnopqrstuvwxyz')
 '''
 
     game_instructions = '''
-<h1>AlphaGuess Game Instructions</h1>
-<p>Guess the randomly selected letter (a-z). Correct guesses earn 1 point.</p>
+<h1>Alpha Guess Game Instructions</h1>
+
+<p>Welcome to the Alpha Guess game! Your task is to implement the <code>make_decision</code> method in the <code>CustomPlayer</code> class.</p>
+
+<h2>1. Game Objective</h2>
+<p>Guess a letter as close as possible to a randomly chosen target letter.</p>
+
+<h2>2. Your Task</h2>
+<p>Implement the <code>make_decision</code> method to return a single lowercase letter from 'a' to 'z'.</p>
+
+<h2>3. Scoring</h2>
+<p>Points are awarded based on how close your guess is to the target letter. The closer your guess, the more points you receive.</p>
+
+<h2>4. Implementation Example</h2>
+<pre><code>
+def make_decision(self, game_state):
+    return random.choice('abcdefghijklmnopqrstuvwxyz')
+</code></pre>
+
+<p>Good luck and have fun!</p>
 '''
 
-    def __init__(self, league, verbose=False, custom_rewards=None):
+    def __init__(self, league, verbose=False):
         super().__init__(league, verbose)
-        self.correct_letter = None
-        self.custom_rewards = custom_rewards or [1, 0]  # Winner gets 1 point, others 0
         self.feedback = []
 
     def add_feedback(self, message):
         if self.verbose:
             self.feedback.append(message)
 
-    def play_round(self):
-        self.correct_letter = random.choice(string.ascii_lowercase)
-        self.add_feedback(f"\n## Round")
-        self.add_feedback(f"The correct letter for this round is: {self.correct_letter}")
-
+    def play_game(self):
+        self.add_feedback("# Alpha Guess Game")
+        self.add_feedback("\n## Players:")
         for player in self.players:
-            guess = player.make_decision(self.get_game_state())
-            if guess == self.correct_letter:
-                self.scores[player.name] = 1
-                self.add_feedback(f"- {player.name} guessed {guess} - Correct!")
-            else:
-                self.scores[player.name] = 0
-                self.add_feedback(f"- {player.name} guessed {guess} - Incorrect.")
-
-    def get_game_state(self):
-        return {"correct_letter": self.correct_letter}
-
-    def play_game(self, custom_rewards=None):
-        self.add_feedback("# AlphaGuess Game")
-        self.add_feedback("\n## Player order:")
-        for i, player in enumerate(self.players, 1):
-            self.add_feedback(f"{i}. {player.name}")
-
-        self.add_feedback("\n## Game Play")
-        self.play_round()
+            self.add_feedback(f"  - {player.name}")
         
-        results = self.assign_points(self.scores, custom_rewards)
-        
-        self.add_feedback("\n## Final Scores")
-        for player, score in self.scores.items():
-            self.add_feedback(f"- {player}: {score}")
-        
-        self.add_feedback("\n## Points Awarded")
-        for player, points in results["points"].items():
-            self.add_feedback(f"- {player}: {points} points")
+        target_letter = random.choice(string.ascii_lowercase)
+        self.add_feedback(f"\nTarget letter: {target_letter}")
 
-        return results
+        points = {player.name: 0 for player in self.players}
+        for player in self.players:
+            guess = player.make_decision(self.get_game_state(player.name))
+            distance = abs(ord(guess) - ord(target_letter))
+            points[player.name] = 26 - distance  # Max score is 26 (correct guess), min is 0
+            self.add_feedback(f"{player.name} guessed: {guess}, score: {points[player.name]}")
 
-    def assign_points(self, scores, custom_rewards=None):
-        rewards = custom_rewards or self.custom_rewards
-        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        return {"points": points, "score_aggregate": points}
 
-        points = {}
-        last_score = None
-        last_reward = 0
-        reward_index = 0
-
-        for i, (player, score) in enumerate(sorted_scores):
-            if score != last_score:
-                if reward_index < len(rewards):
-                    last_reward = rewards[reward_index]
-                    reward_index += 1
-                else:
-                    last_reward = 0
-
-            points[player] = last_reward
-            last_score = score
-
-        return {"points": points, "score_aggregate": scores}
-
-    def reset(self):
-        super().reset()
-        self.correct_letter = None
-        self.feedback = []
+    def get_game_state(self, player_name):
+        return {
+            "player_name": player_name,
+            "scores": self.scores
+        }
 
     @classmethod
     def run_single_game_with_feedback(cls, league, custom_rewards=None):
-        game = cls(league, verbose=True, custom_rewards=custom_rewards)
-        results = game.play_game(custom_rewards)
+        game = cls(league, verbose=True)
+        results = game.play_game()
         feedback = "\n".join(game.feedback)
         return {
             "results": results,
             "feedback": feedback
         }
+
+    @classmethod
+    def run_simulations(cls, num_simulations, league, custom_rewards=None):
+        game = cls(league)
+        total_points = {player.name: 0 for player in game.players}
+        total_wins = {player.name: 0 for player in game.players}
+
+        for _ in range(num_simulations):
+            game.reset()
+            results = game.play_game()
+
+            for player, points in results["points"].items():
+                total_points[player] += points
+
+            if results["points"]:
+                winner = max(results["points"], key=results["points"].get)
+                total_wins[winner] += 1
+
+        return {
+            "total_points": total_points,
+            "total_wins": total_wins,
+            "num_simulations": num_simulations
+        }
+
+    def reset(self):
+        super().reset()
+        self.feedback = []

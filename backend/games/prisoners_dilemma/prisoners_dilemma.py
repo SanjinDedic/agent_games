@@ -108,6 +108,8 @@ def make_decision(self, game_state):
             "player_name": player_name,
             "opponent_name": opponent_name,
             "opponent_history": self.histories[opponent_name].get(player_name, []),
+            "my_history": self.histories[player_name].get(opponent_name, []),
+            "all_history": self.histories,
             "scores": self.scores
         }
 
