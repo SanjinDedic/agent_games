@@ -59,10 +59,6 @@ class BaseGame(ABC):
         return players
 
     @abstractmethod
-    def play_round(self):
-        pass
-
-    @abstractmethod
     def get_game_state(self):
         pass
 
