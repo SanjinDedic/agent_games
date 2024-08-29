@@ -10,6 +10,7 @@ import UserTooltip from '../Utilities/UserTooltips';
 import InstructionPopup from '../Utilities/InstructionPopup';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkTokenExpiry } from '../../slices/authSlice';
+import { checkTokenExpiry } from '../../slices/authSlice';
 
 const AgentSubmission = () => {
   const monacoRef = useRef(null);
@@ -34,11 +35,15 @@ const AgentSubmission = () => {
     console.log(tokenExpired);
     handleInstructions();
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
+    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       // Redirect to the home page if not authenticated
+      console.log("not authenticated");
       console.log("not authenticated");
       navigate('/AgentLogin');
     }
-  }, [navigate, isAuthenticated, currentUser]);
+
+  }, [navigate]);
+
 
   const handleInstructions = async () => {
     try {
