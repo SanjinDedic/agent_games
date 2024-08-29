@@ -5,6 +5,7 @@ import leaguesReducer from './slices/leaguesSlice';
 import gamesReducer from './slices/gamesSlice.js';
 import rankingsReducer from './slices/rankingsSlice';
 import settingsReducer from './slices/settingsSlice';
+import feedbackReducer from './slices/feedbackSlice';
 
 const saveState = (state) => {
   try {
@@ -19,7 +20,7 @@ const loadState = () => {
   try {
     const serializedState = localStorage.getItem('reduxState');
     if (serializedState === null) {
-      return undefined; // Let reducers initialize the state
+      return undefined;
     }
     return JSON.parse(serializedState);
   } catch (e) {
@@ -38,6 +39,7 @@ export const store = configureStore({
     games: gamesReducer,
     rankings: rankingsReducer,
     settings: settingsReducer,
+    feedback: feedbackReducer,
   },
   preloadedState: persistedState,
 });

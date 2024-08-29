@@ -54,7 +54,7 @@ def run_docker_simulation(league_name, league_game, league_folder, custom_reward
     except subprocess.TimeoutExpired:
         end_time = time.time()
         print(f"Docker simulation timed out after {end_time - start_time:.2f} seconds")
-        return False, "Timeout occurred while running the docker container"
+        return False, "Timeout occurred while running the docker container, your code might have an infinite loop"
 
     end_time = time.time()
     print(f"Docker simulation completed in {end_time - start_time:.2f} seconds")

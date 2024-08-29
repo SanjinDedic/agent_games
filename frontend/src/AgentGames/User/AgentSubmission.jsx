@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Editor from "@monaco-editor/react";
 import { constrainedEditor } from "constrained-editor-plugin";
 import ResultsDisplay from '../Utilities/ResultsDisplay';
+import MarkdownFeedback from '../Utilities/MarkdownFeedback';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import './css/submission.css'
@@ -21,55 +22,46 @@ const AgentSubmission = () => {
   const accessToken = useSelector((state) => state.auth.token);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
- 
 
-  
   const [output, setOutput] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [instructionData, setInstructionData] = useState('');
-  const [messageData, setmessageData] = useState('');
+  const [messageData, setMessageData] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const restrictions = [];
   const navigate = useNavigate();
 
-
   useEffect(() => {
     handleInstructions();
     if (!isAuthenticated || currentUser.role !== "student") {
-      // Redirect to the home page if not authenticated
       navigate('/AgentLogin');
     }
-  }, [navigate]);
-
+  }, [navigate, isAuthenticated, currentUser]);
 
   const handleInstructions = async () => {
-    
-    fetch(`${apiUrl}/get_game_instructions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ game_name: currentLeague.game }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          let code_sample = data.data.starter_code;
-          code_sample = code_sample.slice(1);
-          setCode(code_sample);
-          setInstructionData(data.data.game_instructions);
-        } else if (data.status === "error") {
-          toast.error(data.message, {
-            position: "top-center"
-          });
-        } else if (data.detail) {
-          toast.error(data.detail, {
-            position: "top-center"
-          });
-          
-        }
-
-      })
-      .catch(error => console.error('Error:', error), setIsLoading(false));
+    try {
+      const response = await fetch(`${apiUrl}/get_game_instructions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ game_name: currentLeague.game }),
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        let code_sample = data.data.starter_code;
+        code_sample = code_sample.slice(1);
+        setCode(code_sample);
+        setInstructionData(data.data.game_instructions);
+      } else if (data.status === "error") {
+        toast.error(data.message, { position: "top-center" });
+      } else if (data.detail) {
+        toast.error(data.detail, { position: "top-center" });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setIsLoading(false);
+    }
   };
 
   const handleEditorDidMount = (editor, monaco) => {
@@ -89,44 +81,38 @@ const AgentSubmission = () => {
 
   const handleEditorChange = (value) => {
     setCode(value);
-
   };
-
-
 
   const handleSubmit = async () => {
-    setOutput(''); // Reset output on new submission
+    setOutput('');
+    setFeedback('');
     setIsLoading(true);
-    
-    fetch(`${apiUrl}/submit_agent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({ code: code }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          setIsLoading(false);
-          setOutput(data.data.results);
-          setmessageData(data.message);
-        } else if (data.status === "error") {
-          toast.error(data.message, {
-            position: "top-center"
-          });
-        } else if (data.detail) {
-          toast.error(data.detail, {
-            position: "top-center"
-          });
-          
-        }
 
-      })
-      .catch(error => console.error('Error:', error), setIsLoading(false));
+    try {
+      const response = await fetch(`${apiUrl}/submit_agent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ code: code }),
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        setIsLoading(false);
+        setOutput(data.data.results);
+        setFeedback(data.data.feedback);
+        setMessageData(data.message);
+      } else if (data.status === "error") {
+        toast.error(data.message, { position: "top-center" });
+      } else if (data.detail) {
+        toast.error(data.detail, { position: "top-center" });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setIsLoading(false);
+    }
   };
-
 
   return (
     <div>
@@ -136,25 +122,33 @@ const AgentSubmission = () => {
         <h1 className="team-league">LEAGUE: {currentLeague.name}</h1>
       </div>
       <div className="editor-container">
-
         <h1>AGENT GAMES CODE SUBMISSION</h1>
-        <InstructionPopup  instructions={instructionData} homescreen={false}/>
+        <InstructionPopup instructions={instructionData} homescreen={false} />
         {code && 
-         <Editor
-          height="535px" // By default, it does not have a size. You need to set it.
-          width="800px"
-          theme="vs-dark"
-          defaultLanguage="python"
-          defaultValue={code}
-          onChange={handleEditorChange}
-          onMount={handleEditorDidMount}
-        /> }
-        <UserTooltip title={"⚠️ INFO <br />Enter your code above and then submit to see results below."} arrow disableFocusListener disableTouchListener>
-        <button onClick={handleSubmit} className="submit-button" disabled={isLoading}>{isLoading ? 'Submitting...' : 'Submit Code'}</button>
+          <Editor
+            height="535px"
+            width="800px"
+            theme="vs-dark"
+            defaultLanguage="python"
+            defaultValue={code}
+            onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
+          />
+        }
+        <UserTooltip title="⚠️ INFO <br />Enter your code above and then submit to see results below." arrow disableFocusListener disableTouchListener>
+          <button onClick={handleSubmit} className="submit-button" disabled={isLoading}>
+            {isLoading ? 'Submitting...' : 'Submit Code'}
+          </button>
         </UserTooltip>
         <div className="output-container">
-          {output ? (<ResultsDisplay data={output} data_message={messageData} />) : (
-            isLoading ? <p>Loading results...</p> : <p>Submit to see results</p>)}
+          {output ? (
+            <>
+              <ResultsDisplay data={output} data_message={messageData} />
+              {feedback && <MarkdownFeedback feedback={feedback} />}
+            </>
+          ) : (
+            isLoading ? <p>Loading results...</p> : <p>Submit to see results</p>
+          )}
         </div>
       </div>
     </div>
