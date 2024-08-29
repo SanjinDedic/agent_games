@@ -5,16 +5,24 @@ import { BrowserRouter } from 'react-router-dom';
 import configureStore from 'redux-mock-store';
 import AgentLogin from './AgentLogin';
 import { login } from '../../slices/authSlice';
+import moment from 'moment-timezone';
+
+moment.tz.setDefault("Australia/Sydney");
+
+jest.mock('jwt-decode', () => () => ({
+    sub: 'testUser',
+    role: 'student',
+    exp: 123456, // mock expiry time
+  }));
+  
 
 // Mock Redux store
 const mockStore = configureStore([]);
 let store;
 
-jest.mock('jwt-decode', () => () => ({
-  sub: 'testUser',
-  role: 'student',
-  exp: Math.floor(Date.now() / 1000) + 1000, // mock expiry time
-}));
+
+
+
 
 describe('AgentLogin Component', () => {
   beforeEach(() => {
