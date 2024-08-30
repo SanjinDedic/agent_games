@@ -82,7 +82,6 @@ def make_decision(self, game_state):
     def play_pairing(self, player1, player2):
         self.add_feedback(f"\n## Pairing: {player1.name} vs {player2.name}")
         for round_number in range(1, self.rounds_per_pairing + 1):
-            self.add_feedback(f"\n### Round {round_number}")
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
 
@@ -94,8 +93,8 @@ def make_decision(self, game_state):
 
             self.update_scores(player1, decision1, player2, decision2)
 
-            self.add_feedback(f"  - {player1.name}: {decision1}, {player2.name}: {decision2}")
-            self.add_feedback(f"    * {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
+            self.add_feedback(f"**Round {round_number}** {player1.name}: {decision1}, {player2.name}: {decision2}")
+            self.add_feedback(f"  * {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
 
     def update_scores(self, player1, decision1, player2, decision2):
         score1, score2 = self.reward_matrix[(decision1, decision2)]

@@ -40,3 +40,12 @@ print("\nTotal Wins:")
 for player, wins in simulation_results['total_wins'].items():
     print(f"  {player}: {wins}")
 '''
+
+# TO DO:
+# get rid of wins
+# Create some kind of filter so the that player who submitted the code only sees the results of their games ?
+# Update instructions
+# perhaps include these in the starter code:
+#        my_opponent = game_state["opponent_name"]
+#        opponent_history = game_state["opponent_history"]
+#        my_history = game_state["my_history"]

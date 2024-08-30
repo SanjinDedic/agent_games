@@ -10,7 +10,6 @@ import UserTooltip from '../Utilities/UserTooltips';
 import InstructionPopup from '../Utilities/InstructionPopup';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkTokenExpiry } from '../../slices/authSlice';
-import { checkTokenExpiry } from '../../slices/authSlice';
 
 const AgentSubmission = () => {
   const monacoRef = useRef(null);
