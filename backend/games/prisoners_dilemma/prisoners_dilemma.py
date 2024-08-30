@@ -67,10 +67,10 @@ def make_decision(self, game_state):
         super().__init__(league, verbose)
         self.histories = {player.name: {} for player in self.players}
         self.reward_matrix = reward_matrix or {
-            ('collude', 'collude'): (3, 3),
-            ('collude', 'defect'): (0, 5),
-            ('defect', 'collude'): (5, 0),
-            ('defect', 'defect'): (1, 1)
+            ('collude', 'collude'): (1, 1),
+            ('collude', 'defect'): (0, 2),
+            ('defect', 'collude'): (2, 0),
+            ('defect', 'defect'): (0, 0)
         }
         self.rounds_per_pairing = rounds_per_pairing
         self.feedback = []
@@ -78,6 +78,13 @@ def make_decision(self, game_state):
     def add_feedback(self, message):
         if self.verbose:
             self.feedback.append(message)
+
+    def color_decision(self, decision):
+        if decision == 'collude':
+            return '<span style="color: green;">collude</span>'
+        elif decision == 'defect':
+            return '<span style="color: red;">defect</span>'
+        return decision
 
     def play_pairing(self, player1, player2):
         self.add_feedback(f"\n## Pairing: {player1.name} vs {player2.name}")
@@ -93,8 +100,11 @@ def make_decision(self, game_state):
 
             self.update_scores(player1, decision1, player2, decision2)
 
-            self.add_feedback(f"**Round {round_number}** {player1.name}: {decision1}, {player2.name}: {decision2}")
-            self.add_feedback(f"  * {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
+            colored_decision1 = self.color_decision(decision1)
+            colored_decision2 = self.color_decision(decision2)
+
+            self.add_feedback(f"\n**Round {round_number}** {player1.name}: {colored_decision1}, {player2.name}: {colored_decision2}  \n")
+            self.add_feedback(f"- {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
 
     def update_scores(self, player1, decision1, player2, decision2):
         score1, score2 = self.reward_matrix[(decision1, decision2)]

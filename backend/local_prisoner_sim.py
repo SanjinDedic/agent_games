@@ -42,10 +42,13 @@ for player, wins in simulation_results['total_wins'].items():
 '''
 
 # TO DO:
-# get rid of wins
-# Create some kind of filter so the that player who submitted the code only sees the results of their games ?
-# Update instructions
+# 1. get rid of wins
+# 2. Create some kind of filter so the that player who submitted the code only sees the results of their games ?
+# 3. Find a way for admin to set the reward matrix for the game (maybe use the existing custom_rewards parameter)
+# 4. Update instructions
 # perhaps include these in the starter code:
 #        my_opponent = game_state["opponent_name"]
 #        opponent_history = game_state["opponent_history"]
 #        my_history = game_state["my_history"]
+
+# Add a print statement to show the game state in the default player code

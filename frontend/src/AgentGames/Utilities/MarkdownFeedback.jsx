@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import './css/markdownFeedback.css';
 
 const MarkdownFeedback = ({ feedback }) => {
@@ -11,15 +12,14 @@ const MarkdownFeedback = ({ feedback }) => {
 
   return (
     <div className="markdown-feedback">
-      <div
-        className="feedback-header"
-        onClick={toggleExpand}
-      >
+      <div className="feedback-header" onClick={toggleExpand}>
         <h3>Feedback (press down arrow to expand)</h3>
         <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}></span>
       </div>
       <div className={`feedback-content ${isExpanded ? 'expanded' : ''}`}>
-        <ReactMarkdown>{feedback}</ReactMarkdown>
+        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+          {feedback}
+        </ReactMarkdown>
       </div>
     </div>
   );
