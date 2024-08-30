@@ -158,7 +158,7 @@ def make_decision(self, game_state):
 
             for player, points in results["points"].items():
                 total_points[player] += points
-
+            #print("HERE ARE THE RESULTS", results)
             winner = max(results["points"], key=results["points"].get)
             total_wins[winner] += 1
 

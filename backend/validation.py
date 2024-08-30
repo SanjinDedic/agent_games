@@ -3,6 +3,7 @@ import sys
 from contextlib import redirect_stdout
 from games.base_game import BaseGame
 from games.game_factory import GameFactory
+from docker_simulation import run_docker_simulation
 from models_db import League
 from utils import get_games_names
 from config import ROOT_DIR
@@ -68,11 +69,15 @@ def is_agent_safe(code):
     checker.visit(tree)
     return checker.safe
 
-def run_agent_simulation(code, game_name, team_name):
-    print("game_name in run_agent_simulation: ", game_name)
+
+class ValidationSimulationError(Exception):
+    pass
+
+def run_validation_simulation(code, game_name, team_name):
+    print("game_name in run_validation_simulation: ", game_name)
     test_league_folder = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league')
     test_league = League(folder=test_league_folder, name="Test League", game=game_name)
-    
+
     file_path = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league', f"{team_name}.py")
     print("Root dir in validation.py: ", ROOT_DIR)
     print(f"File path in validation.py: {file_path}")
@@ -82,24 +87,22 @@ def run_agent_simulation(code, game_name, team_name):
         with open(file_path, "w") as file:
             file.write(code)
         print(f"File written: {file_path}")
+        is_successful, docker_result = run_docker_simulation('test_league', test_league.game, 'leagues/test_league', None, timeout=6, feedback_required=True)
+        if not is_successful:
+            if isinstance(docker_result, str):
+                error_message = docker_result
+            else:
+                error_message = docker_result.get("message", "An unknown error occurred during the simulation.")
+            print(f"Error message in validation.py: {error_message}")
+            raise ValidationSimulationError(error_message)
 
-        game_class = GameFactory.get_game_class(game_name)
-        
-        # Run one game in verbose mode and capture the output
-        f = io.StringIO()
-        with redirect_stdout(f):
-            game = game_class(test_league, verbose=True)
-            game.play_game()
-        feedback = f.getvalue()
-        print("Feedback: ", feedback)
-        # Run multiple simulations for the actual results
-        results = game_class.run_simulations(100, test_league) #needs to be docker_simulation (just testing CI/CD lol)
-        print("Simulations run")
-        print(results)
-        return results, feedback
+        feedback = docker_result.get('feedback', 'No feedback available.')
+        results = docker_result.get('simulation_results', {})
+
+        return feedback, results
     except Exception as e:
         print(f"Error during simulation: {e}")
-        return False, str(e)
+        raise ValidationSimulationError(str(e))
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from docker_simulation import run_docker_simulation, DOCKER_TIMEOUT
-from validation import is_agent_safe
+from validation import is_agent_safe, run_validation_simulation
 from games.game_factory import GameFactory
 import os
 from config import ROOT_DIR
@@ -124,35 +124,7 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         with open(file_path, "w") as file:
             file.write(submission.code)
 
-        # Run Docker simulation for both feedback and results
-        import time
-        start = time.time()
-        #THIS NEEDS TO BE moved to the run_agent_simulation function in validation.py
-        test_league_folder = os.path.join(ROOT_DIR, 'games', team.league.game, 'leagues', 'test_league')
-    
-        test_file_path = os.path.join(ROOT_DIR, 'games', team.league.game, 'leagues', 'test_league', f"{team_name}.py")
-        os.makedirs(os.path.dirname(test_file_path), exist_ok=True)
-        with open(file_path, "w") as file:
-            file.write(submission.code)
-        print(f"File written: {file_path}")
-
-        is_successful, docker_result = run_docker_simulation(team.league.name, team.league.game, test_league_folder, None, timeout=60, feedback_required=True)
-        end = time.time()
-        print(f"Outer simulation took {end - start:.2f} seconds")
-        if os.path.exists(test_file_path):
-            os.remove(test_file_path)
-            print(f"File removed: {test_file_path}")
-
-        if not is_successful:
-            if isinstance(docker_result, str):
-                return ErrorResponseModel(status="error", message=docker_result)
-            else:
-                error_message = docker_result.get("message", "An unknown error occurred during the simulation.")
-                return ErrorResponseModel(status="error", message=error_message)
-
-        feedback = docker_result.get('feedback', 'No feedback available.')
-        results = docker_result.get('simulation_results', {})
-
+        feedback, results = run_validation_simulation(submission.code, team.league.game, team_name)
         # Log the submission in the database
         submission_id = database.save_submission(session, submission.code, team.id)
         return ResponseModel(
