@@ -1,15 +1,17 @@
 import os
 import sys
-from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
-from models_db import League
 
 # Add the project root directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-sys.path.append(project_root)
+backend_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(backend_dir)
+sys.path.append(backend_dir)
+
+from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
+from models_db import League
 
 # Set up the test league
-test_league_folder = os.path.join(current_dir, "games", "prisoners_dilemma", "leagues", "test_league")
+test_league_folder = os.path.join(backend_dir, "games", "prisoners_dilemma", "leagues", "test_league")
 test_league = League(folder=test_league_folder, name="Test League", game="prisoners_dilemma")
 
 # Run a single game with feedback
@@ -42,7 +44,7 @@ for player, wins in simulation_results['total_wins'].items():
 '''
 
 # TO DO:
-# 1. get rid of wins
+# 1. get rid of wins and just show points
 # 2. Create some kind of filter so the that player who submitted the code only sees the results of their games ?
 # 3. Find a way for admin to set the reward matrix for the game (maybe use the existing custom_rewards parameter)
 # 4. Update instructions

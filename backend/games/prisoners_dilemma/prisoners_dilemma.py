@@ -8,9 +8,20 @@ from games.prisoners_dilemma.player import Player
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):
+        my_opponent = game_state["opponent_name"]
+        opponent_history = game_state["opponent_history"]
+        my_history = game_state["my_history"]
+        
         # Your code here
-        return 'collude'  # or 'defect'
+        decision = 'collude'  # or 'defect'
+        
+        # Add custom feedback (will appear in blue in the game output)
+        self.add_feedback(f"Round {game_state['round_number']}: Opponent history: {opponent_history}, My history: {my_history}, My decision: {decision}")
+        
+        return decision
 '''
+
+    # ... (rest of the existing code) ...
 
     game_instructions = '''
 <h1>Prisoner's Dilemma Game Instructions</h1>
@@ -89,6 +100,7 @@ def make_decision(self, game_state):
     def play_pairing(self, player1, player2):
         self.add_feedback(f"\n## Pairing: {player1.name} vs {player2.name}")
         for round_number in range(1, self.rounds_per_pairing + 1):
+            self.add_feedback(f"\n### Round {round_number}")
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
 
@@ -100,11 +112,19 @@ def make_decision(self, game_state):
 
             self.update_scores(player1, decision1, player2, decision2)
 
-            colored_decision1 = self.color_decision(decision1)
-            colored_decision2 = self.color_decision(decision2)
+            self.add_feedback(f"  - {player1.name}: {decision1}, {player2.name}: {decision2}")
+            self.add_feedback(f"    * {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
+            
+            # Add player feedback
+            self.add_player_feedback(player1)
+            self.add_player_feedback(player2)
 
-            self.add_feedback(f"\n**Round {round_number}** {player1.name}: {colored_decision1}, {player2.name}: {colored_decision2}  \n")
-            self.add_feedback(f"- {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
+    def add_player_feedback(self, player):
+        if player.feedback:
+            self.add_feedback(f"\n  - {player.name}'s feedback:")
+            for message in player.feedback:
+                self.add_feedback(f"    <span style='color: blue;'>* {message}</span>")
+            player.feedback = []  # Clear the feedback after adding it
 
     def update_scores(self, player1, decision1, player2, decision2):
         score1, score2 = self.reward_matrix[(decision1, decision2)]

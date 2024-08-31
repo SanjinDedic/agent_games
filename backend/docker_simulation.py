@@ -1,6 +1,7 @@
 import subprocess
 import json
 import time
+import os
 
 from jsonschema import validate, ValidationError
 from config import ROOT_DIR
@@ -84,6 +85,9 @@ def run_docker_simulation(league_name, league_game, league_folder, custom_reward
     except ValidationError as ve:
         print(f"Docker results validation failed: {ve}")
         return False, f"Invalid results format: {ve}"
+    
+
+
 def validate_docker_results(results):
     try:
         validate(instance=results, schema=SIMULATION_RESULTS_SCHEMA)
