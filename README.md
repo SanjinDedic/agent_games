@@ -1,10 +1,24 @@
-# About
+# Agent Games
 
-The project has transitioned to a monorepo structure with both the front end and back end combined. This README provides basic setup instructions for running the application locally. Detailed documentation will be added soon.
+![Python](https://img.shields.io/badge/python-3.12-blue.svg) [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml) [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
-- [Front End Documentation](#)
-- [Back End Documentation](#)
-- [Server Deployment](#)
+This project is a monorepo containing both the frontend and backend for the Agent Games application.
+
+## Frontend
+
+The frontend is built with React and Redux, offering a user interface for game submission, league management, and result viewing. It features code editing capabilities and responsive design.
+
+For more details, see the [Frontend README](./frontend/README.md).
+
+## Backend
+
+The backend is powered by FastAPI, handling game logic, user authentication, and data management. It includes Docker integration for simulations and uses SQLite for data storage.
+
+For more information, check out the [Backend README](./backend/README.md).
+
+## Getting Started
+
+For instructions on how to set up and run the project locally, please refer to the respective README files in the frontend and backend directories.
 
 ## Running the App Locally
 

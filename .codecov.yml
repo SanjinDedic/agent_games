@@ -5,3 +5,4 @@ ignore:
   - "production_database_setup.py"
   - "create_5_test_players.py"
   - "local_sim_api.py"
+  - "standalone_game.py
