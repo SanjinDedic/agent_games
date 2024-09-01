@@ -21,8 +21,6 @@ class CustomPlayer(Player):
         return decision
 '''
 
-    # ... (rest of the existing code) ...
-
     game_instructions = '''
 <h1>Prisoner's Dilemma Game Instructions</h1>
 
@@ -78,10 +76,10 @@ def make_decision(self, game_state):
         super().__init__(league, verbose)
         self.histories = {player.name: {} for player in self.players}
         self.reward_matrix = reward_matrix or {
-            ('collude', 'collude'): (1, 1),
-            ('collude', 'defect'): (0, 2),
-            ('defect', 'collude'): (2, 0),
-            ('defect', 'defect'): (0, 0)
+            ('collude', 'collude'): (3, 3),
+            ('collude', 'defect'): (0, 5),
+            ('defect', 'collude'): (5, 0),
+            ('defect', 'defect'): (1, 1)
         }
         self.rounds_per_pairing = rounds_per_pairing
         self.feedback = []
@@ -112,7 +110,7 @@ def make_decision(self, game_state):
 
             self.update_scores(player1, decision1, player2, decision2)
 
-            self.add_feedback(f"  - {player1.name}: {decision1}, {player2.name}: {decision2}")
+            self.add_feedback(f"  - {player1.name}: {self.color_decision(decision1)}, {player2.name}: {self.color_decision(decision2)}")
             self.add_feedback(f"    * {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
             
             # Add player feedback
@@ -143,6 +141,14 @@ def make_decision(self, game_state):
         }
 
     def play_game(self, custom_rewards=None):
+        if custom_rewards:
+            self.reward_matrix = {
+                ('collude', 'collude'): (custom_rewards[0], custom_rewards[0]),
+                ('collude', 'defect'): (custom_rewards[1], custom_rewards[2]),
+                ('defect', 'collude'): (custom_rewards[2], custom_rewards[1]),
+                ('defect', 'defect'): (custom_rewards[3], custom_rewards[3])
+            }
+
         self.add_feedback("# Prisoner's Dilemma Game")
         self.add_feedback("\n## Players:")
         for player in self.players:
@@ -187,7 +193,6 @@ def make_decision(self, game_state):
 
             for player, points in results["points"].items():
                 total_points[player] += points
-            #print("HERE ARE THE RESULTS", results)
             winner = max(results["points"], key=results["points"].get)
             total_wins[winner] += 1
 
@@ -196,4 +201,3 @@ def make_decision(self, game_state):
             "total_wins": total_wins,
             "num_simulations": num_simulations
         }
-    
