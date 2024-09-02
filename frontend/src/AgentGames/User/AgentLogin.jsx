@@ -59,7 +59,6 @@ function AgentLogin() {
         .then(data => {        
           if (data.status === "success") {
             const decoded = jwtDecode(data.data.access_token);
-            console.log(decoded);
             dispatch(login({ token: data.data.access_token, name: decoded.sub, role: decoded.role, exp: decoded.exp }));
             dispatch(setCurrentTeam(Team.name));
             navigate("/AgentLeagueSignUp")

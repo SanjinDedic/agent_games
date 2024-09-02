@@ -1,0 +1,69 @@
+.markdown-feedback {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #007bff;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.feedback-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.expand-icon {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #ffffff;
+  transition: transform 0.3s ease;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.feedback-content {
+  padding: 15px;
+  background-color: #f8f9fa;
+  color: #000000;
+  text-align: left;
+  max-height: 250px; /* Adjust this value to show approximately 10 lines */
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
+}
+
+.feedback-content.expanded {
+  max-height: none;
+}
+
+.feedback-content p,
+.feedback-content h1,
+.feedback-content h2,
+.feedback-content h3,
+.feedback-content ul,
+.feedback-content ol {
+  margin-bottom: 10px;
+}
+
+.feedback-content h1,
+.feedback-content h2,
+.feedback-content h3 {
+  margin-top: 20px;
+}
+
+.feedback-content ul,
+.feedback-content ol {
+  padding-left: 20px;
+}

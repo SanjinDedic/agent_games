@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from docker_simulation import run_docker_simulation, DOCKER_TIMEOUT
-from validation import is_agent_safe, run_agent_simulation
+from validation import is_agent_safe, run_validation_simulation
 from games.game_factory import GameFactory
 import os
 from config import ROOT_DIR
@@ -104,11 +104,11 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     team_name = current_user["team_name"]
     if not is_agent_safe(submission.code):
         return ErrorResponseModel(status="error", message="Agent code is not safe.")
-    
+
     team = database.get_team(session, team_name)
     if not team.league:
         return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
-    
+
     try:
         if team.league.folder:
             league_folder = team.league.folder.lstrip('/')
@@ -123,15 +123,8 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
         file_path = os.path.join(ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py")
         with open(file_path, "w") as file:
             file.write(submission.code)
-        
-        # Run Docker simulation for both feedback and results
-        docker_result = run_docker_simulation(team.league.name, team.league.game, league_folder, None, timeout=DOCKER_TIMEOUT)
-        if not docker_result[0]:
-            return ErrorResponseModel(status="error", message="Docker simulation failed.")
-        
-        feedback = docker_result[1].get('feedback', 'No feedback available.')
-        results = docker_result[1].get('simulation_results', {})
 
+        feedback, results = run_validation_simulation(submission.code, team.league.game, team_name)
         # Log the submission in the database
         submission_id = database.save_submission(session, submission.code, team.id)
         return ResponseModel(

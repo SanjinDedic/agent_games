@@ -36,6 +36,8 @@ gen_prompt_project.py
 gen_prompt_game.py
 project_code.md
 league_code.md
+frontend/src/gen_prompt.py
+frontend/src/front_end.md
 
 # Ignore all db files
 *.db
