@@ -26,7 +26,6 @@ function AdminLeagueCreation() {
     })
       .then(response => response.json())
       .then(data => {
-        console.log(data);
         if (data.status === "success") {
           setGames(data.data.games);
         } else if (data.status === "failed") {
