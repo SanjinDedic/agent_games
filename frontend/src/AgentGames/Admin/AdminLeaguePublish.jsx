@@ -40,8 +40,7 @@ const AdminLeaguePublish = ({ simulation_id, selected_league_name }) => {
             });
     };
     return (
-        <><button onClick={handlePublish}>PUBLISH RESULT</button>
-        </>
+        <button className='publish-button' onClick={handlePublish}>PUBLISH RESULT</button>
     );
 }
 export default AdminLeaguePublish;

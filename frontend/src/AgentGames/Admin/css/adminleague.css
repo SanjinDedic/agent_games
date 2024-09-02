@@ -131,3 +131,18 @@ input[type="text"] {
 .add-league-button:hover {
   background-color: #45a049;
 }
+
+.publish-button{
+  background-color: #4CAF50;
+  color: white;
+  padding: 16px 32px;
+  margin: 24px 0;
+  border: none;
+  cursor: pointer;
+  width: 80%;
+  font-size: 18px;
+  transition: 0.3s;
+}
+.publish-button:hover {
+  background-color: #45a049;
+  }
