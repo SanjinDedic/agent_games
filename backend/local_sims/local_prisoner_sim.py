@@ -26,8 +26,6 @@ print("\nFinal Results:")
 print(f"Points: {game_result['results']['points']}")
 print(f"Score Aggregate: {game_result['results']['score_aggregate']}")
 
-
-'''
 # Run multiple simulations
 num_simulations = 100
 print(f"\nRunning {num_simulations} simulations:")
@@ -38,19 +36,40 @@ print("Total Points:")
 for player, points in simulation_results['total_points'].items():
     print(f"  {player}: {points}")
 
-print("\nTotal Wins:")
-for player, wins in simulation_results['total_wins'].items():
-    print(f"  {player}: {wins}")
-'''
+print("\nDefections and Collusions:")
+for player in simulation_results['table']['defections']:
+    defections = simulation_results['table']['defections'][player]
+    collusions = simulation_results['table']['collusions'][player]
+    total_actions = defections + collusions
+    defect_percentage = (defections / total_actions) * 100 if total_actions > 0 else 0
+    collude_percentage = (collusions / total_actions) * 100 if total_actions > 0 else 0
+    print(f"  {player}:")
+    print(f"    Defections: {defections} ({defect_percentage:.2f}%)")
+    print(f"    Collusions: {collusions} ({collude_percentage:.2f}%)")
+
+# Run multiple simulations with custom rewards
+num_simulations = 100
+print(f"\nRunning {num_simulations} simulations to test 1,1,1,1 custom rewards (scores should be equal):")
+simulation_results = PrisonersDilemmaGame.run_simulations(num_simulations, test_league, custom_rewards=[1, 1, 1, 1])
+
+print(f"\nResults after {num_simulations} simulations with custom rewards:")
+print("Total Points:")
+for player, points in simulation_results['total_points'].items():
+    print(f"  {player}: {points}")
+
+print("\nDefections and Collusions:")
+for player in simulation_results['table']['defections']:
+    defections = simulation_results['table']['defections'][player]
+    collusions = simulation_results['table']['collusions'][player]
+    total_actions = defections + collusions
+    defect_percentage = (defections / total_actions) * 100 if total_actions > 0 else 0
+    collude_percentage = (collusions / total_actions) * 100 if total_actions > 0 else 0
+    print(f"  {player}:")
+    print(f"    Defections: {defections} ({defect_percentage:.2f}%)")
+    print(f"    Collusions: {collusions} ({collude_percentage:.2f}%)")
 
 # TO DO:
-# 1. get rid of wins and just show points
-# 2. Create some kind of filter so the that player who submitted the code only sees the results of their games ?
-# 3. Find a way for admin to set the reward matrix for the game (maybe use the existing custom_rewards parameter)
-# 4. Update instructions
-# perhaps include these in the starter code:
-#        my_opponent = game_state["opponent_name"]
-#        opponent_history = game_state["opponent_history"]
-#        my_history = game_state["my_history"]
-
-# Add a print statement to show the game state in the default player code
+# 1. Create some kind of filter so that the player who submitted the code only sees the results of their games
+# 2. Find a way for admin to set the reward matrix for the game (maybe use the existing custom_rewards parameter)
+# 3. Update instructions
+# 4. Add a print statement to show the game state in the default player code
