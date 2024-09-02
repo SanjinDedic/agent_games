@@ -8,6 +8,7 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector((state) => state.auth.token);
+  const rewards = useSelector((state) => state.leagues.currentRewards);
 
   const [simulationNumber, setSimulationNumber] = useState(1);
   const [useDocker, setUseDocker] = useState(true);
@@ -36,11 +37,14 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
         body: JSON.stringify({
           num_simulations: simulationNumber,
           league_name: selected_league_name,
-          use_docker: useDocker
+          use_docker: useDocker,
+          custom_rewards: rewards, 
         }),
       });
+      
       const data = await response.json();
       if (data.status === "success") {
+        
         dispatch(addSimulationResult(data.data));
         toast.update(toastId, { render: data.message, type: "success", isLoading: false, autoClose: 2000 });
       } else if (data.status === "failed" || data.status === "error") {
@@ -65,7 +69,7 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
         />
       </div>
       <div className="docker-toggle">
-        <label>
+        <label style={{ margin: '12px 0px' }}>
           <input
             type="checkbox"
             checked={useDocker}

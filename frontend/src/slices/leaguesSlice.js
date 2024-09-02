@@ -4,7 +4,8 @@ const initialState = {
   list: [],
   currentLeague: null,
   currentLeagueResults: [],
-  currentLeagueResultSelected: null
+  currentLeagueResultSelected: null,
+  currentRewards: [],
 };
 
 const leaguesSlice = createSlice({
@@ -69,6 +70,9 @@ const leaguesSlice = createSlice({
           state.currentLeagueResultSelected = timestamp;
         }
     },
+    setRewards: (state, action) => {
+      state.currentRewards = action.payload;
+    },
     clearResults: (state) => {
       state.currentLeagueResults = [];
       state.currentLeagueResultSelected = null;
@@ -76,5 +80,5 @@ const leaguesSlice = createSlice({
   },
 });
 
-export const { setLeagues, addLeague, setCurrentLeague, clearLeagues, updateExpiryDate, setResults, setCurrentSimulation, clearResults,addSimulationResult } = leaguesSlice.actions;
+export const { setLeagues, addLeague, setCurrentLeague, clearLeagues, updateExpiryDate, setResults, setCurrentSimulation, setRewards, clearResults, addSimulationResult } = leaguesSlice.actions;
 export default leaguesSlice.reducer;
