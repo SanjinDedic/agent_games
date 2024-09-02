@@ -1,13 +1,38 @@
 import React, { useState } from 'react';
 import './css/adminleague.css';
+import { toast } from 'react-toastify';
+import { useDispatch } from 'react-redux';
+import { setRewards } from '../../slices/leaguesSlice';
 
 const CustomRewards = () => {
+    const dispatch = useDispatch();
     const [inputValue, setInputValue] = useState('');
+    const [error, setError] = useState('');
     
     const handleInputChange = (event) => {
         const value = event.target.value;
         setInputValue(value);
-        
+        if (value.trim().endsWith(']')) {
+          try {
+            const parsed = JSON.parse(value);
+    
+            if (Array.isArray(parsed) && parsed.every(item => typeof item === 'number')) {
+                dispatch(setRewards(parsed));
+                setError('');
+              
+            } else {
+              throw new Error();
+              
+            }
+          } catch (e) {
+            dispatch(setRewards(null));
+            setError('Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3].');
+            toast.error('Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3].'); 
+          }
+        }else{
+          dispatch(setRewards(null));
+          setError('Please type the correct format. Example: [10, 8, 5, 3]');
+        } 
     };
 
     
@@ -24,6 +49,7 @@ const CustomRewards = () => {
         onChange={handleInputChange}
       />
       </label>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
     </div>
       );
     };
