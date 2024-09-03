@@ -204,5 +204,6 @@ def make_decision(self, game_state):
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
-            "table": {"defections": defections, "collusions": collusions}
+            "table": {"defections": defections, 
+                      "collusions": collusions}
         }
