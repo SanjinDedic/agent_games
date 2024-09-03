@@ -43,7 +43,7 @@ def make_decision(self, game_state):
         if self.verbose:
             self.feedback.append(message)
 
-    def play_game(self):
+    def play_game(self, custom_rewards=None):
         self.add_feedback("# Alpha Guess Game")
         self.add_feedback("\n## Players:")
         for player in self.players:
@@ -122,6 +122,8 @@ def make_decision(self, game_state):
 
         return {
             "total_points": total_points,
-            "total_wins": total_wins,
-            "num_simulations": num_simulations
+            "num_simulations": num_simulations,
+            "table": {
+                "total_wins": total_wins
+            }
         }

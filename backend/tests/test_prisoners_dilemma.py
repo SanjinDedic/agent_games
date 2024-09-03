@@ -120,7 +120,6 @@ def test_run_simulations_with_custom_rewards(test_league):
     results = PrisonersDilemmaGame.run_simulations(num_simulations, test_league, custom_rewards)
     assert isinstance(results, dict)
     assert "total_points" in results
-    assert "total_wins" in results
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations
 

@@ -30,20 +30,14 @@ def add_teams_from_json(session, teams_json_path):
         raise ValueError(f"Error processing team data from JSON: {str(e)}")
     
 
-def transform_result(result_data, sim_result, league_name):
-    # Sort the total_points dictionary by values
-    sorted_total_points = dict(sorted(result_data["total_points"].items(), key=lambda item: item[1], reverse=True))
-
+def transform_result(simulation_results, sim_result, league_name):
     return {
-
-        "id": sim_result.id,
         "league_name": league_name,
-        "num_simulations": result_data["num_simulations"],
-        "rewards": sim_result.custom_rewards,
-        "timestamp": sim_result.timestamp,
-        "total_points": sorted_total_points,
-        "total_wins": result_data["total_wins"],
-
+        "id": sim_result.id if sim_result else None,
+        "total_points": simulation_results["total_points"],
+        "num_simulations": simulation_results["num_simulations"],
+        "rewards": json.loads(sim_result.custom_rewards) if sim_result else None,
+        "table": simulation_results.get("table", {})
     }
 
 def get_games_names():

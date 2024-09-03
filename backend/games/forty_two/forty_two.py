@@ -174,6 +174,8 @@ def make_decision(self, game_state):
 
         return {
             "total_points": total_points,
-            "total_wins": total_wins,
-            "num_simulations": num_simulations
+            "num_simulations": num_simulations,
+            "table": {
+                "total_wins": total_wins
+            }
         }

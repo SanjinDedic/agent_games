@@ -257,7 +257,6 @@ def get_all_teams(session):
 def save_simulation_results(session, league_id, results, rewards=None):
     timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
     
-    # Convert rewards to string if it's not None
     rewards_str = json.dumps(rewards) if rewards is not None else '[10, 8, 6, 4, 3, 2, 1]'
     
     simulation_result = SimulationResult(
@@ -267,20 +266,69 @@ def save_simulation_results(session, league_id, results, rewards=None):
         custom_rewards=rewards_str
     )
     session.add(simulation_result)
-    print("SAVED SIMULATION RESULT: ", simulation_result)
-    session.flush()  # Flush to generate the simulation_result_id
+    session.flush()
+    
+    custom_value_names = list(results.get("table", {}).keys())[:3]  # Get up to 3 custom value names
     
     for team_name, score in results["total_points"].items():
-        print("TEAM NAME: ", team_name, "SCORE: ", score)
         team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
         if team:
-            wins = results["total_wins"][team.name]
-            result_item = SimulationResultItem(simulation_result_id=simulation_result.id, team_id=team.id, score=score, wins=wins)
+            result_item = SimulationResultItem(
+                simulation_result_id=simulation_result.id, 
+                team_id=team.id, 
+                score=score
+            )
+            
+            for i, name in enumerate(custom_value_names, start=1):
+                value = results["table"][name]
+                if isinstance(value, dict):
+                    setattr(result_item, f"custom_value{i}", value.get(team_name))
+                else:
+                    setattr(result_item, f"custom_value{i}", value)
+                setattr(result_item, f"custom_value{i}_name", name)
+            
             session.add(result_item)
 
     session.commit()
     return simulation_result
 
+def get_published_result(session, league_name):
+    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
+    if not league:
+        raise LeagueNotFoundError(f"League '{league_name}' not found")
+    active = False
+    expiry_date = league.expiry_date
+    if expiry_date.tzinfo is None:
+        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
+    if expiry_date > datetime.now(AUSTRALIA_SYDNEY_TZ):
+        active = True
+    
+    for sim in league.simulation_results:
+        if sim.published:
+            total_points = {}
+            table = {}
+            num_simulations = sim.num_simulations
+            for result in sim.simulation_results:
+                total_points[result.team.name] = result.score
+                for i in range(1, 4):
+                    value_name = getattr(result, f"custom_value{i}_name")
+                    value = getattr(result, f"custom_value{i}")
+                    if value_name:
+                        if value_name not in table:
+                            table[value_name] = {}
+                        table[value_name][result.team.name] = value
+
+            return {
+                "league_name": league_name, 
+                "id": sim.id, 
+                "total_points": total_points, 
+                "table": table,
+                "num_simulations": num_simulations, 
+                "active": active,
+                "rewards": json.loads(sim.custom_rewards)
+            }
+    
+    return None
 
 def get_all_league_results(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
@@ -322,30 +370,6 @@ def publish_sim_results(session, league_name, sim_id):
     session.commit()
     return f"Simulation results for league '{league_name}' published successfully", {"id": simulation.id, "league_name": league_name, "published": True}
 
-
-def get_published_result(session, league_name):
-    league = session.exec(select(League).where(League.name == league_name)).one_or_none()
-    if not league:
-        raise LeagueNotFoundError(f"League '{league_name}' not found")
-    active = False
-    expiry_date = league.expiry_date
-    if expiry_date.tzinfo is None:
-        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
-    if expiry_date > datetime.now(AUSTRALIA_SYDNEY_TZ):
-        active = True
-    
-    for sim in league.simulation_results:
-        if sim.published:
-            total_points = {}
-            total_wins = {}
-            num_simulations = sim.num_simulations
-            for result in sim.simulation_results:
-                total_points[result.team.name] = result.score
-                total_wins[result.team.name] = result.wins
-
-            return {"league_name": league_name, "id": sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations, "active": active}
-    
-    return None
 
 def get_all_published_results(session):
     current_time = datetime.now(AUSTRALIA_SYDNEY_TZ)
