@@ -79,7 +79,6 @@ def run_validation_simulation(code, game_name, team_name):
     test_league = League(folder=test_league_folder, name="Test League", game=game_name)
 
     file_path = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league', f"{team_name}.py")
-    print("Root dir in validation.py: ", ROOT_DIR)
     print(f"File path in validation.py: {file_path}")
 
     try:
@@ -104,6 +103,10 @@ def run_validation_simulation(code, game_name, team_name):
         print(f"Error during simulation: {e}")
         raise ValidationSimulationError(str(e))
     finally:
+        # Always attempt to remove the file, even if an exception occurred
         if os.path.exists(file_path):
-            os.remove(file_path)
-            print(f"File removed: {file_path}")
+            try:
+                os.remove(file_path)
+                print(f"File removed: {file_path}")
+            except Exception as e:
+                print(f"Error removing file: {e}")
