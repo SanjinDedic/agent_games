@@ -218,13 +218,14 @@ def make_decision(self, game_state):
             
             winner = max(results["points"], key=results["points"].get)
             total_wins[winner] += 1
+        print("TOTAL POINTS:",total_points)
+        print("NUM SIMULATIONS:",num_simulations)
+        print("TOTAL WINS:",total_wins)
 
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
             "table":{
-                "total_wins": 1,
-                "lala2": 2,
-                "lala3": 3,
+                "total_wins": total_wins
             }
         }

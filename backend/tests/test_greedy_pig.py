@@ -90,6 +90,5 @@ def test_run_simulations(mock_stdout, test_league):
     results = GreedyPigGame.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
-    assert "lala2" in results["table"]
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations

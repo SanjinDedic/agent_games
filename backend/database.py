@@ -45,63 +45,6 @@ def get_db_engine():
 def create_database(engine):
     SQLModel.metadata.create_all(engine)
 
-def get_teams_by_league_name(session: Session, league_name: str):
-    # Query to filter teams based on the specified league name
-    teams = session.exec(
-        select(Team).where(Team.league.has(name=league_name))
-    ).all()
-
-    return teams
-
-
-def transform_league_data(simulation_results, league_teams):
-    total_points = {}
-    table_data = {}
-
-    for result in simulation_results:
-
-        if not isinstance(result.score, dict):
-            raise SimulationResultTransformationError(f"Expected 'score' to be a dictionary for team {result.team.name}, but got {type(result.score).__name__}")
-
-        # Check if custom_value1, custom_value2, and custom_value3 are dictionaries or None
-        if result.custom_value1 is not None and not isinstance(result.custom_value1, dict):
-            raise SimulationResultTransformationError(f"Expected 'custom_value1' to be a dictionary for team {result.team.name}, but got {type(result.custom_value1).__name__}")
-        if result.custom_value2 is not None and not isinstance(result.custom_value2, dict):
-            raise SimulationResultTransformationError(f"Expected 'custom_value2' to be a dictionary for team {result.team.name}, but got {type(result.custom_value2).__name__}")
-        if result.custom_value3 is not None and not isinstance(result.custom_value3, dict):
-            raise SimulationResultTransformationError(f"Expected 'custom_value3' to be a dictionary for team {result.team.name}, but got {type(result.custom_value3).__name__}")
-
-        if result.team.name not in league_teams.name:
-            raise SimulationResultTransformationError(f"Team {result.team.name} not found in league teams")
-
-
-        total_points[result.team.name] = result.score
-
-        if result.custom_value1_name not in table_data:
-            table_data[result.custom_value1_name] = {}
-        if result.custom_value2_name not in table_data:
-            table_data[result.custom_value2_name] = {}
-        if result.custom_value3_name not in table_data:
-            table_data[result.custom_value3_name] = {}
-
-        # Safely add custom values if they exist
-        if result.custom_value1 is not None:
-            table_data[result.custom_value1_name][result.team.name] = result.custom_value1
-
-        if result.custom_value2 is not None:
-            table_data[result.custom_value2_name][result.team.name] = result.custom_value2
-
-        if result.custom_value3 is not None:
-            table_data[result.custom_value3_name][result.team.name] = result.custom_value3
-
-        if result.custom_value2:
-            table_data[result.custom_value2_name][result.team.name] = result.custom_value2
-
-        if result.custom_value3:
-            table_data[result.custom_value3_name][result.team.name] = result.custom_value3
-
-    return total_points,table_data
-
 
 def create_league(session, league_name, league_game, league_folder):
     league = League(
@@ -338,7 +281,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
                 team_id=team.id, 
                 score=score
             )
-            
+            print(f"Saving simulation results for team '{team_name}'")
             for i, name in enumerate(custom_value_names, start=1):
                 value = results["table"][name]
                 if isinstance(value, dict):
@@ -350,6 +293,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
             session.add(result_item)
 
     session.commit()
+    print(f"Simulation results saved successfully for league ID {league_id}")
     return simulation_result
 
 def get_published_result(session, league_name):
@@ -390,24 +334,65 @@ def get_published_result(session, league_name):
     
     return None
 
+
+def process_simulation_results(sim, league_name, active=None):
+    total_points = {}
+    table_data = {}
+
+    for result in sim.simulation_results:
+        team_name = result.team.name
+        
+        # Handle total points
+        total_points[team_name] = result.score
+        
+        # Handle custom values
+        for i in range(1, 4):
+            custom_value = getattr(result, f'custom_value{i}')
+            custom_value_name = getattr(result, f'custom_value{i}_name')
+            
+            if custom_value_name:
+                if custom_value_name not in table_data:
+                    table_data[custom_value_name] = {}
+                
+                table_data[custom_value_name][team_name] = custom_value
+
+    # Validate table_data
+    for key, value in table_data.items():
+        if not isinstance(value, dict):
+            raise SimulationResultFormatError(f"Table item '{key}' is not a dictionary")
+        
+        if set(value.keys()) != set(total_points.keys()):
+            raise SimulationResultFormatError(f"Keys in table item '{key}' do not match keys in total_points")
+
+    result_data = {
+        "league_name": league_name,
+        "id": sim.id,
+        "total_points": total_points,
+        "table": table_data,
+        "num_simulations": sim.num_simulations,
+        "timestamp": sim.timestamp,
+        "rewards": sim.custom_rewards
+    }
+
+    if active is not None:
+        result_data["active"] = active
+
+    return result_data
+
+
+class SimulationResultFormatError(Exception):
+    pass
+
 def get_all_league_results(session, league_name):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
     
-    league_teams = get_teams_by_league_name(session, league.name)
-
-    all_results = []
-    for sim in league.simulation_results:
-        #we need to get data from SimulationResultItem and return it in this format {"league_name": league_name, "id":sim.id, "total_points": total_points, "total_wins": total_wins, "num_simulations": num_simulations}
-        
-        timestamp = sim.timestamp
-        num_simulations = sim.num_simulations
-        total_points, table_data = transform_league_data(sim.simulation_results,league_teams)
-        
-        all_results.append({"league_name": league_name, "id":sim.id, "total_points": total_points, "table": table_data, "num_simulations": num_simulations, "timestamp": timestamp, "rewards": sim.custom_rewards})
-        #sort all results by id in reverse with the highest first
-        all_results = sorted(all_results, key=lambda x: x["id"], reverse=True)
+    all_results = [process_simulation_results(sim, league_name) for sim in league.simulation_results]
+    
+    # Sort all results by id in reverse with the highest first
+    all_results = sorted(all_results, key=lambda x: x["id"], reverse=True)
+    
     return {"all_results": all_results}
 
 
@@ -435,27 +420,18 @@ def publish_sim_results(session, league_name, sim_id):
 def get_all_published_results(session):
     current_time = datetime.now(AUSTRALIA_SYDNEY_TZ)
     all_results = []
+    
     for league in session.exec(select(League)).all():
         expiry_date = league.expiry_date
         if expiry_date.tzinfo is None:
             expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
         active = expiry_date >= current_time
-        league_teams = get_teams_by_league_name(session, league.name)
+
         for sim in league.simulation_results:
             if sim.published:
-                num_simulations = sim.num_simulations
-                total_points, table_data = transform_league_data(sim.simulation_results,league_teams)
+                all_results.append(process_simulation_results(sim, league.name, active))
 
-                all_results.append({
-                    "league_name": league.name, 
-                    "id": sim.id, 
-                    "total_points": total_points, 
-                    "table": table_data, 
-                    "num_simulations": num_simulations, 
-                    "active": active
-                })
     return {"all_results": all_results}
-
 
 
 def update_expiry_date(session, league_name, expiry_date):
