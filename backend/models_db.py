@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict
-from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint, DateTime, Column
+from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint, DateTime, Column, JSON
 from config import CURRENT_DB
 from datetime import datetime
 from auth import get_password_hash, verify_password
@@ -81,5 +81,10 @@ class SimulationResultItem(SQLModel, table=True):
     simulation_result: SimulationResult = Relationship(back_populates="simulation_results")
     team_id: int = Field(foreign_key="team.id")
     team: Team = Relationship()
-    score: int = 0
-    wins: int = 0
+    score: float = 0
+    custom_value1: float | None = None
+    custom_value2: float | None = None
+    custom_value3: float | None = None
+    custom_value1_name: str | None = None
+    custom_value2_name: str | None = None
+    custom_value3_name: str | None = None

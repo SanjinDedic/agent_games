@@ -1,35 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { } from '../../slices/rankingsSlice'
 
 const ResultsDisplay = ({ data, highlight = true, data_message = '' }) => {
   const [results, setResults] = useState([]);
+  const [tableColumns, setTableColumns] = useState([]);
   const userTeam = useSelector((state) => state.teams.currentTeam);
   
-    useEffect(() => {
-    if (data.length > 0 && data[0].hasOwnProperty('name')) {
-
-      const resultData = data.map(item => ({
-        team: item.name,
-        totalPoints: 0,
-        totalWins: 0
-      }));
-
-
-      setResults(resultData);
-    }
-    else if (data) {
-      const teams = Object.keys(data.total_points || {});
+  useEffect(() => {
+    if (data && data.total_points) {
+      const teams = Object.keys(data.total_points);
       const resultData = teams.map(team => ({
         team,
         totalPoints: data.total_points[team],
-        totalWins: data.total_wins[team]
+        ...Object.fromEntries(
+          Object.entries(data.table || {}).map(([key, values]) => [key, values[team]])
+        )
       }));
 
       // Sort teams by points descending
       resultData.sort((a, b) => b.totalPoints - a.totalPoints);
 
       setResults(resultData);
+      setTableColumns(Object.keys(data.table || {}));
     }
   }, [data]);
 
@@ -42,15 +34,19 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '' }) => {
           <tr>
             <th>Team</th>
             <th>Total Points</th>
-            <th>Total Wins</th>
+            {tableColumns.map((column, index) => (
+              <th key={index}>{column}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {results.map(({ team, totalPoints, totalWins }) => (
-            <tr key={team} className={highlight && team === userTeam ? 'highlighted' : ''}>
-              <td>{team}</td>
-              <td>{totalPoints}</td>
-              <td>{totalWins}</td>
+          {results.map((result) => (
+            <tr key={result.team} className={highlight && result.team === userTeam ? 'highlighted' : ''}>
+              <td>{result.team}</td>
+              <td>{result.totalPoints}</td>
+              {tableColumns.map((column, index) => (
+                <td key={index}>{result[column]}</td>
+              ))}
             </tr>
           ))}
         </tbody>

@@ -43,7 +43,7 @@ def make_decision(self, game_state):
         if self.verbose:
             self.feedback.append(message)
 
-    def play_game(self):
+    def play_game(self, custom_rewards=None):
         self.add_feedback("# Alpha Guess Game")
         self.add_feedback("\n## Players:")
         for player in self.players:
@@ -103,3 +103,27 @@ def make_decision(self, game_state):
     def reset(self):
         super().reset()
         self.feedback = []
+
+    @classmethod
+    def run_simulations(cls, num_simulations, league, custom_rewards=None):
+        game = cls(league)
+        total_points = {player.name: 0 for player in game.players}
+        total_wins = {player.name: 0 for player in game.players}
+
+        for _ in range(num_simulations):
+            game.reset()
+            results = game.play_game(custom_rewards)
+            
+            for player, points in results["points"].items():
+                total_points[player] += points
+            
+            winner = max(results["points"], key=results["points"].get)
+            total_wins[winner] += 1
+
+        return {
+            "total_points": total_points,
+            "num_simulations": num_simulations,
+            "table": {
+                "total_wins": total_wins
+            }
+        }

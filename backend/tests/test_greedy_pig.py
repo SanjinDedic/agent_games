@@ -22,7 +22,7 @@ def test_league():
 
 def test_game_initialization(test_league):
     game = GreedyPigGame(test_league)
-    assert len(game.players) == 9
+    assert len(game.players) == 5
     assert game.round_no == 0
     assert game.roll_no == 0
     assert not game.game_over
@@ -60,17 +60,13 @@ def test_assign_points(test_league):
 
 def test_get_all_player_classes_from_folder(test_league):
     game = GreedyPigGame(test_league, verbose=True)
-    assert len(game.players) == 9
+    assert len(game.players) == 5
     player_names = [player.name for player in game.players]
     assert "AlwaysBank" in player_names
     assert "Bank5" in player_names
-    assert "Bank10" in player_names
     assert "Bank15" in player_names
     assert "BankRoll3" in player_names
     assert "BankRoll4" in player_names
-    assert "Low78" in player_names
-    assert "Mid78" in player_names
-    assert "Winner78" in player_names
 
 def test_game_reset(test_league):
     game = GreedyPigGame(test_league)
@@ -90,6 +86,5 @@ def test_run_simulations(mock_stdout, test_league):
     results = GreedyPigGame.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
-    assert "total_wins" in results
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations

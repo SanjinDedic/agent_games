@@ -47,6 +47,7 @@ def test_greedy_pig_docker_simulation(client, admin_token):
     )
     assert simulation_response.status_code == 200
     response_data = simulation_response.json()
+    print("RESPONSE DATA FOR GREEDY PIG:", response_data)
     assert "data" in response_data
     assert "total_points" in response_data["data"]
     assert "feedback" in response_data["data"]

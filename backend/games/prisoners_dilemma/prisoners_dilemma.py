@@ -185,7 +185,8 @@ def make_decision(self, game_state):
     def run_simulations(cls, num_simulations, league, custom_rewards=None):
         game = cls(league)
         total_points = {player.name: 0 for player in game.players}
-        total_wins = {player.name: 0 for player in game.players}
+        defections = {player.name: 0 for player in game.players}
+        collusions = {player.name: 0 for player in game.players}
 
         for _ in range(num_simulations):
             game.reset()
@@ -193,11 +194,16 @@ def make_decision(self, game_state):
 
             for player, points in results["points"].items():
                 total_points[player] += points
-            winner = max(results["points"], key=results["points"].get)
-            total_wins[winner] += 1
+
+            # Count defections and collusions
+            for player_name, opponents in game.histories.items():
+                for opponent_name, decisions in opponents.items():
+                    defections[player_name] += decisions.count('defect')
+                    collusions[player_name] += decisions.count('collude')
 
         return {
             "total_points": total_points,
-            "total_wins": total_wins,
-            "num_simulations": num_simulations
+            "num_simulations": num_simulations,
+            "table": {"defections": defections, 
+                      "collusions": collusions}
         }

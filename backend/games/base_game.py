@@ -71,26 +71,8 @@ class BaseGame(ABC):
 
     @classmethod
     def run_simulations(cls, num_simulations, league, custom_rewards=None):
-        game = cls(league)
-        total_points = {player.name: 0 for player in game.players}
-        total_wins = {player.name: 0 for player in game.players}
-
-        for _ in range(num_simulations):
-            game.reset()
-            results = game.play_game(custom_rewards)
-            
-            for player, points in results["points"].items():
-                total_points[player] += points
-            
-            winner = max(results["points"], key=results["points"].get)
-            total_wins[winner] += 1
-
-        return {
-            "total_points": total_points,
-            "total_wins": total_wins,
-            "num_simulations": num_simulations
-        }
-
+        pass
+    
     @classmethod
     def get_starter_code(cls):
         return cls.starter_code

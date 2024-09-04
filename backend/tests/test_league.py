@@ -183,10 +183,11 @@ def test_league_creation_exception(client, admin_token, monkeypatch):
 def test_get_all_league_results(client, admin_token, non_admin_token):
     simulation_response = client.post(
         "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 10},
+        json={"league_name": "comp_test", "num_simulations": 10, "use_docker": False},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
+    print("SIM RESPONSE FOR GET ALL LEAGUE RES:", simulation_response.json())
 
     league_results_response = client.post(
         "/get_all_league_results",
@@ -194,8 +195,22 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert league_results_response.status_code == 200
-    assert isinstance(league_results_response.json()["data"]["all_results"], list)
+    response_data = league_results_response.json()
+    print(response_data)
 
+    # Check if the response contains an error message
+    if response_data.get("status") == "error":
+        print(f"API returned an error: {response_data.get('message')}")
+        assert False, f"API returned an error: {response_data.get('message')}"
+
+    # If no error, proceed with the original assertions
+    assert "data" in response_data
+    assert "all_results" in response_data["data"]
+    assert isinstance(response_data["data"]["all_results"], list)
+
+    # Add more specific assertions about the content of all_results if needed
+
+    # Test unauthorized access
     unauthorized_response = client.post(
         "/get_all_league_results",
         json={"name": "comp_test"},

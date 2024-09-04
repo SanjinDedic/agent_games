@@ -20,20 +20,17 @@ SIMULATION_RESULTS_SCHEMA = {
                 "total_points": {
                     "type": "object",
                     "patternProperties": {
-                        ".*": {"type": "integer"}
+                        ".*": {"type": "number"}
                     },
                     "additionalProperties": False
                 },
-                "total_wins": {
+                "num_simulations": {"type": "integer"},
+                "table": {
                     "type": "object",
-                    "patternProperties": {
-                        ".*": {"type": "integer"}
-                    },
-                    "additionalProperties": False
-                },
-                "num_simulations": {"type": "integer"}
+                    "additionalProperties": True
+                }
             },
-            "required": ["total_points", "total_wins", "num_simulations"],
+            "required": ["total_points", "num_simulations", "table"],
             "additionalProperties": False
         }
     },

@@ -62,13 +62,13 @@ def test_run_simulations(test_league):
     results = FortyTwoGame.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
-    assert "total_wins" in results
+    assert "total_wins" in results["table"]
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations
 
-    total_wins = sum(results["total_wins"].values())
+    total_wins = sum(results["table"]["total_wins"].values())
     assert total_wins == num_simulations
 
     for player, points in results["total_points"].items():
         assert points >= 0
-        assert results["total_wins"][player] >= 0
+        assert results["table"]["total_wins"][player] >= 0
