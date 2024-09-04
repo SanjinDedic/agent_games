@@ -74,7 +74,7 @@ function AdminLeague() {
       })
         .then(response => response.json())
         .then(data => {
-
+          console.log(data);
           if (data.status === "success") {
             if (data.data.all_results.length == 0) {
               dispatch(clearResults());

@@ -62,7 +62,7 @@ def test_greedy_pig_simulation_with_custom_rewards(client, admin_token):
     assert "data" in response_data
     assert "total_points" in response_data["data"]
     assert "rewards" in response_data["data"]
-    assert response_data["data"]["rewards"] == str(custom_rewards)
+    assert response_data["data"]["rewards"] == custom_rewards
 
 def test_forty_two_simulation(client, admin_token):
     simulation_response = client.post(
@@ -87,7 +87,7 @@ def test_forty_two_simulation_with_custom_rewards(client, admin_token):
     assert "data" in response_data
     assert "total_points" in response_data["data"]
     assert "rewards" in response_data["data"]
-    assert response_data["data"]["rewards"] == str(custom_rewards)
+    assert response_data["data"]["rewards"] == custom_rewards
 
 def test_alpha_guess_simulation(client, admin_token):
     # Create a test league for Alpha Guess

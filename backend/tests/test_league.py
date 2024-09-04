@@ -194,6 +194,7 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert league_results_response.status_code == 200
+    print(league_results_response.json())
     assert isinstance(league_results_response.json()["data"]["all_results"], list)
 
     unauthorized_response = client.post(

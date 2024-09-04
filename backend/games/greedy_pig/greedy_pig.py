@@ -223,7 +223,7 @@ def make_decision(self, game_state):
             "total_points": total_points,
             "num_simulations": num_simulations,
             "table":{
-                "total_wins": total_wins,
+                "total_wins": 1,
                 "lala2": 2,
                 "lala3": 3,
             }

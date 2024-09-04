@@ -110,7 +110,8 @@ def test_run_simulations(mock_stdout, test_league):
     results = PrisonersDilemmaGame.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
-    assert "total_wins" in results
+    assert "defections" in results["table"]
+    assert "collusions" in results["table"]
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations
 
@@ -118,6 +119,8 @@ def test_run_simulations_with_custom_rewards(test_league):
     num_simulations = 10
     custom_rewards = [4, 0, 6, 2]
     results = PrisonersDilemmaGame.run_simulations(num_simulations, test_league, custom_rewards)
+    print("this is prisoner result")
+    print(results)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "num_simulations" in results
