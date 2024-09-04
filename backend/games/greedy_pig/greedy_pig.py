@@ -102,32 +102,59 @@ def make_decision(self, game_state):
         while True:
             self.roll_no += 1
             roll = self.roll_dice()
-            self.add_feedback(f"\n### Roll {self.roll_no}: Dice shows {roll}")
+            self.add_feedback(f"\n### Roll {self.roll_no}")
+            self.add_feedback(f"\n<table>")
+            feedback_row = ""
+            feedback_row += f"<tr style=\"border:0px\"><th style=\"border: 0px\"></th>"
+            for player in self.active_players:
+                feedback_row += f"<th>&#128100;{player.name}</th>"
+            feedback_row += f"</tr>"
+            self.add_feedback(feedback_row)
 
+            feedback_row = f"<tr style=\"border: 0px\">"
             if roll == 1:
-                self.add_feedback("  - Oops! Rolled a 1. All players lose their unbanked money.")
+                feedback_row += f"<td style=\"border:0px;white-space:nowrap;\">&#127922; = <span style=\"color:red\"><b>{roll}</b></span></td>"
                 for player in self.active_players:
                     if player.unbanked_money > 0:
-                        self.add_feedback(f"    * {player.name} loses ${player.unbanked_money} of unbanked money.")
+                        feedback_row += f"<td style=\"color:red\">$0</td>"
+                    else:
+                        feedback_row += f"<td>$0</td>"
                     player.reset_unbanked_money()
-                break
+                feedback_row += f"</tr>"
+                self.add_feedback(feedback_row) 
+                self.add_feedback(f"</table>")
+                break                
 
+            feedback_row += f"<td style=\"border:0px;white-space:nowrap;\">&#127922; = <b>{roll}</b></td>"
+            for player in self.active_players.copy():
+                feedback_row += f"<td>${player.unbanked_money + roll}</td>"
+            feedback_row += f"</tr>"
+            self.add_feedback(feedback_row) 
+
+            feedback_row = f"<tr style=\"border:0px\"><td style=\"border: 0px\"><b>Action</b></td>"
             for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
-                    self.add_feedback(f"  - {player.name} now has ${player.unbanked_money} unbanked.")
                     decision = player.make_decision(self.get_game_state())
                     if decision == 'bank':
-                        self.add_feedback(f"    * {player.name} decides to bank ${player.unbanked_money}.")
+                        feedback_row += f"<td>&#128181; bank</td>"
                         player.bank_money()
                         player.has_banked_this_turn = True
                         self.players_banked_this_round.append(player.name)
                         self.active_players.remove(player)
+                    else:
+                        feedback_row += f"<td></td>"
+            feedback_row += f"</tr>"
+            self.add_feedback(feedback_row)
+            self.add_feedback(f"</table>")
 
             for player in self.active_players:
                 if player.banked_money + player.unbanked_money >= 100:
                     self.game_over = True
                     return
+
+            if len(self.active_players) == 0:
+                break
 
         for player in self.players:
             player.reset_turn()
@@ -135,16 +162,13 @@ def make_decision(self, game_state):
     def play_game(self, custom_rewards=None):
         self.add_feedback("# Greedy Pig Game")
         random.shuffle(self.players)
-        self.add_feedback("\n## Initial player order:")
-        for i, player in enumerate(self.players, 1):
-            self.add_feedback(f"{i}. {player.name}")
 
         while not self.game_over:
             self.active_players = list(self.players)
             self.play_round()
-            self.add_feedback("\n### End of Round Summary")
+            self.add_feedback("\n### End of Round")
             for player in self.players:
-                self.add_feedback(f"  - {player.name}: ${player.banked_money}")
+                self.add_feedback(f"  - &#128100;<b>{player.name}</b>: ${player.banked_money}")
 
         game_state = self.get_game_state()
         results = self.assign_points(game_state, custom_rewards)
@@ -202,7 +226,6 @@ def make_decision(self, game_state):
             "feedback": feedback
         }
     
-
     @classmethod
     def run_simulations(cls, num_simulations, league, custom_rewards=None):
         game = cls(league)
@@ -218,14 +241,15 @@ def make_decision(self, game_state):
             
             winner = max(results["points"], key=results["points"].get)
             total_wins[winner] += 1
-        print("TOTAL POINTS:",total_points)
-        print("NUM SIMULATIONS:",num_simulations)
-        print("TOTAL WINS:",total_wins)
+
+        print("TOTAL POINTS:", total_points)
+        print("NUM SIMULATIONS:", num_simulations)
+        print("TOTAL WINS:", total_wins)
 
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
-            "table":{
+            "table": {
                 "total_wins": total_wins
             }
         }
