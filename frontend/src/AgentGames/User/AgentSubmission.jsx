@@ -107,8 +107,10 @@ const AgentSubmission = () => {
         setMessageData(data.message);
       } else if (data.status === "error") {
         toast.error(data.message, { position: "top-center" });
+        setIsLoading(false);
       } else if (data.detail) {
         toast.error(data.detail, { position: "top-center" });
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error:', error);
