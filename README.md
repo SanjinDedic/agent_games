@@ -29,9 +29,6 @@ The backend is powered by FastAPI, handling game logic, user authentication, and
 
 For more information, check out the [Backend README](./backend/README.md).
 This update provides a comprehensive overview of the key technologies used in your backend, including SQLModel for ORM functionality. The badges are visually consistent and provide quick insights into the versions and tools used in your project. CopyRetryClaude can make mistakes. Please double-check responses. 3.5 SonnetSQLModel BadgeShow Image
-![Docker](https://img.shields.io/badge/Docker-20.10.21-2496ED.svg?logo=docker&logoColor=white)
-[![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
 The backend is powered by FastAPI, handling game logic, user authentication, and data management. It includes Docker integration for simulations and uses SQLite for data storage.
 
