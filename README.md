@@ -4,13 +4,26 @@ This project is a monorepo containing both the frontend and backend for the Agen
 
 ## Frontend
 
+![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
+![Redux](https://img.shields.io/badge/Redux-4.x-764ABC?logo=redux&logoColor=white)
+![React Router](https://img.shields.io/badge/React_Router-6.x-CA4245?logo=react-router&logoColor=white)
+![Monaco Editor](https://img.shields.io/badge/Monaco_Editor-0.30.x-00B3E6?logo=visual-studio-code&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-Authentication-000000?logo=json-web-tokens&logoColor=white)
+
+
 The frontend is built with React and Redux, offering a user interface for game submission, league management, and result viewing. It features code editing capabilities and responsive design.
 
 For more details, see the [Frontend README](./frontend/README.md).
 
 ## Backend
 
-![Python](https://img.shields.io/badge/python-3.12-blue.svg) [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml) [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.95.1-009688.svg?logo=fastapi)
+![Pydantic](https://img.shields.io/badge/Pydantic-1.10.7-E92063.svg?logo=pydantic)
+![SQLite](https://img.shields.io/badge/SQLite-3.39.4-003B57.svg?logo=sqlite)
+![Docker](https://img.shields.io/badge/Docker-20.10.21-2496ED.svg?logo=docker&logoColor=white)
+[![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
 The backend is powered by FastAPI, handling game logic, user authentication, and data management. It includes Docker integration for simulations and uses SQLite for data storage.
 
