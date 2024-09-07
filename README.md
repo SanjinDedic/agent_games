@@ -19,7 +19,7 @@ For more details, see the [Frontend README](./frontend/README.md).
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.95.1-009688.svg?logo=fastapi)
-![Pydantic](https://img.shields.io/badge/Pydantic-1.10.7-E92063.svg?logo=pydantic)
+![Pydantic](https://img.shields.io/badge/Pydantic-2.14.7-E92063.svg?logo=pydantic)
 ![SQLite](https://img.shields.io/badge/SQLite-3.39.4-003B57.svg?logo=sqlite)
 ![Docker](https://img.shields.io/badge/Docker-20.10.21-2496ED.svg?logo=docker&logoColor=white)
 [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml)
