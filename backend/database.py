@@ -45,7 +45,6 @@ def get_db_engine():
 def create_database(engine):
     SQLModel.metadata.create_all(engine)
 
-
 def create_league(session, league_name, league_game, league_folder):
     league = League(
         name=league_name,

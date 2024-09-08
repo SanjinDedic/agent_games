@@ -1,3 +1,11 @@
+coverage:
+  status:
+    project:
+      default:
+        paths:
+          - "backend/"
+    patch: off
+
 ignore:
   - "legacy_agents/*"
   - "test/*"
@@ -6,11 +14,3 @@ ignore:
   - "create_5_test_players.py"
   - "local_sim_api.py"
   - "standalone_game.py
-
-coverage:
-  status:
-    project:
-      default:
-        paths:
-          - "backend/"
-    patch: off
