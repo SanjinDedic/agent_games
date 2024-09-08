@@ -1,14 +1,18 @@
 import pytest
+import os
+import sys
+import json
+import subprocess
+from unittest.mock import patch, mock_open
 from fastapi.testclient import TestClient
 from sqlmodel import Session
-import sys
-import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from api import app
 from database import get_db_engine
 from tests.database_setup import setup_test_db
+from docker_simulation import run_docker_simulation, validate_docker_results, SIMULATION_RESULTS_SCHEMA
 
 os.environ["TESTING"] = "1"
 
@@ -47,107 +51,115 @@ def test_greedy_pig_docker_simulation(client, admin_token):
     )
     assert simulation_response.status_code == 200
     response_data = simulation_response.json()
-    print("RESPONSE DATA FOR GREEDY PIG:", response_data)
     assert "data" in response_data
     assert "total_points" in response_data["data"]
     assert "feedback" in response_data["data"]
 
-def test_forty_two_docker_simulation(client, admin_token):
-    simulation_response = client.post(
-        "/run_simulation",
-        json={"league_name": "forty_two_test", "num_simulations": 100},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-    assert simulation_response.status_code == 200
-    response_data = simulation_response.json()
-    assert "data" in response_data
-    assert "total_points" in response_data["data"]
-    assert "feedback" in response_data["data"]
+@patch('subprocess.run')
+def test_run_docker_simulation_success(mock_subprocess_run):
+    mock_subprocess_run.return_value.returncode = 0
+    mock_subprocess_run.return_value.stdout = "Docker simulation output"
+    
+    mock_results = {
+        "feedback": "Test feedback",
+        "simulation_results": {
+            "total_points": {"player1": 100, "player2": 200},
+            "num_simulations": 100,
+            "table": {"wins": {"player1": 40, "player2": 60}}
+        }
+    }
+    
+    with patch('builtins.open', mock_open(read_data=json.dumps(mock_results))):
+        success, results = run_docker_simulation("test_league", "test_game", "test_folder", None)
+    
+    assert success == True
+    assert results == mock_results
 
-def test_alpha_guess_docker_simulation(client, admin_token):
-    # Create a test league for Alpha Guess
-    league_response = client.post(
-        "/league_create",
-        json={"name": "alpha_guess_test", "game": "alpha_guess"},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-    assert league_response.status_code == 200
+@patch('subprocess.run')
+def test_run_docker_simulation_timeout(mock_subprocess_run):
+    mock_subprocess_run.side_effect = subprocess.TimeoutExpired(cmd="test", timeout=1)
+    
+    success, error_message = run_docker_simulation("test_league", "test_game", "test_folder", None)
+    
+    assert success == False
+    assert "Timeout occurred" in error_message
 
-    # Create and assign a test team
-    team_response = client.post(
-        "/team_create",
-        json={"name": "alpha_guess_team", "password": "testpass", "school_name": "Test School"},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-    assert team_response.status_code == 200
+@patch('subprocess.run')
+def test_run_docker_simulation_subprocess_error(mock_subprocess_run):
+    mock_subprocess_run.return_value.returncode = 1
+    mock_subprocess_run.return_value.stderr = "Subprocess error"
+    
+    success, error_message = run_docker_simulation("test_league", "test_game", "test_folder", None)
+    
+    assert success == False
+    assert "An error occurred while running the docker container" in error_message
 
-    login_response = client.post("/team_login", json={"name": "alpha_guess_team", "password": "testpass"})
-    assert login_response.status_code == 200
-    team_token = login_response.json()["data"]["access_token"]
+@patch('subprocess.run')
+def test_run_docker_simulation_json_error(mock_subprocess_run):
+    mock_subprocess_run.return_value.returncode = 0
+    
+    with patch('builtins.open', mock_open(read_data="Invalid JSON")):
+        success, error_message = run_docker_simulation("test_league", "test_game", "test_folder", None)
+    
+    assert success == False
+    assert "An error occurred while parsing the simulation results" in error_message
 
-    assign_response = client.post(
-        "/league_assign",
-        json={"name": "alpha_guess_test"},
-        headers={"Authorization": f"Bearer {team_token}"}
-    )
-    assert assign_response.status_code == 200
+@patch('subprocess.run')
+def test_run_docker_simulation_file_not_found(mock_subprocess_run):
+    mock_subprocess_run.return_value.returncode = 0
+    
+    with patch('builtins.open', side_effect=FileNotFoundError):
+        success, error_message = run_docker_simulation("test_league", "test_game", "test_folder", None)
+    
+    assert success == False
+    assert "Docker results file not found" in error_message
 
-    # Submit a custom player for Alpha Guess
-    code = """
-from games.alpha_guess.player import Player
-import random
+@patch('subprocess.run')
+def test_run_docker_simulation_invalid_results(mock_subprocess_run):
+    mock_subprocess_run.return_value.returncode = 0
+    
+    invalid_results = {
+        "feedback": "Test feedback",
+        "simulation_results": {
+            "total_points": {"player1": 100, "player2": 200},
+            "num_simulations": 100,
+            # Missing "table" key
+        }
+    }
+    
+    with patch('builtins.open', mock_open(read_data=json.dumps(invalid_results))):
+        success, error_message = run_docker_simulation("test_league", "test_game", "test_folder", None)
+    
+    assert success == False
+    assert "Invalid results format" in error_message
 
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return random.choice('abcdefghijklmnopqrstuvwxyz')
-"""
-    submission_response = client.post(
-        "/submit_agent",
-        json={"code": code},
-        headers={"Authorization": f"Bearer {team_token}"}
-    )
-    assert submission_response.status_code == 200
+def test_validate_docker_results():
+    valid_results = {
+        "feedback": "Test feedback",
+        "simulation_results": {
+            "total_points": {"player1": 100, "player2": 200},
+            "num_simulations": 100,
+            "table": {"wins": {"player1": 40, "player2": 60}}
+        }
+    }
+    assert validate_docker_results(valid_results) == True
 
-    # Run the simulation
-    simulation_response = client.post(
-        "/run_simulation",
-        json={"league_name": "alpha_guess_test", "num_simulations": 100},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-    assert simulation_response.status_code == 200
-    response_data = simulation_response.json()
-    assert "data" in response_data
-    assert "total_points" in response_data["data"]
-    assert "alpha_guess_team" in response_data["data"]["total_points"]
-    assert 0 <= response_data["data"]["total_points"]["alpha_guess_team"] <= 10000
-    assert "feedback" in response_data["data"]
+    invalid_results = {
+        "feedback": "Test feedback",
+        "simulation_results": {
+            "total_points": {"player1": 100, "player2": 200},
+            "num_simulations": 100,
+            # Missing "table" key
+        }
+    }
+    assert validate_docker_results(invalid_results) == False
 
-    # Clean up
-    client.post("/delete_team", json={"name": "alpha_guess_team"}, headers={"Authorization": f"Bearer {admin_token}"})
+def test_simulation_results_schema():
+    assert "feedback" in SIMULATION_RESULTS_SCHEMA["properties"]
+    assert "simulation_results" in SIMULATION_RESULTS_SCHEMA["properties"]
+    assert "total_points" in SIMULATION_RESULTS_SCHEMA["properties"]["simulation_results"]["properties"]
+    assert "num_simulations" in SIMULATION_RESULTS_SCHEMA["properties"]["simulation_results"]["properties"]
+    assert "table" in SIMULATION_RESULTS_SCHEMA["properties"]["simulation_results"]["properties"]
 
-def test_compare_docker_and_non_docker_simulations(client, admin_token):
-    docker_response = client.post(
-        "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": True},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-    non_docker_response = client.post(
-        "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
-        headers={"Authorization": f"Bearer {admin_token}"}
-    )
-
-    assert docker_response.status_code == 200
-    assert non_docker_response.status_code == 200
-
-    docker_data = docker_response.json()["data"]
-    non_docker_data = non_docker_response.json()["data"]
-
-    assert set(docker_data["total_points"].keys()) == set(non_docker_data["total_points"].keys())
-    assert docker_data["num_simulations"] == non_docker_data["num_simulations"]
-
-    assert "feedback" in docker_data
-    assert isinstance(docker_data["feedback"], str)
-    assert len(docker_data["feedback"]) > 0
-
-    assert "feedback" not in non_docker_data
+if __name__ == "__main__":
+    pytest.main()

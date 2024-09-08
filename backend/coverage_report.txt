@@ -1,0 +1,60 @@
+Name                                                                   Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------------------------
+__init__.py                                                                0      0   100%
+api.py                                                                   215     50    77%   33, 52, 61, 94, 106, 110, 116, 120, 135-137, 143, 153, 159, 175-177, 186-188, 197, 202-204, 210, 224-226, 236-237, 247-248, 258-260, 265-273, 285-286, 307-316
+auth.py                                                                   39      4    90%   34, 45-47
+config.py                                                                 17      2    88%   21-22
+database.py                                                              263     33    87%   46, 91, 142, 150, 170-172, 183, 198, 204, 218, 244-245, 290, 302, 335, 362, 365, 378, 389, 403, 407, 421-434
+docker_simulation.py                                                      50     20    60%   52-55, 61-62, 76-84, 89-93
+games/__init__.py                                                          0      0   100%
+games/alpha_guess/alpha_guess.py                                          64     17    73%   44, 72-75, 82-97
+games/alpha_guess/leagues/admin/alpha_guess_test/alpha_guess_team.py       5      0   100%
+games/alpha_guess/player.py                                                5      1    80%   6
+games/base_game.py                                                        57      7    88%   33-34, 63, 67, 74, 78, 82
+games/forty_two/__init__.py                                                0      0   100%
+games/forty_two/forty_two.py                                              89      6    93%   64, 136, 151-154
+games/forty_two/leagues/admin/comp_test/aggressive_player.py               6      0   100%
+games/forty_two/leagues/admin/comp_test/conservative_player.py             6      0   100%
+games/forty_two/leagues/admin/comp_test/random_player.py                   5      0   100%
+games/forty_two/leagues/admin/comp_test/sample_player.py                   6      0   100%
+games/forty_two/player.py                                                  5      1    80%   6
+games/game_factory.py                                                     16      1    94%   16
+games/greedy_pig/__init__.py                                               0      0   100%
+games/greedy_pig/greedy_pig.py                                           145      6    96%   81, 198, 221-224
+games/greedy_pig/leagues/admin/comp_test/AlwaysBank.py                     4      0   100%
+games/greedy_pig/leagues/admin/comp_test/Bank5.py                          6      0   100%
+games/greedy_pig/leagues/admin/comp_test/Bank10.py                         6      0   100%
+games/greedy_pig/leagues/admin/comp_test/Bank15.py                         6      0   100%
+games/greedy_pig/leagues/admin/comp_test/BankRoll3.py                      6      0   100%
+games/greedy_pig/leagues/test_league/AlwaysBank.py                         4      0   100%
+games/greedy_pig/leagues/test_league/Bank5.py                              6      0   100%
+games/greedy_pig/leagues/test_league/Bank15.py                             6      0   100%
+games/greedy_pig/leagues/test_league/BankRoll3.py                          6      0   100%
+games/greedy_pig/leagues/test_league/BankRoll4.py                          6      0   100%
+games/greedy_pig/player.py                                                30     10    67%   25-35, 39
+games/prisoners_dilemma/leagues/test_league/cooperator.py                  4      0   100%
+games/prisoners_dilemma/leagues/test_league/defector.py                    8      0   100%
+games/prisoners_dilemma/leagues/test_league/tit_for_tat.py                 7      0   100%
+games/prisoners_dilemma/player.py                                         10      1    90%   10
+games/prisoners_dilemma/prisoners_dilemma.py                              89      0   100%
+models_api.py                                                             60      0   100%
+models_db.py                                                              67      1    99%   34
+stress_tests/manual_stress_test.py                                        27      3    89%   7-9
+tests/__init__.py                                                          0      0   100%
+tests/conftest.py                                                          7      0   100%
+tests/database_setup.py                                                   62      2    97%   134-135
+tests/test_admin.py                                                       71      1    99%   29
+tests/test_docker_sim.py                                                  82      1    99%   29
+tests/test_file_safety.py                                                 12      0   100%
+tests/test_forty_two.py                                                   55      0   100%
+tests/test_game_instructions.py                                           60      0   100%
+tests/test_game_sims.py                                                   83      1    99%   29
+tests/test_greedy_pig.py                                                  71      0   100%
+tests/test_json_teams.py                                                  51      0   100%
+tests/test_league.py                                                     197      3    98%   33, 203-204
+tests/test_prisoners_dilemma.py                                          122      1    99%   148
+tests/test_team.py                                                       143      1    99%   30
+utils.py                                                                  29      1    97%   46
+validation.py                                                             84     17    80%   38-39, 58-60, 65-66, 91-96, 102-104, 111-112
+----------------------------------------------------------------------------------------------------
+TOTAL                                                                   2480    191    92%
