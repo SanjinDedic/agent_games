@@ -7,10 +7,6 @@ coverage:
     patch: off
 
 ignore:
-  - "legacy_agents/*"
-  - "test/*"
-  - "local_sim.py"
-  - "production_database_setup.py"
-  - "create_5_test_players.py"
-  - "local_sim_api.py"
-  - "standalone_game.py
+  - "backend/legacy_agents/*"
+  - "backend/test/*"
+  - "backend/production_database_setup.py"
