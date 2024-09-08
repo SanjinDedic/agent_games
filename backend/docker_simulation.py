@@ -38,6 +38,7 @@ SIMULATION_RESULTS_SCHEMA = {
     "additionalProperties": False
 }
 
+
 def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT, feedback_required=False):
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
     command = ["docker", "run", "--rm", "-v", f"{ROOT_DIR}:/agent_games", DOCKER_REPO, 
