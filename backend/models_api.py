@@ -35,7 +35,6 @@ class TeamSignup(BaseModel):
     score: int = 0
     color: str = "rgb(171,239,177)"
 
-
 class TeamLogin(BaseModel):
     name: str
     password: str
