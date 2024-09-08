@@ -18,7 +18,7 @@ For more details, see the [Frontend README](./frontend/README.md).
 ## Backend
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.95.1-009688.svg?logo=fastapi)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi)
 ![Pydantic](https://img.shields.io/badge/Pydantic-2.14.5-E92063.svg?logo=pydantic)
 ![SQLModel](https://img.shields.io/badge/SQLModel-0.0.18-3776AB.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAADASURBVHgBrVMLDcMgEL0yABNlJmACJmBiTMAETMBEwERMgAkmYMIc0KR3FFI+veSSkst731140aqq0qRuDl5k6WjRGONwzNh1eTgHGwqGctDudf6gtfaVS14QzP2HE1+w8M1UBHFhENiNOcBXnOEBxA5QpgT8aqxRkUcgiNNRPwiaLYQcHaQCc9Zn1HYVDeQMW/qpf3ifELiuXBuuGBYBHGTeHvJwwZSDeaA2kTHzRhAIcgH5b+6xgvrLGPq3F0kVB6vV2WVYY7lLAAAAAElFTkSuQmCC)
 ![Docker](https://img.shields.io/badge/Docker-20.10.21-2496ED.svg?logo=docker&logoColor=white)
