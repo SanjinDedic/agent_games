@@ -90,13 +90,13 @@ def make_decision(self, game_state):
 
     def color_decision(self, decision):
         if decision == 'collude':
-            return '<span style="color: green;">collude</span>'
+            return '<span style="color: green;"><b>collude</b></span>'
         elif decision == 'defect':
-            return '<span style="color: red;">defect</span>'
+            return '<span style="color: red;"><b>defect</b></span>'
         return decision
 
     def play_pairing(self, player1, player2):
-        self.add_feedback(f"\n## Pairing: {player1.name} vs {player2.name}")
+        self.add_feedback(f"\n## Pairing: &#128100;{player1.name} vs &#128100;{player2.name}")
         for round_number in range(1, self.rounds_per_pairing + 1):
             self.add_feedback(f"\n### Round {round_number}")
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
@@ -110,8 +110,11 @@ def make_decision(self, game_state):
 
             self.update_scores(player1, decision1, player2, decision2)
 
-            self.add_feedback(f"  - {player1.name}: {self.color_decision(decision1)}, {player2.name}: {self.color_decision(decision2)}")
-            self.add_feedback(f"    * {player1.name} score: {self.scores[player1.name]}, {player2.name} score: {self.scores[player2.name]}")
+            self.add_feedback(f"<table>")
+            self.add_feedback(f"<tr style=\"border:0px\"><th style=\"border: 0px\"></th><th>&#128100;{player1.name}</th><th>&#128100;{player2.name}</th></tr>")
+            self.add_feedback(f"<tr style=\"border:0px\"><td style=\"border:0px;white-space:nowrap;\"><b>action</b></td><td>{self.color_decision(decision1)}</td><td>{self.color_decision(decision2)}</td></tr>")
+            self.add_feedback(f"<tr style=\"border:0px\"><td style=\"border:0px;white-space:nowrap;\"><b>score</b></td><td>{self.scores[player1.name]}</td><td>{self.scores[player2.name]}</td></tr>")
+            self.add_feedback(f"</table>")
             
             # Add player feedback
             self.add_player_feedback(player1)
@@ -121,7 +124,7 @@ def make_decision(self, game_state):
         if player.feedback:
             self.add_feedback(f"\n  - {player.name}'s feedback:")
             for message in player.feedback:
-                self.add_feedback(f"    <span style='color: blue;'>* {message}</span>")
+                self.add_feedback(f"    * <span style='color: blue;'>{message}</span>")
             player.feedback = []  # Clear the feedback after adding it
 
     def update_scores(self, player1, decision1, player2, decision2):
@@ -150,9 +153,9 @@ def make_decision(self, game_state):
             }
 
         self.add_feedback("# Prisoner's Dilemma Game")
-        self.add_feedback("\n## Players:")
+        self.add_feedback("\n### Players:")
         for player in self.players:
-            self.add_feedback(f"  - {player.name}")
+            self.add_feedback(f"  - &#128100;{player.name}")
 
         player_pairs = list(itertools.combinations(self.players, 2))
         random.shuffle(player_pairs)
@@ -162,7 +165,7 @@ def make_decision(self, game_state):
 
         self.add_feedback("\n## Final Scores:")
         for player, score in self.scores.items():
-            self.add_feedback(f"  - {player}: {score}")
+            self.add_feedback(f"  - &#128100;{player}: <b>{score}</b>")
 
         return {"points": self.scores, "score_aggregate": self.scores}
 
