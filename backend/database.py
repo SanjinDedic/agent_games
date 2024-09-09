@@ -15,7 +15,6 @@ from auth import (
     encode_id
 )
 
-# Define a constant for the timezone
 AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
 
 class LeagueNotFoundError(Exception):
