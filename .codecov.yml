@@ -10,3 +10,4 @@ ignore:
   - "backend/legacy_agents/*"
   - "backend/test/*"
   - "backend/production_database_setup.py"
+  - "backend/dockerfile_script.py"
