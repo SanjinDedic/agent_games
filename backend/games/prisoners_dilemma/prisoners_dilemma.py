@@ -98,7 +98,6 @@ def make_decision(self, game_state):
     def play_pairing(self, player1, player2):
         self.add_feedback(f"\n## Pairing: &#128100;{player1.name} vs &#128100;{player2.name}")
         for round_number in range(1, self.rounds_per_pairing + 1):
-            self.add_feedback(f"\n### Round {round_number}")
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
 
@@ -111,7 +110,7 @@ def make_decision(self, game_state):
             self.update_scores(player1, decision1, player2, decision2)
 
             self.add_feedback(f"<table>")
-            self.add_feedback(f"<tr style=\"border:0px\"><th style=\"border: 0px\"></th><th>&#128100;{player1.name}</th><th>&#128100;{player2.name}</th></tr>")
+            self.add_feedback(f"<tr style=\"border:0px\"><th style=\"border: 0px\"><u>Round {round_number}</u></th><th>&#128100;{player1.name}</th><th>&#128100;{player2.name}</th></tr>")
             self.add_feedback(f"<tr style=\"border:0px\"><td style=\"border:0px;white-space:nowrap;\"><b>action</b></td><td>{self.color_decision(decision1)}</td><td>{self.color_decision(decision2)}</td></tr>")
             self.add_feedback(f"<tr style=\"border:0px\"><td style=\"border:0px;white-space:nowrap;\"><b>score</b></td><td>{self.scores[player1.name]}</td><td>{self.scores[player2.name]}</td></tr>")
             self.add_feedback(f"</table>")
@@ -122,9 +121,9 @@ def make_decision(self, game_state):
 
     def add_player_feedback(self, player):
         if player.feedback:
-            self.add_feedback(f"\n  - {player.name}'s feedback:")
+            self.add_feedback(f"\n<b>{player.name}'s feedback: </b>")
             for message in player.feedback:
-                self.add_feedback(f"    * <span style='color: blue;'>{message}</span>")
+                self.add_feedback(f"<span style='color: blue;'>{message}</span>")
             player.feedback = []  # Clear the feedback after adding it
 
     def update_scores(self, player1, decision1, player2, decision2):

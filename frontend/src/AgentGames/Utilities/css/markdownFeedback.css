@@ -4,6 +4,8 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   margin-top: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
 }
 
 .feedback-header {
@@ -11,14 +13,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background-color: #007bff;
-  color: #ffffff;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #e1e4e8;
   cursor: pointer;
 }
 
 .feedback-header h3 {
   margin: 0;
   font-size: 18px;
+  color: #24292e;
 }
 
 .expand-icon {
@@ -26,7 +29,7 @@
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 6px solid #ffffff;
+  border-top: 6px solid #586069;
   transition: transform 0.3s ease;
 }
 
@@ -35,11 +38,11 @@
 }
 
 .feedback-content {
-  padding: 15px;
-  background-color: #f8f9fa;
-  color: #000000;
+  padding: 20px;
+  background-color: #ffffff;
+  color: #24292e;
   text-align: left;
-  max-height: 250px; /* Adjust this value to show approximately 10 lines */
+  max-height: 300px;
   overflow-y: auto;
   transition: max-height 0.3s ease;
 }
@@ -52,18 +55,97 @@
 .feedback-content h1,
 .feedback-content h2,
 .feedback-content h3,
+.feedback-content h4,
+.feedback-content h5,
+.feedback-content h6,
 .feedback-content ul,
 .feedback-content ol {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
-.feedback-content h1,
-.feedback-content h2,
-.feedback-content h3 {
-  margin-top: 20px;
-}
+.feedback-content h1 { font-size: 2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+.feedback-content h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+.feedback-content h3 { font-size: 1.25em; }
+.feedback-content h4 { font-size: 1em; }
+.feedback-content h5 { font-size: 0.875em; }
+.feedback-content h6 { font-size: 0.85em; color: #6a737d; }
 
 .feedback-content ul,
 .feedback-content ol {
-  padding-left: 20px;
+  padding-left: 2em;
 }
+
+.feedback-content ul {
+  list-style-type: disc;
+}
+
+.feedback-content ol {
+  list-style-type: decimal;
+}
+
+.feedback-content li {
+  margin-bottom: 8px;
+}
+
+.feedback-content code {
+  background-color: #f6f8fa;
+  border-radius: 3px;
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 85%;
+  padding: 0.2em 0.4em;
+}
+
+.feedback-content pre {
+  background-color: #f6f8fa;
+  border-radius: 3px;
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 85%;
+  line-height: 1.45;
+  overflow: auto;
+  padding: 16px;
+}
+
+.feedback-content blockquote {
+  border-left: 0.25em solid #dfe2e5;
+  color: #6a737d;
+  padding: 0 1em;
+  margin: 0 0 16px 0;
+}
+
+.feedback-content a {
+  color: #0366d6;
+  text-decoration: none;
+}
+
+.feedback-content a:hover {
+  text-decoration: underline;
+}
+
+.feedback-content table {
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  width: 100%;
+  font-size: 0.9em; /* Decreased font size for entire table */
+}
+
+.feedback-content table th,
+.feedback-content table td {
+  border: 1px solid #dfe2e5;
+  padding: 6px 13px;
+}
+
+.feedback-content table th {
+  font-weight: 600; /* Make headers slightly bolder */
+}
+
+.feedback-content table tr:nth-child(2n) {
+  background-color: #f6f8fa;
+}
+
+/* Additional style for table captions if needed */
+.feedback-content table caption {
+  font-size: 0.9em;
+  margin-bottom: 8px;
+  color: #6a737d;
+}
+

@@ -842,3 +842,120 @@
 2024-09-09 23:52:14,561 - __main__ - DEBUG - Simulation completed in 0.08 seconds
 2024-09-09 23:52:14,562 - __main__ - DEBUG - Writing results to file
 2024-09-09 23:52:14,562 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:42:38,995 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:42:38,995 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:42:38,995 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:42:39,007 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:42:39,007 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:42:39,009 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:42:39,028 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:42:39,028 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:42:39,029 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:45:25,754 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:45:25,754 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:45:25,754 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:45:25,771 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:45:25,772 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:45:25,774 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:45:25,797 - __main__ - DEBUG - Simulation completed in 0.03 seconds
+2024-09-10 03:45:25,797 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:45:25,798 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:47:18,151 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:47:18,151 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:47:18,151 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:47:18,163 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:47:18,163 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:47:18,165 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:47:18,183 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:47:18,183 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:47:18,184 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:48:55,370 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:48:55,370 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:48:55,370 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:48:55,383 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:48:55,383 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:48:55,385 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:48:55,404 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:48:55,404 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:48:55,404 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:49:18,176 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:49:18,176 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:49:18,176 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:49:18,190 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:49:18,190 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:49:18,191 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:49:18,210 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:49:18,210 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:49:18,210 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:49:52,614 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:49:52,614 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:49:52,614 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:49:52,627 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:49:52,627 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:49:52,629 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:49:52,648 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:49:52,648 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:49:52,648 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:51:11,833 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:51:11,833 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:51:11,834 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:51:11,846 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:51:11,846 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:51:11,848 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:51:11,865 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:51:11,865 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:51:11,866 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:51:51,777 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:51:51,777 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:51:51,777 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:51:51,790 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:51:51,790 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:51:51,792 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:51:51,810 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:51:51,810 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:51:51,811 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:52:41,595 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:52:41,595 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:52:41,595 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:52:41,609 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:52:41,609 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:52:41,610 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:52:41,629 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:52:41,630 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:52:41,630 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:53:17,283 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:53:17,283 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:53:17,283 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:53:17,295 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:53:17,295 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:53:17,297 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:53:17,315 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:53:17,315 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:53:17,316 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:53:51,500 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:53:51,500 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:53:51,500 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:53:51,513 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:53:51,513 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:53:51,514 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:53:51,533 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:53:51,533 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:53:51,534 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:54:23,047 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:54:23,047 - __main__ - DEBUG - Arguments: test_league, prisoners_dilemma, leagues/test_league, 6, None, True
+2024-09-10 03:54:23,047 - __main__ - DEBUG - Folder path: /agent_games/games/prisoners_dilemma/leagues/test_league
+2024-09-10 03:54:23,060 - __main__ - DEBUG - Game class: <class 'games.prisoners_dilemma.prisoners_dilemma.PrisonersDilemmaGame'>
+2024-09-10 03:54:23,060 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:54:23,062 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:54:23,084 - __main__ - DEBUG - Simulation completed in 0.02 seconds
+2024-09-10 03:54:23,084 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:54:23,085 - __main__ - DEBUG - Docker simulation completed
+2024-09-10 03:55:16,251 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-10 03:55:16,251 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-10 03:55:16,251 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-10 03:55:16,263 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-10 03:55:16,263 - __main__ - DEBUG - Running single game with feedback
+2024-09-10 03:55:16,265 - __main__ - DEBUG - Running multiple simulations
+2024-09-10 03:55:16,336 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-10 03:55:16,336 - __main__ - DEBUG - Writing results to file
+2024-09-10 03:55:16,336 - __main__ - DEBUG - Docker simulation completed
