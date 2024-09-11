@@ -1,0 +1,61 @@
+Name                                                                   Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------------------------
+__init__.py                                                                0      0   100%
+api.py                                                                   217     47    78%   33, 52, 61, 94, 110, 119, 123, 138-140, 146, 156, 162, 178-180, 189-191, 200, 205-207, 213, 227-229, 239-240, 250-251, 261, 268-276, 288-289, 310-319
+auth.py                                                                   39      4    90%   34, 45-47
+config.py                                                                 17      2    88%   21-22
+database.py                                                              263     32    88%   45, 89, 140, 148, 168-170, 181, 196, 202, 216, 242-243, 288, 333, 360, 363, 376, 387, 401, 405, 419-432
+docker_simulation.py                                                      50      0   100%
+games/__init__.py                                                          0      0   100%
+games/alpha_guess/alpha_guess.py                                          64     17    73%   44, 72-75, 82-97
+games/alpha_guess/leagues/admin/alpha_guess_test/alpha_guess_team.py       5      0   100%
+games/alpha_guess/player.py                                                5      1    80%   6
+games/base_game.py                                                        57      7    88%   33-34, 63, 67, 74, 78, 82
+games/forty_two/__init__.py                                                0      0   100%
+games/forty_two/forty_two.py                                              89      6    93%   64, 136, 151-154
+games/forty_two/leagues/admin/comp_test/aggressive_player.py               6      0   100%
+games/forty_two/leagues/admin/comp_test/conservative_player.py             6      0   100%
+games/forty_two/leagues/admin/comp_test/random_player.py                   5      0   100%
+games/forty_two/leagues/admin/comp_test/sample_player.py                   6      0   100%
+games/forty_two/player.py                                                  5      1    80%   6
+games/game_factory.py                                                     16      1    94%   16
+games/greedy_pig/__init__.py                                               0      0   100%
+games/greedy_pig/greedy_pig.py                                           145      6    96%   81, 198, 221-224
+games/greedy_pig/leagues/admin/comp_test/AlwaysBank.py                     4      0   100%
+games/greedy_pig/leagues/admin/comp_test/Bank5.py                          6      0   100%
+games/greedy_pig/leagues/admin/comp_test/Bank10.py                         6      0   100%
+games/greedy_pig/leagues/admin/comp_test/Bank15.py                         6      0   100%
+games/greedy_pig/leagues/admin/comp_test/BankRoll3.py                      6      0   100%
+games/greedy_pig/leagues/test_league/AlwaysBank.py                         4      0   100%
+games/greedy_pig/leagues/test_league/Bank5.py                              6      0   100%
+games/greedy_pig/leagues/test_league/Bank15.py                             6      0   100%
+games/greedy_pig/leagues/test_league/BankRoll3.py                          6      0   100%
+games/greedy_pig/leagues/test_league/BankRoll4.py                          6      0   100%
+games/greedy_pig/player.py                                                30     10    67%   25-35, 39
+games/prisoners_dilemma/leagues/test_league/cooperator.py                  4      0   100%
+games/prisoners_dilemma/leagues/test_league/defector.py                    8      0   100%
+games/prisoners_dilemma/leagues/test_league/tit_for_tat.py                 7      0   100%
+games/prisoners_dilemma/player.py                                         10      1    90%   10
+games/prisoners_dilemma/prisoners_dilemma.py                              91      0   100%
+models_api.py                                                             60      0   100%
+models_db.py                                                              67      1    99%   34
+stress_tests/manual_stress_test.py                                        27      3    89%   7-9
+tests/__init__.py                                                          0      0   100%
+tests/conftest.py                                                          7      0   100%
+tests/database_setup.py                                                   62      2    97%   134-135
+tests/test_admin.py                                                       71      1    99%   29
+tests/test_docker_sim.py                                                 100      2    98%   33, 165
+tests/test_file_safety.py                                                 12      0   100%
+tests/test_forty_two.py                                                   55      0   100%
+tests/test_game_instructions.py                                           60      0   100%
+tests/test_game_sims.py                                                   83      1    99%   29
+tests/test_greedy_pig.py                                                  71      0   100%
+tests/test_json_teams.py                                                  51      0   100%
+tests/test_league.py                                                     232      9    96%   33, 132-137, 203-204
+tests/test_prisoners_dilemma.py                                          122      1    99%   148
+tests/test_team.py                                                       162      1    99%   31
+tests/test_validation.py                                                  77      1    99%   143
+utils.py                                                                  29      1    97%   46
+validation.py                                                             84      8    90%   58-60, 65-66, 94, 111-112
+----------------------------------------------------------------------------------------------------
+TOTAL                                                                   2633    166    94%
