@@ -328,3 +328,76 @@ def test_get_published_results_for_league(client, db_session, admin_token):
 
     simulation_result = db_session.exec(select(SimulationResult).where(SimulationResult.id == simulation_id)).one()
     assert simulation_result.published == True
+
+
+def test_get_published_result(client, db_session, admin_token):
+    # First, run a simulation and publish the results
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 10},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    simulation_id = simulation_response.json()["data"]["id"]
+
+    publish_response = client.post(
+        "/publish_results",
+        json={"league_name": "comp_test", "id": simulation_id},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert publish_response.status_code == 200
+
+    # Now test getting the published result
+    response = client.post(
+        "/get_published_results_for_league",
+        json={"name": "comp_test"}
+    )
+    assert response.status_code == 200
+    result = response.json()["data"]
+    assert result is not None
+    assert "league_name" in result
+    assert "total_points" in result
+    assert "table" in result
+    assert "num_simulations" in result
+    assert "active" in result
+    assert "rewards" in result
+
+    # Test getting published result for a non-existent league
+    response = client.post(
+        "/get_published_results_for_league",
+        json={"name": "non_existent_league"}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"] is None
+
+
+from datetime import datetime, timedelta
+import database
+
+def test_update_expiry_date(client, db_session, admin_token):
+    league_name = "comp_test"
+    new_expiry_date = datetime.now() + timedelta(days=30)
+    
+    response = client.post(
+        "/update_expiry_date",
+        json={"date": new_expiry_date.isoformat(), "league": league_name},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert f"Expiry date for league '{league_name}' updated successfully" in response.json()["message"]
+
+    # Verify the update in the database
+    league = database.get_league(db_session, league_name)
+    assert abs(league.expiry_date - new_expiry_date) < timedelta(seconds=1)
+
+    # Test updating expiry date for a non-existent league
+    non_existent_league = "non_existent_league"
+    response = client.post(
+        "/update_expiry_date",
+        json={"date": new_expiry_date.isoformat(), "league": non_existent_league},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert f"League '{non_existent_league}' not found" in response.json()["message"]

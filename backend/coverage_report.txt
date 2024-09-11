@@ -1,10 +1,10 @@
 Name                                                                   Stmts   Miss  Cover   Missing
 ----------------------------------------------------------------------------------------------------
 __init__.py                                                                0      0   100%
-api.py                                                                   215     50    77%   33, 52, 61, 94, 106, 110, 116, 120, 135-137, 143, 153, 159, 175-177, 186-188, 197, 202-204, 210, 224-226, 236-237, 247-248, 258-260, 265-273, 285-286, 307-316
+api.py                                                                   217     47    78%   33, 52, 61, 94, 110, 119, 123, 138-140, 146, 156, 162, 178-180, 189-191, 200, 205-207, 213, 227-229, 239-240, 250-251, 261, 268-276, 288-289, 310-319
 auth.py                                                                   39      4    90%   34, 45-47
 config.py                                                                 17      2    88%   21-22
-database.py                                                              263     33    87%   45, 89, 140, 148, 168-170, 181, 196, 202, 216, 242-243, 288, 300, 333, 360, 363, 376, 387, 401, 405, 419-432
+database.py                                                              263     32    88%   45, 89, 140, 148, 168-170, 181, 196, 202, 216, 242-243, 288, 333, 360, 363, 376, 387, 401, 405, 419-432
 docker_simulation.py                                                      50      0   100%
 games/__init__.py                                                          0      0   100%
 games/alpha_guess/alpha_guess.py                                          64     17    73%   44, 72-75, 82-97
@@ -36,7 +36,7 @@ games/prisoners_dilemma/leagues/test_league/cooperator.py                  4    
 games/prisoners_dilemma/leagues/test_league/defector.py                    8      0   100%
 games/prisoners_dilemma/leagues/test_league/tit_for_tat.py                 7      0   100%
 games/prisoners_dilemma/player.py                                         10      1    90%   10
-games/prisoners_dilemma/prisoners_dilemma.py                              89      0   100%
+games/prisoners_dilemma/prisoners_dilemma.py                              91      0   100%
 models_api.py                                                             60      0   100%
 models_db.py                                                              67      1    99%   34
 stress_tests/manual_stress_test.py                                        27      3    89%   7-9
@@ -51,11 +51,11 @@ tests/test_game_instructions.py                                           60    
 tests/test_game_sims.py                                                   83      1    99%   29
 tests/test_greedy_pig.py                                                  71      0   100%
 tests/test_json_teams.py                                                  51      0   100%
-tests/test_league.py                                                     197      3    98%   33, 203-204
+tests/test_league.py                                                     232      9    96%   33, 132-137, 203-204
 tests/test_prisoners_dilemma.py                                          122      1    99%   148
-tests/test_team.py                                                       143      1    99%   30
+tests/test_team.py                                                       162      1    99%   31
 tests/test_validation.py                                                  77      1    99%   143
 utils.py                                                                  29      1    97%   46
 validation.py                                                             84      8    90%   58-60, 65-66, 94, 111-112
 ----------------------------------------------------------------------------------------------------
-TOTAL                                                                   2575    164    94%
+TOTAL                                                                   2633    166    94%

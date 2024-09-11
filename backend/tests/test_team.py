@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from config import ROOT_DIR
 from api import app
+import database
 from database import get_db_engine
 from models_db import Team, Submission
 from tests.database_setup import setup_test_db
@@ -210,3 +211,49 @@ def test_league_assign(client, team_token):
     )
     assert response.status_code == 200
     assert response.json() == {"status": "success", "message": f"Team '{team_name}' assigned to league '{league_name}'", "data": None}
+
+def test_submit_agent_errors(client, db_session, team_token):
+    # Test submitting unsafe code
+    unsafe_code = """
+import os
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        os.system('rm -rf /')
+        return 'continue'
+    """
+    response = client.post(
+        "/submit_agent",
+        json={"code": unsafe_code},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "Agent code is not safe" in response.json()["message"]
+
+    # Test submitting when team is assigned to the 'unassigned' league
+    team = database.get_team(db_session, "BrunswickSC1")
+    unassigned_league = database.get_league(db_session, "unassigned")
+    team.league_id = unassigned_league.id
+    db_session.commit()
+
+    safe_code = """
+from games.greedy_pig.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return 'continue'
+    """
+    response = client.post(
+        "/submit_agent",
+        json={"code": safe_code},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "Team is not assigned to a valid league" in response.json()["message"]
+
+    # Reassign the team to a league for other tests
+    league = database.get_league(db_session, "comp_test")
+    team.league_id = league.id
+    db_session.commit()

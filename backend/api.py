@@ -109,6 +109,9 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
     if not team.league:
         return ErrorResponseModel(status="error", message="Team is not assigned to a league.")
 
+    if team.league.name == "unassigned":
+        return ErrorResponseModel(status="error", message="Team is not assigned to a valid league.")
+
     try:
         if team.league.folder:
             league_folder = team.league.folder.lstrip('/')
