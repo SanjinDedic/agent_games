@@ -33,6 +33,13 @@ def client(db_session):
     yield client
     app.dependency_overrides.clear()
 
+
+@pytest.fixture(scope="module")
+def admin_token(client):
+    login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
+    assert login_response.status_code == 200
+    return login_response.json()["data"]["access_token"]
+
 def test_team_login(client):
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
     assert response.status_code == 200
@@ -93,3 +100,25 @@ def test_admin_login_exception(client, mocker):
         "message": "Database connection error",
         "data": None
     }
+
+
+def test_run_simulation_with_nonexistent_league(client, admin_token):
+    response = client.post(
+        "/run_simulation",
+        json={"league_name": "non_existent_league", "num_simulations": 10},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "League 'non_existent_league' not found" in response.json()["message"]
+
+def test_run_simulation_without_docker(client, admin_token):
+    response = client.post(
+        "/run_simulation",
+        json={"league_name": "comp_test", "num_simulations": 10, "use_docker": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert "total_points" in response.json()["data"]
+    assert "feedback" not in response.json()["data"]  # Feedback is not included when not using Docker

@@ -257,3 +257,56 @@ class CustomPlayer(Player):
     league = database.get_league(db_session, "comp_test")
     team.league_id = league.id
     db_session.commit()
+
+
+# In test_team.py
+
+def test_submit_agent_with_unsafe_code(client, db_session, team_token):
+    unsafe_code = """
+import os
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        os.system('rm -rf /')
+        return 'continue'
+    """
+    response = client.post(
+        "/submit_agent",
+        json={"code": unsafe_code},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "Agent code is not safe" in response.json()["message"]
+
+
+def test_submit_agent_exceed_submission_limit(client, db_session, team_token):
+    safe_code = """
+from games.greedy_pig.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return 'continue'
+    """
+    
+    # Submit 3 times (allowed)
+    for _ in range(2):
+        response = client.post(
+            "/submit_agent",
+            json={"code": safe_code},
+            headers={"Authorization": f"Bearer {team_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+
+    # 5th submission within a minute (should be rejected)
+    response = client.post(
+        "/submit_agent",
+        json={"code": safe_code},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+
+    print("Response JSON:", response.json())
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "You can only make 3 submissions per minute" in response.json()["message"]

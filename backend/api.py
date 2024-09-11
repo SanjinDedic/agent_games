@@ -136,7 +136,6 @@ async def submit_agent(submission: SubmissionCode, current_user: dict = Depends(
             data={"results": results, "team_name": team_name, "feedback": feedback}
         )
     except Exception as e:
-        print(f"Error updating submission: {str(e)}")
         return ErrorResponseModel(status="error", message=f"An error occurred while updating submission: {str(e)}")
 
 

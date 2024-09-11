@@ -401,3 +401,28 @@ def test_update_expiry_date(client, db_session, admin_token):
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
     assert f"League '{non_existent_league}' not found" in response.json()["message"]
+
+
+def test_get_published_result_with_nonexistent_league(client, db_session):
+    response = client.post(
+        "/get_published_results_for_league",
+        json={"name": "non_existent_league"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "League 'non_existent_league' not found" in response.json()["message"]
+
+def test_get_all_published_results_with_no_results(client, db_session):
+    # First, ensure no results are published
+    leagues = db_session.exec(select(League)).all()
+    for league in leagues:
+        for sim in league.simulation_results:
+            sim.published = False
+    db_session.commit()
+
+    response = client.get("/get_published_results_for_all_leagues")
+    assert response.status_code == 200
+    print("No results league:", response.json())
+    assert response.json()["status"] == "success"
+    assert response.json()["message"] == "Published results retrieved successfully"
+    assert response.json()["data"] == {'all_results': []} 
