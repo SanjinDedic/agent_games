@@ -4,6 +4,7 @@ import pytest
 import shutil
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+from unittest.mock import patch
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -187,7 +188,7 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert simulation_response.status_code == 200
-    print("SIM RESPONSE FOR GET ALL LEAGUE RES:", simulation_response.json())
+    #print("SIM RESPONSE FOR GET ALL LEAGUE RES:", simulation_response.json())
 
     league_results_response = client.post(
         "/get_all_league_results",
@@ -196,7 +197,6 @@ def test_get_all_league_results(client, admin_token, non_admin_token):
     )
     assert league_results_response.status_code == 200
     response_data = league_results_response.json()
-    print(response_data)
 
     # Check if the response contains an error message
     if response_data.get("status") == "error":
@@ -426,3 +426,73 @@ def test_get_all_published_results_with_no_results(client, db_session):
     assert response.json()["status"] == "success"
     assert response.json()["message"] == "Published results retrieved successfully"
     assert response.json()["data"] == {'all_results': []} 
+
+
+def test_get_available_games(client):
+    response = client.post("/get_available_games")
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert "games" in response.json()["data"]
+    assert isinstance(response.json()["data"]["games"], list)
+    assert len(response.json()["data"]["games"]) > 0
+
+@patch("api.get_games_names")
+def test_get_available_games_exception(mock_get_games_names, client):
+    mock_get_games_names.side_effect = Exception("Test exception")
+    response = client.post("/get_available_games")
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "An error occurred" in response.json()["message"]
+    assert "Test exception" in response.json()["message"]
+
+@pytest.fixture(scope="module")
+def admin_token(client):
+    login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
+    assert login_response.status_code == 200
+    return login_response.json()["data"]["access_token"]
+
+def test_get_published_results_for_all_leagues(client, db_session, admin_token):
+    # First, create some test data
+    league_name = "comp_test"
+    simulation_response = client.post(
+        "/run_simulation",
+        json={"league_name": league_name, "num_simulations": 10},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert simulation_response.status_code == 200
+    simulation_id = simulation_response.json()["data"]["id"]
+
+    # Publish the results
+    publish_response = client.post(
+        "/publish_results",
+        json={"league_name": league_name, "id": simulation_id},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert publish_response.status_code == 200
+
+    # Now test the get_published_results_for_all_leagues endpoint
+    response = client.get("/get_published_results_for_all_leagues")
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert "all_results" in response.json()["data"]
+    assert len(response.json()["data"]["all_results"]) > 0
+
+def test_get_published_results_for_all_leagues_no_results(client, db_session):
+    # Mock the database function to return an empty list
+    with patch("database.get_all_published_results") as mock_get_results:
+        mock_get_results.return_value = {"all_results": []}
+        
+        response = client.get("/get_published_results_for_all_leagues")
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+        assert response.json()["message"] == "Published results retrieved successfully"
+        assert response.json()["data"]["all_results"] == []
+
+
+@patch("database.get_all_published_results")
+def test_get_published_results_for_all_leagues_exception(mock_get_all_published_results, client):
+    mock_get_all_published_results.side_effect = Exception("Test exception")
+    response = client.get("/get_published_results_for_all_leagues")
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "An error occurred while retrieving published results" in response.json()["message"]

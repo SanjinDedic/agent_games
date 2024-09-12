@@ -1839,3 +1839,543 @@
 2024-09-11 07:02:04,849 - __main__ - DEBUG - Simulation completed in 0.07 seconds
 2024-09-11 07:02:04,849 - __main__ - DEBUG - Writing results to file
 2024-09-11 07:02:04,850 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:38:38,436 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:38:38,436 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:38:38,436 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:38:38,449 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:38:38,449 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:38:38,514 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:38:38,514 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:38:38,515 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:38:40,141 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:38:40,142 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:38:40,142 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:38:40,155 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:38:40,155 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:38:40,225 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:38:40,225 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:38:40,225 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:38:41,799 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:38:41,799 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:38:41,799 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:38:41,812 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:38:41,812 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:38:41,876 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:38:41,876 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:38:41,877 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:38:43,473 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:38:43,473 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:38:43,473 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:38:43,486 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:38:43,486 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:38:43,544 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:38:43,544 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:38:43,545 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:38:45,181 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:38:45,181 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:38:45,181 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:38:45,194 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:38:45,194 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:38:45,258 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:38:45,258 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:38:45,259 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:41:12,171 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:41:12,171 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:41:12,171 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:41:12,186 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:41:12,186 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:41:12,249 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:41:12,249 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:41:12,250 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:41:13,868 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:41:13,868 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:41:13,868 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:41:13,881 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:41:13,881 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:41:13,944 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:41:13,945 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:41:13,945 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:41:15,473 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:41:15,474 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:41:15,474 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:41:15,486 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:41:15,486 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:41:15,547 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:41:15,548 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:41:15,548 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:41:17,132 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:41:17,132 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:41:17,132 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:41:17,146 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:41:17,146 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:41:17,206 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:41:17,206 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:41:17,207 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:41:18,845 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:41:18,845 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:41:18,845 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:41:18,858 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:41:18,858 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:41:18,920 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:41:18,920 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:41:18,921 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:42:04,033 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:42:04,033 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:42:04,034 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:42:04,047 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:42:04,048 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:42:04,116 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:42:04,116 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:42:04,116 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:42:05,799 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:42:05,799 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:42:05,799 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:42:05,813 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:42:05,813 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:42:05,882 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:42:05,882 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:42:05,882 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:42:07,550 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:42:07,550 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:42:07,550 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:42:07,563 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:42:07,563 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:42:07,627 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:42:07,628 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:42:07,628 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:42:09,342 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:42:09,342 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:42:09,342 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:42:09,357 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:42:09,357 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:42:09,420 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:42:09,420 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:42:09,421 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:42:11,142 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:42:11,142 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:42:11,142 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:42:11,156 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:42:11,156 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:42:11,218 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:42:11,219 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:42:11,219 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:47:26,260 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:47:26,261 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:47:26,261 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:47:26,275 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:47:26,275 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:47:26,343 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:47:26,343 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:47:26,344 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:47:28,006 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:47:28,006 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:47:28,006 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:47:28,018 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:47:28,018 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:47:28,083 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:47:28,083 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:47:28,084 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:47:29,653 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:47:29,653 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:47:29,653 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:47:29,666 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:47:29,666 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:47:29,729 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:47:29,729 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:47:29,729 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:47:31,272 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:47:31,272 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:47:31,272 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:47:31,284 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:47:31,284 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:47:31,344 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:47:31,344 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:47:31,345 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:47:32,946 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:47:32,947 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:47:32,947 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:47:32,959 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:47:32,959 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:47:33,020 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:47:33,020 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:47:33,021 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:51:39,766 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:51:39,766 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:51:39,766 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:51:39,779 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:51:39,779 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:51:39,842 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:51:39,842 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:51:39,843 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:51:41,414 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:51:41,414 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:51:41,414 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:51:41,427 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:51:41,427 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:51:41,491 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:51:41,491 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:51:41,491 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:51:43,073 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:51:43,073 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:51:43,073 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:51:43,086 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:51:43,086 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:51:43,146 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:51:43,146 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:51:43,146 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:51:44,705 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:51:44,705 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:51:44,705 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:51:44,717 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:51:44,717 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:51:44,779 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:51:44,779 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:51:44,779 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:51:46,395 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:51:46,396 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:51:46,396 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:51:46,409 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:51:46,409 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:51:46,471 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:51:46,471 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:51:46,472 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:53:53,671 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:53:53,671 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:53:53,671 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:53:53,684 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:53:53,684 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:53:53,750 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:53:53,750 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:53:53,751 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:53:55,340 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:53:55,341 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:53:55,341 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:53:55,354 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:53:55,354 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:53:55,420 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:53:55,420 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:53:55,420 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:53:56,956 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:53:56,956 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:53:56,956 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:53:56,969 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:53:56,969 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:53:57,030 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:53:57,030 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:53:57,031 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:53:58,634 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:53:58,634 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:53:58,634 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:53:58,647 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:53:58,647 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:53:58,712 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:53:58,712 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:53:58,713 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:54:00,424 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:54:00,424 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:54:00,424 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:54:00,437 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:54:00,437 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:54:00,500 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:54:00,500 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:54:00,500 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:54:24,818 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:54:24,818 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:54:24,818 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:54:24,830 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:54:24,830 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:54:24,891 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:54:24,891 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:54:24,891 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:54:26,516 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:54:26,516 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:54:26,516 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:54:26,543 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:54:26,544 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:54:26,625 - __main__ - DEBUG - Simulation completed in 0.08 seconds
+2024-09-11 23:54:26,625 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:54:26,625 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:54:28,303 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:54:28,303 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:54:28,303 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:54:28,317 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:54:28,317 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:54:28,384 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:54:28,384 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:54:28,384 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:54:30,098 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:54:30,099 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:54:30,099 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:54:30,115 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:54:30,115 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:54:30,185 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:54:30,185 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:54:30,185 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:54:31,839 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:54:31,840 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:54:31,840 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:54:31,852 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:54:31,852 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:54:31,915 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:54:31,915 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:54:31,915 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:55:44,729 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:55:44,729 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:55:44,729 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:55:44,745 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:55:44,745 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:55:44,812 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:55:44,812 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:55:44,812 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:55:46,607 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:55:46,607 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:55:46,607 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:55:46,621 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:55:46,621 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:55:46,687 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:55:46,688 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:55:46,688 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:55:48,303 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:55:48,303 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:55:48,304 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:55:48,319 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:55:48,319 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:55:48,384 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:55:48,384 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:55:48,384 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:55:49,905 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:55:49,905 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:55:49,905 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:55:49,919 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:55:49,919 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:55:49,986 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:55:49,986 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:55:49,987 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:55:51,593 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:55:51,593 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:55:51,593 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:55:51,608 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:55:51,608 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:55:51,668 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:55:51,669 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:55:51,669 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:57:39,262 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:57:39,262 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:57:39,262 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:57:39,274 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:57:39,275 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:57:39,337 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:57:39,337 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:57:39,337 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:57:40,950 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:57:40,950 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:57:40,950 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:57:40,963 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:57:40,964 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:57:41,030 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:57:41,031 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:57:41,031 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:57:42,688 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:57:42,688 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:57:42,688 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:57:42,701 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:57:42,701 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:57:42,761 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:57:42,761 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:57:42,761 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:57:44,377 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:57:44,377 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:57:44,377 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:57:44,391 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:57:44,391 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:57:44,456 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:57:44,456 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:57:44,456 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:57:46,112 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:57:46,112 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:57:46,112 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:57:46,126 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:57:46,126 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:57:46,190 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:57:46,190 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:57:46,190 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:58:02,226 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:58:02,227 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:58:02,227 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:58:02,242 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:58:02,243 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:58:02,309 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:58:02,309 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:58:02,309 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:58:03,971 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:58:03,971 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:58:03,971 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:58:03,984 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:58:03,984 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:58:04,046 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:58:04,046 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:58:04,046 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:58:05,705 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:58:05,705 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:58:05,705 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:58:05,720 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:58:05,720 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:58:05,784 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-11 23:58:05,784 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:58:05,784 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:58:07,484 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:58:07,484 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:58:07,484 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:58:07,497 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:58:07,498 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:58:07,564 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:58:07,564 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:58:07,565 - __main__ - DEBUG - Docker simulation completed
+2024-09-11 23:58:09,209 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-11 23:58:09,209 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-11 23:58:09,209 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-11 23:58:09,221 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-11 23:58:09,221 - __main__ - DEBUG - Running multiple simulations
+2024-09-11 23:58:09,288 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-11 23:58:09,289 - __main__ - DEBUG - Writing results to file
+2024-09-11 23:58:09,289 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:00:32,932 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:00:32,933 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:00:32,933 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:00:32,946 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:00:32,946 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:00:33,023 - __main__ - DEBUG - Simulation completed in 0.08 seconds
+2024-09-12 00:00:33,023 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:00:33,023 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:00:34,909 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:00:34,909 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:00:34,909 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:00:34,924 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:00:34,924 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:00:34,997 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:00:34,998 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:00:34,998 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:00:36,766 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:00:36,766 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:00:36,766 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:00:36,778 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:00:36,778 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:00:36,839 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-12 00:00:36,840 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:00:36,840 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:00:38,500 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:00:38,500 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:00:38,500 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:00:38,513 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:00:38,513 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:00:38,579 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:00:38,579 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:00:38,579 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:00:40,187 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:00:40,187 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:00:40,187 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:00:40,200 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:00:40,200 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:00:40,262 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-12 00:00:40,263 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:00:40,263 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:00:42,007 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:00:42,007 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:00:42,008 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:00:42,021 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:00:42,021 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:00:42,085 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-12 00:00:42,085 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:00:42,086 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:01:53,243 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:01:53,243 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:01:53,243 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:01:53,259 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:01:53,259 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:01:53,330 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:01:53,330 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:01:53,331 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:01:59,869 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:01:59,870 - __main__ - DEBUG - Arguments: test_league, alpha_guess, leagues/test_league, 6, None, True
+2024-09-12 00:01:59,870 - __main__ - DEBUG - Folder path: /agent_games/games/alpha_guess/leagues/test_league
+2024-09-12 00:01:59,889 - __main__ - DEBUG - Game class: <class 'games.alpha_guess.alpha_guess.AlphaGuessGame'>
+2024-09-12 00:01:59,889 - __main__ - DEBUG - Running single game with feedback
+2024-09-12 00:01:59,891 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:01:59,892 - __main__ - DEBUG - Simulation completed in 0.00 seconds
+2024-09-12 00:01:59,892 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:01:59,893 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:10,703 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:10,703 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:02:10,703 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:02:10,717 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:10,717 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:10,783 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:02:10,783 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:10,783 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:12,457 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:12,457 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:02:12,457 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:02:12,471 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:12,471 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:12,534 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-12 00:02:12,534 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:12,535 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:14,181 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:14,181 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:02:14,181 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:02:14,197 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:14,197 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:14,264 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:02:14,264 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:14,265 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:15,957 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:15,957 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:02:15,957 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:02:15,971 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:15,972 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:16,048 - __main__ - DEBUG - Simulation completed in 0.08 seconds
+2024-09-12 00:02:16,048 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:16,048 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:17,737 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:17,737 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:02:17,737 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:02:17,751 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:17,751 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:17,824 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:02:17,824 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:17,824 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:19,688 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:19,688 - __main__ - DEBUG - Arguments: comp_test, greedy_pig, leagues/admin/comp_test, 40, None, False
+2024-09-12 00:02:19,688 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/comp_test
+2024-09-12 00:02:19,703 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:19,703 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:19,766 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-12 00:02:19,766 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:19,766 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:27,228 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:27,228 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-12 00:02:27,228 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-12 00:02:27,243 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:27,243 - __main__ - DEBUG - Running single game with feedback
+2024-09-12 00:02:27,246 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:27,306 - __main__ - DEBUG - Simulation completed in 0.06 seconds
+2024-09-12 00:02:27,306 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:27,306 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:29,086 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:29,086 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-12 00:02:29,086 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-12 00:02:29,101 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:29,101 - __main__ - DEBUG - Running single game with feedback
+2024-09-12 00:02:29,104 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:29,175 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:02:29,176 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:29,176 - __main__ - DEBUG - Docker simulation completed
+2024-09-12 00:02:30,824 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-12 00:02:30,825 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-12 00:02:30,825 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-12 00:02:30,839 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-12 00:02:30,839 - __main__ - DEBUG - Running single game with feedback
+2024-09-12 00:02:30,842 - __main__ - DEBUG - Running multiple simulations
+2024-09-12 00:02:30,909 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-09-12 00:02:30,909 - __main__ - DEBUG - Writing results to file
+2024-09-12 00:02:30,910 - __main__ - DEBUG - Docker simulation completed

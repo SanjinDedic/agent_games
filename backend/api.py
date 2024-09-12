@@ -311,7 +311,7 @@ async def get_available_game():
         
         return ResponseModel(
             status="success",
-            message="Game instructions retrieved successfully",
+            message="Available games retrieved successfully",
             data={ "games" :game_names }
         )
     except Exception as e:
