@@ -9,6 +9,7 @@ class Player(ABC):
         self.has_banked_this_turn = False  # Track banking status within a turn
         self.color = 'white'
         self.name = '' # Assigned when files are loaded onto server
+        self.feedback = []  # New attribute to store feedback
 
     def reset_unbanked_money(self):
         self.unbanked_money = 0
@@ -33,6 +34,9 @@ class Player(ABC):
             return rank
         except ValueError:
             return 0
+
+    def add_feedback(self, message):
+        self.feedback.append(message)
 
     @abstractmethod
     def make_decision(self, game_state):

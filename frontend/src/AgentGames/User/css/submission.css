@@ -1,7 +1,7 @@
 
 .editor-container {
   overflow: auto;
-  max-width: 800px;
+  max-width: 880px;
   /* Adjust the width as needed */
   margin: auto;
   /* Center the container */
@@ -57,7 +57,7 @@ label {
 }
 
 .results-container {
-  max-width: 600px;
+  max-width: 800px;
   margin: auto;
   padding: 20px;
   color: #000000;

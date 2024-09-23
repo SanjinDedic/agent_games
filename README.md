@@ -28,11 +28,7 @@ For more details, see the [Frontend README](./frontend/README.md).
 The backend is powered by FastAPI, handling game logic, user authentication, and data management. It uses SQLModel for database interactions, Pydantic for data validation, and includes Docker integration for simulations. SQLite is used for data storage.
 
 For more information, check out the [Backend README](./backend/README.md).
-This update provides a comprehensive overview of the key technologies used in your backend, including SQLModel for ORM functionality. The badges are visually consistent and provide quick insights into the versions and tools used in your project. CopyRetryClaude can make mistakes. Please double-check responses. 3.5 SonnetSQLModel BadgeShow Image
 
-The backend is powered by FastAPI, handling game logic, user authentication, and data management. It includes Docker integration for simulations and uses SQLite for data storage.
-
-For more information, check out the [Backend README](./backend/README.md).
 
 ## Getting Started
 

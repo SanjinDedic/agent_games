@@ -8,7 +8,7 @@ coverage:
 
 ignore:
   - "backend/legacy_agents/*"
-  - "backend/test/*"
+  - "backend/tests/*"
   - "backend/production_database_setup.py"
   - "backend/dockerfile_script.py"
   - "backend/requirements.txt"

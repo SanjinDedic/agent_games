@@ -28,7 +28,13 @@ const AgentSubmission = () => {
   const [isLoading, setIsLoading] = useState(false);
   const restrictions = [];
   const navigate = useNavigate();
-
+  const editorOptions = {
+    minimap: { enabled: false }, // This disables the minimap
+    scrollbar: {
+      vertical: 'auto',
+      horizontal: 'auto'
+    }
+  };
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     handleInstructions();
@@ -131,12 +137,13 @@ const AgentSubmission = () => {
         {code && 
           <Editor
             height="535px"
-            width="800px"
+            width="880px"
             theme="vs-dark"
             defaultLanguage="python"
             defaultValue={code}
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
+            options={editorOptions}
           />
         }
         <UserTooltip title="⚠️ INFO <br />Enter your code above and then submit to see results below." arrow disableFocusListener disableTouchListener>

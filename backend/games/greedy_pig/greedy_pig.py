@@ -6,11 +6,20 @@ import time
 class GreedyPigGame(BaseGame):
     starter_code = '''
 from games.greedy_pig.player import Player
+import random
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):
-        # Your code here
-        return 'continue'  # or 'bank'
+        my_unbanked = game_state["unbanked_money"][self.name]
+        my_banked = game_state["banked_money"][self.name]
+        my_current_rank = self.my_rank(game_state) # based on total money (banked + unbanked)
+        
+        decision = random.choice(['continue', 'bank'])
+        
+        # Add custom feedback (will appear in blue in the game output)
+        self.add_feedback(f"game state: {game_state}, my decision: {decision}")
+        
+        return decision
 '''
 
     game_instructions = '''
@@ -38,6 +47,7 @@ class CustomPlayer(Player):
 <p>You can use the following methods in your implementation:</p>
 <ul>
     <li><code>self.my_rank(game_state)</code>: Returns your current rank based on total money (banked + unbanked)</li>
+    <li><code>self.add_feedback(message)</code>: Adds a custom feedback message that will be displayed in the game output</li>
 </ul>
 
 <h2>5. Implementation Example</h2>
@@ -48,11 +58,14 @@ def make_decision(self, game_state):
     my_current_rank = self.my_rank(game_state)
 
     if my_unbanked > 20 or (my_banked + my_unbanked >= 100):
-        return 'bank'
+        decision = 'bank'
     elif my_current_rank > 2 and game_state["roll_no"] > 3:
-        return 'bank'
+        decision = 'bank'
     else:
-        return 'continue'
+        decision = 'continue'
+
+    self.add_feedback(f"game state: {game_state}, my decision: {decision}")
+    return decision
 </code></pre>
 
 <h2>6. Strategy Tips</h2>
@@ -61,6 +74,7 @@ def make_decision(self, game_state):
     <li>Be aware of how close you are to winning (100 points)</li>
     <li>Balance the risk of rolling again with the potential reward</li>
     <li>Observe other players' strategies through the <code>players_banked_this_round</code> list</li>
+    <li>Use the <code>add_feedback</code> method to log your decision-making process and debug your strategy</li>
 </ul>
 
 <p>Good luck and have fun!</p>
@@ -144,6 +158,14 @@ def make_decision(self, game_state):
                         self.active_players.remove(player)
                     else:
                         feedback_row += f"<td></td>"
+                    
+                    # Add player feedback
+                    if player.feedback:
+                        self.add_feedback(f"\n<b>{player.name}'s feedback:</b>")
+                        for message in player.feedback:
+                            self.add_feedback(f"<span style='color: blue;'>{message}</span>")
+                        player.feedback = []  # Clear the feedback after adding it
+
             feedback_row += f"</tr>"
             self.add_feedback(feedback_row)
             self.add_feedback(f"</table>")
