@@ -39,10 +39,11 @@ SIMULATION_RESULTS_SCHEMA = {
 }
 
 
-def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT, feedback_required=False):
+def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT, feedback_required=False, num_simulations=100):
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
     command = ["docker", "run", "--rm", "-v", f"{ROOT_DIR}:/agent_games", DOCKER_REPO, 
-               league_name, league_game, league_folder, custom_rewards_str, str(timeout), str(feedback_required)]
+               league_name, league_game, league_folder, custom_rewards_str, str(timeout), str(feedback_required), str(num_simulations)]
+
 
     print(f"Starting Docker simulation for {league_name}")
     start_time = time.time()

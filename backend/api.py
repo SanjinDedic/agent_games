@@ -156,7 +156,7 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
 
         if use_docker:
             print("Running simulation using Docker")
-            is_successful, results = run_docker_simulation(league_name, league.game, league.folder, custom_rewards)
+            is_successful, results = run_docker_simulation(league_name, league.game, league.folder, custom_rewards, feedback_required=True, num_simulations=num_simulations)
             if not is_successful:
                 return ErrorResponseModel(status="error", message=results)
             simulation_results = results['simulation_results']

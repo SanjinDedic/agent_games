@@ -28,13 +28,14 @@ def timeout_handler(signum, frame):
 def run_docker_simulations():
     logger.debug("Starting run_docker_simulations")
     print("Running docker simulation inside the container")
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 8:
         logger.error("Not enough arguments provided")
         return
 
     league_name, league_game, league_folder, timeout = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[5])
     custom_rewards = list(map(int, sys.argv[4].split(','))) if sys.argv[4] != "None" else None
     feedback_required = sys.argv[6].lower() == 'true'
+    num_simulations = int(sys.argv[7])
     
     logger.debug(f"Arguments: {league_name}, {league_game}, {league_folder}, {timeout}, {custom_rewards}, {feedback_required}")
     
@@ -58,8 +59,8 @@ def run_docker_simulations():
             feedback_result = game_class.run_single_game_with_feedback(league, custom_rewards)
 
         # Run multiple simulations
-        logger.debug("Running multiple simulations")
-        simulation_results = game_class.run_simulations(100, league, custom_rewards)
+        logger.debug(f"Running {num_simulations} simulations")
+        simulation_results = game_class.run_simulations(num_simulations, league, custom_rewards)
 
         signal.alarm(0)  # Cancel the alarm
 
