@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
-const ResultsDisplay = ({ data, highlight = true, data_message = '' }) => {
+const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
   const [results, setResults] = useState([]);
   const [tableColumns, setTableColumns] = useState([]);
+  const [isTableVisible, setIsTableVisible] = useState(tablevisible);
   const userTeam = useSelector((state) => state.teams.currentTeam);
   
   useEffect(() => {
@@ -25,10 +26,21 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '' }) => {
     }
   }, [data]);
 
+  useEffect(() => {
+    setIsTableVisible(tablevisible);
+  }, [data, tablevisible]);
+
   return (
     <div className="results-container">
       {data && <h2>{data_message}</h2>}
 
+      {!isTableVisible && (
+            <button onClick={() => setIsTableVisible(!isTableVisible)} style={{ cursor: 'pointer' }}>
+              {isTableVisible ? 'Hide Results' : 'Show Results'}
+            </button>
+          )}
+
+      {isTableVisible && (
       <table>
         <thead>
           <tr>
@@ -51,6 +63,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '' }) => {
           ))}
         </tbody>
       </table>
+      )}
     </div>
   );
 };

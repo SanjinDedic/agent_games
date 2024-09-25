@@ -1,6 +1,6 @@
 import './css/App.css';
 import AgentGamesNavbar from './Navbar';
-import HomePage from './HomePage';
+import AgentHome from './AgentGames/AgentHome';
 import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from './AgentGames/Utilities/Rankings';
 import AgentSubmission from './AgentGames/User/AgentSubmission';
@@ -29,7 +29,7 @@ function App() {
       <div className="App">
       <AgentGamesNavbar/>
         <Routes>
-          <Route path="/" element={<HomePage/>} />
+          <Route path="/" element={<AgentHome/>} />
           <Route path="AgentLogin" element={<AgentLogin/>} />
           <Route path="AgentLeagueSignUp" element={<AgentLeagueSignUp/>} />
           <Route path="AgentSubmission" element={<AgentSubmission/>} />

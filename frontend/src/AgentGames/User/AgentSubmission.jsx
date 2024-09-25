@@ -154,7 +154,7 @@ const AgentSubmission = () => {
         <div className="output-container">
           {output ? (
             <>
-              <ResultsDisplay data={output} data_message={messageData} />
+              <ResultsDisplay data={output} data_message={messageData} tablevisible={true} />
               {feedback && <MarkdownFeedback feedback={feedback} />}
             </>
           ) : (

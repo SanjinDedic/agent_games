@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ResultsDisplay from '../Utilities/ResultsDisplay';
+import MarkdownFeedback from '../Utilities/MarkdownFeedback';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
@@ -63,6 +64,11 @@ function AdminLeague() {
   }, []);
 
   useEffect(() => {
+    fetchAdminLeagues();
+    console.log(currentSimulation);
+  }, []);
+
+  useEffect(() => {
     if (currentLeague?.name) {
       fetch(`${apiUrl}/get_all_league_results`, {
         method: 'POST',
@@ -74,7 +80,6 @@ function AdminLeague() {
       })
         .then(response => response.json())
         .then(data => {
-          console.log(data);
           if (data.status === "success") {
             if (data.data.all_results.length == 0) {
               dispatch(clearResults());
@@ -168,7 +173,8 @@ function AdminLeague() {
               </select>
             }
             <br></br>
-            {currentSimulation && <ResultsDisplay data={currentSimulation} highlight={false} data_message={currentSimulation.message} />}
+            {currentSimulation && <ResultsDisplay data={currentSimulation} highlight={false} data_message={currentSimulation.message} tablevisible={false} />}
+            {currentSimulation && <MarkdownFeedback feedback={currentSimulation.feedback} />}
           </div>
           {currentLeague && <AdminLeagueTeams selected_league_name={currentLeague.name} />}
         </div>
