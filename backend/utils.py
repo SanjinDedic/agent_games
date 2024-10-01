@@ -36,6 +36,7 @@ def transform_result(simulation_results, sim_result, league_name):
         "id": sim_result.id if sim_result else None,
         "total_points": simulation_results["total_points"],
         "num_simulations": simulation_results["num_simulations"],
+        "timestamp": sim_result.timestamp if sim_result else None,
         "rewards": json.loads(sim_result.custom_rewards) if sim_result else None,
         "table": simulation_results.get("table", {})
     }

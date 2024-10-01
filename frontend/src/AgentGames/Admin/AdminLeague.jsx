@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ResultsDisplay from '../Utilities/ResultsDisplay';
+import MarkdownFeedback from '../Utilities/MarkdownFeedback';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
@@ -37,7 +38,6 @@ function AdminLeague() {
     }
     
   }, [navigate]);
-
 
   const fetchAdminLeagues = () => {
 
@@ -168,7 +168,24 @@ function AdminLeague() {
               </select>
             }
             <br></br>
-            {currentSimulation && <ResultsDisplay data={currentSimulation} highlight={false} data_message={currentSimulation.message} />}
+            {currentSimulation && (
+              currentSimulation.feedback ? (
+                <ResultsDisplay
+                  data={currentSimulation}
+                  highlight={false}
+                  data_message={currentSimulation.message}
+                  tablevisible={false}
+                />
+              ) : (
+                <ResultsDisplay
+                  data={currentSimulation}
+                  highlight={false}
+                  data_message={currentSimulation.message}
+                  tablevisible={true}
+                />
+              )
+              )}
+            {currentSimulation?.feedback && <MarkdownFeedback feedback={currentSimulation.feedback} />}
           </div>
           {currentLeague && <AdminLeagueTeams selected_league_name={currentLeague.name} />}
         </div>
