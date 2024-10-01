@@ -46,6 +46,7 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
       if (data.status === "success") {
         
         dispatch(addSimulationResult(data.data));
+        console.log(data);
         toast.update(toastId, { render: data.message, type: "success", isLoading: false, autoClose: 2000 });
       } else if (data.status === "failed" || data.status === "error") {
         toast.update(toastId, { render: data.message, type: "error", isLoading: false, autoClose: 2000 });

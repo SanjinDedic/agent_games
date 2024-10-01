@@ -39,7 +39,6 @@ function AdminLeague() {
     
   }, [navigate]);
 
-
   const fetchAdminLeagues = () => {
 
     fetch(apiUrl + '/get_all_admin_leagues')
@@ -64,11 +63,6 @@ function AdminLeague() {
   }, []);
 
   useEffect(() => {
-    fetchAdminLeagues();
-    console.log(currentSimulation);
-  }, []);
-
-  useEffect(() => {
     if (currentLeague?.name) {
       fetch(`${apiUrl}/get_all_league_results`, {
         method: 'POST',
@@ -80,6 +74,7 @@ function AdminLeague() {
       })
         .then(response => response.json())
         .then(data => {
+          console.log(data);
           if (data.status === "success") {
             if (data.data.all_results.length == 0) {
               dispatch(clearResults());
@@ -173,8 +168,24 @@ function AdminLeague() {
               </select>
             }
             <br></br>
-            {currentSimulation && <ResultsDisplay data={currentSimulation} highlight={false} data_message={currentSimulation.message} tablevisible={false} />}
-            {currentSimulation && <MarkdownFeedback feedback={currentSimulation.feedback} />}
+            {currentSimulation && (
+              currentSimulation.feedback ? (
+                <ResultsDisplay
+                  data={currentSimulation}
+                  highlight={false}
+                  data_message={currentSimulation.message}
+                  tablevisible={false}
+                />
+              ) : (
+                <ResultsDisplay
+                  data={currentSimulation}
+                  highlight={false}
+                  data_message={currentSimulation.message}
+                  tablevisible={true}
+                />
+              )
+              )}
+            {currentSimulation?.feedback && <MarkdownFeedback feedback={currentSimulation.feedback} />}
           </div>
           {currentLeague && <AdminLeagueTeams selected_league_name={currentLeague.name} />}
         </div>

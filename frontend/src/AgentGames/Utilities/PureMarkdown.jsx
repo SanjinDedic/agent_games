@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Import the vscDarkPlus theme.
 
@@ -7,7 +8,7 @@ const PureMarkdown = ({ content }) => {
   const markdownStyles = `
     .markdown-content {
       all: initial;
-      * {
+      *:not(video) {
         all: revert;
       }
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -97,7 +98,7 @@ const PureMarkdown = ({ content }) => {
     <>
       <style>{markdownStyles}</style>
       <div className="markdown-content">
-        <ReactMarkdown components={components}>
+        <ReactMarkdown components={components} rehypePlugins={[rehypeRaw]}>
           {content}
         </ReactMarkdown>
       </div>

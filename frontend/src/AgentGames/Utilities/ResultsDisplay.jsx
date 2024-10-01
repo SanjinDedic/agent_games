@@ -35,7 +35,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
       {data && <h2>{data_message}</h2>}
 
       {!isTableVisible && (
-            <button onClick={() => setIsTableVisible(!isTableVisible)} style={{ cursor: 'pointer' }}>
+            <button onClick={() => setIsTableVisible(!isTableVisible)} className="publish-button" style={{ cursor: 'pointer' }}>
               {isTableVisible ? 'Hide Results' : 'Show Results'}
             </button>
           )}
