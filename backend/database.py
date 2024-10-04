@@ -177,8 +177,8 @@ def allow_submission(session, team_id):
         .where(Submission.timestamp >= one_minute_ago)
     ).all()
 
-    if len(recent_submissions) > 2:
-        raise SubmissionLimitExceededError("You can only make 3 submissions per minute.")
+    if len(recent_submissions) > 1:
+        raise SubmissionLimitExceededError("You can only make 2 submissions per minute.")
     return True
 
 def save_submission(session, submission_code, team_id):

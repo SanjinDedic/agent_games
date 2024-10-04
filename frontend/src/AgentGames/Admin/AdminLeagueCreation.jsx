@@ -28,6 +28,10 @@ function AdminLeagueCreation() {
       .then(data => {
         if (data.status === "success") {
           setGames(data.data.games);
+          setleagueInfo(prev => ({
+            ...prev,
+            gameName: data.data.games[0]
+          }));
         } else if (data.status === "failed") {
           toast.error(data.message);
         }
@@ -36,6 +40,7 @@ function AdminLeagueCreation() {
   
         toast.error(`Failed to add League`);
       });
+
   }, []);
 
   const handleGameDropdownChange = (event) => {
@@ -66,7 +71,7 @@ function AdminLeagueCreation() {
       toast.error(`Please Enter the name of the league`);
       return;
     }
-
+    
     fetch(`${apiUrl}/league_create`, {
       method: 'POST',
       headers: {
