@@ -17,11 +17,11 @@ def create_and_populate_database():
 
     with Session(engine) as session:
         # Create administrator
-        create_administrator(session, 'Administrator', 'BOSSMAN')
+        create_administrator(session, 'Administrator', 'BOSSMAN1378')
 
         # Create admin leagues
         admin_leagues = []
-        league_names = ["unassigned", "week1", "week2", "week3"]
+        league_names = ["unassigned", "prelim7-8", "prelim9-10"]
         for league_name in league_names:
             league = League(
                 name=league_name,
@@ -61,7 +61,7 @@ def create_and_populate_database():
         print("Database created and populated successfully")
 
 def clean_league_folders():
-    for league_name in ["unassigned", "week1", "week2", "week3"]:
+    for league_name in ["unassigned", "prelim7-8", "prelim9-10","week1", "week2", "week3"]:
         league_folder = os.path.join(ROOT_DIR, "games", "greedy_pig", f"leagues/admin/{league_name}")
         if os.path.exists(league_folder):
             shutil.rmtree(league_folder)
