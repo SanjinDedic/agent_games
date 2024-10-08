@@ -26,6 +26,7 @@ Pipfile.lock
 __pycache__/
 *.py[cod]
 
+
 # If you are using Jupyter notebooks
 .ipynb_checkpoints/
 
@@ -38,7 +39,7 @@ project_code.md
 league_code.md
 frontend/src/gen_prompt.py
 frontend/src/front_end.md
-
+backend/teams.json
 # Ignore all db files
 *.db
 

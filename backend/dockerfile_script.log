@@ -2919,3 +2919,48 @@
 2024-09-25 06:27:03,880 - __main__ - DEBUG - Simulation completed in 0.10 seconds
 2024-09-25 06:27:03,880 - __main__ - DEBUG - Writing results to file
 2024-09-25 06:27:03,880 - __main__ - DEBUG - Docker simulation completed
+2024-09-26 02:41:23,822 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-26 02:41:23,822 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-26 02:41:23,822 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-26 02:41:23,841 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-26 02:41:23,842 - __main__ - DEBUG - Running single game with feedback
+2024-09-26 02:41:23,845 - __main__ - DEBUG - Running 100 simulations
+2024-09-26 02:41:23,945 - __main__ - DEBUG - Simulation completed in 0.10 seconds
+2024-09-26 02:41:23,945 - __main__ - DEBUG - Writing results to file
+2024-09-26 02:41:23,946 - __main__ - DEBUG - Docker simulation completed
+2024-09-26 02:42:56,195 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-26 02:42:56,195 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-26 02:42:56,195 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-26 02:42:56,210 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-26 02:42:56,210 - __main__ - DEBUG - Running single game with feedback
+2024-09-26 02:42:56,213 - __main__ - DEBUG - Running 100 simulations
+2024-09-26 02:42:56,298 - __main__ - DEBUG - Simulation completed in 0.09 seconds
+2024-09-26 02:42:56,298 - __main__ - DEBUG - Writing results to file
+2024-09-26 02:42:56,299 - __main__ - DEBUG - Docker simulation completed
+2024-09-26 02:44:21,973 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-26 02:44:21,973 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-09-26 02:44:21,973 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-09-26 02:44:21,991 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-26 02:44:21,992 - __main__ - DEBUG - Running single game with feedback
+2024-09-26 02:44:21,995 - __main__ - DEBUG - Running 100 simulations
+2024-09-26 02:44:22,077 - __main__ - DEBUG - Simulation completed in 0.09 seconds
+2024-09-26 02:44:22,078 - __main__ - DEBUG - Writing results to file
+2024-09-26 02:44:22,078 - __main__ - DEBUG - Docker simulation completed
+2024-09-26 02:51:38,474 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-26 02:51:38,474 - __main__ - DEBUG - Arguments: week1, greedy_pig, leagues/admin/week1, 40, None, True
+2024-09-26 02:51:38,474 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/week1
+2024-09-26 02:51:38,487 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-26 02:51:38,488 - __main__ - DEBUG - Running single game with feedback
+2024-09-26 02:51:38,491 - __main__ - DEBUG - Running 1 simulations
+2024-09-26 02:51:38,493 - __main__ - DEBUG - Simulation completed in 0.01 seconds
+2024-09-26 02:51:38,493 - __main__ - DEBUG - Writing results to file
+2024-09-26 02:51:38,494 - __main__ - DEBUG - Docker simulation completed
+2024-09-26 02:52:04,850 - __main__ - DEBUG - Starting run_docker_simulations
+2024-09-26 02:52:04,850 - __main__ - DEBUG - Arguments: week1, greedy_pig, leagues/admin/week1, 40, None, True
+2024-09-26 02:52:04,850 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/admin/week1
+2024-09-26 02:52:04,866 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-09-26 02:52:04,866 - __main__ - DEBUG - Running single game with feedback
+2024-09-26 02:52:04,868 - __main__ - DEBUG - Running 1000 simulations
+2024-09-26 02:52:05,583 - __main__ - DEBUG - Simulation completed in 0.72 seconds
+2024-09-26 02:52:05,583 - __main__ - DEBUG - Writing results to file
+2024-09-26 02:52:05,583 - __main__ - DEBUG - Docker simulation completed

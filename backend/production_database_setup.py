@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 from sqlmodel import Session, SQLModel, create_engine, select
 from models_db import League, Team, Admin
 from auth import get_password_hash
@@ -39,38 +40,22 @@ def create_and_populate_database():
         session.add_all(admin_leagues)
         session.commit()
 
+        # Get the unassigned league
+        unassigned_league = session.exec(select(League).where(League.name == "unassigned")).one()
+
+        # Read teams from teams.json
+        with open(os.path.join(ROOT_DIR, "teams.json"), "r") as f:
+            teams_data = json.load(f)
+
         # Create teams
-        players = []
-        for i in range(5, 30, 2):
-            players.append({
-                "name": f"Bank{i}",
-                "password": f"bank{i}pass",
-                "code": f"""
-from games.greedy_pig.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        if game_state["unbanked_money"][self.name] >= {i}:
-            return 'bank'
-        return 'continue'
-"""
-            })
-
-        week1_league = session.exec(select(League).where(League.name == "week1")).one()
-
-        for player in players:
+        for team_data in teams_data["teams"]:
             team = Team(
-                name=player["name"],
-                school_name=f"School of {player['name']}",
-                password_hash=get_password_hash(player["password"]),
-                league_id=week1_league.id
+                name=team_data["name"],
+                school_name=team_data["school"],
+                password_hash=get_password_hash(team_data["password"]),
+                league_id=unassigned_league.id
             )
             session.add(team)
-            
-            # Create code file for the team
-            team_file_path = os.path.join(ROOT_DIR, "games", "greedy_pig", week1_league.folder, f"{player['name']}.py")
-            with open(team_file_path, "w") as f:
-                f.write(player["code"])
 
         session.commit()
         print("Database created and populated successfully")

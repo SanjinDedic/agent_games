@@ -179,7 +179,6 @@ def run_simulation(simulation_config: SimulationConfig, current_user: dict = Dep
         return ErrorResponseModel(status="error", message=f"An error occurred while running the simulation: {str(e)}")
 
 
-
 @app.get("/get_all_admin_leagues", response_model=ResponseModel)
 def get_all_admin_leagues(session: Session = Depends(get_db)):
     try:
