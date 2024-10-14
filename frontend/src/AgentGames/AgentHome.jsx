@@ -4,7 +4,7 @@ import PureMarkdown from './Utilities/PureMarkdown';
 function AgentHome() {
     const content = `# Introducing the Agent Games Competition at the Victorian Coding Challenge!
 
-Are you ready to put your coding skills to the ultimate test? Welcome to the **Agent Games**, a thrilling competition that's part of the Victorian Coding Challenge where teams and individual coders design intelligent agents to compete against each other!
+Are you ready to put your coding skills to the ultimate test? Welcome to the **Agent Games**, a thrilling competition that's part of the Victorian Coding Challenge where teams submit agents that compete in games of strategy and skill.
 
 ## About the Agent Games
 
@@ -28,37 +28,19 @@ In the Agent Games, participants will develop and submit their own code to contr
      Your browser does not support the video tag.
    </video>
 
-2. **Set Up Your Development Environment**: Ensure you have all the necessary tools and libraries installed to start coding your agent.
+2. **Program Your Agent**: Develop your agent's strategy and implement it in code, study the feedback from your submission
 
-3. **Design and Code Your Agent**: Develop your agent's strategy and implement it in code. Think creatively and strategically!
+3. **Test Your Agent**: You can make as many as 2 submissions per minute, read the feedback and try to submit an agent that can win the test game
 
-4. **Test Your Agent**: Before submission, test your agent thoroughly to make sure it behaves as expected in various scenarios.
-
-## Submission Guidelines
-
-- **Format**: Submit your code in the specified programming language and format as outlined in the competition rules.
-
-- **Deadline**: All code submissions must be received by the competition deadline. Late entries may not be accepted.
-
-- **Submission Portal**: Upload your agent's code through the official submission portal on our website.
 
 ## Competition Rules
 
 - **Original Work**: Your submission must be your own work. Collaboration is allowed within teams but not between different teams.
 
-- **No Malicious Code**: Your code must not contain any harmful or disruptive elements.
+- **No Malicious Code**: Your code must not contain any harmful or disruptive elements, all submissions are logged and intentional malicious code will lead to disqualification.
 
 - **Adherence to Game Rules**: Agents must operate within the rules specified in the instruction video and official documentation.
 
-## Prizes and Recognition
-
-Winners will receive exciting prizes and will be recognized at the Victorian Coding Challenge awards ceremony. This is your chance to shine and showcase your coding talents!
-
----
-
-**Are you up for the challenge? Start coding your agent today and see if you have what it takes to emerge victorious!**
-
----
 
 Good luck, and may the best agent win!
 `
