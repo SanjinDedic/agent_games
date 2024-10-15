@@ -149,7 +149,11 @@ def make_decision(self, game_state):
             for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
-                    decision = player.make_decision(self.get_game_state())
+                    try:
+                        decision = player.make_decision(self.get_game_state())
+                    except:
+                        decision = 'bank'
+                        
                     if decision == 'bank':
                         feedback_row += f"<td>&#128181; bank</td>"
                         player.bank_money()

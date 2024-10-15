@@ -100,10 +100,14 @@ def make_decision(self, game_state):
         for round_number in range(1, self.rounds_per_pairing + 1):
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
-
-            decision1 = player1.make_decision(game_state1)
-            decision2 = player2.make_decision(game_state2)
-
+            try:
+                decision1 = player1.make_decision(game_state1)
+            except:
+                decision1 = 'collude'
+            try:
+                decision2 = player2.make_decision(game_state2)
+            except:
+                decision1 = 'collude'
             self.histories[player1.name].setdefault(player2.name, []).append(decision1)
             self.histories[player2.name].setdefault(player1.name, []).append(decision2)
 
