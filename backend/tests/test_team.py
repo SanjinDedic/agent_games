@@ -289,7 +289,7 @@ class CustomPlayer(Player):
         return 'continue'
     """
     
-    # Submit 3 times (allowed)
+    # Submit 2 times (allowed)
     for _ in range(2):
         response = client.post(
             "/submit_agent",
@@ -309,4 +309,4 @@ class CustomPlayer(Player):
     print("Response JSON:", response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "error"
-    assert "You can only make 3 submissions per minute" in response.json()["message"]
+    assert "You can only make 2 submissions per minute" in response.json()["message"]
