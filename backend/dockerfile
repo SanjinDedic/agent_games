@@ -1,5 +1,5 @@
 # Deriving the latest base image
-FROM python:latest
+FROM python:3.12
 
 # Install curl and Rust
 RUN apt-get update && apt-get install -y curl
