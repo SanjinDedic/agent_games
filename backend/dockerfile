@@ -1,6 +1,15 @@
-#Deriving the latest base image
+# Deriving the latest base image
 FROM python:latest
 
+# Install curl and Rust
+RUN apt-get update && apt-get install -y curl
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install orjson (now that Rust is available)
+RUN pip install orjson
+
+# Copy files
 COPY games /agent_games/games
 COPY requirements.txt /agent_games
 COPY models_db.py /agent_games
@@ -9,8 +18,11 @@ COPY config.py /agent_games
 COPY auth.py /agent_games
 COPY dockerfile_script.py /agent_games
 
+# Set working directory
 WORKDIR /agent_games
 
+# Install Python dependencies
 RUN pip install -r requirements.txt
 
+# Set the entrypoint
 ENTRYPOINT ["python", "dockerfile_script.py"]

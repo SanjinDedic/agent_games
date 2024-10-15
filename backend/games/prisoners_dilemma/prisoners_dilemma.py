@@ -104,10 +104,12 @@ def make_decision(self, game_state):
                 decision1 = player1.make_decision(game_state1)
             except:
                 decision1 = 'collude'
+                self.add_feedback(player1.name + " invalid code, decision defaulting to collude")
             try:
                 decision2 = player2.make_decision(game_state2)
             except:
-                decision1 = 'collude'
+                decision2 = 'collude'
+                self.add_feedback(player2.name + " invalid code, decision defaulting to collude")
             self.histories[player1.name].setdefault(player2.name, []).append(decision1)
             self.histories[player2.name].setdefault(player1.name, []).append(decision2)
 
