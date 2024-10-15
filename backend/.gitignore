@@ -39,6 +39,11 @@ gen_prompt_game.py
 project_code.md
 league_code.md
 
+api_rate_limits/
+server_stress_test/
+stress_tests/
+
+
 # Ignore all db files
 *.db
 
