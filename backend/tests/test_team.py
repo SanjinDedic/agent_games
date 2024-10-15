@@ -290,14 +290,14 @@ class CustomPlayer(Player):
     """
     
     # Submit 2 times (allowed)
-    for _ in range(2):
-        response = client.post(
-            "/submit_agent",
-            json={"code": safe_code},
-            headers={"Authorization": f"Bearer {team_token}"}
-        )
-        assert response.status_code == 200
-        assert response.json()["status"] == "success"
+
+    response = client.post(
+        "/submit_agent",
+        json={"code": safe_code},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
 
     # 5th submission within a minute (should be rejected)
     response = client.post(
