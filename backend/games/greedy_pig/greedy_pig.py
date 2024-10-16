@@ -88,11 +88,22 @@ def make_decision(self, game_state):
         self.roll_no = 0
         self.game_over = False
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
-        self.feedback = []
+        self.game_feedback = []
+        self.player_feedback = []
 
     def add_feedback(self, message):
         if self.verbose:
-            self.feedback.append(message)
+            self.game_feedback.append(message)
+            self.player_feedback.append(message)
+
+    def add_player_feedback(self, player):
+        if player.feedback:
+            feedback = f"\n<b>{player.name}'s feedback:</b>"
+            self.player_feedback.append(feedback)
+            for message in player.feedback:
+                colored_message = f"<span style='color: blue;'>{message}</span>"
+                self.player_feedback.append(colored_message)
+            player.feedback = []  # Clear the feedback after adding it
 
     def roll_dice(self):
         return random.randint(1, 6)
@@ -164,6 +175,7 @@ def make_decision(self, game_state):
                         feedback_row += f"<td></td>"
                     
                     # Add player feedback
+                    self.add_player_feedback(player)
                     if player.feedback:
                         self.add_feedback(f"\n<b>{player.name}'s feedback:</b>")
                         for message in player.feedback:
@@ -246,10 +258,12 @@ def make_decision(self, game_state):
     def run_single_game_with_feedback(cls, league, custom_rewards=None):
         game = cls(league, verbose=True, custom_rewards=custom_rewards)
         results = game.play_game(custom_rewards)
-        feedback = "\n".join(game.feedback)
+        game_feedback = "\n".join(game.game_feedback)
+        player_feedback = "\n".join(game.player_feedback)
         return {
             "results": results,
-            "feedback": feedback
+            "feedback": game_feedback,
+            "player_feedback": player_feedback
         }
     
     @classmethod
