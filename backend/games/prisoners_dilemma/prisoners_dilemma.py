@@ -1,6 +1,10 @@
 from games.base_game import BaseGame
 import random
 import itertools
+import importlib.util
+from games.prisoners_dilemma.player import Player as PrisonersDilemmaPlayer
+from config import ROOT_DIR
+import os
 
 class PrisonersDilemmaGame(BaseGame):
     starter_code = '''
@@ -88,6 +92,48 @@ def make_decision(self, game_state):
             self.game_feedback = []
             self.player_feedback = []
             self.collect_player_feedback = collect_player_feedback
+
+    def get_all_player_classes_from_folder(self):
+        players = []
+        league_directory = os.path.join(ROOT_DIR, "games", self.league.game, self.league.folder)
+
+        if self.verbose:
+            print(f"Searching for player classes in: {league_directory}")
+
+        if not os.path.exists(league_directory):
+            print(f"The folder '{league_directory}' does not exist.")
+            return players
+
+        for item in os.listdir(league_directory):
+            if item.endswith(".py"):
+                module_name = item[:-3]
+                module_path = os.path.join(league_directory, item)
+
+                if self.verbose:
+                    print(f"Found Python file: {module_path}")
+
+                spec = importlib.util.spec_from_file_location(module_name, module_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                if hasattr(module, "CustomPlayer"):
+                    player_class = getattr(module, "CustomPlayer")
+                    player = player_class()
+                    
+                    # Validate that the player is an instance of PrisonersDilemmaPlayer
+                    if not isinstance(player, PrisonersDilemmaPlayer):
+                        print(f"Warning: {module_name} does not contain a valid Prisoner's Dilemma player. Skipping.")
+                        continue
+                    
+                    player.name = module_name
+                    players.append(player)
+                    if self.verbose:
+                        print(f"Added player: {player.name}")
+
+        if self.verbose:
+            print(f"Total players found: {len(players)}, {players}")
+
+        return players
 
     def add_feedback(self, message):
         if self.verbose:
