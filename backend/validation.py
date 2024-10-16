@@ -86,7 +86,7 @@ def run_validation_simulation(code, game_name, team_name):
         with open(file_path, "w") as file:
             file.write(code)
         print(f"File written: {file_path}")
-        is_successful, docker_result = run_docker_simulation('test_league', test_league.game, 'leagues/test_league', None, timeout=6, feedback_required=True, num_simulations=100)
+        is_successful, docker_result = run_docker_simulation('test_league', test_league.game, 'leagues/test_league', None, timeout=6, player_feedback=True, num_simulations=100)
         if not is_successful:
             if isinstance(docker_result, str):
                 error_message = docker_result
@@ -95,7 +95,7 @@ def run_validation_simulation(code, game_name, team_name):
             print(f"Error message in validation.py: {error_message}")
             raise ValidationSimulationError(error_message)
 
-        feedback = docker_result.get('feedback', 'No feedback available.')
+        feedback = docker_result.get('player_feedback', 'No feedback available.')
         results = docker_result.get('simulation_results', {})
 
         return feedback, results

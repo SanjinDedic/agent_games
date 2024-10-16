@@ -102,6 +102,7 @@ def test_is_allowed_import():
 def test_run_validation_simulation(mock_run_docker_simulation, test_league):
     mock_run_docker_simulation.return_value = (True, {
         'feedback': 'Test feedback',
+        'player_feedback': 'Test2',
         'simulation_results': {'test': 'results'}
     })
 
@@ -111,7 +112,7 @@ def test_run_validation_simulation(mock_run_docker_simulation, test_league):
 
     feedback, results = run_validation_simulation(code, game_name, team_name)
 
-    assert feedback == 'Test feedback'
+    assert feedback == 'Test2'
     assert results == {'test': 'results'}
 
     # Test file creation and deletion

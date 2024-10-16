@@ -72,21 +72,24 @@ def make_decision(self, game_state):
 <p>Good luck and have fun!</p>
 '''
 
-    def __init__(self, league, verbose=False, reward_matrix=None, rounds_per_pairing=5):
-        super().__init__(league, verbose)
-        self.histories = {player.name: {} for player in self.players}
-        self.reward_matrix = reward_matrix or {
-            ('collude', 'collude'): (3, 3),
-            ('collude', 'defect'): (0, 5),
-            ('defect', 'collude'): (5, 0),
-            ('defect', 'defect'): (1, 1)
-        }
-        self.rounds_per_pairing = rounds_per_pairing
-        self.feedback = []
+    def __init__(self, league, verbose=False, reward_matrix=None, rounds_per_pairing=5, collect_player_feedback=True):
+            super().__init__(league, verbose)
+            self.histories = {player.name: {} for player in self.players}
+            self.reward_matrix = reward_matrix or {
+                ('collude', 'collude'): (4, 4),
+                ('collude', 'defect'): (0, 6),
+                ('defect', 'collude'): (6, 0),
+                ('defect', 'defect'): (0, 0)
+            }
+            self.rounds_per_pairing = rounds_per_pairing
+            self.game_feedback = []
+            self.player_feedback = []
+            self.collect_player_feedback = collect_player_feedback
 
     def add_feedback(self, message):
         if self.verbose:
-            self.feedback.append(message)
+            self.game_feedback.append(message)
+            self.player_feedback.append(message)
 
     def color_decision(self, decision):
         if decision == 'collude':
@@ -126,10 +129,12 @@ def make_decision(self, game_state):
             self.add_player_feedback(player2)
 
     def add_player_feedback(self, player):
-        if player.feedback:
-            self.add_feedback(f"\n<b>{player.name}'s feedback: </b>")
+        if self.collect_player_feedback and player.feedback:
+            feedback = f"\n<b>{player.name}'s feedback: </b>"
+            self.player_feedback.append(feedback)
             for message in player.feedback:
-                self.add_feedback(f"<span style='color: blue;'>{message}</span>")
+                colored_message = f"<span style='color: blue;'>{message}</span>"
+                self.player_feedback.append(colored_message)
             player.feedback = []  # Clear the feedback after adding it
 
     def update_scores(self, player1, decision1, player2, decision2):
@@ -177,21 +182,24 @@ def make_decision(self, game_state):
     def reset(self):
         super().reset()
         self.histories = {player.name: {} for player in self.players}
-        self.feedback = []
+        self.game_feedback = []
+        self.player_feedback = []
 
     @classmethod
     def run_single_game_with_feedback(cls, league, custom_rewards=None):
-        game = cls(league, verbose=True)
+        game = cls(league, verbose=True, collect_player_feedback=True)
         results = game.play_game(custom_rewards)
-        feedback = "\n".join(game.feedback)
+        game_feedback = "\n".join(game.game_feedback)
+        player_feedback = "\n".join(game.player_feedback)
         return {
             "results": results,
-            "feedback": feedback
+            "feedback": game_feedback,
+            "player_feedback": player_feedback
         }
 
     @classmethod
     def run_simulations(cls, num_simulations, league, custom_rewards=None):
-        game = cls(league)
+        game = cls(league, collect_player_feedback=False)
         total_points = {player.name: 0 for player in game.players}
         defections = {player.name: 0 for player in game.players}
         collusions = {player.name: 0 for player in game.players}
@@ -199,11 +207,10 @@ def make_decision(self, game_state):
         for _ in range(num_simulations):
             game.reset()
             results = game.play_game(custom_rewards)
-
+            
             for player, points in results["points"].items():
                 total_points[player] += points
 
-            # Count defections and collusions
             for player_name, opponents in game.histories.items():
                 for opponent_name, decisions in opponents.items():
                     defections[player_name] += decisions.count('defect')
@@ -212,6 +219,8 @@ def make_decision(self, game_state):
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
-            "table": {"defections": defections, 
-                      "collusions": collusions}
+            "table": {
+                "defections": defections,
+                "collusions": collusions
+            }
         }

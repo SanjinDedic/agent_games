@@ -14,6 +14,7 @@ SIMULATION_RESULTS_SCHEMA = {
     "type": "object",
     "properties": {
         "feedback": {"type": "string"},
+        "player_feedback": {"type": "string"},  # Add this line
         "simulation_results": {
             "type": "object",
             "properties": {
@@ -35,14 +36,13 @@ SIMULATION_RESULTS_SCHEMA = {
         }
     },
     "required": ["feedback", "simulation_results"],
-    "additionalProperties": False
+    "additionalProperties": True  # Change this to True to allow additional properties
 }
 
-
-def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT, feedback_required=False, num_simulations=100):
+def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT, player_feedback=False, num_simulations=100):
     custom_rewards_str = ",".join(map(str, custom_rewards)) if custom_rewards else "None"
     command = ["docker", "run", "--rm", "-v", f"{ROOT_DIR}:/agent_games", DOCKER_REPO, 
-               league_name, league_game, league_folder, custom_rewards_str, str(timeout), str(feedback_required), str(num_simulations)]
+               league_name, league_game, league_folder, custom_rewards_str, str(timeout), str(player_feedback), str(num_simulations)]
 
 
     print(f"Starting Docker simulation for {league_name}")
@@ -69,7 +69,8 @@ def run_docker_simulation(league_name, league_game, league_folder, custom_reward
         with open(ROOT_DIR + "/docker_results.json", "r") as f:
             results = json.load(f)
 
-        print("Validating Docker results")
+        print("Validating these Docker results")
+        print(docker_results)
         validate(instance=results, schema=SIMULATION_RESULTS_SCHEMA)
         print("Docker results validation successful")
 

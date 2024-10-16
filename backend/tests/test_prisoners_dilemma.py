@@ -30,7 +30,7 @@ def test_game_initialization(test_league):
 def test_add_feedback(test_league):
     game = PrisonersDilemmaGame(test_league, verbose=True)
     game.add_feedback("Test message")
-    assert "Test message" in game.feedback
+    assert "Test message" in game.game_feedback
 
 def test_color_decision(test_league):
     game = PrisonersDilemmaGame(test_league)
@@ -50,7 +50,7 @@ def test_add_player_feedback(test_league):
     player = game.players[0]
     player.feedback = ["Test feedback"]
     game.add_player_feedback(player)
-    assert any("Test feedback" in msg for msg in game.feedback)
+    assert any("Test feedback" in msg for msg in game.player_feedback)
     assert not player.feedback
 
 def test_update_scores(test_league):
@@ -60,7 +60,7 @@ def test_update_scores(test_league):
     initial_score2 = game.scores[player2.name]
     game.update_scores(player1, 'collude', player2, 'defect')
     assert game.scores[player1.name] == initial_score1 + 0
-    assert game.scores[player2.name] == initial_score2 + 5
+    assert game.scores[player2.name] == initial_score2 + 6
 
 def test_get_game_state(test_league):
     game = PrisonersDilemmaGame(test_league)
@@ -80,7 +80,7 @@ def test_play_game(test_league):
     assert "points" in results
     assert "score_aggregate" in results
     assert len(results["points"]) == len(game.players)
-    assert len(game.feedback) > 0
+    assert len(game.game_feedback) > 0
 
 def test_play_game_with_custom_rewards(test_league):
     game = PrisonersDilemmaGame(test_league)
@@ -96,7 +96,7 @@ def test_reset(test_league):
     game.reset()
     assert game.scores != initial_scores
     assert all(score == 0 for score in game.scores.values())
-    assert not game.feedback
+    assert not game.game_feedback
 
 def test_run_single_game_with_feedback(test_league):
     result = PrisonersDilemmaGame.run_single_game_with_feedback(test_league)
