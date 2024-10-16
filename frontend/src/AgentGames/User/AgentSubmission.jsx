@@ -80,7 +80,7 @@ const AgentSubmission = () => {
     constrainedInstance.initializeIn(editor);
     const maxLines = model.getLineCount();
     restrictions.push({
-      range: [1, 1, maxLines, 1],
+      range: [6, 1, maxLines, 1],
       allowMultiline: true
     });
 
