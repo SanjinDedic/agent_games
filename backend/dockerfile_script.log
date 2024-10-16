@@ -4157,3 +4157,40 @@
 2024-10-16 01:10:39,452 - __main__ - DEBUG - Simulation completed in 0.07 seconds
 2024-10-16 01:10:39,453 - __main__ - DEBUG - Writing results to file
 2024-10-16 01:10:39,453 - __main__ - DEBUG - Docker simulation completed
+2024-10-16 03:58:22,425 - __main__ - DEBUG - Starting run_docker_simulations
+2024-10-16 03:58:22,426 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-10-16 03:58:22,426 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-10-16 03:58:22,440 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-10-16 03:58:22,440 - __main__ - DEBUG - Running single game with feedback
+2024-10-16 03:58:22,442 - __main__ - ERROR - An error occurred: 'CustomPlayer' object has no attribute 'unbanked_money'
+2024-10-16 03:58:22,442 - __main__ - DEBUG - Docker simulation completed
+2024-10-16 03:58:55,111 - __main__ - DEBUG - Starting run_docker_simulations
+2024-10-16 03:58:55,112 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-10-16 03:58:55,112 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-10-16 03:58:55,125 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-10-16 03:58:55,125 - __main__ - DEBUG - Running single game with feedback
+2024-10-16 03:58:55,127 - __main__ - ERROR - An error occurred: 'CustomPlayer' object has no attribute 'unbanked_money'
+2024-10-16 03:58:55,127 - __main__ - DEBUG - Docker simulation completed
+2024-10-16 03:59:13,287 - __main__ - DEBUG - Starting run_docker_simulations
+2024-10-16 03:59:13,287 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-10-16 03:59:13,287 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-10-16 03:59:13,302 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-10-16 03:59:13,302 - __main__ - DEBUG - Running single game with feedback
+2024-10-16 03:59:13,304 - __main__ - ERROR - An error occurred: 'CustomPlayer' object has no attribute 'unbanked_money'
+2024-10-16 03:59:13,305 - __main__ - DEBUG - Docker simulation completed
+2024-10-16 04:00:30,224 - __main__ - DEBUG - Starting run_docker_simulations
+2024-10-16 04:00:30,224 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-10-16 04:00:30,224 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-10-16 04:00:30,238 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-10-16 04:00:30,238 - __main__ - DEBUG - Running single game with feedback
+2024-10-16 04:00:30,240 - __main__ - ERROR - An error occurred: 'CustomPlayer' object has no attribute 'unbanked_money'
+2024-10-16 04:00:30,240 - __main__ - DEBUG - Docker simulation completed
+2024-10-16 04:01:09,294 - __main__ - DEBUG - Starting run_docker_simulations
+2024-10-16 04:01:09,294 - __main__ - DEBUG - Arguments: test_league, greedy_pig, leagues/test_league, 6, None, True
+2024-10-16 04:01:09,294 - __main__ - DEBUG - Folder path: /agent_games/games/greedy_pig/leagues/test_league
+2024-10-16 04:01:09,307 - __main__ - DEBUG - Game class: <class 'games.greedy_pig.greedy_pig.GreedyPigGame'>
+2024-10-16 04:01:09,307 - __main__ - DEBUG - Running single game with feedback
+2024-10-16 04:01:09,310 - __main__ - DEBUG - Running 100 simulations
+2024-10-16 04:01:09,376 - __main__ - DEBUG - Simulation completed in 0.07 seconds
+2024-10-16 04:01:09,377 - __main__ - DEBUG - Writing results to file
+2024-10-16 04:01:09,377 - __main__ - DEBUG - Docker simulation completed
