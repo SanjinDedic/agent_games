@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Header
+from fastapi import FastAPI, Depends, Header, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from docker_simulation import run_docker_simulation, DOCKER_TIMEOUT
@@ -222,6 +222,17 @@ def get_all_teams(session: Session = Depends(get_db)):
     try:
         teams = database.get_all_teams(session)
         return ResponseModel(status="success", message="Teams retrieved successfully", data=teams)
+    except Exception as e:
+        print(f"Error retrieving teams: {str(e)}")
+        return ErrorResponseModel(status="error", message="An error occurred while retrieving teams")
+    
+@app.post("/submitted_teams", response_model=ResponseModel)
+def submitted_teams(league_name: str = Body(...), current_user: dict = Depends(get_current_user), session: Session = Depends(get_db)):
+    if current_user["role"] != "admin":
+            return ErrorResponseModel(status="error", message="Only admin users can view league results")
+    try:
+        result = database.get_submitted_teams_with_files(session, league_name)
+        return ResponseModel(status="success", message="Teams retrieved successfully", data=result)
     except Exception as e:
         print(f"Error retrieving teams: {str(e)}")
         return ErrorResponseModel(status="error", message="An error occurred while retrieving teams")

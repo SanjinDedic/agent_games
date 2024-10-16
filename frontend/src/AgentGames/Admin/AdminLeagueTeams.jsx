@@ -4,22 +4,62 @@ import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
 
 const AdminLeagueTeams = ({ selected_league_name }) => {
-    const teams = useSelector((state) => state.teams.list);
+    const apiUrl = useSelector((state) => state.settings.agentApiUrl);
+    const accessToken = useSelector((state) => state.auth.token);
     const [filteredTeams, setFilteredTeams] = useState([]);
+
+    // useEffect(() => {
+    //     if (!selected_league_name) return;
+
+    //     fetch(apiUrl + '/get_all_teams')
+    //       .then(response => response.json())
+    //       .then(data => {
+    //         if (data.status === "success" && Array.isArray(data.data.all_teams)) {
+    
+    //             const newFilteredTeams = data.data.all_teams.filter(value => value.league === selected_league_name);
+    //             if (newFilteredTeams.length === 0) {
+    //                 toast.error("No teams assigned to the League");
+    //                 setFilteredTeams([]);
+    //                 return;
+    //             }
+        
+    //             setFilteredTeams(newFilteredTeams);
+    //         } else if (data.status === "failed") {
+    //           toast.error(data.message);
+    //         }
+    //       })
+    //       .catch(error => {
+    //         console.error('Error fetching options:', error);
+    //       });
+    //   }, [selected_league_name]);
 
     useEffect(() => {
         if (!selected_league_name) return;
-        
-        const newFilteredTeams = teams.filter(value => value.league === selected_league_name);
-        if (newFilteredTeams.length === 0) {
-            toast.error("No teams assigned to the League");
-            setFilteredTeams([]);
-            return;
-        }
+        console.log(selected_league_name);
+    fetch(`${apiUrl}/submitted_teams`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ league_name: selected_league_name}),
+    })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            if (data.status === "success") {
+                toast.success(data.message);
+            } else if (data.status === "failed") {
+                toast.error(data.message);
+            } else if (data.status === "error") {
+                toast.error(data.message);
+                return;
+            }
+        })
+        .catch(error => {
 
-        setFilteredTeams(newFilteredTeams);
-
-
+            toast.error(`Failed to add League`);
+        });
     }, [selected_league_name]);
 
 

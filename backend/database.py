@@ -446,3 +446,54 @@ def update_expiry_date(session, league_name, expiry_date):
     else:
         print("LEAGUE NOT FOUND", league_name)
         return f"League '{league_name}' not found"
+    
+
+def get_submitted_teams_in_league(session: Session, league_id: int):
+    # Query teams in the league that have submissions
+    stmt = (
+        select(Team)
+        .where(Team.league_id == league_id)
+        .join(Submission, isouter=False)
+        .group_by(Team.id)
+    )
+    teams_with_submissions = session.exec(stmt).all()
+    return teams_with_submissions
+
+def get_files_in_folder(folder_path: str):
+    files = os.listdir(folder_path)
+    return files
+
+def match_teams_without_to_files(teams, files):
+    teams_without_files = []
+    file_set = set(files)
+    for team in teams:
+        expected_file_name = f"{team.name}.py"  
+        if expected_file_name not in file_set:
+            teams_without_files.append(team)
+    return teams_without_files
+
+def match_teams_with_to_files(teams, files):
+    teams_with_files = []
+    file_set = set(files)
+    for team in teams:
+        expected_file_name = f"{team.name}.py"  
+        if expected_file_name not in file_set:
+            teams_with_files.append(team)
+    return teams_with_files
+
+def get_submitted_teams_with_files(session: Session, league_name: str):
+    league = session.exec(
+        select(League)
+        .where(League.name == league_name)
+    ).one_or_none()
+    
+    teams = get_submitted_teams_in_league(session, league.id)
+    
+    path = os.path.join(ROOT_DIR, "games", league.game, league.folder)
+    files = get_files_in_folder(path)
+    
+
+    teams_with_files = match_teams_with_to_files(teams, files)
+
+    
+    return teams_with_files
