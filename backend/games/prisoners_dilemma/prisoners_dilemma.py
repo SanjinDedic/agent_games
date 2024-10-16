@@ -47,9 +47,9 @@ class CustomPlayer(Player):
 <h2>4. Scoring</h2>
 <p>The scoring is determined by a reward matrix. The default matrix is:</p>
 <ul>
-    <li>Both collude: 3 points each</li>
-    <li>Both defect: 1 point each</li>
-    <li>One colludes, one defects: Defector gets 5 points, Colluder gets 0 points</li>
+    <li>Both collude: 4 points each</li>
+    <li>Both defect: 0 point each</li>
+    <li>One colludes, one defects: Defector gets 6 points, Colluder gets 0 points</li>
 </ul>
 
 <h2>5. Implementation Example</h2>
@@ -71,6 +71,7 @@ def make_decision(self, game_state):
     <li>Adapt your strategy based on the current scores and round number</li>
 </ul>
 
+<h2>WARNING: When you log out or navigate away or refresh the page your code will be lost. Please save it!</h2>
 <p>Good luck and have fun!</p>
 '''
 
@@ -107,11 +108,17 @@ def make_decision(self, game_state):
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
             try:
                 decision1 = player1.make_decision(game_state1)
+                if decision1 not in ["defect","collude"]:
+                    decision1 = "collude"
+                    self.add_feedback(player1.name + " invalid decision, defaulting to collude")
             except:
                 decision1 = 'collude'
                 self.add_feedback(player1.name + " invalid code, decision defaulting to collude")
             try:
                 decision2 = player2.make_decision(game_state2)
+                if decision2 not in ["defect","collude"]:
+                    decision2 = "collude"
+                    self.add_feedback(player2.name + " invalid decision, defaulting to collude")
             except:
                 decision2 = 'collude'
                 self.add_feedback(player2.name + " invalid code, decision defaulting to collude")
