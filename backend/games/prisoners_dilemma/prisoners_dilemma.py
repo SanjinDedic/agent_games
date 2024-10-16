@@ -5,6 +5,7 @@ import itertools
 class PrisonersDilemmaGame(BaseGame):
     starter_code = '''
 from games.prisoners_dilemma.player import Player
+import random
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):
@@ -16,7 +17,8 @@ class CustomPlayer(Player):
         decision = 'collude'  # or 'defect'
         
         # Add custom feedback (will appear in blue in the game output)
-        self.add_feedback(f"Round {game_state['round_number']}: Opponent history: {opponent_history}, My history: {my_history}, My decision: {decision}")
+        self.add_feedback("Round number: " + str(game_state['round_number']))
+        self.add_feedback("| Opponent history: " + str(opponent_history ))
         
         return decision
 '''
