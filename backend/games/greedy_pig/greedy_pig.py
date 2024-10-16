@@ -2,6 +2,10 @@ from games.base_game import BaseGame
 import random
 import os
 import time
+from games.greedy_pig.player import Player as GreedyPigPlayer
+import importlib.util
+from config import ROOT_DIR
+
 
 class GreedyPigGame(BaseGame):
     starter_code = '''
@@ -90,6 +94,48 @@ def make_decision(self, game_state):
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
         self.game_feedback = []
         self.player_feedback = []
+
+    def get_all_player_classes_from_folder(self):
+        players = []
+        league_directory = os.path.join(ROOT_DIR, "games", self.league.game, self.league.folder)
+
+        if self.verbose:
+            print(f"Searching for player classes in: {league_directory}")
+
+        if not os.path.exists(league_directory):
+            print(f"The folder '{league_directory}' does not exist.")
+            return players
+
+        for item in os.listdir(league_directory):
+            if item.endswith(".py"):
+                module_name = item[:-3]
+                module_path = os.path.join(league_directory, item)
+
+                if self.verbose:
+                    print(f"Found Python file: {module_path}")
+
+                spec = importlib.util.spec_from_file_location(module_name, module_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                if hasattr(module, "CustomPlayer"):
+                    player_class = getattr(module, "CustomPlayer")
+                    player = player_class()
+                    
+                    # Validate that the player is an instance of GreedyPigPlayer
+                    if not isinstance(player, GreedyPigPlayer):
+                        print(f"Warning: {module_name} does not contain a valid Greedy Pig player. Skipping.")
+                        continue
+                    
+                    player.name = module_name
+                    players.append(player)
+                    if self.verbose:
+                        print(f"Added player: {player.name}")
+
+        if self.verbose:
+            print(f"Total players found: {len(players)}, {players}")
+
+        return players
 
     def add_feedback(self, message):
         if self.verbose:
