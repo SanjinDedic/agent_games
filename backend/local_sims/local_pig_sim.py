@@ -11,7 +11,7 @@ from games.greedy_pig.greedy_pig import GreedyPigGame
 from models_db import League
 
 # Set up the test league
-test_league_folder = os.path.join(backend_dir, "games", "greedy_pig", "leagues", "test_league")
+test_league_folder = os.path.join(backend_dir, "games", "greedy_pig", "leagues", "admin", "prelim7-8")
 test_league = League(folder=test_league_folder, name="Test League", game="greedy_pig")
 
 
