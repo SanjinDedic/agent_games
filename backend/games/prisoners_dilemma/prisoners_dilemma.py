@@ -5,6 +5,8 @@ import importlib.util
 from games.prisoners_dilemma.player import Player as PrisonersDilemmaPlayer
 from config import ROOT_DIR
 import os
+from types import MappingProxyType
+import copy
 
 class PrisonersDilemmaGame(BaseGame):
     starter_code = '''
@@ -135,6 +137,25 @@ def make_decision(self, game_state):
 
         return players
 
+    def get_game_state(self, player_name, opponent_name, round_number):
+        # Create deep copies and immutable versions of the game state
+        histories_copy = {}
+        for p1, opponents in self.histories.items():
+            histories_copy[p1] = {}
+            for p2, decisions in opponents.items():
+                histories_copy[p1][p2] = tuple(decisions)  # Convert list to immutable tuple
+
+        state = {
+            "round_number": round_number,
+            "player_name": player_name,
+            "opponent_name": opponent_name,
+            "opponent_history": tuple(self.histories[opponent_name].get(player_name, [])),
+            "my_history": tuple(self.histories[player_name].get(opponent_name, [])),
+            "all_history": MappingProxyType(histories_copy),
+            "scores": MappingProxyType(dict(self.scores))
+        }
+        return MappingProxyType(state)
+
     def add_feedback(self, message):
         if self.verbose:
             self.game_feedback.append(message)
@@ -150,26 +171,42 @@ def make_decision(self, game_state):
     def play_pairing(self, player1, player2):
         self.add_feedback(f"\n## Pairing: &#128100;{player1.name} vs &#128100;{player2.name}")
         for round_number in range(1, self.rounds_per_pairing + 1):
+            # Create fresh game states for each player
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
+            
+            random.seed()  # Reset random seed for each round
+            
             try:
                 decision1 = player1.make_decision(game_state1)
                 if decision1 not in ["defect","collude"]:
                     decision1 = "collude"
                     self.add_feedback(player1.name + " invalid decision, defaulting to collude")
-            except:
+            except Exception as e:
                 decision1 = 'collude'
-                self.add_feedback(player1.name + " invalid code, decision defaulting to collude")
+                self.add_feedback(f"{player1.name} invalid code ({str(e)}), decision defaulting to collude")
+
             try:
                 decision2 = player2.make_decision(game_state2)
                 if decision2 not in ["defect","collude"]:
                     decision2 = "collude"
                     self.add_feedback(player2.name + " invalid decision, defaulting to collude")
-            except:
+            except Exception as e:
                 decision2 = 'collude'
-                self.add_feedback(player2.name + " invalid code, decision defaulting to collude")
-            self.histories[player1.name].setdefault(player2.name, []).append(decision1)
-            self.histories[player2.name].setdefault(player1.name, []).append(decision2)
+                self.add_feedback(f"{player2.name} invalid code ({str(e)}), decision defaulting to collude")
+
+            # Update histories with new decisions
+            if player1.name not in self.histories:
+                self.histories[player1.name] = {}
+            if player2.name not in self.histories[player1.name]:
+                self.histories[player1.name][player2.name] = []
+            self.histories[player1.name][player2.name].append(decision1)
+
+            if player2.name not in self.histories:
+                self.histories[player2.name] = {}
+            if player1.name not in self.histories[player2.name]:
+                self.histories[player2.name][player1.name] = []
+            self.histories[player2.name][player1.name].append(decision2)
 
             self.update_scores(player1, decision1, player2, decision2)
 
@@ -182,6 +219,7 @@ def make_decision(self, game_state):
             # Add player feedback
             self.add_player_feedback(player1)
             self.add_player_feedback(player2)
+
 
     def add_player_feedback(self, player):
         if self.collect_player_feedback and player.feedback:
@@ -196,17 +234,6 @@ def make_decision(self, game_state):
         score1, score2 = self.reward_matrix[(decision1, decision2)]
         self.scores[player1.name] += score1
         self.scores[player2.name] += score2
-
-    def get_game_state(self, player_name, opponent_name, round_number):
-        return {
-            "round_number": round_number,
-            "player_name": player_name,
-            "opponent_name": opponent_name,
-            "opponent_history": self.histories[opponent_name].get(player_name, []),
-            "my_history": self.histories[player_name].get(opponent_name, []),
-            "all_history": self.histories,
-            "scores": self.scores
-        }
 
     def play_game(self, custom_rewards=None):
         if custom_rewards:
@@ -232,7 +259,7 @@ def make_decision(self, game_state):
         for player, score in self.scores.items():
             self.add_feedback(f"  - &#128100;{player}: <b>{score}</b>")
 
-        return {"points": self.scores, "score_aggregate": self.scores}
+        return {"points": dict(self.scores), "score_aggregate": dict(self.scores)}
 
     def reset(self):
         super().reset()
