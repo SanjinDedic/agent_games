@@ -5,7 +5,8 @@ import time
 from games.greedy_pig.player import Player as GreedyPigPlayer
 import importlib.util
 from config import ROOT_DIR
-
+from types import MappingProxyType
+import copy
 
 class GreedyPigGame(BaseGame):
     starter_code = '''
@@ -95,6 +96,17 @@ def make_decision(self, game_state):
         self.game_feedback = []
         self.player_feedback = []
 
+    def get_game_state(self):
+        # Create an immutable copy of the game state using MappingProxyType
+        state = {
+            "round_no": self.round_no,
+            "roll_no": self.roll_no,
+            "players_banked_this_round": tuple(self.players_banked_this_round),  # Convert list to immutable tuple
+            "banked_money": MappingProxyType({player.name: player.banked_money for player in self.players}),
+            "unbanked_money": MappingProxyType({player.name: player.unbanked_money for player in self.players}),
+        }
+        return MappingProxyType(state)
+
     def get_all_player_classes_from_folder(self):
         players = []
         league_directory = os.path.join(ROOT_DIR, "games", self.league.game, self.league.folder)
@@ -172,6 +184,7 @@ def make_decision(self, game_state):
 
         while True:
             self.roll_no += 1
+            random.seed()  # Reset random seed each roll to prevent manipulation
             roll = self.roll_dice()
             self.add_feedback(f"\n### Roll {self.roll_no}")
             self.add_feedback(f"\n<table>")
@@ -192,25 +205,28 @@ def make_decision(self, game_state):
                         feedback_row += f"<td>$0</td>"
                     player.reset_unbanked_money()
                 feedback_row += f"</tr>"
-                self.add_feedback(feedback_row) 
+                self.add_feedback(feedback_row)
                 self.add_feedback(f"</table>")
-                break                
+                break
 
             feedback_row += f"<td style=\"border:0px;white-space:nowrap;\">&#127922; = <b>{roll}</b></td>"
             for player in self.active_players.copy():
                 feedback_row += f"<td>${player.unbanked_money + roll}</td>"
             feedback_row += f"</tr>"
-            self.add_feedback(feedback_row) 
+            self.add_feedback(feedback_row)
 
             feedback_row = f"<tr style=\"border:0px\"><td style=\"border: 0px\"><b>Action</b></td>"
             for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
                     try:
-                        decision = player.make_decision(self.get_game_state())
-                    except:
+                        # Create a fresh game state for each player
+                        player_state = self.get_game_state()
+                        decision = player.make_decision(player_state)
+                    except Exception as e:
+                        print(f"Error in player {player.name}'s decision: {e}")
                         decision = 'bank'
-                        
+
                     if decision == 'bank':
                         feedback_row += f"<td>&#128181; bank</td>"
                         player.bank_money()
@@ -219,14 +235,8 @@ def make_decision(self, game_state):
                         self.active_players.remove(player)
                     else:
                         feedback_row += f"<td></td>"
-                    
-                    # Add player feedback
+
                     self.add_player_feedback(player)
-                    if player.feedback:
-                        self.add_feedback(f"\n<b>{player.name}'s feedback:</b>")
-                        for message in player.feedback:
-                            self.add_feedback(f"<span style='color: blue;'>{message}</span>")
-                        player.feedback = []  # Clear the feedback after adding it
 
             feedback_row += f"</tr>"
             self.add_feedback(feedback_row)
