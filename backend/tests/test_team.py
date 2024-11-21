@@ -310,3 +310,40 @@ class CustomPlayer(Player):
     assert response.status_code == 200
     assert response.json()["status"] == "error"
     assert "You can only make 2 submissions per minute" in response.json()["message"]
+
+
+def test_league_assign_error(client, team_token, mocker):
+    # Mock database.assign_team_to_league to raise an exception
+    mocker.patch(
+        "database.assign_team_to_league",
+        side_effect=Exception("Database connection error")
+    )
+    
+    response = client.post(
+        "/league_assign",
+        json={"name": "test_league"},
+        headers={"Authorization": f"Bearer {team_token}"}
+    )
+    
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "error",
+        "message": "An error occurred while assigning team to leagueDatabase connection error",
+        "data": None  # Added this line
+    }
+
+def test_get_all_teams_error(client, db_session, mocker):
+    # Mock database.get_all_teams to raise an exception
+    mocker.patch(
+        "database.get_all_teams",
+        side_effect=Exception("Database error")
+    )
+    
+    response = client.get("/get_all_teams")
+    
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "error",
+        "message": "An error occurred while retrieving teams",
+        "data": None  # Added this line
+    }

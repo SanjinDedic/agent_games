@@ -144,5 +144,36 @@ def test_game_instructions():
     assert 'Scoring' in PrisonersDilemmaGame.game_instructions
     assert 'Strategy Tips' in PrisonersDilemmaGame.game_instructions
 
-if __name__ == "__main__":
-    pytest.main()
+def test_invalid_player_decision(test_league):
+    game = PrisonersDilemmaGame(test_league, verbose=True)
+    player1, player2 = game.players[:2]
+    
+    # Mock player1's make_decision method to return an invalid decision
+    def mock_decision(game_state):
+        return 'invalid_decision'
+    player1.make_decision = mock_decision
+    
+    # Play a pairing and verify the invalid decision is handled correctly
+    game.play_pairing(player1, player2)
+    
+    # Check if the decision defaulted to 'collude'
+    assert game.histories[player1.name][player2.name][0] == 'collude'
+    assert len(game.game_feedback) > 0
+    assert any("invalid decision" in feedback for feedback in game.game_feedback)
+
+def test_player_decision_exception(test_league):
+    game = PrisonersDilemmaGame(test_league, verbose=True)
+    player1, player2 = game.players[:2]
+    
+    # Mock player1's make_decision method to raise an exception
+    def mock_decision(game_state):
+        raise Exception("Test exception")
+    player1.make_decision = mock_decision
+    
+    # Play a pairing and verify the exception is handled correctly
+    game.play_pairing(player1, player2)
+    
+    # Check if the decision defaulted to 'collude'
+    assert game.histories[player1.name][player2.name][0] == 'collude'
+    assert len(game.game_feedback) > 0
+    assert any("invalid code (Test exception)" in feedback for feedback in game.game_feedback)
