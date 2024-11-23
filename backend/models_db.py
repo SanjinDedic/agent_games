@@ -1,11 +1,9 @@
-from typing import List, Optional, Dict
-from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint, DateTime, Column, JSON
-from config import CURRENT_DB
 from datetime import datetime
+from typing import List, Optional
+
 from auth import get_password_hash, verify_password
-
-
-
+from sqlmodel import (
+    Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint)
 
 #---------------------------------------------------------------------------------#
 #---                                 TABLES                                    ---#

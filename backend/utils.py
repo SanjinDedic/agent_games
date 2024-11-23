@@ -1,8 +1,9 @@
-# utils.py
+import json
+import os
 
-import json, os
-from database import create_team
 from config import ROOT_DIR
+from database import create_team
+
 
 def add_teams_from_json(session, teams_json_path):
     try:

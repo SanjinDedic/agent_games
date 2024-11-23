@@ -1,12 +1,14 @@
+import json
 import os
 import shutil
-import json
-from sqlmodel import Session, SQLModel, create_engine, select
-from models_db import League, Team, Admin
-from auth import get_password_hash
-from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY, ROOT_DIR
 from datetime import datetime, timedelta
+
+from auth import get_password_hash
+from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
 from database import create_administrator
+from models_db import League, Team
+from sqlmodel import Session, SQLModel, create_engine, select
+
 
 def create_and_populate_database():
     os.environ["TESTING"] = "0"  # Set the TESTING environment variable to "0"

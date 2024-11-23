@@ -1,15 +1,10 @@
-import io
-import sys
-from contextlib import redirect_stdout
-from games.base_game import BaseGame
-from games.game_factory import GameFactory
+import ast
+import os
+
+from config import ROOT_DIR
 from docker_simulation import run_docker_simulation
 from models_db import League
 from utils import get_games_names
-from config import ROOT_DIR
-import os
-import ast
-
 
 # List of allowed modules and their allowed sub-modules
 # Dynamically generate the ALLOWED_MODULES dictionary

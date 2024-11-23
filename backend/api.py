@@ -1,31 +1,20 @@
-from fastapi import FastAPI, Depends, Header
-from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session
-from docker_simulation import run_docker_simulation, DOCKER_TIMEOUT
-from validation import is_agent_safe, run_validation_simulation
-from games.game_factory import GameFactory
 import os
-from config import ROOT_DIR
 from contextlib import asynccontextmanager
-from utils import transform_result, get_games_names
-from auth import get_current_user, decode_id
+
 import database
+from auth import get_current_user
+from config import ROOT_DIR
+from docker_simulation import run_docker_simulation
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from games.game_factory import GameFactory
 from models_api import (
-    ResponseModel,
-    ErrorResponseModel,
-    LeagueSignUp,
-    TeamSignup,
-    AdminLogin,
-    TeamLogin,
-    SubmissionCode,
-    SimulationConfig,
-    LeagueAssignRequest,
-    TeamDelete,
-    ExpiryDate,
-    LeagueName,
-    LeagueResults,
-    GameName
-)
+    AdminLogin, ErrorResponseModel, ExpiryDate, GameName, LeagueAssignRequest,
+    LeagueName, LeagueResults, LeagueSignUp, ResponseModel, SimulationConfig,
+    SubmissionCode, TeamDelete, TeamLogin, TeamSignup)
+from sqlmodel import Session
+from utils import get_games_names, transform_result
+from validation import is_agent_safe, run_validation_simulation
 
 
 @asynccontextmanager

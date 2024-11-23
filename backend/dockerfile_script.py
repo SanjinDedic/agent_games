@@ -1,13 +1,13 @@
 import json
-import sys
+import logging
 import os
 import signal
+import sys
 import time
-import logging
 
+from config import ROOT_DIR
 from games.game_factory import GameFactory
 from models_db import League
-from config import ROOT_DIR
 
 # Set up logging to write to both a file and stream to stdout
 log_file_path = os.path.join(ROOT_DIR, "dockerfile_script.log")
