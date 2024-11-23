@@ -1,19 +1,17 @@
-import logging
 import json
 import os
-import pytz
 from datetime import datetime, timedelta
-from sqlmodel import select, SQLModel, delete
-from config import ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url, GUEST_LEAGUE_EXPIRY, ROOT_DIR
-from models_db import Admin, League, Team, Submission, SimulationResult, SimulationResultItem
-from sqlalchemy import create_engine
-from sqlmodel import Session, select
+
+import pytz
 from auth import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    encode_id
-)
+    create_access_token, encode_id, get_password_hash)
+from config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES, GUEST_LEAGUE_EXPIRY, ROOT_DIR,
+    get_database_url)
+from models_db import (
+    Admin, League, SimulationResult, SimulationResultItem, Submission, Team)
+from sqlalchemy import create_engine
+from sqlmodel import SQLModel, delete, select
 
 AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
 
