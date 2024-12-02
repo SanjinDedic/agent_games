@@ -42,7 +42,7 @@ pytest-cov==4.1.0
 pytest-mock==3.12.0
 python-dotenv==1.0.1
 python-jose==3.3.0
-python-multipart==0.0.9
+python-multipart==0.0.18
 PyYAML==6.0.1
 requests==2.32.3
 rich==13.7.0
@@ -109,7 +109,7 @@ pytest-cov==4.1.0
 pytest-mock==3.12.0
 python-dotenv==1.0.1
 python-jose==3.3.0
-python-multipart==0.0.9
+python-multipart==0.0.18
 pytz==2024.1
 PyYAML==6.0.1
 requests==2.32.3
