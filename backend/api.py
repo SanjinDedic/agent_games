@@ -232,7 +232,7 @@ def publish_results(sim: LeagueResults, current_user: dict = Depends(get_current
     if current_user["role"] != "admin":
         return ErrorResponseModel(status="error", message="Only admin users can publish league results") 
     try:
-        msg,data = database.publish_sim_results(session, sim.league_name, sim.id)
+        msg, data = database.publish_sim_results(session, sim.league_name, sim.id, sim.feedback)
         return ResponseModel(status="success", message=msg, data=data)
     except Exception as e:
         return ErrorResponseModel(status="error", message="An error occurred while publishing results "+str(e))
