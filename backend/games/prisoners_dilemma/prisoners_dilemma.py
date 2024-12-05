@@ -80,7 +80,7 @@ class CustomPlayer(Player):
             'defect,defect': (0, 0)
         }
         self.rounds_per_pairing = rounds_per_pairing
-        self.game_feedback = {"pairings": []}
+        self.game_feedback = {"game" : "prisoners_dilemma", "pairings": []}
         self.player_feedback = {}
         self.collect_player_feedback = collect_player_feedback
         self.scores = {str(player.name): 0 for player in self.players}
