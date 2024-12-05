@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -13,6 +13,7 @@ class LeagueName(BaseModel):
 class LeagueResults(BaseModel):
     league_name: str
     id: int
+    feedback: Union[str, dict, None] = None
 
 class LeagueAssignRequest(BaseModel):
     name: str

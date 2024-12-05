@@ -12,8 +12,18 @@ DOCKER_TIMEOUT = 40
 SIMULATION_RESULTS_SCHEMA = {
     "type": "object",
     "properties": {
-        "feedback": {"type": "string"},
-        "player_feedback": {"type": "string"},  # Add this line
+        "feedback": {
+            "oneOf": [
+                {"type": "string"},
+                {"type": "object", "additionalProperties": True}
+            ]
+        },
+        "player_feedback": {
+            "oneOf": [
+                {"type": "string"},
+                {"type": "object", "additionalProperties": True}
+            ]
+        },
         "simulation_results": {
             "type": "object",
             "properties": {
@@ -35,7 +45,7 @@ SIMULATION_RESULTS_SCHEMA = {
         }
     },
     "required": ["feedback", "simulation_results"],
-    "additionalProperties": True  # Change this to True to allow additional properties
+    "additionalProperties": True
 }
 
 def run_docker_simulation(league_name, league_game, league_folder, custom_rewards, timeout=DOCKER_TIMEOUT, player_feedback=False, num_simulations=100):
@@ -65,6 +75,9 @@ def run_docker_simulation(league_name, league_game, league_folder, custom_reward
     print(docker_results.stdout)
 
     try:
+        #make the api call test here
+        
+
         with open(ROOT_DIR + "/docker_results.json", "r") as f:
             results = json.load(f)
 

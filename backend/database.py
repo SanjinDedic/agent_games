@@ -318,6 +318,12 @@ def get_published_result(session, league_name):
                             table[value_name] = {}
                         table[value_name][result.team.name] = value
 
+            feedback = None
+            if sim.feedback_str is not None:
+                feedback = sim.feedback_str
+            elif sim.feedback_json is not None:
+                feedback = json.loads(sim.feedback_json)
+
             return {
                 "league_name": league_name, 
                 "id": sim.id, 
@@ -325,7 +331,8 @@ def get_published_result(session, league_name):
                 "table": table,
                 "num_simulations": num_simulations, 
                 "active": active,
-                "rewards": json.loads(sim.custom_rewards)
+                "rewards": json.loads(sim.custom_rewards),
+                "feedback": feedback
             }
     
     return None
@@ -352,13 +359,12 @@ def process_simulation_results(sim, league_name, active=None):
                 
                 table_data[custom_value_name][team_name] = custom_value
 
-    # Validate table_data
-    for key, value in table_data.items():
-        if not isinstance(value, dict):
-            raise SimulationResultFormatError(f"Table item '{key}' is not a dictionary")
-        
-        if set(value.keys()) != set(total_points.keys()):
-            raise SimulationResultFormatError(f"Keys in table item '{key}' do not match keys in total_points")
+    # Add feedback handling
+    feedback = None
+    if sim.feedback_str is not None:
+        feedback = sim.feedback_str
+    elif sim.feedback_json is not None:
+        feedback = json.loads(sim.feedback_json)
 
     result_data = {
         "league_name": league_name,
@@ -367,7 +373,8 @@ def process_simulation_results(sim, league_name, active=None):
         "table": table_data,
         "num_simulations": sim.num_simulations,
         "timestamp": sim.timestamp,
-        "rewards": sim.custom_rewards
+        "rewards": sim.custom_rewards,
+        "feedback": feedback  # Add feedback to response
     }
 
     if active is not None:
@@ -393,7 +400,7 @@ def get_all_league_results(session, league_name):
 
 
 
-def publish_sim_results(session, league_name, sim_id):
+def publish_sim_results(session, league_name, sim_id, feedback=None):
     league = session.exec(select(League).where(League.name == league_name)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
@@ -408,9 +415,24 @@ def publish_sim_results(session, league_name, sim_id):
         session.add(sim)
 
     simulation.published = True
+    
+    # Handle feedback if provided
+    if feedback is not None:
+        if isinstance(feedback, str):
+            simulation.feedback_str = feedback
+            simulation.feedback_json = None
+        elif isinstance(feedback, dict):
+            simulation.feedback_str = None
+            simulation.feedback_json = json.dumps(feedback)
+    
     session.add(simulation)
     session.commit()
-    return f"Simulation results for league '{league_name}' published successfully", {"id": simulation.id, "league_name": league_name, "published": True}
+    
+    return f"Simulation results for league '{league_name}' published successfully", {
+        "id": simulation.id, 
+        "league_name": league_name, 
+        "published": True
+    }
 
 
 def get_all_published_results(session):

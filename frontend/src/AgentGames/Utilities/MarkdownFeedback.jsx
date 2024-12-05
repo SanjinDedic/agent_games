@@ -1,3 +1,4 @@
+// MarkdownFeedback.jsx
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -10,6 +11,18 @@ const MarkdownFeedback = ({ feedback }) => {
     setIsExpanded(!isExpanded);
   };
 
+  const renderContent = () => {
+    if (typeof feedback !== 'string') {
+      return <div className="feedback-error">Error: Markdown feedback must be a string</div>;
+    }
+    
+    return (
+      <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+        {feedback}
+      </ReactMarkdown>
+    );
+  };
+
   return (
     <div className="markdown-feedback">
       <div className="feedback-header" onClick={toggleExpand}>
@@ -17,9 +30,7 @@ const MarkdownFeedback = ({ feedback }) => {
         <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}></span>
       </div>
       <div className={`feedback-content ${isExpanded ? 'expanded' : ''}`}>
-        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-          {feedback}
-        </ReactMarkdown>
+        {renderContent()}
       </div>
     </div>
   );
