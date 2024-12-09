@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from auth import get_password_hash, verify_password
 from sqlmodel import (
@@ -71,6 +71,8 @@ class SimulationResult(SQLModel, table=True):
     published: bool = False
     num_simulations: int = 0
     custom_rewards: str = '[10, 8, 6, 4, 3, 2, 1]'
+    feedback_str: str | None = None
+    feedback_json: str | None = None  # Store JSON feedback as a string
 
 
 class SimulationResultItem(SQLModel, table=True):

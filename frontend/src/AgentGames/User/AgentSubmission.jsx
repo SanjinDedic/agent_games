@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Editor from "@monaco-editor/react";
 import { constrainedEditor } from "constrained-editor-plugin";
 import ResultsDisplay from '../Utilities/ResultsDisplay';
-import MarkdownFeedback from '../Utilities/MarkdownFeedback';
+import FeedbackSelector from '../Utilities/FeedbackSelector';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import './css/submission.css'
@@ -127,9 +127,9 @@ const AgentSubmission = () => {
   return (
     <div>
       <div className="team-info-container">
-      {currentUser.name && <h1 className="team-id">TEAM: {currentUser.name}</h1>}
-      {currentLeague.game &&   <h1 className="team-game">GAME: {currentLeague.game}</h1>}
-      {currentLeague.name &&   <h1 className="team-league">LEAGUE: {currentLeague.name}</h1>}
+        {currentUser.name && <h1 className="team-id">TEAM: {currentUser.name}</h1>}
+        {currentLeague.game && <h1 className="team-game">GAME: {currentLeague.game}</h1>}
+        {currentLeague.name && <h1 className="team-league">LEAGUE: {currentLeague.name}</h1>}
       </div>
       <div className="editor-container">
         <h1>AGENT GAMES CODE SUBMISSION</h1>
@@ -146,7 +146,12 @@ const AgentSubmission = () => {
             options={editorOptions}
           />
         }
-        <UserTooltip title="⚠️ INFO <br />Enter your code above and then submit to see results below." arrow disableFocusListener disableTouchListener>
+        <UserTooltip 
+          title="⚠️ INFO <br />Enter your code above and then submit to see results below." 
+          arrow 
+          disableFocusListener 
+          disableTouchListener
+        >
           <button onClick={handleSubmit} className="submit-button" disabled={isLoading}>
             {isLoading ? 'Submitting...' : 'Submit Code'}
           </button>
@@ -154,8 +159,12 @@ const AgentSubmission = () => {
         <div className="output-container">
           {output ? (
             <>
-              <ResultsDisplay data={output} data_message={messageData} tablevisible={true} />
-              {feedback && <MarkdownFeedback feedback={feedback} />}
+              <ResultsDisplay 
+                data={output} 
+                data_message={messageData} 
+                tablevisible={true} 
+              />
+              {feedback && <FeedbackSelector feedback={feedback} />}
             </>
           ) : (
             isLoading ? <p>Loading results...</p> : <p>Submit to see results</p>

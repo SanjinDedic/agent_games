@@ -1,0 +1,81 @@
+.prisoners_dilemma {
+    color: #1a1a1a !important;
+    background-color: #ffffff !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
+    padding: 16px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .prisoners_dilemma select {
+    padding: 4px 8px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    background-color: white !important;
+    color: #1a1a1a !important;
+    font-size: 14px !important;
+  }
+  
+  .prisoners_dilemma table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 8px 0 !important;
+    background-color: white !important;
+    table-layout: fixed !important;
+  }
+  
+  .prisoners_dilemma th {
+    background-color: #f3f4f6 !important;
+    color: #4b5563 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    padding: 8px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: auto !important;
+  }
+  
+  .prisoners_dilemma td {
+    padding: 8px !important;
+    border: 1px solid #e5e7eb !important;
+    color: #1a1a1a !important;
+    font-size: 13px !important;
+  }
+  
+  .prisoners_dilemma h2, .prisoners_dilemma h3 {
+    color: #1a1a1a !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    margin: 16px 0 8px 0 !important;
+  }
+  
+  .collude_collude {
+    background-color: #dcfce7 !important;
+  }
+  
+  .defect_defect {
+    background-color: #fee2e2 !important;
+  }
+  
+  .mixed_strategy {
+    background-color: #fef3c7 !important;
+  }
+  
+  .scores_table {
+    width: auto !important;
+    min-width: 200px !important;
+  }
+  
+  .scores_table th, .scores_table td {
+    padding: 6px 12px !important;
+  }
+  
+  .scores_table tr:nth-child(even) {
+    background-color: #f9fafb !important;
+  }

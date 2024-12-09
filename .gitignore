@@ -41,8 +41,19 @@ frontend/src/gen_prompt.py
 frontend/src/front_end.md
 backend/teams.json
 
+# Leagues folders for each game
+backend/games/prisoners_dilemma/leagues/
+backend/games/forty_two/leagues/
+backend/games/alpha_guess/leagues/
+backend/games/greedy_pig/leagues/
+
 # Ignore all db files
 *.db
 
 # Ignore all log files
 .DS_Store
+
+# Docker log
+backend/dockerfile_script.log
+
+

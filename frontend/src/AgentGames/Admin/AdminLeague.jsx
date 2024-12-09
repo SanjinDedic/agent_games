@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ResultsDisplay from '../Utilities/ResultsDisplay';
-import MarkdownFeedback from '../Utilities/MarkdownFeedback';
+import FeedbackSelector from '../Utilities/FeedbackSelector';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
@@ -185,7 +185,7 @@ function AdminLeague() {
                 />
               )
               )}
-            {currentSimulation?.feedback && <MarkdownFeedback feedback={currentSimulation.feedback} />}
+            {currentSimulation?.feedback && <FeedbackSelector feedback={currentSimulation.feedback} />}
           </div>
           {currentLeague && <AdminLeagueTeams selected_league_name={currentLeague.name} />}
         </div>
