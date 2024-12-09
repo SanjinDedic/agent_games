@@ -317,12 +317,13 @@ def get_published_result(session, league_name):
                         if value_name not in table:
                             table[value_name] = {}
                         table[value_name][result.team.name] = value
-
-            feedback = None
+            
             if sim.feedback_str is not None:
                 feedback = sim.feedback_str
             elif sim.feedback_json is not None:
                 feedback = json.loads(sim.feedback_json)
+            else:
+                feedback = None
 
             return {
                 "league_name": league_name, 
@@ -360,11 +361,12 @@ def process_simulation_results(sim, league_name, active=None):
                 table_data[custom_value_name][team_name] = custom_value
 
     # Add feedback handling
-    feedback = None
     if sim.feedback_str is not None:
         feedback = sim.feedback_str
     elif sim.feedback_json is not None:
         feedback = json.loads(sim.feedback_json)
+    else:
+        feedback = None
 
     result_data = {
         "league_name": league_name,

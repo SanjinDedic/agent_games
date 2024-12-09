@@ -1,6 +1,5 @@
 import os
 from contextlib import asynccontextmanager
-
 import database
 from auth import get_current_user
 from config import ROOT_DIR
