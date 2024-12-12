@@ -48,3 +48,7 @@ backend/teams.json
 .DS_Store
 
 backend/games/prisoners_dilemma/leagues/admin/BOMB
+
+backend/gen_promptt.py
+backend/code_documentation.md
+backend/dockerfile_script.log
