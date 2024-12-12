@@ -53,7 +53,8 @@ backend/games/greedy_pig/leagues/
 # Ignore all log files
 .DS_Store
 
-# Docker log
+backend/games/prisoners_dilemma/leagues/admin/BOMB
+
+backend/gen_promptt.py
+backend/code_documentation.md
 backend/dockerfile_script.log
-
-

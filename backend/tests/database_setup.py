@@ -54,17 +54,6 @@ def setup_test_db(engine = db_engine()):
         session.add(comp_test)
         session.commit()
 
-        forty_two_test = League(
-            name="forty_two_test",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-            active=True,
-            folder="leagues/admin/comp_test",
-            game="forty_two"
-        )
-        session.add(forty_two_test)
-        session.commit()
-
         admin_username = "Administrator"
         admin_password = "BOSSMAN"
         hashed_password = get_password_hash(admin_password) 

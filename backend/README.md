@@ -37,7 +37,7 @@ The project is structured as follows:
   - `base_game.py`: The base class for all games.
   - `game_factory.py`: Factory class for creating game instances.
   - `greedy_pig/`: The Greedy Pig game implementation.
-  - `forty_two/`: The Forty-Two game implementation.
+  - `prisoners_dilemma/`: Prisoners Dilemma game implementation
 - `validation.py`: Contains validation functions for agent code and simulations.
 - `requirements.txt`: Lists the project dependencies.
 
