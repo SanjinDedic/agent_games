@@ -46,3 +46,5 @@ backend/teams.json
 
 # Ignore all log files
 .DS_Store
+
+backend/games/prisoners_dilemma/leagues/admin/BOMB
