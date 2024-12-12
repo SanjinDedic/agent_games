@@ -1,6 +1,8 @@
-import requests
 import inspect
 import time
+
+import requests
+
 
 class Testing_Player():
     def make_decision(self, game_state):

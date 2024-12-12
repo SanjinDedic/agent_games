@@ -1,21 +1,22 @@
+import logging
 import os
 from contextlib import asynccontextmanager
-import logging
+
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
+
 import database
 from auth import get_current_user
 from config import ROOT_DIR
 from docker_simulation import run_docker_simulation
-from fastapi import Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from games.game_factory import GameFactory
-from models_api import (
-    AdminLogin, ErrorResponseModel, ExpiryDate, GameName, LeagueAssignRequest,
-    LeagueName, LeagueResults, LeagueSignUp, ResponseModel, SimulationConfig,
-    SubmissionCode, TeamDelete, TeamLogin, TeamSignup)
-from sqlmodel import Session
+from models_api import (AdminLogin, ErrorResponseModel, ExpiryDate, GameName,
+                        LeagueAssignRequest, LeagueName, LeagueResults,
+                        LeagueSignUp, ResponseModel, SimulationConfig,
+                        SubmissionCode, TeamDelete, TeamLogin, TeamSignup)
 from utils import get_games_names, transform_result
 from validation import is_agent_safe, run_validation_simulation
-
 
 logger = logging.getLogger(__name__)
 

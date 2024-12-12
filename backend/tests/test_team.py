@@ -1,17 +1,19 @@
 import os
 import sys
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import ROOT_DIR
-from api import app
 import database
+from api import app
+from config import ROOT_DIR
 from database import get_db_engine
-from models_db import Team, Submission
+from models_db import Submission, Team
 from tests.database_setup import setup_test_db
+
 os.environ["TESTING"] = "1"
 
 @pytest.fixture(scope="module", autouse=True)

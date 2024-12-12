@@ -1,14 +1,16 @@
 import os
 import sys
-import pytest
-from unittest.mock import patch
-from io import StringIO
 from datetime import datetime, timedelta
+from io import StringIO
+from unittest.mock import patch
+
+import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from games.greedy_pig.greedy_pig import GreedyPigGame
 from models_db import League
+
 
 @pytest.fixture
 def test_league():

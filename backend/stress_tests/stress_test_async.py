@@ -1,7 +1,9 @@
 import asyncio
-import aiohttp
 import inspect
 import time
+
+import aiohttp
+
 
 class Testing_Player():
     def make_decision(self, game_state):

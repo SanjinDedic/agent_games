@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
-import random
 import json
+import random
+from abc import ABC, abstractmethod
+
 
 class Player(ABC):
     def __init__(self):

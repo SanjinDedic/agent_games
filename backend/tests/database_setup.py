@@ -1,17 +1,18 @@
+import json
 import os
 import sys
-import pytest
-import json
 import time
-from sqlmodel import Session, SQLModel, create_engine, select, delete
+
+import pytest
+from sqlmodel import Session, SQLModel, create_engine, delete, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models_db import League, Team, Admin, Submission
-from auth import get_password_hash
-from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
 from datetime import datetime, timedelta
-from database import  get_database_url
 
+from auth import get_password_hash
+from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB
+from database import get_database_url
+from models_db import Admin, League, Submission, Team
 
 
 def db_engine():

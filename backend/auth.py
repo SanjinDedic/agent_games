@@ -2,11 +2,12 @@ import base64
 from datetime import datetime, timedelta
 
 import pytz
-from config import ALGORITHM, SECRET_KEY
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+from config import ALGORITHM, SECRET_KEY
 
 AUSTRALIA_SYDNEY_TZ = pytz.timezone('Australia/Sydney')
 

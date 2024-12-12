@@ -1,12 +1,14 @@
-from games.base_game import BaseGame
-import random
-import itertools
-import importlib.util
-from games.prisoners_dilemma.player import Player as PrisonersDilemmaPlayer
-from config import ROOT_DIR
-import os
 import copy
+import importlib.util
+import itertools
 import json
+import os
+import random
+
+from config import ROOT_DIR
+from games.base_game import BaseGame
+from games.prisoners_dilemma.player import Player as PrisonersDilemmaPlayer
+
 
 class PrisonersDilemmaGame(BaseGame):
     starter_code = '''

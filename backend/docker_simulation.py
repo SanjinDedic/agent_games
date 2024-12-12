@@ -2,8 +2,9 @@ import json
 import subprocess
 import time
 
-from config import ROOT_DIR
 from jsonschema import ValidationError, validate
+
+from config import ROOT_DIR
 
 DOCKER_REPO = "run-with-docker"
 SUBPROCESS_TIMEOUT = 80  # 5 minutes timeout

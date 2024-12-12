@@ -1,24 +1,22 @@
-import pytest
+import ast
 import os
 import sys
-import ast
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add the project root directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
-from validation import (
-    is_agent_safe,
-    SafeVisitor,
-    ValidationSimulationError,
-    run_validation_simulation,
-    ALLOWED_MODULES,
-    RISKY_FUNCTIONS,
-)
-from models_db import League
 from datetime import datetime, timedelta
+
+from models_db import League
+from validation import (ALLOWED_MODULES, RISKY_FUNCTIONS, SafeVisitor,
+                        ValidationSimulationError, is_agent_safe,
+                        run_validation_simulation)
+
 
 @pytest.fixture
 def test_league():

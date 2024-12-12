@@ -1,20 +1,20 @@
 import os
-import sys
-import pytest
 import shutil
-from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+import sys
 from unittest.mock import patch
 
+import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import ROOT_DIR
 from api import app
+from config import ROOT_DIR
 from database import get_db_engine
-from models_db import League
-from tests.database_setup import setup_test_db
 from models_db import League, SimulationResult
+from tests.database_setup import setup_test_db
+
 os.environ["TESTING"] = "1"
 
 @pytest.fixture(scope="module", autouse=True)
@@ -372,7 +372,9 @@ def test_get_published_result(client, db_session, admin_token):
 
 
 from datetime import datetime, timedelta
+
 import database
+
 
 def test_update_expiry_date(client, db_session, admin_token):
     league_name = "comp_test"

@@ -1,11 +1,13 @@
 # tests/test_check_file.py
 import os
 import sys
+
 import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from validation import is_agent_safe
+
 
 def test_is_safe():
     safe_code = """

@@ -1,6 +1,6 @@
+import importlib.util
 import os
 import sys
-import importlib.util
 import traceback
 
 # Add the project root directory to the Python path

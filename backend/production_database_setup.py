@@ -3,11 +3,12 @@ import os
 import shutil
 from datetime import datetime, timedelta
 
+from sqlmodel import Session, SQLModel, create_engine, select
+
 from auth import get_password_hash
 from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
 from database import create_administrator
 from models_db import League, Team
-from sqlmodel import Session, SQLModel, create_engine, select
 
 
 def create_and_populate_database():

@@ -1,13 +1,16 @@
-from locust import HttpUser, task, between
-import json
 import inspect
+import json
 import random
 import uuid
+
+from locust import HttpUser, between, task
+
 
 class CustomPlayer():
 
     def make_decision(self, game_state):
         import random
+
         # Change this algorithm. You must return 'bank' or 'continue'.
         #bankchance = random.randint(1,2)
         if game_state['unbanked_money'][self.name] >= random.randint(5,20):

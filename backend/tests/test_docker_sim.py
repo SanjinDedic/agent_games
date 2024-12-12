@@ -1,9 +1,10 @@
-import pytest
-import os
-import sys
 import json
+import os
 import subprocess
-from unittest.mock import patch, mock_open
+import sys
+from unittest.mock import mock_open, patch
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -11,8 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from api import app
 from database import get_db_engine
+from docker_simulation import (SIMULATION_RESULTS_SCHEMA,
+                               run_docker_simulation, validate_docker_results)
 from tests.database_setup import setup_test_db
-from docker_simulation import run_docker_simulation, validate_docker_results, SIMULATION_RESULTS_SCHEMA
 
 os.environ["TESTING"] = "1"
 

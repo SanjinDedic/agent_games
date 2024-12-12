@@ -1,8 +1,10 @@
-from abc import ABC, abstractmethod
-import random
-import os
 import importlib.util
+import os
+import random
+from abc import ABC, abstractmethod
+
 from config import ROOT_DIR
+
 
 class BaseGame(ABC):
     starter_code = '''

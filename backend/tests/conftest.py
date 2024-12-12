@@ -1,4 +1,5 @@
 import warnings
+
 from passlib.utils.compat import suppress_cause
 from passlib.utils.decor import memoized_property
 

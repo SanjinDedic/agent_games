@@ -1,5 +1,6 @@
 from games.prisoners_dilemma.player import Player
 
+
 class CustomPlayer(Player):
     def make_decision(self, game_state):
         my_opponent = game_state["opponent_name"]

@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import List, Optional, Union
 
+from sqlmodel import (Column, DateTime, Field, Relationship, SQLModel,
+                      UniqueConstraint)
+
 from auth import get_password_hash, verify_password
-from sqlmodel import (
-    Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint)
 
 #---------------------------------------------------------------------------------#
 #---                                 TABLES                                    ---#

@@ -3,7 +3,8 @@ import random
 import threading
 import time
 from itertools import cycle
-from locust import HttpUser, task, between
+
+from locust import HttpUser, between, task
 from locust.exception import StopUser
 from requests.exceptions import ConnectionError
 

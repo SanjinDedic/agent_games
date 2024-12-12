@@ -1,6 +1,7 @@
 from games.greedy_pig.greedy_pig import GreedyPigGame
 from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
 
+
 class GameFactory:
     @staticmethod
     def get_game_class(game_name):

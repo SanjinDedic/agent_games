@@ -1,14 +1,16 @@
 import os
 import sys
-import pytest
-from unittest.mock import patch, MagicMock
-from io import StringIO
 from datetime import datetime, timedelta
+from io import StringIO
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
 from models_db import League
+
 
 @pytest.fixture
 def test_league():

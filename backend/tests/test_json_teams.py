@@ -1,16 +1,18 @@
 # test_json_teams.py
 
+import json
 import os
 import sys
-import pytest
-import json
-from sqlmodel import Session, select
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models_db import Team
 
-from database import get_db_engine, create_team
-from utils import add_teams_from_json
+import pytest
+from sqlmodel import Session, select
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from database import create_team, get_db_engine
+from models_db import Team
 from tests.database_setup import setup_test_db
+from utils import add_teams_from_json
+
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():

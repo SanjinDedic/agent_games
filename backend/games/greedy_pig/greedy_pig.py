@@ -1,12 +1,14 @@
-from games.base_game import BaseGame
-import random
-import os
-import time
-from games.greedy_pig.player import Player as GreedyPigPlayer
-import importlib.util
-from config import ROOT_DIR
-from types import MappingProxyType
 import copy
+import importlib.util
+import os
+import random
+import time
+from types import MappingProxyType
+
+from config import ROOT_DIR
+from games.base_game import BaseGame
+from games.greedy_pig.player import Player as GreedyPigPlayer
+
 
 class GreedyPigGame(BaseGame):
     starter_code = '''
