@@ -44,3 +44,9 @@ league_code.md
 
 # Ignore all log files
 .DS_Store
+
+backend/games/prisoners_dilemma/leagues/admin/BOMB
+backend/games/prisoners_dilemma/leagues/admin/BOMB/GG.py
+backend/games/prisoners_dilemma/leagues/admin/BOMB/BB.py
+backend/games/prisoners_dilemma/leagues/admin/BOMB/AA.py
+backend/games/prisoners_dilemma/leagues/admin/BOMB/Boss.py
