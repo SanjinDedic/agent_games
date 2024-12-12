@@ -13,6 +13,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24 #hours
 ADMIN_LEAGUE_EXPIRY = 180 #1 week and 12 hours
+GAMES = ["greedy_pig", "prisoners_dilemma"]
 
 def get_database_url():
     if os.environ.get("TESTING") == "1":

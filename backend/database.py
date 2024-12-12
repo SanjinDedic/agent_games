@@ -234,11 +234,10 @@ def delete_team(session, team_name):
     if team.league_id:
         league = session.get(League, team.league_id)
         if league:
-            for game_name in ["greedy_pig", "forty_two"]:  # Add more games if needed
+            for game_name in ["greedy_pig", "prisoners_dilemma"]: #needs to be dynamic. Config should have games list
                 team_file_path = os.path.join(ROOT_DIR, "games", game_name, league.folder, f"{team_name}.py")
                 if os.path.exists(team_file_path):
                     os.remove(team_file_path)
-                    print(f"Deleted file: {team_file_path}")
 
     # Delete team from database
     session.delete(team)
