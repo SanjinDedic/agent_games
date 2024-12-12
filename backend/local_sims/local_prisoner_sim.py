@@ -18,8 +18,9 @@ test_league = League(folder=test_league_folder, name="Test League", game="prison
 print("Running a single game with feedback:")
 game_result = PrisonersDilemmaGame.run_single_game_with_feedback(test_league)
 
-# Print the feedback
-print(game_result['feedback'])
+# Print the feedbac
+print("\nEntire Game Result")
+print(game_result)
 
 # Print the final results
 print("\nFinal Results:")
@@ -67,9 +68,3 @@ for player in simulation_results['table']['defections']:
     print(f"  {player}:")
     print(f"    Defections: {defections} ({defect_percentage:.2f}%)")
     print(f"    Collusions: {collusions} ({collude_percentage:.2f}%)")
-
-# TO DO:
-# 1. Create some kind of filter so that the player who submitted the code only sees the results of their games
-# 2. Find a way for admin to set the reward matrix for the game (maybe use the existing custom_rewards parameter)
-# 3. Update instructions
-# 4. Add a print statement to show the game state in the default player code

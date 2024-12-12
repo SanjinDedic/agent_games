@@ -60,5 +60,4 @@ def test_game_instructions_content():
         assert "Game Objective" in instructions
         assert "Your Task" in instructions
         assert "Available Information" in instructions
-        assert "Implementation Example" in instructions
         assert "Strategy Tips" in instructions

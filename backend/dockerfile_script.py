@@ -74,6 +74,7 @@ def run_docker_simulations():
         }
 
         logger.debug("Writing results to file")
+        #testing API call here
         with open(ROOT_DIR + "/docker_results.json", "w") as f:
             json.dump(result, f)
 
@@ -89,9 +90,13 @@ def run_docker_simulations():
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         result = {
-            "feedback": f"An error occurred: {str(e)}",
-            "player_feedback": "No player feedback",
-            "simulation_results": {"error": str(e)}
+            "feedback": {"error": f"An error occurred: {str(e)}"},
+            "player_feedback": {},  # Changed from string to empty object
+            "simulation_results": {
+                "total_points": {},
+                "num_simulations": 0,
+                "table": {}
+            }
         }
         with open(ROOT_DIR + "/docker_results.json", "w") as f:
             json.dump(result, f)
