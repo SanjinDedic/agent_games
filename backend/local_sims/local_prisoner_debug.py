@@ -1,7 +1,6 @@
 import importlib.util
 import os
 import sys
-import traceback
 
 # Add the project root directory to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -13,8 +12,13 @@ from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
 from models_db import League
 
 # Set up the test league
-test_league_folder = os.path.join(backend_dir, "games", "prisoners_dilemma", "leagues", "test_league")
-test_league = League(folder=test_league_folder, name="Test League", game="prisoners_dilemma")
+test_league_folder = os.path.join(
+    backend_dir, "games", "prisoners_dilemma", "leagues", "test_league"
+)
+test_league = League(
+    folder=test_league_folder, name="Test League", game="prisoners_dilemma"
+)
+
 
 def safe_load_players(league_folder):
     players = []
@@ -35,23 +39,34 @@ def safe_load_players(league_folder):
                 print(f"Error loading player {module_name}: {str(e)}")
     return players
 
+
 class SafePrisonersDilemmaGame(PrisonersDilemmaGame):
-    def __init__(self, league, verbose=False, reward_matrix=None, rounds_per_pairing=5, collect_player_feedback=True):
+    def __init__(
+        self,
+        league,
+        verbose=False,
+        reward_matrix=None,
+        rounds_per_pairing=5,
+        collect_player_feedback=True,
+    ):
         self.league = league
         self.verbose = verbose
-        self.players = safe_load_players(os.path.join(backend_dir, "games", league.game, league.folder))
+        self.players = safe_load_players(
+            os.path.join(backend_dir, "games", league.game, league.folder)
+        )
         self.histories = {player.name: {} for player in self.players}
         self.reward_matrix = reward_matrix or {
-            ('collude', 'collude'): (4, 4),
-            ('collude', 'defect'): (0, 6),
-            ('defect', 'collude'): (6, 0),
-            ('defect', 'defect'): (0, 0)
+            ("collude", "collude"): (4, 4),
+            ("collude", "defect"): (0, 6),
+            ("defect", "collude"): (6, 0),
+            ("defect", "defect"): (0, 0),
         }
         self.rounds_per_pairing = rounds_per_pairing
         self.game_feedback = []
         self.player_feedback = []
         self.collect_player_feedback = collect_player_feedback
         self.scores = {player.name: 0 for player in self.players}
+
 
 def run_simulation_excluding_team(game, excluded_team):
     try:
@@ -68,8 +83,14 @@ def run_simulation_excluding_team(game, excluded_team):
     except Exception as e:
         return f"FAIL: {str(e)}", None
 
+
 # Ask user if they want to see rankings
-show_rankings = input("Do you want to see rankings for each working simulation? (yes/no): ").lower().strip() == 'yes'
+show_rankings = (
+    input("Do you want to see rankings for each working simulation? (yes/no): ")
+    .lower()
+    .strip()
+    == "yes"
+)
 
 # Create a base game instance with safely loaded players
 base_game = SafePrisonersDilemmaGame(test_league)
@@ -78,10 +99,12 @@ print("\nRunning simulations excluding one team at a time:")
 for player in base_game.players:
     result, game_results = run_simulation_excluding_team(base_game, player.name)
     print(f"Excluded: {player.name:<20} Result: {result}")
-    
+
     if show_rankings and result == "OK":
         print("  Rankings:")
-        sorted_scores = sorted(game_results['points'].items(), key=lambda x: x[1], reverse=True)
+        sorted_scores = sorted(
+            game_results["points"].items(), key=lambda x: x[1], reverse=True
+        )
         for rank, (player_name, score) in enumerate(sorted_scores, 1):
             print(f"    {rank}. {player_name}: {score}")
     print()

@@ -1,16 +1,9 @@
-import os
-import sys
-
-import pytest
+from api import app
+from config import GAMES
 from fastapi.testclient import TestClient
 
-from config import GAMES
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from api import app
-
 client = TestClient(app)
+
 
 def test_get_game_instructions_greedy_pig():
     response = client.post("/get_game_instructions", json={"game_name": "greedy_pig"})
@@ -23,11 +16,14 @@ def test_get_game_instructions_greedy_pig():
 
 
 def test_get_game_instructions_non_existent_game():
-    response = client.post("/get_game_instructions", json={"game_name": "non_existent_game"})
+    response = client.post(
+        "/get_game_instructions", json={"game_name": "non_existent_game"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "error"
     assert "Unknown game" in data["message"]
+
 
 def test_get_game_instructions_missing_game_name():
     response = client.post("/get_game_instructions", json={})
@@ -35,6 +31,7 @@ def test_get_game_instructions_missing_game_name():
     data = response.json()
     assert "detail" in data
     assert any("game_name" in error["loc"] for error in data["detail"])
+
 
 def test_get_game_instructions_empty_game_name():
     response = client.post("/get_game_instructions", json={"game_name": ""})
@@ -52,6 +49,7 @@ def test_starter_code_content():
         starter_code = data["data"]["starter_code"]
         assert "CustomPlayer" in starter_code
         assert "make_decision" in starter_code
+
 
 def test_game_instructions_content():
     for game in GAMES:

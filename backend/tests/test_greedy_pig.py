@@ -1,13 +1,8 @@
-import os
-import sys
 from datetime import datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from games.greedy_pig.greedy_pig import GreedyPigGame
 from models_db import League
 
@@ -19,8 +14,9 @@ def test_league():
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=7),
         folder="leagues/test_league",
-        game="greedy_pig"
+        game="greedy_pig",
     )
+
 
 def test_game_initialization(test_league):
     game = GreedyPigGame(test_league)
@@ -28,6 +24,7 @@ def test_game_initialization(test_league):
     assert game.round_no == 0
     assert game.roll_no == 0
     assert not game.game_over
+
 
 def test_play_round(test_league):
     game = GreedyPigGame(test_league)
@@ -37,7 +34,8 @@ def test_play_round(test_league):
     print("After 1st round:", game.round_no)
     assert game.round_no == initial_round + 1
     for player in game.players:
-        assert player.has_banked_this_turn == False
+        assert player.has_banked_this_turn is False
+
 
 def test_play_game(test_league):
     game = GreedyPigGame(test_league)
@@ -48,17 +46,19 @@ def test_play_game(test_league):
     assert len(results["points"]) == len(game.players)
     assert len(results["score_aggregate"]) == len(game.players)
 
+
 def test_assign_points(test_league):
     game = GreedyPigGame(test_league)
     game_state = {
         "banked_money": {"Player1": 50, "Player2": 80, "Player3": 30, "Player4": 70},
-        "unbanked_money": {"Player1": 10, "Player2": 20, "Player3": 5, "Player4": 15}
+        "unbanked_money": {"Player1": 10, "Player2": 20, "Player3": 5, "Player4": 15},
     }
     results = game.assign_points(game_state)
     assert results["points"]["Player2"] == 10
     assert results["points"]["Player4"] == 8
     assert results["points"]["Player1"] == 6
     assert results["points"]["Player3"] == 4
+
 
 def test_get_all_player_classes_from_folder(test_league):
     game = GreedyPigGame(test_league, verbose=True)
@@ -69,6 +69,7 @@ def test_get_all_player_classes_from_folder(test_league):
     assert "Bank15" in player_names
     assert "BankRoll3" in player_names
     assert "BankRoll4" in player_names
+
 
 def test_game_reset(test_league):
     game = GreedyPigGame(test_league)
@@ -82,7 +83,8 @@ def test_game_reset(test_league):
         assert player.unbanked_money == 0
         assert not player.has_banked_this_turn
 
-@patch('sys.stdout', new_callable=StringIO)
+
+@patch("sys.stdout", new_callable=StringIO)
 def test_run_simulations(mock_stdout, test_league):
     num_simulations = 10
     results = GreedyPigGame.run_simulations(num_simulations, test_league)

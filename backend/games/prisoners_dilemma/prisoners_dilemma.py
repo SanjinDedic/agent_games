@@ -1,17 +1,11 @@
-import copy
-import importlib.util
 import itertools
-import json
-import os
 import random
 
-from config import ROOT_DIR
 from games.base_game import BaseGame
-from games.prisoners_dilemma.player import Player as PrisonersDilemmaPlayer
 
 
 class PrisonersDilemmaGame(BaseGame):
-    starter_code = '''
+    starter_code = """
 from games.prisoners_dilemma.player import Player
 import random
 
@@ -29,9 +23,9 @@ class CustomPlayer(Player):
         self.add_feedback("| Opponent history: " + str(opponent_history))
         
         return decision
-'''
+"""
 
-    game_instructions = '''
+    game_instructions = """
 <h1>Prisoner's Dilemma Game Instructions</h1>
 
 <p>Welcome to the Prisoner's Dilemma game! Your task is to implement the <code>make_decision</code> method in the <code>CustomPlayer</code> class.</p>
@@ -70,19 +64,26 @@ class CustomPlayer(Player):
 
 <h2>WARNING: When you log out or navigate away or refresh the page your code will be lost. Please save it!</h2>
 <p>Good luck and have fun!</p>
-'''
+"""
 
-    def __init__(self, league, verbose=False, reward_matrix=None, rounds_per_pairing=5, collect_player_feedback=True):
+    def __init__(
+        self,
+        league,
+        verbose=False,
+        reward_matrix=None,
+        rounds_per_pairing=5,
+        collect_player_feedback=True,
+    ):
         super().__init__(league, verbose)
         self.histories = {str(player.name): {} for player in self.players}
         self.reward_matrix = reward_matrix or {
-            'collude,collude': (4, 4),
-            'collude,defect': (0, 6),
-            'defect,collude': (6, 0),
-            'defect,defect': (0, 0)
+            "collude,collude": (4, 4),
+            "collude,defect": (0, 6),
+            "defect,collude": (6, 0),
+            "defect,defect": (0, 0),
         }
         self.rounds_per_pairing = rounds_per_pairing
-        self.game_feedback = {"game" : "prisoners_dilemma", "pairings": []}
+        self.game_feedback = {"game": "prisoners_dilemma", "pairings": []}
         self.player_feedback = {}
         self.collect_player_feedback = collect_player_feedback
         self.scores = {str(player.name): 0 for player in self.players}
@@ -98,10 +99,14 @@ class CustomPlayer(Player):
             "round_number": round_number,
             "player_name": str(player_name),
             "opponent_name": str(opponent_name),
-            "opponent_history": list(self.histories[str(opponent_name)].get(str(player_name), [])),
-            "my_history": list(self.histories[str(player_name)].get(str(opponent_name), [])),
+            "opponent_history": list(
+                self.histories[str(opponent_name)].get(str(player_name), [])
+            ),
+            "my_history": list(
+                self.histories[str(player_name)].get(str(opponent_name), [])
+            ),
             "all_history": histories_copy,
-            "scores": dict(self.scores)
+            "scores": dict(self.scores),
         }
         return state
 
@@ -114,15 +119,15 @@ class CustomPlayer(Player):
             player_name = str(player.name)
             if player_name not in self.player_feedback:
                 self.player_feedback[player_name] = []
-            
+
             feedback_entry = {
                 "round": round_number,
                 "opponent": str(opponent_name),
                 "messages": list(player.feedback),
                 "scores": {
                     "my_score": self.scores[player_name],
-                    "opponent_score": self.scores[str(opponent_name)]
-                }
+                    "opponent_score": self.scores[str(opponent_name)],
+                },
             }
             self.player_feedback[player_name].append(feedback_entry)
             player.feedback = []
@@ -131,33 +136,33 @@ class CustomPlayer(Player):
         pairing_data = {
             "player1": str(player1.name),
             "player2": str(player2.name),
-            "rounds": []
+            "rounds": [],
         }
 
         for round_number in range(1, self.rounds_per_pairing + 1):
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
             game_state2 = self.get_game_state(player2.name, player1.name, round_number)
-            
+
             random.seed()
-            
+
             try:
                 decision1 = player1.make_decision(game_state1)
-                if decision1 not in ["defect","collude"]:
+                if decision1 not in ["defect", "collude"]:
                     decision1 = "collude"
             except Exception as e:
-                decision1 = 'collude'
+                decision1 = "collude"
 
             try:
                 decision2 = player2.make_decision(game_state2)
-                if decision2 not in ["defect","collude"]:
+                if decision2 not in ["defect", "collude"]:
                     decision2 = "collude"
             except Exception as e:
-                decision2 = 'collude'
+                decision2 = "collude"
 
             # Update histories
             p1_name = str(player1.name)
             p2_name = str(player2.name)
-            
+
             if p1_name not in self.histories:
                 self.histories[p1_name] = {}
             if p2_name not in self.histories[p1_name]:
@@ -178,17 +183,14 @@ class CustomPlayer(Player):
 
             round_data = {
                 "round_number": round_number,
-                "actions": {
-                    p1_name: decision1,
-                    p2_name: decision2
-                },
+                "actions": {p1_name: decision1, p2_name: decision2},
                 "scores": {
                     p1_name: self.scores[p1_name],
-                    p2_name: self.scores[p2_name]
-                }
+                    p2_name: self.scores[p2_name],
+                },
             }
             pairing_data["rounds"].append(round_data)
-            
+
             self.add_player_feedback(player1, round_number, player2.name)
             self.add_player_feedback(player2, round_number, player1.name)
 
@@ -197,16 +199,16 @@ class CustomPlayer(Player):
     def play_game(self, custom_rewards=None):
         if custom_rewards:
             self.reward_matrix = {
-                'collude,collude': (custom_rewards[0], custom_rewards[0]),
-                'collude,defect': (custom_rewards[1], custom_rewards[2]),
-                'defect,collude': (custom_rewards[2], custom_rewards[1]),
-                'defect,defect': (custom_rewards[3], custom_rewards[3])
+                "collude,collude": (custom_rewards[0], custom_rewards[0]),
+                "collude,defect": (custom_rewards[1], custom_rewards[2]),
+                "defect,collude": (custom_rewards[2], custom_rewards[1]),
+                "defect,defect": (custom_rewards[3], custom_rewards[3]),
             }
 
         self.game_feedback["game_info"] = {
             "players": [str(player.name) for player in self.players],
             "reward_matrix": self.reward_matrix,
-            "rounds_per_pairing": self.rounds_per_pairing
+            "rounds_per_pairing": self.rounds_per_pairing,
         }
 
         player_pairs = list(itertools.combinations(self.players, 2))
@@ -233,7 +235,7 @@ class CustomPlayer(Player):
         return {
             "results": results,
             "feedback": game.game_feedback,
-            "player_feedback": game.player_feedback
+            "player_feedback": game.player_feedback,
         }
 
     @classmethod
@@ -246,20 +248,17 @@ class CustomPlayer(Player):
         for _ in range(num_simulations):
             game.reset()
             results = game.play_game(custom_rewards)
-            
+
             for player, points in results["points"].items():
                 total_points[str(player)] += points
 
             for player_name, opponents in game.histories.items():
                 for opponent_name, decisions in opponents.items():
-                    defections[str(player_name)] += decisions.count('defect')
-                    collusions[str(player_name)] += decisions.count('collude')
+                    defections[str(player_name)] += decisions.count("defect")
+                    collusions[str(player_name)] += decisions.count("collude")
 
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
-            "table": {
-                "defections": defections,
-                "collusions": collusions
-            }
+            "table": {"defections": defections, "collusions": collusions},
         }
