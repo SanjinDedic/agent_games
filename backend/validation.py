@@ -1,21 +1,40 @@
 import ast
+import logging
 import os
+import subprocess
+import time
 
+import httpx
 from config import ROOT_DIR
-from docker_simulation import run_docker_simulation
-from models_db import League
 from utils import get_games_names
+
+# Set up logging properly
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(ROOT_DIR, "validation.log")),
+    ],
+)
+logger = logging.getLogger(__name__)
+
+
+class ValidationSimulationError(Exception):
+    pass
+
 
 # List of allowed modules and their allowed sub-modules
 # Dynamically generate the ALLOWED_MODULES dictionary
 ALLOWED_MODULES = {
-    'random': None,  # None means no specific sub-modules are allowed
-    'games': {game_name: {'player': None} for game_name in get_games_names()},
-    'player': None  # Allow direct import from player
+    "random": None,  # None means no specific sub-modules are allowed
+    "games": {game_name: {"player": None} for game_name in get_games_names()},
+    "player": None,  # Allow direct import from player
 }
 
 # List of risky functions
-RISKY_FUNCTIONS = ['eval', 'exec', 'open', 'compile', 'execfile', 'input']
+RISKY_FUNCTIONS = ["eval", "exec", "open", "compile", "execfile", "input"]
+
 
 class SafeVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -41,7 +60,7 @@ class SafeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def is_allowed_import(self, module, submodule=None):
-        parts = module.split('.')
+        parts = module.split(".")
         current = ALLOWED_MODULES
         for part in parts:
             if part not in current:
@@ -49,10 +68,11 @@ class SafeVisitor(ast.NodeVisitor):
             if current[part] is None:
                 return True
             current = current[part]
-        
+
         if submodule:
             return submodule in current
         return True
+
 
 def is_agent_safe(code):
     try:
@@ -65,43 +85,116 @@ def is_agent_safe(code):
     return checker.safe
 
 
-class ValidationSimulationError(Exception):
-    pass
+class ValidatorContainer:
+    def __init__(self):
+        self.container_name = "validator"
+        self.port = 8001
 
-def run_validation_simulation(code, game_name, team_name):
-    print("game_name in run_validation_simulation: ", game_name)
-    test_league_folder = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league')
-    test_league = League(folder=test_league_folder, name="Test League", game=game_name)
+    def is_running(self):
+        """Check if the validator container is running"""
+        try:
+            result = subprocess.run(
+                ["docker", "ps", "-q", "-f", f"name={self.container_name}"],
+                capture_output=True,
+                text=True,
+            )
+            return bool(result.stdout.strip())
+        except Exception as e:
+            logger.error(f"Error checking container status: {e}")
+            return False
 
-    file_path = os.path.join(ROOT_DIR, 'games', game_name, 'leagues', 'test_league', f"{team_name}.py")
-    print(f"File path in validation.py: {file_path}")
+    def start(self):
+        """Start the validator container if it's not running"""
+        if not self.is_running():
+            try:
+                # Check if image exists, build if it doesn't
+                result = subprocess.run(
+                    ["docker", "images", "-q", "validator"],
+                    capture_output=True,
+                    text=True,
+                )
+                if not result.stdout.strip():
+                    logger.info("Building validator image...")
+                    subprocess.run(
+                        [
+                            "docker",
+                            "build",
+                            "-t",
+                            "validator",
+                            "-f",
+                            "validator.dockerfile",
+                            ".",
+                        ],
+                        check=True,
+                    )
+
+                # Run the container
+                logger.info("Starting validator container...")
+                subprocess.run(
+                    [
+                        "docker",
+                        "run",
+                        "-d",
+                        "--name",
+                        self.container_name,
+                        "-p",
+                        f"{self.port}:8001",
+                        "-v",
+                        f"{ROOT_DIR}:/agent_games",
+                        "--restart",
+                        "always",
+                        "validator",
+                    ],
+                    check=True,
+                )
+
+                # Wait for container to be ready
+                time.sleep(2)  # Give the server a moment to start
+                logger.info("Validator container started successfully")
+
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Error starting validator container: {e}")
+                raise ValidationSimulationError("Failed to start validation service")
+
+
+async def run_validation_simulation(code, game_name, team_name):
+    """Run validation using the validator container"""
+    if not is_agent_safe(code):
+        raise ValidationSimulationError("Code contains unsafe operations")
+
+    validator = ValidatorContainer()
 
     try:
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, "w") as file:
-            file.write(code)
-        print(f"File written: {file_path}")
-        is_successful, docker_result = run_docker_simulation('test_league', test_league.game, 'leagues/test_league', None, timeout=6, player_feedback=True, num_simulations=100)
-        if not is_successful:
-            if isinstance(docker_result, str):
-                error_message = docker_result
-            else:
-                error_message = docker_result.get("message", "An unknown error occurred during the simulation.")
-            print(f"Error message in validation.py: {error_message}")
-            raise ValidationSimulationError(error_message)
+        # Ensure validator is running
+        validator.start()
 
-        feedback = docker_result.get('player_feedback', 'No feedback available.')
-        results = docker_result.get('simulation_results', {})
+        # Send request to validator
+        logger.info(f"Sending validation request for team {team_name}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://localhost:{validator.port}/validate",
+                json={
+                    "code": code,
+                    "game_name": game_name,
+                    "team_name": team_name,
+                    "num_simulations": 100,
+                },
+                timeout=30.0,
+            )
 
-        return feedback, results
+            if response.status_code != 200:
+                logger.error(f"Validator service error: {response.text}")
+                raise ValidationSimulationError(
+                    f"Validator service error: {response.text}"
+                )
+
+            result = response.json()
+            logger.info(f"Validation completed successfully for team {team_name}")
+            return result["feedback"], result["simulation_results"]
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error occurred: {e}")
+        raise ValidationSimulationError(f"HTTP error occurred: {str(e)}")
     except Exception as e:
-        print(f"Error during simulation: {e}")
-        raise ValidationSimulationError(str(e))
-    finally:
-        # Always attempt to remove the file, even if an exception occurred
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                print(f"File removed: {file_path}")
-            except Exception as e:
-                print(f"Error removing file: {e}")
+        logger.error(f"Validation error: {e}")
+        raise ValidationSimulationError(f"Validation error: {str(e)}")

@@ -184,7 +184,8 @@ async def submit_agent(
         file.write(submission.code)
 
     try:
-        feedback, results = run_validation_simulation(
+        # Add await here
+        feedback, results = await run_validation_simulation(
             submission.code, team.league.game, team_name
         )
     except Exception as e:
