@@ -3,11 +3,15 @@ import os
 import subprocess
 from unittest.mock import mock_open, patch
 
+import httpx
 import pytest
 from api import app
 from database import get_db_engine
-from docker_simulation import (
+from docker.config import CONTAINERS
+from docker.containers import ensure_containers_running, stop_containers
+from docker.scripts.docker_simulation import (
     SIMULATION_RESULTS_SCHEMA,
+    SimulationContainerError,
     run_docker_simulation,
     validate_docker_results,
 )
@@ -59,17 +63,13 @@ def test_greedy_pig_docker_simulation(client, admin_token):
     )
     assert simulation_response.status_code == 200
     response_data = simulation_response.json()
-    print("here is the response data", response_data)
     assert "data" in response_data
     assert "total_points" in response_data["data"]
     assert "feedback" in response_data["data"]
 
 
-@patch("subprocess.run")
-def test_run_docker_simulation_success(mock_subprocess_run):
-    mock_subprocess_run.return_value.returncode = 0
-    mock_subprocess_run.return_value.stdout = "Docker simulation output"
-
+@patch("httpx.AsyncClient.post")
+async def test_run_docker_simulation_success(mock_post):
     mock_results = {
         "feedback": "Test feedback",
         "simulation_results": {
@@ -78,87 +78,75 @@ def test_run_docker_simulation_success(mock_subprocess_run):
             "table": {"wins": {"player1": 40, "player2": 60}},
         },
     }
+    mock_post.return_value.status_code = 200
+    mock_post.return_value.json.return_value = mock_results
 
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_results))):
-        success, results = run_docker_simulation(
-            "test_league", "test_game", "test_folder", None
-        )
+    success, results = await run_docker_simulation(
+        "test_league", "test_game", "test_folder", None
+    )
 
     assert success is True
     assert results == mock_results
 
 
-@patch("subprocess.run")
-def test_run_docker_simulation_timeout(mock_subprocess_run):
-    mock_subprocess_run.side_effect = subprocess.TimeoutExpired(cmd="test", timeout=1)
+@patch("httpx.AsyncClient.post")
+async def test_run_docker_simulation_timeout(mock_post):
+    mock_post.side_effect = httpx.TimeoutException("Timeout")
 
-    success, error_message = run_docker_simulation(
+    success, error_message = await run_docker_simulation(
         "test_league", "test_game", "test_folder", None
     )
 
     assert success is False
-    assert "Timeout while running the docker container" in error_message
+    assert "Simulation timed out" in error_message
 
 
-@patch("subprocess.run")
-def test_run_docker_simulation_subprocess_error(mock_subprocess_run):
-    mock_subprocess_run.return_value.returncode = 1
-    mock_subprocess_run.return_value.stderr = "Subprocess error"
+@patch("httpx.AsyncClient.post")
+async def test_run_docker_simulation_api_error(mock_post):
+    mock_post.return_value.status_code = 500
+    mock_post.return_value.text = "Internal server error"
 
-    success, error_message = run_docker_simulation(
+    success, error_message = await run_docker_simulation(
         "test_league", "test_game", "test_folder", None
     )
 
     assert success is False
-    assert "An error occurred while running the docker container" in error_message
+    assert "Simulation failed with status code 500" in error_message
 
 
 @patch("subprocess.run")
-def test_run_docker_simulation_json_error(mock_subprocess_run):
+def test_ensure_containers_running_success(mock_subprocess_run):
+    mock_subprocess_run.return_value.stdout = ""
     mock_subprocess_run.return_value.returncode = 0
 
-    with patch("builtins.open", mock_open(read_data="Invalid JSON")):
-        success, error_message = run_docker_simulation(
-            "test_league", "test_game", "test_folder", None
-        )
+    ensure_containers_running("/test/root/dir")
 
-    assert success is False
-    assert "An error occurred while parsing the simulation results" in error_message
+    # Verify container checks and creation calls
+    assert mock_subprocess_run.call_count >= len(CONTAINERS) * 2
 
 
 @patch("subprocess.run")
-def test_run_docker_simulation_file_not_found(mock_subprocess_run):
-    mock_subprocess_run.return_value.returncode = 0
+def test_ensure_containers_running_failure(mock_subprocess_run):
+    mock_subprocess_run.side_effect = subprocess.CalledProcessError(
+        1, "docker build", "Build failed"
+    )
 
-    with patch("builtins.open", side_effect=FileNotFoundError):
-        success, error_message = run_docker_simulation(
-            "test_league", "test_game", "test_folder", None
-        )
+    with pytest.raises(RuntimeError) as exc_info:
+        ensure_containers_running("/test/root/dir")
 
-    assert success is False
-    assert "Docker results file not found" in error_message
+    assert "Failed to manage" in str(exc_info.value)
 
 
 @patch("subprocess.run")
-def test_run_docker_simulation_invalid_results(mock_subprocess_run):
+def test_stop_containers(mock_subprocess_run):
+    mock_subprocess_run.return_value.stdout = "container-id"
     mock_subprocess_run.return_value.returncode = 0
 
-    invalid_results = {
-        "feedback": "Test feedback",
-        "simulation_results": {
-            "total_points": {"player1": 100, "player2": 200},
-            "num_simulations": 100,
-            # Missing "table" key
-        },
-    }
+    stop_containers()
 
-    with patch("builtins.open", mock_open(read_data=json.dumps(invalid_results))):
-        success, error_message = run_docker_simulation(
-            "test_league", "test_game", "test_folder", None
-        )
-
-    assert success is False
-    assert "Invalid results format" in error_message
+    # Verify stop and remove calls for each container
+    expected_calls = len(CONTAINERS) * 3  # check + stop + remove for each container
+    assert mock_subprocess_run.call_count == expected_calls
 
 
 def test_validate_docker_results():

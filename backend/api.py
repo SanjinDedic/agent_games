@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 import database
 from auth import get_current_user
 from config import ROOT_DIR
-from docker_simulation import run_docker_simulation
+from docker.containers import ensure_containers_running, stop_containers
+from docker.scripts.docker_simulation import run_docker_simulation
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from games.game_factory import GameFactory
@@ -34,7 +35,23 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
+    """Lifecycle manager for the FastAPI application"""
+    # Startup: ensure containers are running
+    try:
+        logger.info("Starting application containers...")
+        ensure_containers_running(ROOT_DIR)
+        logger.info("All containers started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start containers: {e}")
+        # You might want to prevent the app from starting if containers fail
+        # raise e
+
+    yield  # Application runs here
+
+    # Shutdown: stop all containers
+    logger.info("Shutting down application, stopping containers...")
+    stop_containers()
+    logger.info("Application shutdown complete")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -213,7 +230,7 @@ async def submit_agent(
 
 
 @app.post("/run_simulation", response_model=ResponseModel)
-def run_simulation(
+async def run_simulation(
     simulation_config: SimulationConfig,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
@@ -226,7 +243,6 @@ def run_simulation(
     league_name = simulation_config.league_name
     num_simulations = simulation_config.num_simulations
     custom_rewards = simulation_config.custom_rewards
-    # Uses parameter, defaults to true if there are issues.
     use_docker = (
         simulation_config.use_docker
         if hasattr(simulation_config, "use_docker")
@@ -244,7 +260,7 @@ def run_simulation(
     if use_docker:
         logger.info(f'Running simulation using Docker for league "{league_name}"')
         try:
-            is_successful, results = run_docker_simulation(
+            is_successful, results = await run_docker_simulation(
                 league_name,
                 league.game,
                 league.folder,
@@ -270,13 +286,17 @@ def run_simulation(
             )
         except Exception as e:
             logger.error(f"Error running simulation: {str(e)}")
+            return ErrorResponseModel(
+                status="error",
+                message=f"An error occurred while running the simulation: {str(e)}",
+            )
 
-    # ToDo(artur): If the league IS test_league. What should we do?
-    # Sanjin: we do nothing, if it is a test league we dont save results!
     if league_name != "test_league":
         sim_result = database.save_simulation_results(
             session, league.id, simulation_results, custom_rewards
         )
+    else:
+        sim_result = None
 
     response_data = transform_result(simulation_results, sim_result, league_name)
     if use_docker:
