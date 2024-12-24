@@ -184,7 +184,7 @@ async def submit_agent(
         # Check if the team can make a submission
         if not database.allow_submission(session, team.id):
             return ErrorResponseModel(
-                status="error", message="You can only make 3 submissions per minute."
+                status="error", message="You can only make 5 submissions per minute."
             )
     except Exception as e:
         logger.error(f"Error checking submission permissions: {e}")

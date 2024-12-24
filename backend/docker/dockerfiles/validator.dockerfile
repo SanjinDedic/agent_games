@@ -5,20 +5,22 @@ WORKDIR /agent_games
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install requirements
+# Install requirements and curl
+RUN apt-get update && apt-get install -y curl
+
+# Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Copy necessary files
-COPY games /agent_games/games
-COPY models_db.py /agent_games
-COPY utils.py /agent_games
-COPY config.py /agent_games
-COPY auth.py /agent_games
-COPY docker/services/validation_server.py /agent_games/validation_server.py
+# Copy entire application
+COPY . /agent_games/
 
-# Expose the port the app runs on
+# Debug: List contents to verify files
+RUN ls -la /agent_games/
+RUN ls -la /agent_games/docker/services/
+
+# Expose port
 EXPOSE 8001
 
-# Set the entrypoint to run the validation server
-ENTRYPOINT ["python", "validation_server.py"]
+# Run the server directly from its location
+CMD ["python", "docker/services/validation_server.py"]

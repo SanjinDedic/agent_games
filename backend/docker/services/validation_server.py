@@ -8,8 +8,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-import mypath
 from fastapi import FastAPI, HTTPException
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from games.game_factory import GameFactory
 from models_db import League
 from pydantic import BaseModel

@@ -199,9 +199,9 @@ def allow_submission(session, team_id):
         .where(Submission.timestamp >= one_minute_ago)
     ).all()
 
-    if len(recent_submissions) > 100:
+    if len(recent_submissions) > 5:
         raise SubmissionLimitExceededError(
-            "You can only make 2 submissions per minute."
+            "You can only make 5 submissions per minute."
         )
     return True
 
