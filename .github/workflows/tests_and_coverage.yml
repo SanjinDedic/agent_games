@@ -2,47 +2,45 @@ name: Tests and Coverage
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - 'backend/**'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
-      - 'backend/**'
+      - 'backend/**' 
 
 jobs:
-  test:
+  test_and_coverage:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v3
       with:
-        python-version: '3.10'
-        cache: 'pip'
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
+        cd backend
         python -m pip install --upgrade pip
-        pip install pipenv
-        pipenv install --dev
+        pip install pytest pytest-asyncio httpx pytest-cov
+        pip install -r requirements.txt
 
-    - name: Run tests with pytest and coverage
+    - name: Run tests with coverage
       run: |
-        pipenv run pytest --cov=. --cov-report=xml --cov-report=term-missing tests/
+        cd backend
+        pytest --cov=. --cov-report=xml --cov-report=term tests/
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./backend/coverage.xml
-        flags: unittests
-        name: codecov-umbrella
+        slug: SanjinDedic/agent_games
+        directory: ./backend
+        flags: backend
         fail_ci_if_error: true
         verbose: true
-        directory: ./backend
