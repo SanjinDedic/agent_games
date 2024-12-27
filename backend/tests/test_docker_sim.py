@@ -1,10 +1,22 @@
+# test_docker_simulation.py
 import json
 import os
 import subprocess
+
+# Setup Python path
+import sys
+from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import Session
+
+project_root = str(Path(__file__).parent.parent)
+sys.path.insert(0, project_root)
+
+# Now import project modules
 from api import app
 from database import get_db_engine
 from docker.config import CONTAINERS
@@ -15,8 +27,6 @@ from docker.scripts.docker_simulation import (
     run_docker_simulation,
     validate_docker_results,
 )
-from fastapi.testclient import TestClient
-from sqlmodel import Session
 from tests.database_setup import setup_test_db
 
 os.environ["TESTING"] = "1"
@@ -55,7 +65,8 @@ def admin_token(client):
     return admin_login_response.json()["data"]["access_token"]
 
 
-def test_greedy_pig_docker_simulation(client, admin_token):
+@pytest.mark.asyncio
+async def test_greedy_pig_docker_simulation(client, admin_token):
     simulation_response = client.post(
         "/run_simulation",
         json={"league_name": "comp_test", "num_simulations": 100},
@@ -68,27 +79,36 @@ def test_greedy_pig_docker_simulation(client, admin_token):
     assert "feedback" in response_data["data"]
 
 
+@pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
 async def test_run_docker_simulation_success(mock_post):
-    mock_results = {
-        "feedback": "Test feedback",
-        "simulation_results": {
-            "total_points": {"player1": 100, "player2": 200},
-            "num_simulations": 100,
-            "table": {"wins": {"player1": 40, "player2": 60}},
+    mock_response = type(
+        "Response",
+        (),
+        {
+            "status_code": 200,
+            "json": lambda: {
+                "feedback": "Test feedback",
+                "simulation_results": {
+                    "total_points": {"player1": 100, "player2": 200},
+                    "num_simulations": 100,
+                    "table": {"wins": {"player1": 40, "player2": 60}},
+                },
+            },
         },
-    }
-    mock_post.return_value.status_code = 200
-    mock_post.return_value.json.return_value = mock_results
+    )
+    mock_post.return_value = mock_response
 
     success, results = await run_docker_simulation(
         "test_league", "test_game", "test_folder", None
     )
 
     assert success is True
-    assert results == mock_results
+    assert results["feedback"] == "Test feedback"
+    assert "total_points" in results["simulation_results"]
 
 
+@pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
 async def test_run_docker_simulation_timeout(mock_post):
     mock_post.side_effect = httpx.TimeoutException("Timeout")
@@ -98,13 +118,16 @@ async def test_run_docker_simulation_timeout(mock_post):
     )
 
     assert success is False
-    assert "Simulation timed out" in error_message
+    assert "Failed to connect to simulation service" in error_message
 
 
+@pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
 async def test_run_docker_simulation_api_error(mock_post):
-    mock_post.return_value.status_code = 500
-    mock_post.return_value.text = "Internal server error"
+    mock_response = type(
+        "Response", (), {"status_code": 500, "text": "Internal server error"}
+    )
+    mock_post.return_value = mock_response
 
     success, error_message = await run_docker_simulation(
         "test_league", "test_game", "test_folder", None
@@ -118,6 +141,10 @@ async def test_run_docker_simulation_api_error(mock_post):
 def test_ensure_containers_running_success(mock_subprocess_run):
     mock_subprocess_run.return_value.stdout = ""
     mock_subprocess_run.return_value.returncode = 0
+
+    # Mock inspect result
+    mock_inspect_result = mock_subprocess_run.return_value
+    mock_inspect_result.stdout = json.dumps([{"State": {"Running": True}}])
 
     ensure_containers_running("/test/root/dir")
 
@@ -189,4 +216,4 @@ def test_simulation_results_schema():
 
 
 if __name__ == "__main__":
-    pytest.main()
+    pytest.main(["-v"])

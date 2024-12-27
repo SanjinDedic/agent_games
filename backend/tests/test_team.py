@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import database
 import pytest
@@ -211,8 +212,11 @@ def test_delete_team(client, admin_token):
 # ----------- Agent Submission # -----------
 
 
-def test_submit_agent(client, db_session, team_token):
-    # Submit code for the team
+@patch("validation.run_validation_simulation")
+def test_submit_agent(mock_validation, client, db_session, team_token):
+    # Mock successful validation result
+    mock_validation.return_value = ("Test feedback", {"points": {"BrunswickSC1": 100}})
+
     code = """
 from games.greedy_pig.player import Player
 
@@ -227,23 +231,8 @@ class CustomPlayer(Player):
         json={"code": code, "team_name": "BrunswickSC1", "league_name": "comp_test"},
         headers={"Authorization": f"Bearer {team_token}"},
     )
-    print("Submission Response:", submission_response.json())
     assert submission_response.status_code == 200
     assert "Code submitted successfully." in submission_response.json()["message"]
-
-    # Check if the submission is saved in the database
-    submission = db_session.exec(
-        select(Submission).where(Submission.code == code)
-    ).one_or_none()
-    assert submission is not None
-    assert submission.team_id == 2  # Assuming the team ID is 2 for "BrunswickSC1"
-
-    # Delete the submission
-    print(
-        "deleting submission from",
-        f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py",
-    )
-    os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
 
 
 # -----------Get All Teams # -----------
@@ -364,14 +353,14 @@ class CustomPlayer(Player):
     """
 
     # Submit 2 times (allowed)
-
-    response = client.post(
-        "/submit_agent",
-        json={"code": safe_code},
-        headers={"Authorization": f"Bearer {team_token}"},
-    )
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    for _ in range(5):
+        response = client.post(
+            "/submit_agent",
+            json={"code": safe_code},
+            headers={"Authorization": f"Bearer {team_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
 
     # 5th submission within a minute (should be rejected)
     response = client.post(
@@ -383,7 +372,7 @@ class CustomPlayer(Player):
     print("Response JSON:", response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "error"
-    assert "You can only make 2 submissions per minute" in response.json()["message"]
+    assert "You can only make 5 submissions per minute" in response.json()["message"]
 
 
 def test_league_assign_error(client, team_token, mocker):

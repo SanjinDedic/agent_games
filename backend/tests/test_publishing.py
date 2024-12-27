@@ -197,9 +197,10 @@ def test_publish_results_feedback_overwrite(client, db_session, admin_token):
 
 def test_publish_results_no_feedback(client, db_session, admin_token):
     """Test publishing results without any feedback"""
+    # Add use_docker=False to prevent automatic feedback generation
     simulation_response = client.post(
         "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 10},
+        json={"league_name": "comp_test", "num_simulations": 10, "use_docker": False},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert simulation_response.status_code == 200

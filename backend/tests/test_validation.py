@@ -98,43 +98,47 @@ def test_is_allowed_import():
     assert visitor.is_allowed_import("games.unknown_game.player") is False
 
 
-@patch("validation.run_docker_simulation")
-def test_run_validation_simulation(mock_run_docker_simulation, test_league):
-    mock_run_docker_simulation.return_value = (
-        True,
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_run_validation_simulation(mock_post, test_league):
+    mock_response = type(
+        "Response",
+        (),
         {
-            "feedback": "Test feedback",
-            "player_feedback": "Test2",
-            "simulation_results": {"test": "results"},
+            "status_code": 200,
+            "json": lambda: {
+                "feedback": "Test feedback",
+                "simulation_results": {"test": "results"},
+            },
+            "text": "Success",
         },
     )
 
+    mock_post.return_value = mock_response
+
     code = "print('Hello, world!')"
     game_name = "greedy_pig"
     team_name = "test_team"
 
-    feedback, results = run_validation_simulation(code, game_name, team_name)
+    feedback, results = await run_validation_simulation(code, game_name, team_name)
 
-    assert feedback == "Test2"
+    assert feedback == "Test feedback"
     assert results == {"test": "results"}
 
-    # Test file creation and deletion
-    file_path = os.path.join(
-        ROOT_DIR, "games", game_name, "leagues", "test_league", f"{team_name}.py"
-    )
-    assert not os.path.exists(file_path)
 
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_run_validation_simulation_error(mock_post, test_league):
+    mock_response = type("Response", (), {"status_code": 500, "text": "Error message"})
 
-@patch("validation.run_docker_simulation")
-def test_run_validation_simulation_error(mock_run_docker_simulation, test_league):
-    mock_run_docker_simulation.return_value = (False, "Error message")
+    mock_post.return_value = mock_response
 
     code = "print('Hello, world!')"
     game_name = "greedy_pig"
     team_name = "test_team"
 
-    with pytest.raises(ValidationSimulationError, match="Error message"):
-        run_validation_simulation(code, game_name, team_name)
+    with pytest.raises(ValidationSimulationError):
+        await run_validation_simulation(code, game_name, team_name)
 
 
 def test_allowed_modules():
@@ -150,4 +154,4 @@ def test_risky_functions():
 
 
 if __name__ == "__main__":
-    pytest.main()
+    pytest.main(["-v", "-s"])

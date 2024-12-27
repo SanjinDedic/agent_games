@@ -296,7 +296,9 @@ def get_all_teams(session):
     return curated_teams
 
 
-def save_simulation_results(session, league_id, results, rewards=None):
+def save_simulation_results(
+    session, league_id, results, rewards=None, feedback_str=None, feedback_json=None
+):
     timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
 
     rewards_str = (
@@ -308,13 +310,13 @@ def save_simulation_results(session, league_id, results, rewards=None):
         timestamp=timestamp,
         num_simulations=results["num_simulations"],
         custom_rewards=rewards_str,
+        feedback_str=feedback_str,
+        feedback_json=feedback_json,
     )
     session.add(simulation_result)
     session.flush()
 
-    custom_value_names = list(results.get("table", {}).keys())[
-        :3
-    ]  # Get up to 3 custom value names
+    custom_value_names = list(results.get("table", {}).keys())[:3]
 
     for team_name, score in results["total_points"].items():
         team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
@@ -322,7 +324,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
             result_item = SimulationResultItem(
                 simulation_result_id=simulation_result.id, team_id=team.id, score=score
             )
-            print(f"Saving simulation results for team '{team_name}'")
+
             for i, name in enumerate(custom_value_names, start=1):
                 value = results["table"][name]
                 if isinstance(value, dict):
@@ -334,7 +336,6 @@ def save_simulation_results(session, league_id, results, rewards=None):
             session.add(result_item)
 
     session.commit()
-    print(f"Simulation results saved successfully for league ID {league_id}")
     return simulation_result
 
 

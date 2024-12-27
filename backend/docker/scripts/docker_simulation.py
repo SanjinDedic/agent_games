@@ -76,22 +76,11 @@ async def run_docker_simulation(
     num_simulations=100,
 ):
     try:
-        # Only verify container is running, don't try to start it
         if not is_container_running("simulator"):
             raise SimulationContainerError("Simulator container is not running")
 
-        logger.info(f"Attempting to connect to simulation service at {SIMULATION_URL}")
-
-        # Make request to simulation service
         async with httpx.AsyncClient() as client:
             try:
-                # First try a health check
-                health_response = await client.get(
-                    "http://localhost:8002/", timeout=5.0
-                )
-                logger.info(f"Health check response: {health_response.status_code}")
-
-                # Then make the actual simulation request
                 response = await client.post(
                     SIMULATION_URL,
                     json={
@@ -112,18 +101,15 @@ async def run_docker_simulation(
                     )
 
                 results = response.json()
-                return True, results
+                return True, {
+                    "feedback": results.get("feedback"),
+                    "player_feedback": results.get("player_feedback"),
+                    "simulation_results": results.get("simulation_results"),
+                }
 
-            except httpx.ConnectError as e:
-                logger.error(f"Connection error: {str(e)}")
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error occurred: {str(e)}")
                 return False, f"Failed to connect to simulation service: {str(e)}"
-            except httpx.ReadTimeout as e:
-                logger.error(f"Request timed out: {str(e)}")
-                return False, f"Request to simulation service timed out: {str(e)}"
-            except Exception as e:
-                logger.error(f"Unexpected error making request: {str(e)}")
-                return False, f"Unexpected error: {str(e)}"
-
     except Exception as e:
         logger.error(f"Error running simulation: {str(e)}")
         return False, f"An error occurred while running the simulation: {str(e)}"

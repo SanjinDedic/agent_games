@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -274,7 +275,11 @@ async def run_simulation(
             )
         if not is_successful:
             return ErrorResponseModel(status="error", message=results)
+
+        # Extract simulation results from Docker response
         simulation_results = results["simulation_results"]
+        feedback = results.get("feedback", None)
+        player_feedback = results.get("player_feedback", None)
     else:
         logger.info(f'Running simulation without Docker for league "{league_name}"')
         game_class = GameFactory.get_game_class(league.game)
@@ -282,6 +287,8 @@ async def run_simulation(
             simulation_results = game_class.run_simulations(
                 num_simulations, league, custom_rewards
             )
+            feedback = None
+            player_feedback = None
         except Exception as e:
             logger.error(f"Error running simulation: {str(e)}")
             return ErrorResponseModel(
@@ -289,16 +296,33 @@ async def run_simulation(
                 message=f"An error occurred while running the simulation: {str(e)}",
             )
 
+    # Save simulation results regardless of Docker/non-Docker
     if league_name != "test_league":
-        sim_result = database.save_simulation_results(
-            session, league.id, simulation_results, custom_rewards
-        )
+        try:
+            sim_result = database.save_simulation_results(
+                session,
+                league.id,
+                simulation_results,
+                custom_rewards,
+                feedback_str=feedback if isinstance(feedback, str) else None,
+                feedback_json=(
+                    json.dumps(feedback) if isinstance(feedback, dict) else None
+                ),
+            )
+        except Exception as e:
+            logger.error(f"Error saving simulation results: {str(e)}")
+            return ErrorResponseModel(
+                status="error",
+                message=f"An error occurred while saving the simulation results: {str(e)}",
+            )
     else:
         sim_result = None
 
     response_data = transform_result(simulation_results, sim_result, league_name)
-    if use_docker:
-        response_data["feedback"] = results["feedback"]
+    if feedback is not None:
+        response_data["feedback"] = feedback
+    if player_feedback is not None:
+        response_data["player_feedback"] = player_feedback
 
     return ResponseModel(
         status="success", message="Simulation run successfully", data=response_data
