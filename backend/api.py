@@ -181,7 +181,6 @@ async def submit_agent(
         league_folder = f"leagues/user/{team.league.name}"
 
     try:
-        # Check if the team can make a submission
         if not database.allow_submission(session, team.id):
             return ErrorResponseModel(
                 status="error", message="You can only make 5 submissions per minute."
@@ -199,9 +198,8 @@ async def submit_agent(
     )
     with open(file_path, "w") as file:
         file.write(submission.code)
-
+    print(f"Code saved to {file_path}")
     try:
-        # Add await here
         feedback, results = await run_validation_simulation(
             submission.code, team.league.game, team_name
         )

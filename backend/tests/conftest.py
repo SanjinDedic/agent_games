@@ -1,10 +1,12 @@
-# conftest.py (create this in your tests directory)
+# conftest.py
 import os
 import sys
 import warnings
+from pathlib import Path
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+# Add project root to PYTHONPATH
+project_root = str(Path(__file__).parent.parent)
+sys.path.insert(0, project_root)
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=DeprecationWarning)

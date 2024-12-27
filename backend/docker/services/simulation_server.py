@@ -1,8 +1,7 @@
-import asyncio
 import logging
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -30,6 +29,19 @@ class SimulationRequest(BaseModel):
     player_feedback: bool = False
 
 
+class SimulationError(Exception):
+    """Base exception for simulation errors"""
+
+    pass
+
+
+def handle_simulation_error(e: Exception, context: str):
+    """Standardized error handling"""
+    error_msg = f"{context} error: {str(e)}"
+    logger.error(error_msg)
+    raise HTTPException(status_code=500, detail=error_msg)
+
+
 def run_single_simulation(game_class, league, custom_rewards=None):
     """Run a single simulation with the given parameters"""
     try:
@@ -40,28 +52,56 @@ def run_single_simulation(game_class, league, custom_rewards=None):
         return None
 
 
-async def run_parallel_simulations(
-    game_class, league, num_sims=100, custom_rewards=None
-):
+def run_parallel_simulations(game_class, league, num_sims=100, custom_rewards=None):
     """Run multiple simulations in parallel using threads"""
-    loop = asyncio.get_event_loop()
-    futures = [
-        loop.run_in_executor(
-            executor, run_single_simulation, game_class, league, custom_rewards
-        )
-        for _ in range(num_sims)
-    ]
-    results = await asyncio.gather(*futures)
-    return [r for r in results if r is not None]
+    results = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(run_single_simulation, game_class, league, custom_rewards)
+            for _ in range(num_sims)
+        ]
+        for future in as_completed(futures):
+            if future.result() is not None:
+                results.append(future.result())
+    return results
+
+
+def aggregate_simulation_results(simulation_results, num_simulations):
+    """Aggregate results from multiple simulations"""
+    total_points = {}
+    table_data = {}
+
+    # Initialize counters for each player
+    for result in simulation_results:
+        if result and "points" in result:
+            for player in result["points"]:
+                if player not in total_points:
+                    total_points[player] = 0
+
+    # Sum points
+    for result in simulation_results:
+        if result and "points" in result:
+            for player, points in result["points"].items():
+                total_points[player] += points
+
+    # Get table data from last successful simulation
+    if simulation_results and "table" in simulation_results[-1]:
+        table_data = simulation_results[-1]["table"]
+
+    return {
+        "total_points": total_points,
+        "num_simulations": num_simulations,
+        "table": table_data,
+    }
 
 
 @app.get("/")
-async def health_check():
+def health_check():
     return {"status": "healthy"}
 
 
 @app.post("/simulate")
-async def run_simulation(request: SimulationRequest):
+def run_simulation(request: SimulationRequest):
     try:
         # Create league instance
         league = League(
@@ -86,48 +126,28 @@ async def run_simulation(request: SimulationRequest):
             )
 
         # Run parallel simulations
-        simulation_results = await run_parallel_simulations(
+        simulation_results = run_parallel_simulations(
             game_class, league, request.num_simulations, request.custom_rewards
         )
 
-        # Aggregate results - sum points without averaging
-        total_points = {}
-        table_data = {}
-
-        # Initialize counters for each player
-        for result in simulation_results:
-            if result and "points" in result:
-                for player in result["points"]:
-                    if player not in total_points:
-                        total_points[player] = 0
-
-        # Sum up points
-        for result in simulation_results:
-            if result and "points" in result:
-                for player, points in result["points"].items():
-                    total_points[player] += points
-
-        # Collect any additional table data from the last simulation
-        if simulation_results and "table" in simulation_results[-1]:
-            table_data = simulation_results[-1]["table"]
+        # Aggregate results
+        aggregated_results = aggregate_simulation_results(
+            simulation_results, request.num_simulations
+        )
 
         return {
+            "status": "success",
             "feedback": feedback_result["feedback"],
             "player_feedback": (
                 feedback_result["player_feedback"]
                 if request.player_feedback
                 else "No player feedback"
             ),
-            "simulation_results": {
-                "total_points": total_points,
-                "num_simulations": request.num_simulations,
-                "table": table_data,
-            },
+            "simulation_results": aggregated_results,
         }
 
     except Exception as e:
-        logger.error(f"Simulation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        handle_simulation_error(e, "Simulation")
 
 
 if __name__ == "__main__":
