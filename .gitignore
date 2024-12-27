@@ -58,3 +58,7 @@ backend/games/prisoners_dilemma/leagues/admin/BOMB
 backend/gen_promptt.py
 backend/code_documentation.md
 backend/dockerfile_script.log
+
+.flake8
+extensions.json
+settings.json
