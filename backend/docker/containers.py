@@ -97,7 +97,7 @@ def ensure_containers_running(root_dir: str):
                     check=True,
                 )
 
-            # Start container with logging configuration
+            # Start container with read-only mount
             logger.info(f"Starting {container_name} container...")
             subprocess.run(
                 [
@@ -109,8 +109,8 @@ def ensure_containers_running(root_dir: str):
                     "-p",
                     config["port"],
                     "-v",
-                    f"{root_dir}:/agent_games",
-                    "--restart=unless-stopped",  # Fixed restart policy syntax
+                    f"{root_dir}:/agent_games:ro",  # Mount as read-only
+                    "--restart=unless-stopped",
                     container_name,
                 ],
                 check=True,
@@ -127,7 +127,6 @@ def ensure_containers_running(root_dir: str):
             )
 
             if inspect_result.returncode == 0:
-                # Parse JSON output instead of using eval
                 container_info = json.loads(inspect_result.stdout)
                 if not container_info[0]["State"]["Running"]:
                     logs = get_container_logs(container_name)
@@ -142,7 +141,6 @@ def ensure_containers_running(root_dir: str):
         except subprocess.CalledProcessError as e:
             logger.error(f"Docker command failed for {container_name}: {e}")
             logger.error(f"Command output: {e.output}")
-            # Try to get logs if container exists
             logs = get_container_logs(container_name)
             logger.error(f"Container logs:\n{logs}")
             raise RuntimeError(f"Failed to manage {container_name} container: {e}")

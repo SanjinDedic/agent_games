@@ -101,8 +101,28 @@ def health_check():
 
 
 @app.post("/simulate")
-def run_simulation(request: SimulationRequest):
+async def run_simulation(request: SimulationRequest):
+    """
+    Run simulation with the provided parameters.
+    Returns 200 for successful simulations and application-level errors,
+    500 only for serious server errors.
+    """
     try:
+        # Get game class - this can raise ValueError for unknown games
+        try:
+            game_class = GameFactory.get_game_class(request.league_game)
+        except ValueError as e:
+            # Application-level error: unknown game
+            return {
+                "status": "error",
+                "message": f"Unknown game: {request.league_game}",
+                "simulation_results": {
+                    "total_points": {},
+                    "num_simulations": request.num_simulations,
+                    "table": {},
+                },
+            }
+
         # Create league instance
         league = League(
             name=request.league_name,
@@ -112,23 +132,45 @@ def run_simulation(request: SimulationRequest):
             game=request.league_game,
         )
 
-        # Get game class
-        game_class = GameFactory.get_game_class(request.league_game)
-
         # Run a single game with feedback if required
         feedback_result = {
             "feedback": "No feedback",
             "player_feedback": "No player feedback",
         }
+
         if request.player_feedback:
-            feedback_result = game_class.run_single_game_with_feedback(
-                league, request.custom_rewards
-            )
+            try:
+                feedback_result = game_class.run_single_game_with_feedback(
+                    league, request.custom_rewards
+                )
+            except Exception as e:
+                logger.error(f"Error running feedback game: {str(e)}")
+                return {
+                    "status": "error",
+                    "message": f"Error running feedback game: {str(e)}",
+                    "simulation_results": {
+                        "total_points": {},
+                        "num_simulations": request.num_simulations,
+                        "table": {},
+                    },
+                }
 
         # Run parallel simulations
-        simulation_results = run_parallel_simulations(
-            game_class, league, request.num_simulations, request.custom_rewards
-        )
+        try:
+            simulation_results = run_parallel_simulations(
+                game_class, league, request.num_simulations, request.custom_rewards
+            )
+        except Exception as e:
+            logger.error(f"Error running simulations: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Error running simulations: {str(e)}",
+                "simulation_results": {
+                    "total_points": {},
+                    "num_simulations": request.num_simulations,
+                    "table": {},
+                },
+            }
 
         # Aggregate results
         aggregated_results = aggregate_simulation_results(
@@ -147,7 +189,11 @@ def run_simulation(request: SimulationRequest):
         }
 
     except Exception as e:
-        handle_simulation_error(e, "Simulation")
+        # Only return 500 for unexpected server errors
+        logger.error(f"Unexpected server error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Unexpected server error: {str(e)}"
+        )
 
 
 if __name__ == "__main__":

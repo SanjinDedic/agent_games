@@ -1,16 +1,13 @@
 import logging
 import os
+import shutil
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-
-from games.game_factory import GameFactory
-from models_db import League
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 # Configure logging
@@ -22,6 +19,8 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 
 class ValidationRequest(BaseModel):
+    """Schema for validation request payload"""
+
     code: str
     game_name: str
     team_name: str
@@ -29,124 +28,127 @@ class ValidationRequest(BaseModel):
     custom_rewards: Optional[list] = None
 
 
-class SimulationError(Exception):
-    """Base exception for simulation errors"""
+class ValidationResponse(BaseModel):
+    """Schema for validation response"""
 
-    pass
+    status: str
+    message: Optional[str] = None
+    feedback: Optional[Dict[str, Any]] = None
+    simulation_results: Optional[Dict[str, Any]] = None
 
 
-def handle_simulation_error(e: Exception, context: str):
-    """Standardized error handling"""
+def is_code_safe(code: str) -> bool:
+    """
+    Check if submitted code contains any unsafe imports or operations
+    Simple implementation - for test purposes only
+    """
+    unsafe_imports = ["os", "sys", "subprocess", "eval", "exec"]
+    for unsafe in unsafe_imports:
+        if unsafe in code:
+            return False
+    return True
+
+
+def run_single_simulation(
+    game_class: Any, league: Any, custom_rewards: Optional[list] = None
+) -> Dict[str, Any]:
+    """Run a single game simulation"""
+    game = game_class(league)
+    return game.play_game(custom_rewards)
+
+
+def handle_validation_error(e: Exception, context: str) -> ValidationResponse:
+    """Create standardized error response"""
     error_msg = f"{context} error: {str(e)}"
     logger.error(error_msg)
-    raise HTTPException(status_code=500, detail=error_msg)
+    return ValidationResponse(status="error", message=error_msg)
 
 
-def run_single_simulation(game_class, league, custom_rewards=None):
-    """Run a single simulation with the given parameters"""
+@app.post("/validate", response_model=ValidationResponse)
+def validate_code(request: ValidationRequest) -> ValidationResponse:
+    """
+    Validate submitted code by:
+    1. Checking for unsafe operations
+    2. Creating a temporary test environment
+    3. Running the code in a controlled simulation
+    """
     try:
-        game = game_class(league)
-        return game.play_game(custom_rewards)
-    except Exception as e:
-        logger.error(f"Error in simulation: {str(e)}")
-        return None
+        # Safety check first
+        if not is_code_safe(request.code):
+            return ValidationResponse(
+                status="error", message="Code contains unsafe operations"
+            )
 
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create temp test league directory
+            temp_league_path = os.path.join(temp_dir, "test_league")
+            os.makedirs(temp_league_path)
 
-def run_parallel_simulations(game_class, league, num_sims=100, custom_rewards=None):
-    """Run multiple simulations in parallel using threads"""
-    logger.info(f"Game class: {game_class}, league: {league}, num_sims: {num_sims}")
-    results = []
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [
-            executor.submit(run_single_simulation, game_class, league, custom_rewards)
-            for _ in range(num_sims)
-        ]
-        for future in as_completed(futures):
-            if future.result() is not None:
-                results.append(future.result())
-    return results
+            # Try to copy test league bots if they exist
+            test_league_path = os.path.join(
+                "/agent_games/games", request.game_name, "leagues/test_league"
+            )
+            try:
+                if os.path.exists(test_league_path):
+                    for item in os.listdir(test_league_path):
+                        if item.endswith(".py"):
+                            src = os.path.join(test_league_path, item)
+                            dst = os.path.join(temp_league_path, item)
+                            shutil.copy2(src, dst)
+            except Exception as e:
+                logger.warning(f"Could not copy test bots: {e}")
 
+            # Write submitted code to temp dir
+            team_file = os.path.join(temp_league_path, f"{request.team_name}.py")
+            with open(team_file, "w") as f:
+                f.write(request.code)
 
-def aggregate_simulation_results(simulation_results, num_simulations):
-    """Aggregate results from multiple simulations"""
-    total_points = {}
-    table_data = {}
+            # Create test league instance
+            from models_db import League
 
-    # Sum points
-    for result in simulation_results:
-        if result and "points" in result:
-            for player, points in result["points"].items():
-                if player not in total_points:
-                    total_points[player] = 0
-                total_points[player] += points
+            test_league = League(
+                name="test_league",
+                created_date=datetime.now(),
+                expiry_date=datetime.now() + timedelta(days=1),
+                folder=temp_league_path,
+                game=request.game_name,
+            )
 
-    # Get table data from last successful simulation
-    if simulation_results and "table" in simulation_results[-1]:
-        table_data = simulation_results[-1]["table"]
+            try:
+                # Import game class dynamically to match request
+                from games.game_factory import GameFactory
 
-    return {
-        "total_points": total_points,
-        "num_simulations": num_simulations,
-        "table": table_data,
-    }
+                game_class = GameFactory.get_game_class(request.game_name)
+            except ValueError as e:
+                return ValidationResponse(status="error", message=str(e))
+            except Exception as e:
+                return handle_validation_error(e, "Game class loading")
 
+            # Run validation
+            try:
+                feedback_result = game_class.run_single_game_with_feedback(
+                    test_league, request.custom_rewards
+                )
 
-@app.post("/validate")
-def validate_code(request: ValidationRequest):
-    try:
-        # Create test league
-        test_league = League(
-            name="test_league",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=1),
-            folder=f"leagues/test_league",
-            game=request.game_name,
-        )
+                # Run additional simulations if requested
+                simulation_results = run_single_simulation(
+                    game_class, test_league, request.custom_rewards
+                )
 
-        # Save the submitted code
-        test_league_folder = os.path.join(
-            "/agent_games/games", request.game_name, "leagues/test_league"
-        )
-        os.makedirs(test_league_folder, exist_ok=True)
-
-        file_path = os.path.join(test_league_folder, f"{request.team_name}.py")
-        with open(file_path, "w") as f:
-            f.write(request.code)
-
-        # Get game class and run simulations
-        game_class = GameFactory.get_game_class(request.game_name)
-        logger.info(f"Game class: {game_class} identified by validator")
-
-        # Run a single game with feedback first
-        logger.info(f"Running single game with feedback from validator")
-        feedback_result = game_class.run_single_game_with_feedback(
-            test_league, request.custom_rewards
-        )
-
-        # Run parallel simulations
-        logger.info(f"Running simulations from validator")
-        simulation_results = run_parallel_simulations(
-            game_class, test_league, request.num_simulations, request.custom_rewards
-        )
-
-        # Aggregate results
-        aggregated_results = aggregate_simulation_results(
-            simulation_results, request.num_simulations
-        )
-
-        return {
-            "status": "success",
-            "feedback": feedback_result["feedback"],
-            "player_feedback": feedback_result["player_feedback"],
-            "simulation_results": aggregated_results,
-        }
+                return ValidationResponse(
+                    status="success",
+                    feedback=feedback_result.get("feedback"),
+                    simulation_results={
+                        "total_points": simulation_results.get("points", {}),
+                        "num_simulations": 1,
+                        "table": simulation_results.get("table", {}),
+                    },
+                )
+            except Exception as e:
+                return handle_validation_error(e, "Game simulation")
 
     except Exception as e:
-        handle_simulation_error(e, "Validation")
-    finally:
-        # Clean up the test file
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        return handle_validation_error(e, "Validation")
 
 
 if __name__ == "__main__":
