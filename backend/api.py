@@ -44,15 +44,17 @@ async def lifespan(app: FastAPI):
         logger.info("All containers started successfully")
     except Exception as e:
         logger.error(f"Failed to start containers: {e}")
-        # You might want to prevent the app from starting if containers fail
-        # raise e
 
     yield  # Application runs here
 
-    # Shutdown: stop all containers
-    logger.info("Shutting down application, stopping containers...")
-    stop_containers()
-    logger.info("Application shutdown complete")
+    try:
+        logger.info("Shutting down application, stopping containers...")
+        stop_containers()
+        logger.info("Application shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during container shutdown: {e}")
+    # TODO: Work on improving resilience of the application by doing the following:
+    # - If either container fails to start or shut down then rebuild the container from image.
 
 
 app = FastAPI(lifespan=lifespan)
