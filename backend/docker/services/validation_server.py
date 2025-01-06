@@ -1,3 +1,4 @@
+import ast
 import logging
 import os
 import shutil
@@ -5,22 +6,58 @@ import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
+
+# Add the root directory to Python path
+sys.path.append("/agent_games")
 
 from fastapi import FastAPI
+from games.game_factory import GameFactory
+
+# Now we can import our local modules
+from models_db import League
 from pydantic import BaseModel
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=4)
 
+# Security configuration
+ALLOWED_MODULES = {
+    "random": None,
+    "games": None,
+    "player": None,
+    "math": None,
+}
+
+RISKY_FUNCTIONS = [
+    "eval",
+    "exec",
+    "open",
+    "compile",
+    "execfile",
+    "input",
+    "os",
+    "sys",
+    "subprocess",
+    "importlib",
+    "__import__",
+]
+
 
 class ValidationRequest(BaseModel):
-    """Schema for validation request payload"""
-
     code: str
     game_name: str
     team_name: str
@@ -29,83 +66,118 @@ class ValidationRequest(BaseModel):
 
 
 class ValidationResponse(BaseModel):
-    """Schema for validation response"""
-
     status: str
     message: Optional[str] = None
     feedback: Optional[Dict[str, Any]] = None
     simulation_results: Optional[Dict[str, Any]] = None
 
 
-def is_code_safe(code: str) -> bool:
-    """
-    Check if submitted code contains any unsafe imports or operations
-    Simple implementation - for test purposes only
-    """
-    unsafe_imports = ["os", "sys", "subprocess", "eval", "exec"]
-    for unsafe in unsafe_imports:
-        if unsafe in code:
-            return False
-    return True
+class CodeValidator(ast.NodeVisitor):
+    """AST visitor for validating code safety"""
+
+    def __init__(self):
+        self.safe = True
+        self.error_message = None
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            if not self._is_allowed_import(alias.name):
+                self.safe = False
+                self.error_message = f"Unauthorized import: {alias.name}"
+                return
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        if not self._is_allowed_import(node.module, node.names[0].name):
+            self.safe = False
+            self.error_message = (
+                f"Unauthorized import: {node.module}.{node.names[0].name}"
+            )
+            return
+        self.generic_visit(node)
+
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id in RISKY_FUNCTIONS:
+            self.safe = False
+            self.error_message = f"Unauthorized function call: {node.func.id}"
+            return
+        self.generic_visit(node)
+
+    def _is_allowed_import(self, module: str, submodule: str = None) -> bool:
+        parts = module.split(".")
+        current = ALLOWED_MODULES
+
+        for part in parts:
+            if part not in current:
+                return False
+            if current[part] is None:
+                return True
+            current = current[part]
+
+        return submodule in current if submodule else True
 
 
-def run_single_simulation(
-    game_class: Any, league: Any, custom_rewards: Optional[list] = None
-) -> Dict[str, Any]:
-    """Run a single game simulation"""
-    game = game_class(league)
-    return game.play_game(custom_rewards)
+def validate_code(code: str) -> Tuple[bool, Optional[str]]:
+    """Validate code safety using AST analysis"""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return False, f"Syntax error in code: {str(e)}"
+
+    validator = CodeValidator()
+    validator.visit(tree)
+    return validator.safe, validator.error_message
 
 
-def handle_validation_error(e: Exception, context: str) -> ValidationResponse:
-    """Create standardized error response"""
-    error_msg = f"{context} error: {str(e)}"
-    logger.error(error_msg)
-    return ValidationResponse(status="error", message=error_msg)
+def setup_test_environment(
+    code: str, team_name: str, game_name: str
+) -> Tuple[str, str]:
+    """Set up temporary test environment"""
+    temp_dir = tempfile.mkdtemp()
+    temp_league_path = os.path.join(temp_dir, "test_league")
+    os.makedirs(temp_league_path)
+
+    # Copy test league bots
+    test_league_path = os.path.join(
+        "/agent_games/games", game_name, "leagues/test_league"
+    )
+    if os.path.exists(test_league_path):
+        for item in os.listdir(test_league_path):
+            if item.endswith(".py"):
+                shutil.copy2(
+                    os.path.join(test_league_path, item),
+                    os.path.join(temp_league_path, item),
+                )
+
+    # Write submitted code
+    with open(os.path.join(temp_league_path, f"{team_name}.py"), "w") as f:
+        f.write(code)
+
+    return temp_league_path, temp_dir
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 
 @app.post("/validate", response_model=ValidationResponse)
-def validate_code(request: ValidationRequest) -> ValidationResponse:
-    """
-    Validate submitted code by:
-    1. Checking for unsafe operations
-    2. Creating a temporary test environment
-    3. Running the code in a controlled simulation
-    """
+async def validate_submission(request: ValidationRequest) -> ValidationResponse:
+    """Validate submitted code and run test simulation"""
     try:
-        # Safety check first
-        if not is_code_safe(request.code):
+        # Validate code safety
+        is_safe, error_message = validate_code(request.code)
+        if not is_safe:
             return ValidationResponse(
-                status="error", message="Code contains unsafe operations"
+                status="error", message=f"Code validation failed: {error_message}"
             )
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create temp test league directory
-            temp_league_path = os.path.join(temp_dir, "test_league")
-            os.makedirs(temp_league_path)
+        # Set up test environment
+        temp_league_path, temp_dir = setup_test_environment(
+            request.code, request.team_name, request.game_name
+        )
 
-            # Try to copy test league bots if they exist
-            test_league_path = os.path.join(
-                "/agent_games/games", request.game_name, "leagues/test_league"
-            )
-            try:
-                if os.path.exists(test_league_path):
-                    for item in os.listdir(test_league_path):
-                        if item.endswith(".py"):
-                            src = os.path.join(test_league_path, item)
-                            dst = os.path.join(temp_league_path, item)
-                            shutil.copy2(src, dst)
-            except Exception as e:
-                logger.warning(f"Could not copy test bots: {e}")
-
-            # Write submitted code to temp dir
-            team_file = os.path.join(temp_league_path, f"{request.team_name}.py")
-            with open(team_file, "w") as f:
-                f.write(request.code)
-
-            # Create test league instance
-            from models_db import League
-
+        try:
             test_league = League(
                 name="test_league",
                 created_date=datetime.now(),
@@ -114,41 +186,39 @@ def validate_code(request: ValidationRequest) -> ValidationResponse:
                 game=request.game_name,
             )
 
+            # Get game class and run simulations
+            from games.game_factory import GameFactory
+
+            game_class = GameFactory.get_game_class(request.game_name)
+
+            feedback_result = game_class.run_single_game_with_feedback(
+                test_league, request.custom_rewards
+            )
+            simulation_results = game_class.run_simulations(
+                request.num_simulations, test_league, request.custom_rewards
+            )
+
+            return ValidationResponse(
+                status="success",
+                feedback=feedback_result.get("feedback"),
+                simulation_results=simulation_results,
+            )
+
+        except Exception as e:
+            logger.error(f"Simulation error: {str(e)}")
+            return ValidationResponse(
+                status="error", message=f"Error during simulation: {str(e)}"
+            )
+
+        finally:
             try:
-                # Import game class dynamically to match request
-                from games.game_factory import GameFactory
-
-                game_class = GameFactory.get_game_class(request.game_name)
-            except ValueError as e:
-                return ValidationResponse(status="error", message=str(e))
+                shutil.rmtree(temp_dir)
             except Exception as e:
-                return handle_validation_error(e, "Game class loading")
-
-            # Run validation
-            try:
-                feedback_result = game_class.run_single_game_with_feedback(
-                    test_league, request.custom_rewards
-                )
-
-                # Run additional simulations if requested
-                simulation_results = run_single_simulation(
-                    game_class, test_league, request.custom_rewards
-                )
-
-                return ValidationResponse(
-                    status="success",
-                    feedback=feedback_result.get("feedback"),
-                    simulation_results={
-                        "total_points": simulation_results.get("points", {}),
-                        "num_simulations": 1,
-                        "table": simulation_results.get("table", {}),
-                    },
-                )
-            except Exception as e:
-                return handle_validation_error(e, "Game simulation")
+                logger.error(f"Error cleaning up temporary directory: {str(e)}")
 
     except Exception as e:
-        return handle_validation_error(e, "Validation")
+        logger.error(f"Unexpected error during validation: {str(e)}")
+        return ValidationResponse(status="error", message=f"Unexpected error: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import os
 from contextlib import asynccontextmanager
 
 import database
+import httpx
 from auth import get_current_user
 from config import ROOT_DIR
 from docker.containers import ensure_containers_running, stop_containers
@@ -29,7 +30,6 @@ from models_api import (
 )
 from sqlmodel import Session
 from utils import get_games_names, transform_result
-from validation import is_agent_safe, run_validation_simulation
 
 logger = logging.getLogger(__name__)
 
@@ -162,9 +162,8 @@ async def submit_agent(
     session: Session = Depends(get_db),
 ):
     team_name = current_user["team_name"]
-    if not is_agent_safe(submission.code):
-        return ErrorResponseModel(status="error", message="Agent code is not safe.")
 
+    # Get team and league info
     team = database.get_team(session, team_name)
     if not team.league:
         return ErrorResponseModel(
@@ -176,11 +175,7 @@ async def submit_agent(
             status="error", message="Team is not assigned to a valid league."
         )
 
-    if team.league.folder:
-        league_folder = team.league.folder.lstrip("/")
-    else:
-        league_folder = f"leagues/user/{team.league.name}"
-
+    # Check submission rate limit
     try:
         if not database.allow_submission(session, team.id):
             return ErrorResponseModel(
@@ -190,42 +185,63 @@ async def submit_agent(
         logger.error(f"Error checking submission permissions: {e}")
         return ErrorResponseModel(
             status="error",
-            message=f"An error occurred while updating submission: {str(e)}",
+            message=f"An error occurred while checking submission rate limit: {str(e)}",
         )
 
-    # Save the submitted code in a Python file named after the team
+    # Save the submitted code
+    league_folder = (
+        team.league.folder.lstrip("/")
+        if team.league.folder
+        else f"leagues/user/{team.league.name}"
+    )
     file_path = os.path.join(
         ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py"
     )
+
     with open(file_path, "w") as file:
         file.write(submission.code)
-    print(f"Code saved to {file_path}")
-    try:
-        feedback, results = await run_validation_simulation(
-            submission.code, team.league.game, team_name
-        )
-    except Exception as e:
-        logger.error(f"Error running validation simulation: {e}")
-        return ErrorResponseModel(
-            status="error",
-            message=f"An error occurred while updating submission: {str(e)}",
-        )
 
+    # Send to validation server
     try:
-        # Log the submission in the database
+        print(f"Sending submission to validation server for team {team_name}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://localhost:8001/validate",
+                json={
+                    "code": submission.code,
+                    "game_name": team.league.game,
+                    "team_name": team_name,
+                    "num_simulations": 100,
+                },
+                timeout=30.0,
+            )
+
+        if response.status_code != 200:
+            return ErrorResponseModel(
+                status="error", message=f"Validation failed: {response.text}"
+            )
+
+        validation_result = response.json()
+        print(f"Validation result: {validation_result}")
+
+        # Save submission if validation passed
         submission_id = database.save_submission(session, submission.code, team.id)
-    except Exception as e:
-        logger.error(f"Error saving simulation: {e}")
-        return ErrorResponseModel(
-            status="error",
-            message=f"An error occurred while updating submission: {str(e)}",
+
+        return ResponseModel(
+            status="success",
+            message=f"Code submitted successfully. Submission ID: {submission_id}",
+            data={
+                "results": validation_result["simulation_results"],
+                "team_name": team_name,
+                "feedback": validation_result["feedback"],
+            },
         )
 
-    return ResponseModel(
-        status="success",
-        message=f"Code submitted successfully. Submission ID: {submission_id}",
-        data={"results": results, "team_name": team_name, "feedback": feedback},
-    )
+    except Exception as e:
+        logger.error(f"Error during validation: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"An error occurred during validation: {str(e)}"
+        )
 
 
 @app.post("/run_simulation", response_model=ResponseModel)

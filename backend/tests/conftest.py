@@ -5,7 +5,6 @@ import os
 import shutil
 import signal
 import sys
-import warnings
 from pathlib import Path
 
 import pytest
@@ -25,67 +24,6 @@ from api import app
 from database import get_db_engine
 from docker.containers import ensure_containers_running, stop_containers
 from sqlmodel import Session
-
-# Suppress deprecation warnings during testing
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*error reading bcrypt version.*"
-    )
-
-
-def ensure_directory_structure():
-    """
-    Create and verify all necessary directories before any tests run.
-    This is a standalone function that runs before any fixtures.
-    """
-    root_dir = Path(__file__).parent.parent
-
-    # Define all required directories
-    required_dirs = {
-        # Protected directories (never deleted)
-        "prisoners_test": root_dir
-        / "games"
-        / "prisoners_dilemma"
-        / "leagues"
-        / "test_league",
-        "greedy_test": root_dir / "games" / "greedy_pig" / "leagues" / "test_league",
-        "prisoners_admin": root_dir
-        / "games"
-        / "prisoners_dilemma"
-        / "leagues"
-        / "admin",
-        "greedy_admin": root_dir / "games" / "greedy_pig" / "leagues" / "admin",
-        # Game root directories
-        "prisoners_root": root_dir / "games" / "prisoners_dilemma",
-        "greedy_root": root_dir / "games" / "greedy_pig",
-        # League directories
-        "prisoners_leagues": root_dir / "games" / "prisoners_dilemma" / "leagues",
-        "greedy_leagues": root_dir / "games" / "greedy_pig" / "leagues",
-    }
-
-    # Create directories and verify their existence
-    for name, path in required_dirs.items():
-        try:
-            path.mkdir(parents=True, exist_ok=True)
-            if not path.exists():
-                raise RuntimeError(f"Failed to create directory: {path}")
-            logger.info(f"Verified directory exists: {name} at {path}")
-
-            # Create .keep file in each directory
-            keep_file = path / ".keep"
-            keep_file.touch()
-            logger.info(f"Created/verified .keep file in {name}")
-        except Exception as e:
-            logger.error(f"Error setting up directory {name}: {str(e)}")
-            raise
-
-    # Return the paths for use in fixtures
-    return required_dirs
-
-
-# Run directory setup immediately on module import
-REQUIRED_DIRS = ensure_directory_structure()
 
 
 class UvicornTestServer(uvicorn.Server):
@@ -111,15 +49,50 @@ def run_app():
     server.run()
 
 
+def create_test_directories():
+    """Create and verify all necessary test directories"""
+    root_dir = Path(__file__).parent.parent
+
+    # Define required directory structure
+    test_dirs = {
+        "prisoners": {
+            "test": root_dir
+            / "games"
+            / "prisoners_dilemma"
+            / "leagues"
+            / "test_league",
+            "admin": root_dir / "games" / "prisoners_dilemma" / "leagues" / "admin",
+        },
+        "greedy": {
+            "test": root_dir / "games" / "greedy_pig" / "leagues" / "test_league",
+            "admin": root_dir / "games" / "greedy_pig" / "leagues" / "admin",
+        },
+    }
+
+    # Create directories
+    for game_dirs in test_dirs.values():
+        for path in game_dirs.values():
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                if not path.exists():
+                    raise RuntimeError(f"Failed to create directory: {path}")
+                logger.info(f"Verified directory exists: {path}")
+            except Exception as e:
+                logger.error(f"Error creating directory {path}: {str(e)}")
+                raise
+
+    return test_dirs
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
-    """
-    Primary test environment setup fixture.
-    Assumes directories are already created by ensure_directory_structure()
-    """
+    """Primary test environment setup fixture"""
     logger.info("Starting test environment setup")
 
     try:
+        # Create test directories
+        test_dirs = create_test_directories()
+
         # Start containers
         logger.info("Starting Docker containers")
         ensure_containers_running(project_root)
@@ -129,13 +102,13 @@ def setup_test_environment():
         proc = multiprocessing.Process(target=run_app)
         proc.start()
 
-        # Give the server time to start
+        # Allow server startup time
         import time
 
         time.sleep(5)
         logger.info("Test environment setup completed successfully")
 
-        yield
+        yield test_dirs
 
         # Cleanup
         logger.info("Starting test environment cleanup")
@@ -178,28 +151,17 @@ def client(db_session):
 
 
 @pytest.fixture(scope="function")
-def temp_test_files():
-    """
-    Fixture for creating and cleaning up temporary test files.
-    This runs for each test function that requests it.
-    """
+def temp_test_files(setup_test_environment):
+    """Fixture for temporary test files"""
     logger.info("Setting up temporary test files")
     root_dir = Path(__file__).parent.parent
 
-    # Create temporary test directories
-    temp_dirs = {
-        "dynamic": root_dir
-        / "games"
-        / "prisoners_dilemma"
-        / "leagues"
-        / "dynamic_test_league",
-        "invalid": root_dir / "games" / "invalid_game" / "leagues" / "test_league",
-    }
-
-    # Create directories and test files
-    for name, path in temp_dirs.items():
-        path.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Created temporary directory: {name} at {path}")
+    # Create temporary test directory
+    temp_dir = (
+        root_dir / "games" / "prisoners_dilemma" / "leagues" / "dynamic_test_league"
+    )
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Created temporary directory: {temp_dir}")
 
     # Create test bot file
     test_bot_content = """
@@ -209,35 +171,13 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         return 'collude'
 """
-    test_bot_path = temp_dirs["dynamic"] / "test_bot.py"
+    test_bot_path = temp_dir / "test_bot.py"
     with open(test_bot_path, "w") as f:
         f.write(test_bot_content)
     logger.info(f"Created test bot at {test_bot_path}")
 
-    yield temp_dirs
+    yield {"dynamic": temp_dir}
 
-    # Cleanup temporary files only
+    # Cleanup
     logger.info("Cleaning up temporary test files")
-    for path in temp_dirs.values():
-        if path.exists():
-            shutil.rmtree(path)
-            logger.info(f"Removed temporary directory: {path}")
-
-
-# Provide direct access to test directories
-@pytest.fixture
-def test_league_path():
-    """Access to the protected test_league directory"""
-    return REQUIRED_DIRS["prisoners_test"]
-
-
-@pytest.fixture
-def dynamic_test_league_path():
-    """Access to the dynamic test league directory"""
-    return (
-        Path(__file__).parent.parent
-        / "games"
-        / "prisoners_dilemma"
-        / "leagues"
-        / "dynamic_test_league"
-    )
+    shutil.rmtree(temp_dir)

@@ -6082,3 +6082,90 @@ AttributeError: module 'bcrypt' has no attribute '__about__'
 2024-12-20 12:30:43,505 - docker.containers - INFO - Starting simulator container...
 2024-12-20 12:30:46,029 - docker.containers - INFO - simulator container started successfully
 2024-12-20 12:30:46,029 - api - INFO - All containers started successfully
+2025-01-06 09:14:36,522 - api - INFO - Starting application containers...
+2025-01-06 09:14:36,744 - docker.containers - INFO - Starting validator container...
+2025-01-06 09:14:39,241 - docker.containers - INFO - validator container started successfully
+2025-01-06 09:14:39,460 - docker.containers - INFO - Starting simulator container...
+2025-01-06 09:14:41,971 - docker.containers - INFO - simulator container started successfully
+2025-01-06 09:14:41,971 - api - INFO - All containers started successfully
+2025-01-06 09:15:50,514 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:15:50,538 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/home/slowturing/Dropbox/CODE_PROJECTS/agent_games/venv/lib/python3.10/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-01-06 09:15:50,829 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:15:50,831 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:15:55,414 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:15:55,415 - api - INFO - Team Name "GG about to assign to league "BOMB"
+2025-01-06 09:15:58,444 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:16:02,621 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:16:03,222 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:16:03,677 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:19:08,952 - api - INFO - Database URL: sqlite:///teams.db
+2025-01-06 09:19:16,614 - api - INFO - Shutting down application, stopping containers...
+2025-01-06 09:19:16,710 - docker.containers - INFO - Stopping validator container...
+2025-01-06 09:19:17,397 - docker.containers - INFO - validator container stopped and removed
+2025-01-06 09:19:17,499 - docker.containers - INFO - Stopping simulator container...
+2025-01-06 09:19:18,270 - docker.containers - INFO - simulator container stopped and removed
+2025-01-06 09:19:18,270 - api - INFO - Application shutdown complete
+2025-01-06 09:19:21,602 - api - INFO - Starting application containers...
+2025-01-06 09:19:21,784 - docker.containers - INFO - Starting validator container...
+2025-01-06 09:19:24,292 - docker.containers - INFO - validator container started successfully
+2025-01-06 09:19:24,461 - docker.containers - INFO - Starting simulator container...
+2025-01-06 09:19:27,051 - docker.containers - INFO - simulator container started successfully
+2025-01-06 09:19:27,052 - api - INFO - All containers started successfully
+2025-01-06 09:19:31,623 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:00,849 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:00,850 - api - INFO - Calling "get_admin" with "Administrator" and "BOSSMAN1378"
+2025-01-06 09:20:00,857 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/home/slowturing/Dropbox/CODE_PROJECTS/agent_games/venv/lib/python3.10/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-01-06 09:20:01,167 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:01,168 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:12,384 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:20,198 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:25,513 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:25,833 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:25,847 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:30,896 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:30,911 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:30,942 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:30,952 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:44,057 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:20:44,079 - api - ERROR - Error creating league: 'League' object has no attribute 'folder'
+2025-01-06 09:22:39,443 - api - INFO - Shutting down application, stopping containers...
+2025-01-06 09:22:39,550 - docker.containers - INFO - Stopping validator container...
+2025-01-06 09:22:40,263 - docker.containers - INFO - validator container stopped and removed
+2025-01-06 09:22:40,360 - docker.containers - INFO - Stopping simulator container...
+2025-01-06 09:22:41,092 - docker.containers - INFO - simulator container stopped and removed
+2025-01-06 09:22:41,092 - api - INFO - Application shutdown complete
+2025-01-06 09:22:43,332 - api - INFO - Starting application containers...
+2025-01-06 09:22:43,509 - docker.containers - INFO - Starting validator container...
+2025-01-06 09:22:46,018 - docker.containers - INFO - validator container started successfully
+2025-01-06 09:22:46,206 - docker.containers - INFO - Starting simulator container...
+2025-01-06 09:22:48,724 - docker.containers - INFO - simulator container started successfully
+2025-01-06 09:22:48,725 - api - INFO - All containers started successfully
+2025-01-06 09:22:54,671 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:22:54,711 - api - ERROR - Error creating league: (sqlite3.IntegrityError) UNIQUE constraint failed: league.name
+[SQL: INSERT INTO league (name, created_date, expiry_date, deleted_date, signup_link, game) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('BOMB', '2025-01-06 09:22:54.672124', '2025-01-07 09:22:54.672163', '2025-01-13 09:22:54.672183', None, 'prisoners_dilemma')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-01-06 09:23:31,205 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:23:31,208 - api - ERROR - Error creating league: (sqlite3.IntegrityError) UNIQUE constraint failed: league.name
+[SQL: INSERT INTO league (name, created_date, expiry_date, deleted_date, signup_link, game) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('BOMB', '2025-01-06 09:23:31.206213', '2025-01-07 09:23:31.206237', '2025-01-13 09:23:31.206246', None, 'prisoners_dilemma')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-01-06 09:23:36,937 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:23:36,960 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:23:39,169 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:23:39,170 - api - INFO - Team Name "GG about to assign to league "BOMB"
+2025-01-06 09:23:44,908 - api - INFO - Database URL: sqlite:////home/slowturing/Dropbox/CODE_PROJECTS/agent_games/backend/teams.db
+2025-01-06 09:47:16,595 - api - INFO - Shutting down application, stopping containers...
+2025-01-06 09:47:16,687 - docker.containers - INFO - Stopping validator container...
+2025-01-06 09:47:17,407 - docker.containers - INFO - validator container stopped and removed
+2025-01-06 09:47:17,494 - docker.containers - INFO - Stopping simulator container...
+2025-01-06 09:47:18,222 - docker.containers - INFO - simulator container stopped and removed
+2025-01-06 09:47:18,222 - api - INFO - Application shutdown complete
