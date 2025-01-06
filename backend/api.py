@@ -163,8 +163,45 @@ async def submit_agent(
 ):
     team_name = current_user["team_name"]
 
-    # Get team and league info
+    # Get team early for league info
     team = database.get_team(session, team_name)
+
+    # First, validate code via validation server
+    try:
+        print(f"Sending submission to validation server for team {team_name}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://localhost:8001/validate",
+                json={
+                    "code": submission.code,
+                    "game_name": (
+                        team.league.game if team.league else "greedy_pig"
+                    ),  # default game
+                    "team_name": team_name,
+                    "num_simulations": 100,
+                },
+                timeout=30.0,
+            )
+
+        if response.status_code != 200:
+            return ErrorResponseModel(
+                status="error", message=f"Validation failed: {response.text}"
+            )
+
+        validation_result = response.json()
+        if validation_result.get("status") == "error":
+            return ErrorResponseModel(
+                status="error",
+                message=validation_result.get("message", "Code validation failed"),
+            )
+
+    except Exception as e:
+        logger.error(f"Error during validation: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"An error occurred during validation: {str(e)}"
+        )
+
+    # After code validation passes, check league assignment
     if not team.league:
         return ErrorResponseModel(
             status="error", message="Team is not assigned to a league."
@@ -201,29 +238,7 @@ async def submit_agent(
     with open(file_path, "w") as file:
         file.write(submission.code)
 
-    # Send to validation server
     try:
-        print(f"Sending submission to validation server for team {team_name}")
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "http://localhost:8001/validate",
-                json={
-                    "code": submission.code,
-                    "game_name": team.league.game,
-                    "team_name": team_name,
-                    "num_simulations": 100,
-                },
-                timeout=30.0,
-            )
-
-        if response.status_code != 200:
-            return ErrorResponseModel(
-                status="error", message=f"Validation failed: {response.text}"
-            )
-
-        validation_result = response.json()
-        print(f"Validation result: {validation_result}")
-
         # Save submission if validation passed
         submission_id = database.save_submission(session, submission.code, team.id)
 
@@ -231,16 +246,17 @@ async def submit_agent(
             status="success",
             message=f"Code submitted successfully. Submission ID: {submission_id}",
             data={
-                "results": validation_result["simulation_results"],
+                "results": validation_result.get("simulation_results"),
                 "team_name": team_name,
-                "feedback": validation_result["feedback"],
+                "feedback": validation_result.get("feedback"),
             },
         )
 
     except Exception as e:
-        logger.error(f"Error during validation: {e}")
+        logger.error(f"Error saving submission: {e}")
         return ErrorResponseModel(
-            status="error", message=f"An error occurred during validation: {str(e)}"
+            status="error",
+            message=f"An error occurred while saving the submission: {str(e)}",
         )
 
 

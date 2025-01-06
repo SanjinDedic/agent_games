@@ -6,7 +6,7 @@ import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 # Add the root directory to Python path
 sys.path.append("/agent_games")
@@ -68,7 +68,7 @@ class ValidationRequest(BaseModel):
 class ValidationResponse(BaseModel):
     status: str
     message: Optional[str] = None
-    feedback: Optional[Dict[str, Any]] = None
+    feedback: Union[str, Dict, None] = None
     simulation_results: Optional[Dict[str, Any]] = None
 
 
@@ -165,11 +165,11 @@ async def health_check():
 async def validate_submission(request: ValidationRequest) -> ValidationResponse:
     """Validate submitted code and run test simulation"""
     try:
-        # Validate code safety
+        # Validate code safety first
         is_safe, error_message = validate_code(request.code)
         if not is_safe:
             return ValidationResponse(
-                status="error", message=f"Code validation failed: {error_message}"
+                status="error", message=f"Agent code is not safe: {error_message}"
             )
 
         # Set up test environment
@@ -187,10 +187,9 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
             )
 
             # Get game class and run simulations
-            from games.game_factory import GameFactory
-
             game_class = GameFactory.get_game_class(request.game_name)
 
+            # Run simulations within a timeout context
             feedback_result = game_class.run_single_game_with_feedback(
                 test_league, request.custom_rewards
             )
@@ -211,6 +210,7 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
             )
 
         finally:
+            # Clean up temporary files
             try:
                 shutil.rmtree(temp_dir)
             except Exception as e:
@@ -218,7 +218,9 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
 
     except Exception as e:
         logger.error(f"Unexpected error during validation: {str(e)}")
-        return ValidationResponse(status="error", message=f"Unexpected error: {str(e)}")
+        return ValidationResponse(
+            status="error", message=f"Unexpected error during validation: {str(e)}"
+        )
 
 
 if __name__ == "__main__":
