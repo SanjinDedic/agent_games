@@ -380,3 +380,33 @@ def test_get_all_teams_error(client, db_session, mocker):
         "message": "An error occurred while retrieving teams",
         "data": None,  # Added this line
     }
+
+
+def test_submit_agent_with_invalid_game(client, db_session, team_token):
+    """Tests submitting code when team's league has an invalid game type.
+    This will cover lines 198-200 in api.py where game type validation occurs."""
+
+    # First modify the team's league to have an invalid game
+    team = database.get_team(db_session, "BrunswickSC1")
+    team.league.game = "invalid_game"
+    db_session.commit()
+
+    # Note: Remove the leading whitespace in the code string
+    code = """from games.greedy_pig.player import Player
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return 'continue'"""
+
+    response = client.post(
+        "/submit_agent",
+        json={"code": code},
+        headers={"Authorization": f"Bearer {team_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "Unknown game" in response.json()["message"]
+    # Remove the invalid_game folder from the system
+    league_path = os.path.join(ROOT_DIR, "games", "invalid_game")
+    command = f"rm -rf {league_path}"
+    os.system(command)

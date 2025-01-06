@@ -52,6 +52,10 @@ class SimulationResultTransformationError(Exception):
     pass
 
 
+class LeagueExistsError(Exception):
+    pass
+
+
 def get_db_engine():
     return create_engine(get_database_url())
 
@@ -61,6 +65,14 @@ def create_database(engine):
 
 
 def create_league(session, league_name, league_game, league_folder):
+    # First check if league exists to provide a clearer error
+    existing_league = session.exec(
+        select(League).where(League.name == league_name)
+    ).first()
+
+    if existing_league:
+        raise LeagueExistsError(f"League with name '{league_name}' already exists")
+
     league = League(
         name=league_name,
         created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
@@ -73,35 +85,31 @@ def create_league(session, league_name, league_game, league_folder):
         folder=league_folder,
         game=league_game,
     )
-    session.add(league)
-    session.flush()  # Flush to generate the league ID
 
-    league.signup_link = encode_id(league.id)
-    session.commit()
+    try:
+        session.add(league)
+        session.flush()  # Flush to generate the league ID
 
-    # Create the league folder
-    absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league.folder)
-    print(f"Creating folder: {absolute_folder}")
-    os.makedirs(absolute_folder, exist_ok=True)
+        league.signup_link = encode_id(league.id)
+        session.commit()
 
-    # Create the test_league folder
-    test_league_folder = os.path.join(
-        ROOT_DIR, "games", league.game, "leagues", "test_league"
-    )
-    os.makedirs(test_league_folder, exist_ok=True)
+        # Create the league folder
+        absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league.folder)
+        print(f"Creating folder: {absolute_folder}")
+        os.makedirs(absolute_folder, exist_ok=True)
 
-    # Create README.md files
-    with open(os.path.join(absolute_folder, "README.md"), "w") as file:
-        file.write(
-            f"# {league.name}\n\nThis folder contains files for the {league.name} league."
-        )
+        # Create README.md files
+        with open(os.path.join(absolute_folder, "README.md"), "w") as file:
+            file.write(
+                f"# {league.name}\n\nThis folder contains files for the {league.name} league."
+            )
 
-    with open(os.path.join(test_league_folder, "README.md"), "w") as file:
-        file.write(
-            f"# Test League for {league.game}\n\nContains test files for the {league.game} game."
-        )
+        return {"link": league.signup_link}
 
-    return {"link": league.signup_link}
+    except Exception as e:
+        session.rollback()
+        # Re-raise any other unexpected errors
+        raise
 
 
 def create_team(session, name, password, league_id=1, school=None):

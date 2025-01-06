@@ -89,6 +89,15 @@ async def league_create(
     if current_user["role"] != "admin":
         return ResponseModel(status="failed", message="Unauthorized")
 
+    # Validate game name first
+    try:
+        GameFactory.get_game_class(league.game)
+    except ValueError:
+        return ResponseModel(
+            status="failed",
+            message=f"Invalid game name: {league.game}. Available games are: greedy_pig, prisoners_dilemma",
+        )
+
     league_folder = f"leagues/admin/{league.name}"
 
     try:
@@ -98,9 +107,14 @@ async def league_create(
             league_game=league.game,
             league_folder=league_folder,
         )
+    except database.LeagueExistsError as e:
+        # Handle the specific case of duplicate league names
+        return ResponseModel(status="failed", message=str(e))
     except Exception as e:
         logger.error(f"Error creating league: {e}")
-        return ResponseModel(status="failed", message=str(e))
+        return ResponseModel(
+            status="failed", message="An error occurred while creating the league"
+        )
 
     return ResponseModel(
         status="success", message="League created successfully", data=data

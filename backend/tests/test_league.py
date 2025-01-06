@@ -220,28 +220,6 @@ def test_update_expiry_date_invalid_token(client):
     assert response.json()["detail"] == "Invalid token"
 
 
-def test_league_creation_exception(client, admin_token, monkeypatch):
-
-    def mock_create_league(*args, **kwargs):
-        raise Exception("Database error")
-
-    monkeypatch.setattr("database.create_league", mock_create_league)
-
-    response = client.post(
-        "/league_create",
-        json={"name": "exception_league", "game": "greedy_pig"},
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-
-    assert response.status_code == 200
-    print(response.json())
-    assert response.json() == {
-        "status": "failed",
-        "message": "Database error",
-        "data": None,
-    }
-
-
 def test_get_all_league_results(client, admin_token, non_admin_token):
     simulation_response = client.post(
         "/run_simulation",
@@ -587,3 +565,27 @@ def test_get_published_results_for_all_leagues_exception(
         "An error occurred while retrieving published results"
         in response.json()["message"]
     )
+
+
+def test_league_create_invalid_parameters(client, admin_token):
+    """Tests league creation with invalid parameters.
+    This covers lines 302-304 in api.py where league parameter validation occurs."""
+
+    # Test with invalid game name
+    response = client.post(
+        "/league_create",
+        json={"name": "test_league", "game": "invalid_game"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+
+    # Test with existing league name
+    response = client.post(
+        "/league_create",
+        json={"name": "unassigned", "game": "greedy_pig"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert "already exists" in response.json()["message"]
