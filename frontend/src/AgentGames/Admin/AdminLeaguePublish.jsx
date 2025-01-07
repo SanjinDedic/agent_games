@@ -1,5 +1,3 @@
-// AdminLeaguePublish.jsx
-import './css/adminleague.css';
 import React from 'react';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
@@ -16,7 +14,7 @@ const AdminLeaguePublish = ({ simulation_id, selected_league_name }) => {
         }
 
         const publishData = {
-            league_name: selected_league_name, 
+            league_name: selected_league_name,
             id: simulation_id,
             feedback: currentSimulation?.feedback || null
         };
@@ -33,9 +31,7 @@ const AdminLeaguePublish = ({ simulation_id, selected_league_name }) => {
             .then(data => {
                 if (data.status === "success") {
                     toast.success(data.message);
-                } else if (data.status === "failed") {
-                    toast.error(data.message);
-                } else if (data.status === "error") {
+                } else if (data.status === "failed" || data.status === "error") {
                     toast.error(data.message);
                 }
             })
@@ -45,7 +41,12 @@ const AdminLeaguePublish = ({ simulation_id, selected_league_name }) => {
     };
 
     return (
-        <button className='publish-button' onClick={handlePublish}>PUBLISH RESULT</button>
+        <button
+            onClick={handlePublish}
+            className="w-full bg-success hover:bg-success-hover text-white py-3 px-4 rounded-lg text-lg font-medium transition-colors shadow-sm focus:ring-2 focus:ring-success focus:ring-offset-2 outline-none"
+        >
+            PUBLISH RESULT
+        </button>
     );
 }
 
