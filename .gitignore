@@ -62,3 +62,12 @@ backend/dockerfile_script.log
 .flake8
 extensions.json
 settings.json
+
+# Ignore validation logs
+**/validation.log
+*.log
+
+# Ensure docker service logs are ignored
+docker/services/*.log
+frontend/front_end.md
+frontend/gen_prompt_frontend.py

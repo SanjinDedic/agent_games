@@ -139,8 +139,7 @@ def test_starter_code():
 
 def test_game_instructions():
     assert (
-        "<h1>Prisoner's Dilemma Game Instructions</h1>"
-        in PrisonersDilemmaGame.game_instructions
+        "Prisoner's Dilemma Game Instructions" in PrisonersDilemmaGame.game_instructions
     )
     assert "Game Objective" in PrisonersDilemmaGame.game_instructions
     assert "Scoring" in PrisonersDilemmaGame.game_instructions

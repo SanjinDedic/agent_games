@@ -25,45 +25,40 @@ class CustomPlayer(Player):
         return decision
 """
 
-    game_instructions = """
-<h1>Prisoner's Dilemma Game Instructions</h1>
+    game_instructions = """### Prisoner's Dilemma Game Instructions
 
-<p>Welcome to the Prisoner's Dilemma game! Your task is to implement the <code>make_decision</code> method in the <code>CustomPlayer</code> class.</p>
+Welcome to the Prisoner's Dilemma game! Your task is to implement the `make_decision` method in the `CustomPlayer` class.
 
-<h2>1. Game Objective</h2>
-<p>Maximize your score over multiple rounds by choosing to collude or defect against your opponents.</p>
+#### 1. Game Objective
+Maximize your score over multiple rounds by choosing to collude or defect against your opponents.
 
-<h2>2. Your Task</h2>
-<p>Implement the <code>make_decision</code> method to decide whether to 'collude' or 'defect' based on the game state.</p>
+#### 2. Your Task
+Implement the `make_decision` method to decide whether to 'collude' or 'defect' based on the game state.
 
-<h2>3. Available Information</h2>
-<p>The <code>game_state</code> parameter provides you with the following information:</p>
-<ul>
-    <li><code>round_number</code>: The current round number</li>
-    <li><code>player_name</code>: Your player's name</li>
-    <li><code>opponent_name</code>: Your current opponent's name</li>
-    <li><code>opponent_history</code>: A list of your opponent's past decisions against you</li>
-    <li><code>scores</code>: A dictionary of current scores for all players</li>
-</ul>
+#### 3. Available Information
+The `game_state` parameter provides you with the following information:
+- `round_number`: The current round number
+- `player_name`: Your player's name
+- `opponent_name`: Your current opponent's name
+- `opponent_history`: A list of your opponent's past decisions against you
+- `scores`: A dictionary of current scores for all players
 
-<h2>4. Scoring</h2>
-<p>The scoring is determined by a reward matrix. The default matrix is:</p>
-<ul>
-    <li>Both collude: 4 points each</li>
-    <li>Both defect: 0 point each</li>
-    <li>One colludes, one defects: Defector gets 6 points, Colluder gets 0 points</li>
-</ul>
+#### 4. Scoring
+The scoring is determined by a reward matrix. The default matrix is:
+- Both collude: 4 points each
+- Both defect: 0 points each
+- One colludes, one defects: Defector gets 6 points, Colluder gets 0 points
 
-<h2>5. Strategy Tips</h2>
-<ul>
-    <li>Consider patterns in your opponent's history</li>
-    <li>Balance between cooperation and self-interest</li>
-    <li>Experiment with different strategies (e.g., tit-for-tat, always defect, etc.)</li>
-    <li>Adapt your strategy based on the current scores and round number</li>
-</ul>
+#### 5. Strategy Tips
+- Consider patterns in your opponent's history.
+- Balance between cooperation and self-interest.
+- Experiment with different strategies (e.g., tit-for-tat, always defect, etc.).
+- Adapt your strategy based on the current scores and round number.
 
-<h2>WARNING: When you log out or navigate away or refresh the page your code will be lost. Please save it!</h2>
-<p>Good luck and have fun!</p>
+#### WARNING
+When you log out, navigate away, or refresh the page, your code will be lost. Please save it!
+
+Good luck and have fun!
 """
 
     def __init__(
