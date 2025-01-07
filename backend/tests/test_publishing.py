@@ -197,9 +197,10 @@ def test_publish_results_feedback_overwrite(client, db_session, admin_token):
 
 def test_publish_results_no_feedback(client, db_session, admin_token):
     """Test publishing results without any feedback"""
+    # Add use_docker=False to prevent automatic feedback generation
     simulation_response = client.post(
         "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 10},
+        json={"league_name": "comp_test", "num_simulations": 10, "use_docker": False},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert simulation_response.status_code == 200
@@ -229,3 +230,22 @@ def test_publish_results_no_feedback(client, db_session, admin_token):
     assert simulation.published is True
     assert simulation.feedback_str is None
     assert simulation.feedback_json is None
+
+
+def test_publish_nonexistent_simulation(client, admin_token, db_session):
+    """Tests publishing results for a non-existent simulation.
+    This covers lines 373-375 in api.py where simulation existence is verified."""
+
+    response = client.post(
+        "/publish_results",
+        json={
+            "league_name": "comp_test",
+            "id": 99999,  # Non-existent simulation ID
+            "feedback": "Test feedback",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "not found" in response.json()["message"]

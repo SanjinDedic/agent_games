@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { addSimulationResult } from '../../slices/leaguesSlice';
-import './css/adminleague.css';
 
 const AdminLeagueSimulation = ({ selected_league_name }) => {
   const dispatch = useDispatch();
@@ -26,7 +25,7 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
 
   const handleSimulation = async () => {
     const toastId = toast.loading("Loading results...");
-    
+
     try {
       const response = await fetch(`${apiUrl}/run_simulation`, {
         method: 'POST',
@@ -38,45 +37,64 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
           num_simulations: simulationNumber,
           league_name: selected_league_name,
           use_docker: useDocker,
-          custom_rewards: rewards, 
+          custom_rewards: rewards,
         }),
       });
-      
+
       const data = await response.json();
       if (data.status === "success") {
-        
         dispatch(addSimulationResult(data.data));
-        console.log(data);
-        toast.update(toastId, { render: data.message, type: "success", isLoading: false, autoClose: 2000 });
+        toast.update(toastId, {
+          render: data.message,
+          type: "success",
+          isLoading: false,
+          autoClose: 2000
+        });
       } else if (data.status === "failed" || data.status === "error") {
-        toast.update(toastId, { render: data.message, type: "error", isLoading: false, autoClose: 2000 });
+        toast.update(toastId, {
+          render: data.message,
+          type: "error",
+          isLoading: false,
+          autoClose: 2000
+        });
       }
     } catch (error) {
-      toast.update(toastId, { render: "Error loading results", type: "error", isLoading: false, autoClose: 2000 });
+      toast.update(toastId, {
+        render: "Error loading results",
+        type: "error",
+        isLoading: false,
+        autoClose: 2000
+      });
     }
   };
 
   return (
-    <div className="admin-league-simulation">
-      <div className="simulation-controls">
-        <button className="run-simulation" onClick={handleSimulation}>RUN SIMULATION</button>
-        <input
-          type="number"
-          placeholder="Number of simulations"
-          className="number-input"
-          value={simulationNumber}
-          onChange={handleNumberChange}
-          min="1"
-        />
-      </div>
-      <div className="docker-toggle">
-        <label style={{ margin: '12px 0px' }}>
+    <div className="bg-white rounded-lg shadow-lg p-4">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={handleSimulation}
+            className="flex-grow bg-notice-orange hover:bg-notice-orange/90 text-white px-6 py-3 rounded-lg font-semibold text-lg transition-colors focus:ring-2 focus:ring-notice-orange focus:ring-offset-2 outline-none"
+          >
+            RUN SIMULATION
+          </button>
+          <input
+            type="number"
+            value={simulationNumber}
+            onChange={handleNumberChange}
+            min="1"
+            className="w-20 p-2 border border-ui-light rounded-lg text-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+          />
+        </div>
+
+        <label className="flex items-center gap-2 text-lg text-ui-dark hover:cursor-pointer">
           <input
             type="checkbox"
             checked={useDocker}
             onChange={handleDockerToggle}
+            className="w-4 h-4 rounded border-ui-light text-primary focus:ring-primary"
           />
-          Use Docker
+          <span>Use Docker</span>
         </label>
       </div>
     </div>

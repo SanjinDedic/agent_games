@@ -1,22 +1,19 @@
 import React from 'react';
-import './css/Navbar.css'
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from './slices/authSlice';
 import { clearTeam } from './slices/teamsSlice';
 import { clearResults, clearLeagues } from './slices/leaguesSlice';
+import { Button } from './components/ui';
 
 function AgentGamesNavbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  // Define the admin routes
-  const adminRoutes = ['/AdminTeam', '/AdminLeague'];
 
-  // Check if the current route is an admin route
+  const adminRoutes = ['/AdminTeam', '/AdminLeague'];
   const isAdminRoute = adminRoutes.includes(location.pathname);
-  const currentUserLog = useSelector((state) => state.auth.currentUser);
+  const currentUser = useSelector((state) => state.auth.currentUser);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -33,28 +30,69 @@ function AgentGamesNavbar() {
     navigate('/AgentLogin');
   };
 
-    return (
-      <nav className="navbar">
-        {isAdminRoute ? (
-        <>
-          <Link to="/AdminTeam">Team Section</Link>
-          <Link to="/AdminLeague">League Section</Link>
-          <div className="admin-navbar">
-          <button onClick={handleLogout} className="logout-button">Logout</button>
-        </div>
-        </>
-      ) : (
-        <>
-          <Link to="/">Home</Link>
-          <Link to="/AgentLogin">Game Submission</Link>
-          <Link to="/Rankings">Rankings</Link>
-          {currentUserLog && currentUserLog.role === 'student' && (
-            <button onClick={handleUserLogout} className="logout-button">Logout</button>
+  const navSectionClasses = "flex-1 flex justify-center items-center";
+
+  // Match the Button component's height with px-4 py-2 and keep the padding to 8px
+  const navLinkClasses =
+    "inline-flex items-center px-3 py-3 text-lg text-white hover:bg-white/10 transition-colors duration-200";
+
+
+  return (
+    <nav className="bg-[#111827] fixed top-0 w-full z-50">
+      <div className="w-full mx-auto">
+        <div className="flex justify-center">
+          {isAdminRoute ? (
+            <div className="flex w-full justify-between items-center">
+              <div className={navSectionClasses}>
+                <Link to="/AdminTeam" className={navLinkClasses}>
+                  Team Section
+                </Link>
+              </div>
+              <div className={navSectionClasses}>
+                <Link to="/AdminLeague" className={navLinkClasses}>
+                  League Section
+                </Link>
+              </div>
+              <Button
+                variant="danger"
+                onClick={handleLogout}
+                className="mx-4"
+              >
+                Logout
+              </Button>
+            </div>
+          ) : (
+            <div className="flex w-full items-center">
+              <div className={navSectionClasses}>
+                <Link to="/" className={navLinkClasses}>
+                  Home
+                </Link>
+              </div>
+              <div className={navSectionClasses}>
+                <Link to="/AgentLogin" className={navLinkClasses}>
+                  Game Submission
+                </Link>
+              </div>
+              <div className={navSectionClasses}>
+                <Link to="/Rankings" className={navLinkClasses}>
+                  Rankings
+                </Link>
+              </div>
+              {currentUser && currentUser.role === 'student' && (
+                <Button
+                  variant="danger"
+                  onClick={handleUserLogout}
+                  className="mx-4"
+                >
+                  Logout
+                </Button>
+              )}
+            </div>
           )}
-        </>
-      )}
-  </nav>
-    );
-  }
+        </div>
+      </div>
+    </nav>
+  );
+}
 
 export default AgentGamesNavbar;

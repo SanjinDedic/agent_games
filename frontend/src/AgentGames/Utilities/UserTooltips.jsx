@@ -5,32 +5,34 @@ import { styled } from '@mui/material/styles';
 import { tooltipClasses } from '@mui/material/Tooltip';
 import { useSelector } from 'react-redux';
 
-const NoMaxWidthTooltip = styled(({ className, ...props }) => (
+const CustomTooltip = styled(({ className, ...props }) => (
   <Tooltip {...props} classes={{ popper: className }} />
 ))({
   [`& .${tooltipClasses.tooltip}`]: {
-    maxWidth: '600px', // or any other custom styles
+    maxWidth: '600px',
     fontSize: '14px',
-    backgroundColor: '#395e83',
+    backgroundColor: 'rgb(57, 94, 131)', // league-blue color
     color: '#ffffff',
-    border: '1px solid #253d55',
-    padding: '10px'
-  },
+    border: '1px solid rgb(37, 61, 85)', // ui-dark color
+    padding: '10px',
+    borderRadius: '0.375rem',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
+  }
 });
-
 
 const UserTooltip = ({ title, children, ...props }) => {
   const showTooltips = useSelector((state) => state.settings.showTooltips);
 
-    return (
-        <NoMaxWidthTooltip open={showTooltips} title={<div dangerouslySetInnerHTML={{ __html: title }} />}
-        TransitionComponent={Zoom}
-        
-        {...props}>
-            {children}
-        </NoMaxWidthTooltip>
-    );
+  return (
+    <CustomTooltip
+      open={showTooltips}
+      title={<div dangerouslySetInnerHTML={{ __html: title }} />}
+      TransitionComponent={Zoom}
+      {...props}
+    >
+      {children}
+    </CustomTooltip>
+  );
 };
-
 
 export default UserTooltip;
