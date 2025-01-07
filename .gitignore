@@ -61,7 +61,7 @@ backend/dockerfile_script.log
 .vscode/settings.json
 .vscode/extensions.json
 backend/validation.log
-backend/validation.log
+backend/.coveragec
 .flake8
-backend/validation.log
+
 
