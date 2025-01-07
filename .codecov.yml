@@ -17,3 +17,4 @@ ignore:
   - "backend/games/prisoners_dilemma/leagues/*"
   - "backend/games/forty_two/leagues/*"
   - "backend/stress_tests/*"
+  - "backend/tests/conftest.py"

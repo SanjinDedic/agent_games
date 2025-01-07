@@ -1,11 +1,14 @@
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
 
 import database
+import httpx
 from auth import get_current_user
 from config import ROOT_DIR
-from docker_simulation import run_docker_simulation
+from docker.containers import ensure_containers_running, stop_containers
+from docker.scripts.docker_simulation import run_docker_simulation
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from games.game_factory import GameFactory
@@ -27,14 +30,31 @@ from models_api import (
 )
 from sqlmodel import Session
 from utils import get_games_names, transform_result
-from validation import is_agent_safe, run_validation_simulation
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
+    """Lifecycle manager for the FastAPI application"""
+    # Startup: ensure containers are running
+    try:
+        logger.info("Starting application containers...")
+        ensure_containers_running(ROOT_DIR)
+        logger.info("All containers started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start containers: {e}")
+
+    yield  # Application runs here
+
+    try:
+        logger.info("Shutting down application, stopping containers...")
+        stop_containers()
+        logger.info("Application shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during container shutdown: {e}")
+    # TODO: Work on improving resilience of the application by doing the following:
+    # - If either container fails to start or shut down then rebuild the container from image.
 
 
 app = FastAPI(lifespan=lifespan)
@@ -71,6 +91,15 @@ async def league_create(
     if current_user["role"] != "admin":
         return ResponseModel(status="failed", message="Unauthorized")
 
+    # Validate game name first
+    try:
+        GameFactory.get_game_class(league.game)
+    except ValueError:
+        return ResponseModel(
+            status="failed",
+            message=f"Invalid game name: {league.game}. Available games are: greedy_pig, prisoners_dilemma",
+        )
+
     league_folder = f"leagues/admin/{league.name}"
 
     try:
@@ -80,9 +109,14 @@ async def league_create(
             league_game=league.game,
             league_folder=league_folder,
         )
+    except database.LeagueExistsError as e:
+        # Handle the specific case of duplicate league names
+        return ResponseModel(status="failed", message=str(e))
     except Exception as e:
         logger.error(f"Error creating league: {e}")
-        return ResponseModel(status="failed", message=str(e))
+        return ResponseModel(
+            status="failed", message="An error occurred while creating the league"
+        )
 
     return ResponseModel(
         status="success", message="League created successfully", data=data
@@ -144,10 +178,43 @@ async def submit_agent(
     session: Session = Depends(get_db),
 ):
     team_name = current_user["team_name"]
-    if not is_agent_safe(submission.code):
-        return ErrorResponseModel(status="error", message="Agent code is not safe.")
-
     team = database.get_team(session, team_name)
+
+    try:
+        print(f"Sending submission to validation server for team {team_name}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://localhost:8001/validate",
+                json={
+                    "code": submission.code,
+                    "game_name": (
+                        team.league.game if team.league else "greedy_pig"
+                    ),  # default game
+                    "team_name": team_name,
+                    "num_simulations": 100,
+                },
+                timeout=30.0,
+            )
+
+        if response.status_code != 200:
+            return ErrorResponseModel(
+                status="error", message=f"Validation failed: {response.text}"
+            )
+
+        validation_result = response.json()
+        if validation_result.get("status") == "error":
+            return ErrorResponseModel(
+                status="error",
+                message=validation_result.get("message", "Code validation failed"),
+            )
+
+    except Exception as e:
+        logger.error(f"Error during validation: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"An error occurred during validation: {str(e)}"
+        )
+
+    # After code validation passes, check league assignment
     if not team.league:
         return ErrorResponseModel(
             status="error", message="Team is not assigned to a league."
@@ -158,61 +225,56 @@ async def submit_agent(
             status="error", message="Team is not assigned to a valid league."
         )
 
-    if team.league.folder:
-        league_folder = team.league.folder.lstrip("/")
-    else:
-        league_folder = f"leagues/user/{team.league.name}"
-
+    # Check submission rate limit
     try:
-        # Check if the team can make a submission
         if not database.allow_submission(session, team.id):
             return ErrorResponseModel(
-                status="error", message="You can only make 3 submissions per minute."
+                status="error", message="You can only make 5 submissions per minute."
             )
     except Exception as e:
         logger.error(f"Error checking submission permissions: {e}")
         return ErrorResponseModel(
             status="error",
-            message=f"An error occurred while updating submission: {str(e)}",
+            message=f"An error occurred while checking submission rate limit: {str(e)}",
         )
 
-    # Save the submitted code in a Python file named after the team
+    # Save the submitted code
+    league_folder = (
+        team.league.folder.lstrip("/")
+        if team.league.folder
+        else f"leagues/user/{team.league.name}"
+    )
     file_path = os.path.join(
         ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py"
     )
+
     with open(file_path, "w") as file:
         file.write(submission.code)
 
     try:
-        feedback, results = run_validation_simulation(
-            submission.code, team.league.game, team_name
-        )
-    except Exception as e:
-        logger.error(f"Error running validation simulation: {e}")
-        return ErrorResponseModel(
-            status="error",
-            message=f"An error occurred while updating submission: {str(e)}",
-        )
-
-    try:
-        # Log the submission in the database
+        # Save submission if validation passed
         submission_id = database.save_submission(session, submission.code, team.id)
-    except Exception as e:
-        logger.error(f"Error saving simulation: {e}")
-        return ErrorResponseModel(
-            status="error",
-            message=f"An error occurred while updating submission: {str(e)}",
+
+        return ResponseModel(
+            status="success",
+            message=f"Code submitted successfully. Submission ID: {submission_id}",
+            data={
+                "results": validation_result.get("simulation_results"),
+                "team_name": team_name,
+                "feedback": validation_result.get("feedback"),
+            },
         )
 
-    return ResponseModel(
-        status="success",
-        message=f"Code submitted successfully. Submission ID: {submission_id}",
-        data={"results": results, "team_name": team_name, "feedback": feedback},
-    )
+    except Exception as e:
+        logger.error(f"Error saving submission: {e}")
+        return ErrorResponseModel(
+            status="error",
+            message=f"An error occurred while saving the submission: {str(e)}",
+        )
 
 
 @app.post("/run_simulation", response_model=ResponseModel)
-def run_simulation(
+async def run_simulation(
     simulation_config: SimulationConfig,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
@@ -222,34 +284,28 @@ def run_simulation(
             status="error", message="Only admin users can run simulations"
         )
 
-    league_name = simulation_config.league_name
-    num_simulations = simulation_config.num_simulations
-    custom_rewards = simulation_config.custom_rewards
-    # Uses parameter, defaults to true if there are issues.
-    use_docker = (
-        simulation_config.use_docker
-        if hasattr(simulation_config, "use_docker")
-        else True
-    )
-
     try:
-        league = database.get_league(session, league_name)
+        league = database.get_league(session, simulation_config.league_name)
     except Exception as e:
         logger.error(f"Error retrieving league: {str(e)}")
         return ErrorResponseModel(
-            status="error", message=f"League '{league_name}' not found"
+            status="error",
+            message=f"League '{simulation_config.league_name}' not found",
         )
 
+    # Determine if using Docker (default to True)
+    use_docker = getattr(simulation_config, "use_docker", True)
+
     if use_docker:
-        logger.info(f'Running simulation using Docker for league "{league_name}"')
+        logger.info(f'Running simulation using Docker for league "{league.name}"')
         try:
-            is_successful, results = run_docker_simulation(
-                league_name,
+            is_successful, results = await run_docker_simulation(
+                league.name,
                 league.game,
                 league.folder,
-                custom_rewards,
+                simulation_config.custom_rewards,
                 player_feedback=True,
-                num_simulations=num_simulations,
+                num_simulations=simulation_config.num_simulations,
             )
         except Exception as e:
             logger.error(f"Error running docker simulation: {str(e)}")
@@ -259,27 +315,55 @@ def run_simulation(
             )
         if not is_successful:
             return ErrorResponseModel(status="error", message=results)
+
         simulation_results = results["simulation_results"]
+        feedback = results.get("feedback")
+        player_feedback = results.get("player_feedback")
     else:
-        logger.info(f'Running simulation without Docker for league "{league_name}"')
+        logger.info(f'Running simulation without Docker for league "{league.name}"')
         game_class = GameFactory.get_game_class(league.game)
         try:
             simulation_results = game_class.run_simulations(
-                num_simulations, league, custom_rewards
+                simulation_config.num_simulations,
+                league,
+                simulation_config.custom_rewards,
             )
+            feedback = None
+            player_feedback = None
         except Exception as e:
             logger.error(f"Error running simulation: {str(e)}")
+            return ErrorResponseModel(
+                status="error",
+                message=f"An error occurred while running the simulation: {str(e)}",
+            )
 
-    # ToDo(artur): If the league IS test_league. What should we do?
-    # Sanjin: we do nothing, if it is a test league we dont save results!
-    if league_name != "test_league":
-        sim_result = database.save_simulation_results(
-            session, league.id, simulation_results, custom_rewards
-        )
+    # Save simulation results regardless of Docker/non-Docker
+    if league.name != "test_league":
+        try:
+            sim_result = database.save_simulation_results(
+                session,
+                league.id,
+                simulation_results,
+                simulation_config.custom_rewards,
+                feedback_str=feedback if isinstance(feedback, str) else None,
+                feedback_json=(
+                    json.dumps(feedback) if isinstance(feedback, dict) else None
+                ),
+            )
+        except Exception as e:
+            logger.error(f"Error saving simulation results: {str(e)}")
+            return ErrorResponseModel(
+                status="error",
+                message=f"An error occurred while saving the simulation results: {str(e)}",
+            )
+    else:
+        sim_result = None
 
-    response_data = transform_result(simulation_results, sim_result, league_name)
-    if use_docker:
-        response_data["feedback"] = results["feedback"]
+    response_data = transform_result(simulation_results, sim_result, league.name)
+    if feedback is not None:
+        response_data["feedback"] = feedback
+    if player_feedback is not None:
+        response_data["player_feedback"] = player_feedback
 
     return ResponseModel(
         status="success", message="Simulation run successfully", data=response_data

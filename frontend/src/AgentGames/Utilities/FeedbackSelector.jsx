@@ -8,43 +8,11 @@ const FeedbackSelector = ({ feedback }) => {
 
   if (!feedback) return null;
 
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
-
-  const feedbackContainerStyle = {
-    position: 'relative',
-    maxHeight: isExpanded ? 'none' : '200px',
-    overflow: 'hidden',
-    transition: 'max-height 0.3s ease-out',
-  };
-
-  const expandButtonStyle = {
-    position: 'absolute',
-    bottom: isExpanded ? '-40px' : '0',
-    left: '0',
-    right: '0',
-    height: '40px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(to bottom, transparent, #333)',
-    color: 'white',
-    cursor: 'pointer',
-    border: 'none',
-    width: '100%',
-  };
-
-  const containerStyle = {
-    position: 'relative',
-    marginBottom: isExpanded ? '40px' : '0',
-  };
-
   const renderFeedback = () => {
     if (typeof feedback === 'string') {
       return <MarkdownFeedback feedback={feedback} />;
     }
-    
+
     if (typeof feedback === 'object' && feedback !== null && !Array.isArray(feedback)) {
       if (feedback.game === 'prisoners_dilemma') {
         return <PrisonersFeedback feedback={feedback} />;
@@ -53,21 +21,25 @@ const FeedbackSelector = ({ feedback }) => {
     }
 
     return (
-      <div className="feedback-error">
+      <div className="text-danger font-medium">
         Error: Feedback must be either a string for markdown or an object for JSON
       </div>
     );
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={feedbackContainerStyle}>
+    <div className="relative mb-10">
+      <div className={`relative ${isExpanded ? 'h-auto' : 'max-h-48 overflow-hidden'}`}>
         {renderFeedback()}
       </div>
-      <button 
-        onClick={toggleExpand} 
-        style={expandButtonStyle}
-        className="hover:bg-opacity-90"
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`
+          absolute left-0 right-0 h-10 flex items-center justify-center
+          bg-gradient-to-b from-transparent to-ui-dark
+          text-white cursor-pointer w-full hover:bg-opacity-90
+          ${isExpanded ? '-bottom-10' : 'bottom-0'}
+        `}
       >
         {isExpanded ? 'Show Less ▲' : 'Show More ▼'}
       </button>

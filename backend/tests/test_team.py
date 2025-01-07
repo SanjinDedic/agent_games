@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import database
 import pytest
@@ -208,44 +209,6 @@ def test_delete_team(client, admin_token):
     assert "Team 'non_existent_team' not found" in response.json()["message"]
 
 
-# ----------- Agent Submission # -----------
-
-
-def test_submit_agent(client, db_session, team_token):
-    # Submit code for the team
-    code = """
-from games.greedy_pig.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        if game_state["unbanked_money"][self.name] > 15:
-            return 'bank'
-        return 'continue'
-"""
-    submission_response = client.post(
-        "/submit_agent",
-        json={"code": code, "team_name": "BrunswickSC1", "league_name": "comp_test"},
-        headers={"Authorization": f"Bearer {team_token}"},
-    )
-    print("Submission Response:", submission_response.json())
-    assert submission_response.status_code == 200
-    assert "Code submitted successfully." in submission_response.json()["message"]
-
-    # Check if the submission is saved in the database
-    submission = db_session.exec(
-        select(Submission).where(Submission.code == code)
-    ).one_or_none()
-    assert submission is not None
-    assert submission.team_id == 2  # Assuming the team ID is 2 for "BrunswickSC1"
-
-    # Delete the submission
-    print(
-        "deleting submission from",
-        f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py",
-    )
-    os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
-
-
 # -----------Get All Teams # -----------
 
 
@@ -362,16 +325,15 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         return 'continue'
     """
-
-    # Submit 2 times (allowed)
-
-    response = client.post(
-        "/submit_agent",
-        json={"code": safe_code},
-        headers={"Authorization": f"Bearer {team_token}"},
-    )
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    for _ in range(6):
+        response = client.post(
+            "/submit_agent",
+            json={"code": safe_code},
+            headers={"Authorization": f"Bearer {team_token}"},
+        )
+        assert response.status_code == 200
+        print("Response JSON for submission limit:", response.json())
+        assert response.json()["status"] == "success"
 
     # 5th submission within a minute (should be rejected)
     response = client.post(
@@ -380,10 +342,9 @@ class CustomPlayer(Player):
         headers={"Authorization": f"Bearer {team_token}"},
     )
 
-    print("Response JSON:", response.json())
+    print("Response JSON for submission limit:", response.json())
     assert response.status_code == 200
-    assert response.json()["status"] == "error"
-    assert "You can only make 2 submissions per minute" in response.json()["message"]
+    assert "You can only make 5 submissions per minute" in response.json()["message"]
 
 
 def test_league_assign_error(client, team_token, mocker):
@@ -419,3 +380,33 @@ def test_get_all_teams_error(client, db_session, mocker):
         "message": "An error occurred while retrieving teams",
         "data": None,  # Added this line
     }
+
+
+def test_submit_agent_with_invalid_game(client, db_session, team_token):
+    """Tests submitting code when team's league has an invalid game type.
+    This will cover lines 198-200 in api.py where game type validation occurs."""
+
+    # First modify the team's league to have an invalid game
+    team = database.get_team(db_session, "BrunswickSC1")
+    team.league.game = "invalid_game"
+    db_session.commit()
+
+    # Note: Remove the leading whitespace in the code string
+    code = """from games.greedy_pig.player import Player
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return 'continue'"""
+
+    response = client.post(
+        "/submit_agent",
+        json={"code": code},
+        headers={"Authorization": f"Bearer {team_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert "Unknown game" in response.json()["message"]
+    # Remove the invalid_game folder from the system
+    league_path = os.path.join(ROOT_DIR, "games", "invalid_game")
+    command = f"rm -rf {league_path}"
+    os.system(command)

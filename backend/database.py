@@ -52,6 +52,10 @@ class SimulationResultTransformationError(Exception):
     pass
 
 
+class LeagueExistsError(Exception):
+    pass
+
+
 def get_db_engine():
     return create_engine(get_database_url())
 
@@ -61,6 +65,14 @@ def create_database(engine):
 
 
 def create_league(session, league_name, league_game, league_folder):
+    # First check if league exists to provide a clearer error
+    existing_league = session.exec(
+        select(League).where(League.name == league_name)
+    ).first()
+
+    if existing_league:
+        raise LeagueExistsError(f"League with name '{league_name}' already exists")
+
     league = League(
         name=league_name,
         created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
@@ -73,35 +85,31 @@ def create_league(session, league_name, league_game, league_folder):
         folder=league_folder,
         game=league_game,
     )
-    session.add(league)
-    session.flush()  # Flush to generate the league ID
 
-    league.signup_link = encode_id(league.id)
-    session.commit()
+    try:
+        session.add(league)
+        session.flush()  # Flush to generate the league ID
 
-    # Create the league folder
-    absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league.folder)
-    print(f"Creating folder: {absolute_folder}")
-    os.makedirs(absolute_folder, exist_ok=True)
+        league.signup_link = encode_id(league.id)
+        session.commit()
 
-    # Create the test_league folder
-    test_league_folder = os.path.join(
-        ROOT_DIR, "games", league.game, "leagues", "test_league"
-    )
-    os.makedirs(test_league_folder, exist_ok=True)
+        # Create the league folder
+        absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league.folder)
+        print(f"Creating folder: {absolute_folder}")
+        os.makedirs(absolute_folder, exist_ok=True)
 
-    # Create README.md files
-    with open(os.path.join(absolute_folder, "README.md"), "w") as file:
-        file.write(
-            f"# {league.name}\n\nThis folder contains files for the {league.name} league."
-        )
+        # Create README.md files
+        with open(os.path.join(absolute_folder, "README.md"), "w") as file:
+            file.write(
+                f"# {league.name}\n\nThis folder contains files for the {league.name} league."
+            )
 
-    with open(os.path.join(test_league_folder, "README.md"), "w") as file:
-        file.write(
-            f"# Test League for {league.game}\n\nContains test files for the {league.game} game."
-        )
+        return {"link": league.signup_link}
 
-    return {"link": league.signup_link}
+    except Exception as e:
+        session.rollback()
+        # Re-raise any other unexpected errors
+        raise
 
 
 def create_team(session, name, password, league_id=1, school=None):
@@ -199,9 +207,9 @@ def allow_submission(session, team_id):
         .where(Submission.timestamp >= one_minute_ago)
     ).all()
 
-    if len(recent_submissions) > 1:
+    if len(recent_submissions) > 5:
         raise SubmissionLimitExceededError(
-            "You can only make 2 submissions per minute."
+            "You can only make 5 submissions per minute."
         )
     return True
 
@@ -296,7 +304,9 @@ def get_all_teams(session):
     return curated_teams
 
 
-def save_simulation_results(session, league_id, results, rewards=None):
+def save_simulation_results(
+    session, league_id, results, rewards=None, feedback_str=None, feedback_json=None
+):
     timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
 
     rewards_str = (
@@ -308,13 +318,13 @@ def save_simulation_results(session, league_id, results, rewards=None):
         timestamp=timestamp,
         num_simulations=results["num_simulations"],
         custom_rewards=rewards_str,
+        feedback_str=feedback_str,
+        feedback_json=feedback_json,
     )
     session.add(simulation_result)
     session.flush()
 
-    custom_value_names = list(results.get("table", {}).keys())[
-        :3
-    ]  # Get up to 3 custom value names
+    custom_value_names = list(results.get("table", {}).keys())[:3]
 
     for team_name, score in results["total_points"].items():
         team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
@@ -322,7 +332,7 @@ def save_simulation_results(session, league_id, results, rewards=None):
             result_item = SimulationResultItem(
                 simulation_result_id=simulation_result.id, team_id=team.id, score=score
             )
-            print(f"Saving simulation results for team '{team_name}'")
+
             for i, name in enumerate(custom_value_names, start=1):
                 value = results["table"][name]
                 if isinstance(value, dict):
@@ -334,7 +344,6 @@ def save_simulation_results(session, league_id, results, rewards=None):
             session.add(result_item)
 
     session.commit()
-    print(f"Simulation results saved successfully for league ID {league_id}")
     return simulation_result
 
 
