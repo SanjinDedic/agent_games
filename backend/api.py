@@ -178,11 +178,8 @@ async def submit_agent(
     session: Session = Depends(get_db),
 ):
     team_name = current_user["team_name"]
-
-    # Get team early for league info
     team = database.get_team(session, team_name)
 
-    # First, validate code via validation server
     try:
         print(f"Sending submission to validation server for team {team_name}")
         async with httpx.AsyncClient() as client:

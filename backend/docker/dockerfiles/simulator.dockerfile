@@ -2,8 +2,11 @@ FROM python:3.12
 
 WORKDIR /agent_games
 
-ENV PYTHONDONTWRITEBYTRACE=1
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+
+# Create non-root user and group
+RUN groupadd -r simgroup && useradd -r -g simgroup simuser
 
 # Install requirements and curl
 RUN apt-get update && apt-get install -y curl
@@ -15,12 +18,12 @@ RUN pip install -r requirements.txt
 # Copy application files
 COPY . /agent_games/
 
-# Debug: List contents to verify files
-RUN ls -la /agent_games/
-RUN ls -la /agent_games/docker/services/
+# Set ownership of the working directory
+RUN chown -R simuser:simgroup /agent_games
 
-# Expose port
+# Switch to non-root user
+USER simuser
+
 EXPOSE 8002
 
-# Run the server directly from its location
 CMD ["python", "docker/services/simulation_server.py"]
