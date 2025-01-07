@@ -13,6 +13,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
       const resultData = teams.map(team => ({
         team,
         totalPoints: data.total_points[team],
+        gamesPlayed: data.num_simulations || 0,
         ...Object.fromEntries(
           Object.entries(data.table || {}).map(([key, values]) => [key, values[team]])
         )
@@ -31,7 +32,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
   return (
     <div className="w-full">
       {data && (
-        <h2 className="text-xl font-semibold text-ui-dark mb-4">{data_message}</h2>
+        <h2 className="text-2xl font-bold text-ui-dark mb-6">{data_message}</h2>
       )}
 
       {!isTableVisible && (
@@ -44,34 +45,47 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
       )}
 
       {isTableVisible && (
-        <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[600px] border-collapse bg-white">
+        <div className="w-full overflow-x-auto bg-white rounded-lg shadow-lg border border-ui-light">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-ui-lighter">
-                <th className="p-3 text-left font-semibold text-ui-dark">Team</th>
-                <th className="p-3 text-left font-semibold text-ui-dark">Total Points</th>
+              <tr className="bg-league-blue text-white">
+                <th className="p-4 text-left font-semibold border-b border-ui-light">Ranking</th>
+                <th className="p-4 text-left font-semibold border-b border-ui-light">Team</th>
+                <th className="p-4 text-left font-semibold border-b border-ui-light">Games Played</th>
+                <th className="p-4 text-left font-semibold border-b border-ui-light">Total Points</th>
                 {tableColumns.map((column, index) => (
-                  <th key={index} className="p-3 text-left font-semibold text-ui-dark">
+                  <th key={index} className="p-4 text-left font-semibold border-b border-ui-light">
                     {column}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {results.map((result) => (
+              {results.map((result, idx) => (
                 <tr
                   key={result.team}
                   className={`
-                    border-b border-ui-light/20
-                    ${highlight && result.team === userTeam
-                      ? 'bg-primary-light/20 hover:bg-primary-light/30'
-                      : 'hover:bg-ui-lighter/50'}
+                    ${idx % 2 === 0 ? 'bg-white' : 'bg-ui-lighter'}
+                    ${highlight && result.team === userTeam ? 'bg-primary-light/20' : ''}
+                    hover:bg-ui-lighter/70 transition-colors duration-150
                   `}
                 >
-                  <td className="p-3">{result.team}</td>
-                  <td className="p-3">{result.totalPoints}</td>
+                  <td className="p-4 border-b border-ui-light/30 font-medium">
+                    #{idx + 1}
+                  </td>
+                  <td className="p-4 border-b border-ui-light/30 font-medium">
+                    {result.team}
+                  </td>
+                  <td className="p-4 border-b border-ui-light/30">
+                    {result.gamesPlayed.toLocaleString()}
+                  </td>
+                  <td className="p-4 border-b border-ui-light/30 font-medium text-primary-dark">
+                    {result.totalPoints.toLocaleString()}
+                  </td>
                   {tableColumns.map((column, index) => (
-                    <td key={index} className="p-3">{result[column]}</td>
+                    <td key={index} className="p-4 border-b border-ui-light/30">
+                      {result[column]}
+                    </td>
                   ))}
                 </tr>
               ))}

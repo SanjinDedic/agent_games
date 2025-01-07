@@ -64,15 +64,16 @@ function AgentLogin() {
     }
   };
 
-  const inputClasses = `w-full px-4 py-2 text-lg border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${shake ? 'animate-shake border-danger' : 'border-ui-light focus:border-primary'
-    }`;
+  const inputClasses = `w-full px-4 py-2 text-lg rounded-lg transition-all duration-200 
+    border border-ui-light/20 focus:outline-none focus:ring-1 focus:ring-primary/30
+    ${shake ? 'animate-shake border-danger' : 'focus:border-primary/30'}`;
 
   return (
-    <div className="min-h-screen pt-16 flex flex-col items-center bg-ui-lighter">
+    <div className="min-h-screen pt-16 flex flex-col items-center justify-center bg-ui-lighter">
       <div className="w-full max-w-[800px] px-4">
         <InstructionPopup homescreen={true} />
 
-        <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-primary">
+        <div className="bg-white rounded-lg shadow-lg p-8 border border-ui-light/10">
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="block text-xl font-medium text-ui-dark">Username:</label>

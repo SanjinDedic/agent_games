@@ -8,9 +8,9 @@ const PrisonersFeedback = ({ feedback }) => {
   }, [feedback]);
 
   const getActionClass = (action1, action2) => {
-    if (action1 === 'collude' && action2 === 'collude') return 'bg-success-light';
-    if (action1 === 'defect' && action2 === 'defect') return 'bg-danger';
-    return 'bg-danger-light'; // For mixed strategies (collude/defect or defect/collude)
+    if (action1 === 'collude' && action2 === 'collude') return 'bg-success/60';
+    if (action1 === 'defect' && action2 === 'defect') return 'bg-danger/80';
+    return 'bg-notice-orange/60'; // For mixed strategies (collude/defect or defect/collude)
   };
 
   const renderPairing = (pairing) => {
