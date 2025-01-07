@@ -284,33 +284,28 @@ async def run_simulation(
             status="error", message="Only admin users can run simulations"
         )
 
-    league_name = simulation_config.league_name
-    num_simulations = simulation_config.num_simulations
-    custom_rewards = simulation_config.custom_rewards
-    use_docker = (
-        simulation_config.use_docker
-        if hasattr(simulation_config, "use_docker")
-        else True
-    )
-
     try:
-        league = database.get_league(session, league_name)
+        league = database.get_league(session, simulation_config.league_name)
     except Exception as e:
         logger.error(f"Error retrieving league: {str(e)}")
         return ErrorResponseModel(
-            status="error", message=f"League '{league_name}' not found"
+            status="error",
+            message=f"League '{simulation_config.league_name}' not found",
         )
 
+    # Determine if using Docker (default to True)
+    use_docker = getattr(simulation_config, "use_docker", True)
+
     if use_docker:
-        logger.info(f'Running simulation using Docker for league "{league_name}"')
+        logger.info(f'Running simulation using Docker for league "{league.name}"')
         try:
             is_successful, results = await run_docker_simulation(
-                league_name,
+                league.name,
                 league.game,
                 league.folder,
-                custom_rewards,
+                simulation_config.custom_rewards,
                 player_feedback=True,
-                num_simulations=num_simulations,
+                num_simulations=simulation_config.num_simulations,
             )
         except Exception as e:
             logger.error(f"Error running docker simulation: {str(e)}")
@@ -321,16 +316,17 @@ async def run_simulation(
         if not is_successful:
             return ErrorResponseModel(status="error", message=results)
 
-        # Extract simulation results from Docker response
         simulation_results = results["simulation_results"]
-        feedback = results.get("feedback", None)
-        player_feedback = results.get("player_feedback", None)
+        feedback = results.get("feedback")
+        player_feedback = results.get("player_feedback")
     else:
-        logger.info(f'Running simulation without Docker for league "{league_name}"')
+        logger.info(f'Running simulation without Docker for league "{league.name}"')
         game_class = GameFactory.get_game_class(league.game)
         try:
             simulation_results = game_class.run_simulations(
-                num_simulations, league, custom_rewards
+                simulation_config.num_simulations,
+                league,
+                simulation_config.custom_rewards,
             )
             feedback = None
             player_feedback = None
@@ -342,13 +338,13 @@ async def run_simulation(
             )
 
     # Save simulation results regardless of Docker/non-Docker
-    if league_name != "test_league":
+    if league.name != "test_league":
         try:
             sim_result = database.save_simulation_results(
                 session,
                 league.id,
                 simulation_results,
-                custom_rewards,
+                simulation_config.custom_rewards,
                 feedback_str=feedback if isinstance(feedback, str) else None,
                 feedback_json=(
                     json.dumps(feedback) if isinstance(feedback, dict) else None
@@ -363,7 +359,7 @@ async def run_simulation(
     else:
         sim_result = None
 
-    response_data = transform_result(simulation_results, sim_result, league_name)
+    response_data = transform_result(simulation_results, sim_result, league.name)
     if feedback is not None:
         response_data["feedback"] = feedback
     if player_feedback is not None:
