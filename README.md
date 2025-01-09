@@ -25,7 +25,9 @@ For more details, see the [Frontend README](./frontend/README.md).
 [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
-The backend is powered by FastAPI, handling game logic, user authentication, and data management. It uses SQLModel for database interactions, Pydantic for data validation, and includes Docker integration for simulations. SQLite is used for data storage.
+
+The backend is powered by FastAPI, handling game logic, user authentication, and data management. It uses SQLModel for database interactions, Pydantic for data validation, and includes Docker integration for secure code execution and simulations. The system features comprehensive game feedback in both Markdown and structured JSON formats. SQLite is used for data storage.
+
 
 For more information, check out the [Backend README](./backend/README.md).
 
@@ -53,7 +55,7 @@ To run the backend locally, follow these steps:
 
 2. **Build the Docker Image:**
 
-    After installing the dependencies, build the Docker image:
+    This step is crucial for secure code execution and simulations:
 
     ```bash
     docker build -t run-with-docker .
@@ -70,6 +72,9 @@ To run the backend locally, follow these steps:
     ```bash
     uvicorn api:app --reload
     ```
+
+The backend server should now be running locally on `http://localhost:8000`. Game simulations will run in isolated Docker containers for security.
+
 
 The backend server should now be running locally on `http://localhost:8000`.
 
@@ -113,6 +118,7 @@ The frontend should now be running locally and accessible via `http://localhost:
 ## Notes
 
 - Make sure you have Python, Docker, Node.js, and npm installed on your machine.
+- Docker is required for running game simulations in secure containers
 - The commands for setting up the backend and frontend assume you're using a Unix-based system (Linux or macOS). Windows commands may differ slightly, especially for activating the virtual environment.
 - The backend server runs on port 8000 by default, and the frontend runs on port 3000.
 - Use different terminals for running backend and frontend processes to avoid command conflicts.

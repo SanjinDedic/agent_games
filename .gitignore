@@ -41,8 +41,37 @@ frontend/src/gen_prompt.py
 frontend/src/front_end.md
 backend/teams.json
 
+# Leagues folders for each game
+backend/games/prisoners_dilemma/leagues/
+backend/games/forty_two/leagues/
+backend/games/alpha_guess/leagues/
+backend/games/greedy_pig/leagues/
+
 # Ignore all db files
 *.db
 
 # Ignore all log files
 .DS_Store
+
+backend/games/prisoners_dilemma/leagues/admin/BOMB
+
+backend/gen_promptt.py
+backend/code_documentation.md
+backend/dockerfile_script.log
+.vscode/settings.json
+.vscode/extensions.json
+backend/validation.log
+backend/.coveragec
+.flake8
+
+extensions.json
+settings.json
+
+# Ignore validation logs
+**/validation.log
+*.log
+
+# Ensure docker service logs are ignored
+docker/services/*.log
+frontend/front_end.md
+frontend/gen_prompt_frontend.py

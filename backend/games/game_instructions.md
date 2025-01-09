@@ -1,12 +1,9 @@
-Certainly! Here's an expanded version of Part 1 with a folder map:
-
 # Creating a New Game for agent_games
 
 ## Part 1: General Instructions
 
 1. **Create the Game Directory**
-   - Create a new directory in the `games` folder, named after your game (use snake_case).
-   - Have your folder structure look like this:
+   Create a new directory in the `games` folder with this structure:
 
 ```
 agent_games/
@@ -24,150 +21,118 @@ agent_games/
 ```
 
 2. **Implement the Game Class**
-   - Create a Python file named after your game (e.g., `your_game_name.py`).
-   - Implement your game class, inheriting from `BaseGame`. Include methods for game logic and state management.
+   - Create a Python file named after your game (e.g., `your_game_name.py`)
+   - Inherit from `BaseGame`
+   - Implement required methods:
+     - `play_game()`: Main game logic
+     - `get_game_state()`: Current game state
+     - `run_simulations()`: Run multiple games
+   - Include game feedback system:
+     - Use `self.game_feedback` for overall game progress
+     - Support both string (markdown) and dictionary feedback formats
+     - Add round-by-round state updates and important events
 
-3. **Create the Player Class**
-   - Create a `player.py` file in your game directory.
-   - Define a base `Player` class with a `make_decision` method that subclasses will implement.
+3. **Implement Player Feedback**
+   - Use `player.add_feedback()` for player-specific messages
+   - Store feedback in `self.player_feedback`
+   - Support both simple messages and structured data
+   - Example feedback formats:
 
-4. **Update the Game Factory**
-   - Add your game to the `game_factory.py` file in the `games` directory.
-   - This allows the framework to instantiate your game when requested.
+   ```python
+   # String/Markdown format
+   self.add_feedback("## Round 1\n- Player chose action: move_left")
 
-5. **Add Test League Bots**
-   - Create example bots in the `test_league` folder.
-   - These bots will be used for testing and as opponents for submitted player code.
+   # Dictionary format
+   self.add_feedback({
+       "round": 1,
+       "action": "move_left",
+       "state": {"position": [0, 1], "score": 10}
+   })
+   ```
 
-6. **Create Unit Tests**
-   - Add a test file in the `tests` directory (e.g., `test_your_game_name.py`).
-   - Write tests to verify your game's logic, scoring, and integration with the framework.
+4. **Create the Player Class**
+   - Create `player.py` with a base `Player` class
+   - Include feedback functionality:
+     ```python
+     class Player(ABC):
+         def __init__(self):
+             self.feedback = []
 
-7. **Update Documentation**
-   - Add information about your new game to the project README.
-   - Include any specific instructions or rules for your game.
+         def add_feedback(self, message):
+             self.feedback.append(message)
 
+         @abstractmethod
+         def make_decision(self, game_state):
+             pass
+     ```
 
-## Part 2: Example - Adding AlphaGuess Game
+5. **Update Game Factory**
+   - Add your game to `game_factory.py`
+   - Include proper imports and game class registration
 
-Let's create a simple letter guessing game called "AlphaGuess".
+6. **Add Test League Bots**
+   - Create example bots in `test_league` folder
+   - Demonstrate feedback usage in example bots
 
-1. **Create the Game Directory**
+7. **Create Unit Tests**
+   - Test game logic and scoring
+   - Verify feedback functionality:
+     ```python
+     def test_game_feedback(test_league):
+         game = YourGame(test_league, verbose=True)
+         results = game.play_game()
+         assert "feedback" in results
+         assert isinstance(results["feedback"], (str, dict))
+     ```
 
-```
-agent_games/
-└── games/
-    └── alpha_guess/
-        ├── alpha_guess.py
-        ├── player.py
-        └── leagues/
-            └── test_league/
-```
+## Part 2: Example - AlphaGuess Implementation
 
-2. **Implement the Game Class (alpha_guess.py)**
+Here's a simplified example showing feedback implementation:
 
 ```python
-from games.base_game import BaseGame
-import random
-import string
-
 class AlphaGuessGame(BaseGame):
-    starter_code = '''
-from games.alpha_guess.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return random.choice(string.ascii_lowercase)
-'''
-
-    game_instructions = '''
-<h1>AlphaGuess Game Instructions</h1>
-<p>Guess the randomly selected letter (a-z). Correct guesses earn 1 point.</p>
-'''
-
-    def __init__(self, league):
-        super().__init__(league)
-        self.correct_letter = None
+    def __init__(self, league, verbose=False):
+        super().__init__(league, verbose)
+        self.game_feedback = []
+        self.player_feedback = {}
 
     def play_round(self):
         self.correct_letter = random.choice(string.ascii_lowercase)
+        self.add_feedback(f"## Round {self.round_number}")
+        
         for player in self.players:
-            if player.make_decision(self.get_game_state()) == self.correct_letter:
-                self.scores[player.name] = 1
-            else:
-                self.scores[player.name] = 0
+            guess = player.make_decision(self.get_game_state())
+            self.add_feedback(f"- {player.name} guessed: {guess}")
+            
+            if guess == self.correct_letter:
+                self.scores[player.name] += 1
+                self.add_feedback(f"  ✓ Correct!")
+            
+            # Collect player feedback
+            if player.feedback:
+                self.player_feedback[player.name] = player.feedback
+                player.feedback = []
 
-    def get_game_state(self):
-        return {"correct_letter": self.correct_letter}
-
-    def play_game(self, custom_rewards=None):
-        self.play_round()
-        return self.assign_points(self.scores, custom_rewards)
-
-    def assign_points(self, scores, custom_rewards=None):
-        return {"points": scores, "score_aggregate": scores}
-
-def run_simulations(num_simulations, league, custom_rewards=None):
-    return BaseGame.run_simulations(num_simulations, league, custom_rewards)
+    @classmethod
+    def run_single_game_with_feedback(cls, league):
+        game = cls(league, verbose=True)
+        results = game.play_game()
+        return {
+            "results": results,
+            "feedback": "\n".join(game.game_feedback),
+            "player_feedback": game.player_feedback
+        }
 ```
 
-3. **Create the Player Class (player.py)**
+8. **Documentation Requirements**
+   - Include clear game rules and objectives
+   - Document feedback formats and usage
+   - Provide example bot implementations
+   - Add setup and testing instructions
 
-```python
-from abc import ABC, abstractmethod
-
-class Player(ABC):
-    @abstractmethod
-    def make_decision(self, game_state):
-        pass
-```
-
-4. **Update the Game Factory (game_factory.py)**
-
-```python
-from games.alpha_guess.alpha_guess import AlphaGuessGame
-
-class GameFactory:
-    @staticmethod
-    def get_game_class(game_name):
-        if game_name == "alpha_guess":
-            return AlphaGuessGame
-        else:
-            raise ValueError(f"Unknown game: {game_name}")
-```
-
-5. **Add Test League Bot**
-
-Create `games/alpha_guess/leagues/test_league/random_bot.py`:
-
-```python
-from games.alpha_guess.player import Player
-import random
-import string
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return random.choice(string.ascii_lowercase)
-```
-
-6. **Testing**
-
-Create `tests/test_alpha_guess.py`:
-
-```python
-import pytest
-from games.alpha_guess.alpha_guess import AlphaGuessGame
-from models_db import League
-
-@pytest.fixture
-def test_league():
-    return League(name="test_league", folder="leagues/test_league", game="alpha_guess")
-
-def test_play_game(test_league):
-    game = AlphaGuessGame(test_league)
-    results = game.play_game()
-    assert "points" in results
-    assert "score_aggregate" in results
-    assert all(score >= 0 for score in results["score_aggregate"].values())
-```
-Add more tests!
+Remember:
+- Keep feedback informative but concise
+- Use markdown formatting for string feedback
+- Structure dictionary feedback logically
+- Clear player feedback between rounds
+- Test both feedback formats thoroughly

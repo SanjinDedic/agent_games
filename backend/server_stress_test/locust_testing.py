@@ -3,20 +3,22 @@ import random
 import threading
 import time
 from itertools import cycle
-from locust import HttpUser, task, between
+
+from locust import HttpUser, between, task
 from locust.exception import StopUser
 from requests.exceptions import ConnectionError
 
-with open('teams.json', 'r') as f:
+with open("teams.json", "r") as f:
     teams_data = json.load(f)
-    teams_list = teams_data['teams']
+    teams_list = teams_data["teams"]
 
 random.shuffle(teams_list)
 teams_iterator = cycle(teams_list)
 iterator_lock = threading.Lock()
 
+
 class AgentUser(HttpUser):
-    
+
     wait_time = between(4, 8)
 
     def on_start(self):
@@ -31,15 +33,15 @@ class AgentUser(HttpUser):
 
     def login(self):
         try:
-            response = self.client.post("/team_login", json={
-                "name": self.team['name'],
-                "password": self.team['password']
-            })
+            response = self.client.post(
+                "/team_login",
+                json={"name": self.team["name"], "password": self.team["password"]},
+            )
             if response.status_code == 200:
-                self.access_token = response.json()['data']['access_token']
-                self.client.headers.update({
-                    "Authorization": f"Bearer {self.access_token}"
-                })
+                self.access_token = response.json()["data"]["access_token"]
+                self.client.headers.update(
+                    {"Authorization": f"Bearer {self.access_token}"}
+                )
                 return True
             else:
                 print(f"Login failed for team {self.team['name']}")
@@ -50,23 +52,27 @@ class AgentUser(HttpUser):
 
     def assign_to_league(self):
         try:
-            league_data = {
-                "name": "prison"
-            }
+            league_data = {"name": "prison"}
             response = self.client.post("/league_assign", json=league_data)
             if response.status_code == 200:
-                print(f"Team {self.team['name']} assigned to league 'prison' successfully.")
+                print(
+                    f"Team {self.team['name']} assigned to league 'prison' successfully."
+                )
                 return True
             else:
-                print(f"Failed to assign team {self.team['name']} to league. Response: {response.text}")
+                print(
+                    f"Failed to assign {self.team['name']} to league. Response: {response.text}"
+                )
                 return False
         except Exception as e:
-            print(f"Exception during league assignment for team {self.team['name']}: {e}")
+            print(
+                f"Exception during league assignment for team {self.team['name']}: {e}"
+            )
             return False
 
     def generate_agent_code(self):
         # Example agent code with slight modifications
-        code_template = '''
+        code_template = """
 from games.prisoners_dilemma.player import Player
 
 class CustomPlayer(Player):
@@ -77,14 +83,14 @@ class CustomPlayer(Player):
         if opponent_history[-1] == '{opponent_last_move}':
             return '{response_move}'
         return '{default_move}'
-'''
+"""
         # Randomize moves
-        moves = ['collude', 'defect']
+        moves = ["collude", "defect"]
         code = code_template.format(
             first_move=random.choice(moves),
             opponent_last_move=random.choice(moves),
             response_move=random.choice(moves),
-            default_move=random.choice(moves)
+            default_move=random.choice(moves),
         )
         return code
 
@@ -95,16 +101,16 @@ class CustomPlayer(Player):
 
         code = self.generate_agent_code()
 
-        submission_data = {
-            "code": code
-        }
+        submission_data = {"code": code}
 
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 response = self.client.post("/submit_agent", json=submission_data)
                 if response.status_code == 200:
-                    print(f"Team {self.team['name']} submitted agent code successfully.")
+                    print(
+                        f"Team {self.team['name']} submitted agent code successfully."
+                    )
                     self.submissions_made += 1
                     break
                 else:
@@ -112,7 +118,9 @@ class CustomPlayer(Player):
                     print(f"Response: {response.text}")
                     break
             except ConnectionError as e:
-                print(f"ConnectionError on attempt {attempt+1} for team {self.team['name']}: {e}")
+                print(
+                    f"ConnectionError on attempt {attempt+1} for team {self.team['name']}: {e}"
+                )
                 if attempt < max_retries - 1:
                     time.sleep(1)  # Wait before retrying
                     continue

@@ -1,17 +1,12 @@
-import os
-import sys
-import pytest
 import json
-import time
-from sqlmodel import Session, SQLModel, create_engine, select, delete
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models_db import League, Team, Admin, Submission
-from auth import get_password_hash
-from config import CURRENT_DB, ADMIN_LEAGUE_EXPIRY
+import os
 from datetime import datetime, timedelta
-from database import  get_database_url
 
+from auth import get_password_hash
+from config import ADMIN_LEAGUE_EXPIRY
+from database import get_database_url
+from models_db import Admin, League, Submission, Team
+from sqlmodel import Session, SQLModel, create_engine, delete
 
 
 def db_engine():
@@ -22,7 +17,7 @@ def db_engine():
     return engine
 
 
-def setup_test_db(engine = db_engine()):
+def setup_test_db(engine=db_engine()):
     with Session(engine) as session:
         if not os.path.exists(get_database_url()):
             session.exec(delete(Team))
@@ -38,7 +33,7 @@ def setup_test_db(engine = db_engine()):
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             active=True,
             folder="leagues/admin/unassigned",
-            game="greedy_pig"
+            game="greedy_pig",
         )
         session.add(unnassigned)
         print("Unassigned league created.")
@@ -49,43 +44,35 @@ def setup_test_db(engine = db_engine()):
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             active=True,
             folder="leagues/admin/comp_test",
-            game="greedy_pig"
+            game="greedy_pig",
         )
         session.add(comp_test)
         session.commit()
 
-        forty_two_test = League(
-            name="forty_two_test",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-            active=True,
-            folder="leagues/admin/comp_test",
-            game="forty_two"
-        )
-        session.add(forty_two_test)
-        session.commit()
-
         admin_username = "Administrator"
         admin_password = "BOSSMAN"
-        hashed_password = get_password_hash(admin_password) 
-        print("hashedpw",hashed_password)
+        hashed_password = get_password_hash(admin_password)
+        print("hashedpw", hashed_password)
         admin = Admin(username=admin_username, password_hash=hashed_password)
         session.add(admin)
 
         # Create teams from test_teams.json
         teams_json_path = os.path.join(os.path.dirname(__file__), "test_teams.json")
-        with open (teams_json_path, "r") as file:
+        with open(teams_json_path, "r") as file:
             data = json.load(file)
             teams = data["teams"]
             for team in teams:
                 name = team["name"]
                 password = team["password"]
                 school = team["school"]
-                new_team = Team(name=name, password_hash=get_password_hash(password), school_name=school, league_id=2)
+                new_team = Team(
+                    name=name,
+                    password_hash=get_password_hash(password),
+                    school_name=school,
+                    league_id=2,
+                )
                 session.add(new_team)
 
-
-        print("Teams added from test_teams.json")
         session.commit()
 
         # Create 12 teams with their passwords
@@ -101,7 +88,7 @@ def setup_test_db(engine = db_engine()):
             {"name": "team9", "password": "pass9"},
             {"name": "team10", "password": "pass10"},
             {"name": "team11", "password": "pass11"},
-            {"name": "team12", "password": "pass12"}
+            {"name": "team12", "password": "pass12"},
         ]
 
         for team_data in teams:
@@ -109,12 +96,11 @@ def setup_test_db(engine = db_engine()):
                 name=team_data["name"],
                 school_name=f"School {team_data['name']}",
                 password_hash=get_password_hash(team_data["password"]),
-                league_id=2
+                league_id=2,
             )
             session.add(team)
 
         session.commit()
-
 
     """
     TO DO:
@@ -127,7 +113,6 @@ def setup_test_db(engine = db_engine()):
     7. Creaate teams from test_teams.json
 
     """
-
 
 
 if __name__ == "__main__":

@@ -1,20 +1,21 @@
-from abc import ABC, abstractmethod
-import random
-import os
 import importlib.util
+import os
+from abc import ABC, abstractmethod
+
 from config import ROOT_DIR
 
+
 class BaseGame(ABC):
-    starter_code = '''
+    starter_code = """
 # This is a base starter code.
 # Each game should override this with its specific starter code.
-'''
+"""
 
-    game_instructions = '''
+    game_instructions = """
 <h1>Base Game Instructions</h1>
 
 <p>These are generic game instructions. Each game should provide its own specific instructions.</p>
-'''
+"""
 
     def __init__(self, league, verbose=False):
         self.verbose = verbose
@@ -24,7 +25,9 @@ class BaseGame(ABC):
 
     def get_all_player_classes_from_folder(self):
         players = []
-        league_directory = os.path.join(ROOT_DIR, "games", self.league.game, self.league.folder)
+        league_directory = os.path.join(
+            ROOT_DIR, "games", self.league.game, self.league.folder
+        )
 
         if self.verbose:
             print(f"Searching for player classes in: {league_directory}")
@@ -72,7 +75,7 @@ class BaseGame(ABC):
     @classmethod
     def run_simulations(cls, num_simulations, league, custom_rewards=None):
         pass
-    
+
     @classmethod
     def get_starter_code(cls):
         return cls.starter_code

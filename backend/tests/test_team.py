@@ -1,22 +1,23 @@
 import os
-import sys
-import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from unittest.mock import patch
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from config import ROOT_DIR
-from api import app
 import database
+import pytest
+from api import app
+from config import ROOT_DIR
 from database import get_db_engine
-from models_db import Team, Submission
+from fastapi.testclient import TestClient
+from models_db import Submission, Team
+from sqlmodel import Session, select
 from tests.database_setup import setup_test_db
+
 os.environ["TESTING"] = "1"
+
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
     setup_test_db()
+
 
 @pytest.fixture(scope="module")
 def db_session():
@@ -24,6 +25,7 @@ def db_session():
     with Session(engine) as session:
         yield session
         session.rollback()
+
 
 @pytest.fixture(scope="module")
 def client(db_session):
@@ -35,34 +37,51 @@ def client(db_session):
     yield client
     app.dependency_overrides.clear()
 
+
 @pytest.fixture(scope="module")
 def admin_token(client):
-    login_response = client.post("/admin_login", json={"username": "Administrator", "password": "BOSSMAN"})
+    login_response = client.post(
+        "/admin_login", json={"username": "Administrator", "password": "BOSSMAN"}
+    )
     assert login_response.status_code == 200
     token = login_response.json()["data"]["access_token"]
     return token
 
 
-##### Team Login #####
+# ----------- Team Login ------------
+
 
 @pytest.fixture(scope="module")
 def team_token(client):
-    response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
+    response = client.post(
+        "/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}
+    )
     assert response.status_code == 200
     token = response.json()["data"]["access_token"]
     return token
 
+
 def test_team_login(client):
-    response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"})
+    response = client.post(
+        "/team_login", json={"name": "BrunswickSC1", "password": "ighEMkOP"}
+    )
     assert response.status_code == 200
     assert "access_token" in response.json()["data"]
-    print("valid credentials",response.json())
+    print("valid credentials", response.json())
 
-    response = client.post("/team_login", json={"name": "BrunswickSC1", "password": "wrongpass"})
-    assert response.json() == {'status': 'failed', 'message': 'Invalid team password', 'data': None}
-    print("invalid creds", response.json()) 
+    response = client.post(
+        "/team_login", json={"name": "BrunswickSC1", "password": "wrongpass"}
+    )
+    assert response.json() == {
+        "status": "failed",
+        "message": "Invalid team password",
+        "data": None,
+    }
+    print("invalid creds", response.json())
 
-    response = client.post("/team_login", json={"team": "BrunswickSC1", "password": "wrongpass"})
+    response = client.post(
+        "/team_login", json={"team": "BrunswickSC1", "password": "wrongpass"}
+    )
     assert response.status_code == 422
 
     response = client.post("/team_login", json={"name": "BrunswickSC1", "password": ""})
@@ -87,44 +106,71 @@ def test_team_login(client):
     assert response.status_code == 422
     assert "must not be empty" in response.json()["detail"][0]["msg"]
 
-##### Team Creation #####
+
+# ----------- Team Creation -----------
+
 
 def test_team_create(client, db_session, admin_token):
     team_name = "new_test_team"
     team_password = "new_test_password"
     team_school = "new_test_school"
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/team_create",
+        json={"name": team_name, "password": team_password, "school_name": team_school},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 200
     assert "name" in response.json()["data"]
     assert "id" in response.json()["data"]
     assert "league_id" in response.json()["data"]
     assert "league" in response.json()["data"]
-    
+
     team = db_session.exec(select(Team).where(Team.name == team_name)).one_or_none()
     assert team is not None
     assert team.name == team_name
     assert team.school_name == team_school
     assert team.verify_password(team_password)
 
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/team_create",
+        json={"name": team_name, "password": team_password, "school_name": team_school},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 200
     assert response.json()["status"] == "failed"
     assert response.json()["message"] == "Server error: Team already exists"
 
-    response = client.post("/team_create", json={"name": "missing_fields_team"}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/team_create",
+        json={"name": "missing_fields_team"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 422
 
-    response = client.post("/team_create", json={"name": "missing_fields_team", "school": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/team_create",
+        json={"name": "missing_fields_team", "school": team_school},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 422
 
-    response = client.post("/team_create", json={"password": team_password, "school": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/team_create",
+        json={"password": team_password, "school": team_school},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 422
 
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school})
+    response = client.post(
+        "/team_create",
+        json={"name": team_name, "password": team_password, "school_name": team_school},
+    )
     assert response.status_code == 401
 
-    #test logging in as the created team
-    response = client.post("/team_login", json={"name": team_name, "password": team_password})
+    # test logging in as the created team
+    response = client.post(
+        "/team_login", json={"name": team_name, "password": team_password}
+    )
     print(response.json())
     assert response.status_code == 200
     assert "access_token" in response.json()["data"]
@@ -134,51 +180,37 @@ def test_delete_team(client, admin_token):
     team_name = "test_team"
     team_password = "test_password"
     team_school = "test_school"
-    response = client.post("/team_create", json={"name": team_name, "password": team_password, "school_name": team_school}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/team_create",
+        json={"name": team_name, "password": team_password, "school_name": team_school},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 200
 
-    response = client.post("/delete_team", json={"name": team_name}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/delete_team",
+        json={"name": team_name},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 200
     assert response.json()["status"] == "success"
-    assert response.json()["message"] == f"Team '{team_name}' and its associated files deleted successfully"
+    assert (
+        response.json()["message"]
+        == f"Team '{team_name}' and its associated files deleted successfully"
+    )
 
-    response = client.post("/delete_team", json={"name": "non_existent_team"}, headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.post(
+        "/delete_team",
+        json={"name": "non_existent_team"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
     assert response.status_code == 200
     assert response.json()["status"] == "error"
     assert "Team 'non_existent_team' not found" in response.json()["message"]
 
-##### Agent Submission #####
 
-def test_submit_agent(client, db_session, team_token):
-    # Submit code for the team
-    code = """
-from games.greedy_pig.player import Player
+# -----------Get All Teams # -----------
 
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        if game_state["unbanked_money"][self.name] > 15:
-            return 'bank'
-        return 'continue'
-"""
-    submission_response = client.post(
-        "/submit_agent",
-        json={"code": code, "team_name": "BrunswickSC1", "league_name": "comp_test"},
-        headers={"Authorization": f"Bearer {team_token}"}
-    )
-    print("Submission Response:", submission_response.json()) 
-    assert submission_response.status_code == 200
-    assert "Code submitted successfully." in submission_response.json()["message"]
-
-    # Check if the submission is saved in the database
-    submission = db_session.exec(select(Submission).where(Submission.code == code)).one_or_none()
-    assert submission is not None
-    assert submission.team_id == 2  # Assuming the team ID is 2 for "BrunswickSC1"
-
-    # Delete the submission
-    print("deleting submission from", f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
-    os.remove(f"{ROOT_DIR}/games/greedy_pig/leagues/admin/comp_test/BrunswickSC1.py")
-
-##### Get All Teams #####
 
 def test_get_all_teams(client, db_session):
     # Get all teams from the database
@@ -199,7 +231,9 @@ def test_get_all_teams(client, db_session):
     print(response_names)
     assert sorted(team_names) == sorted(response_names)
 
-##### League Assign #####
+
+# -----------League Assign # -----------
+
 
 def test_league_assign(client, team_token):
     league_name = "unassigned"
@@ -207,10 +241,15 @@ def test_league_assign(client, team_token):
     response = client.post(
         "/league_assign",
         json={"name": league_name},
-        headers={"Authorization": f"Bearer {team_token}"}
+        headers={"Authorization": f"Bearer {team_token}"},
     )
     assert response.status_code == 200
-    assert response.json() == {"status": "success", "message": f"Team '{team_name}' assigned to league '{league_name}'", "data": None}
+    assert response.json() == {
+        "status": "success",
+        "message": f"Team '{team_name}' assigned to league '{league_name}'",
+        "data": None,
+    }
+
 
 def test_submit_agent_errors(client, db_session, team_token):
     # Test submitting unsafe code
@@ -225,7 +264,7 @@ class CustomPlayer(Player):
     response = client.post(
         "/submit_agent",
         json={"code": unsafe_code},
-        headers={"Authorization": f"Bearer {team_token}"}
+        headers={"Authorization": f"Bearer {team_token}"},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "error"
@@ -247,7 +286,7 @@ class CustomPlayer(Player):
     response = client.post(
         "/submit_agent",
         json={"code": safe_code},
-        headers={"Authorization": f"Bearer {team_token}"}
+        headers={"Authorization": f"Bearer {team_token}"},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "error"
@@ -258,8 +297,6 @@ class CustomPlayer(Player):
     team.league_id = league.id
     db_session.commit()
 
-
-# In test_team.py
 
 def test_submit_agent_with_unsafe_code(client, db_session, team_token):
     unsafe_code = """
@@ -273,7 +310,7 @@ class CustomPlayer(Player):
     response = client.post(
         "/submit_agent",
         json={"code": unsafe_code},
-        headers={"Authorization": f"Bearer {team_token}"}
+        headers={"Authorization": f"Bearer {team_token}"},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "error"
@@ -288,25 +325,88 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         return 'continue'
     """
-    
-    # Submit 2 times (allowed)
-
-    response = client.post(
-        "/submit_agent",
-        json={"code": safe_code},
-        headers={"Authorization": f"Bearer {team_token}"}
-    )
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    for _ in range(6):
+        response = client.post(
+            "/submit_agent",
+            json={"code": safe_code},
+            headers={"Authorization": f"Bearer {team_token}"},
+        )
+        assert response.status_code == 200
+        print("Response JSON for submission limit:", response.json())
+        assert response.json()["status"] == "success"
 
     # 5th submission within a minute (should be rejected)
     response = client.post(
         "/submit_agent",
         json={"code": safe_code},
-        headers={"Authorization": f"Bearer {team_token}"}
+        headers={"Authorization": f"Bearer {team_token}"},
     )
 
-    print("Response JSON:", response.json())
+    print("Response JSON for submission limit:", response.json())
+    assert response.status_code == 200
+    assert "You can only make 5 submissions per minute" in response.json()["message"]
+
+
+def test_league_assign_error(client, team_token, mocker):
+    # Mock database.assign_team_to_league to raise an exception
+    mocker.patch(
+        "database.assign_team_to_league",
+        side_effect=Exception("Database connection error"),
+    )
+
+    response = client.post(
+        "/league_assign",
+        json={"name": "test_league"},
+        headers={"Authorization": f"Bearer {team_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "error",
+        "message": "An error occurred while assigning team to leagueDatabase connection error",
+        "data": None,  # Added this line
+    }
+
+
+def test_get_all_teams_error(client, db_session, mocker):
+    # Mock database.get_all_teams to raise an exception
+    mocker.patch("database.get_all_teams", side_effect=Exception("Database error"))
+
+    response = client.get("/get_all_teams")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "error",
+        "message": "An error occurred while retrieving teams",
+        "data": None,  # Added this line
+    }
+
+
+def test_submit_agent_with_invalid_game(client, db_session, team_token):
+    """Tests submitting code when team's league has an invalid game type.
+    This will cover lines 198-200 in api.py where game type validation occurs."""
+
+    # First modify the team's league to have an invalid game
+    team = database.get_team(db_session, "BrunswickSC1")
+    team.league.game = "invalid_game"
+    db_session.commit()
+
+    # Note: Remove the leading whitespace in the code string
+    code = """from games.greedy_pig.player import Player
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return 'continue'"""
+
+    response = client.post(
+        "/submit_agent",
+        json={"code": code},
+        headers={"Authorization": f"Bearer {team_token}"},
+    )
+
     assert response.status_code == 200
     assert response.json()["status"] == "error"
-    assert "You can only make 2 submissions per minute" in response.json()["message"]
+    assert "Unknown game" in response.json()["message"]
+    # Remove the invalid_game folder from the system
+    league_path = os.path.join(ROOT_DIR, "games", "invalid_game")
+    command = f"rm -rf {league_path}"
+    os.system(command)

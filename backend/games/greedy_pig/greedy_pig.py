@@ -1,14 +1,15 @@
-from games.base_game import BaseGame
-import random
-import os
-import time
-from games.greedy_pig.player import Player as GreedyPigPlayer
 import importlib.util
+import os
+import random
+from types import MappingProxyType
+
 from config import ROOT_DIR
+from games.base_game import BaseGame
+from games.greedy_pig.player import Player as GreedyPigPlayer
 
 
 class GreedyPigGame(BaseGame):
-    starter_code = '''
+    starter_code = """
 from games.greedy_pig.player import Player
 import random
 
@@ -24,9 +25,9 @@ class CustomPlayer(Player):
         self.add_feedback(f"game state: {game_state}, my decision: {decision}")
         
         return decision
-'''
+"""
 
-    game_instructions = '''
+    game_instructions = """
 <h1>Greedy Pig Game Instructions</h1>
 
 <p>Welcome to the Greedy Pig game! Your task is to implement the <code>make_decision</code> method in the <code>CustomPlayer</code> class.</p>
@@ -82,7 +83,7 @@ def make_decision(self, game_state):
 </ul>
 
 <p>Good luck and have fun!</p>
-'''
+"""
 
     def __init__(self, league, verbose=False, custom_rewards=None):
         super().__init__(league, verbose)
@@ -95,9 +96,28 @@ def make_decision(self, game_state):
         self.game_feedback = []
         self.player_feedback = []
 
+    def get_game_state(self):
+        # Create an immutable copy of the game state using MappingProxyType
+        state = {
+            "round_no": self.round_no,
+            "roll_no": self.roll_no,
+            "players_banked_this_round": tuple(
+                self.players_banked_this_round
+            ),  # Convert list to immutable tuple
+            "banked_money": MappingProxyType(
+                {player.name: player.banked_money for player in self.players}
+            ),
+            "unbanked_money": MappingProxyType(
+                {player.name: player.unbanked_money for player in self.players}
+            ),
+        }
+        return MappingProxyType(state)
+
     def get_all_player_classes_from_folder(self):
         players = []
-        league_directory = os.path.join(ROOT_DIR, "games", self.league.game, self.league.folder)
+        league_directory = os.path.join(
+            ROOT_DIR, "games", self.league.game, self.league.folder
+        )
 
         if self.verbose:
             print(f"Searching for player classes in: {league_directory}")
@@ -121,12 +141,14 @@ def make_decision(self, game_state):
                 if hasattr(module, "CustomPlayer"):
                     player_class = getattr(module, "CustomPlayer")
                     player = player_class()
-                    
+
                     # Validate that the player is an instance of GreedyPigPlayer
                     if not isinstance(player, GreedyPigPlayer):
-                        print(f"Warning: {module_name} does not contain a valid Greedy Pig player. Skipping.")
+                        print(
+                            f"Warning: {module_name} does not contain a valid Greedy Pig player. Skipping."
+                        )
                         continue
-                    
+
                     player.name = module_name
                     players.append(player)
                     if self.verbose:
@@ -159,8 +181,12 @@ def make_decision(self, game_state):
             "round_no": self.round_no,
             "roll_no": self.roll_no,
             "players_banked_this_round": self.players_banked_this_round,
-            "banked_money": {player.name: player.banked_money for player in self.players},
-            "unbanked_money": {player.name: player.unbanked_money for player in self.players},
+            "banked_money": {
+                player.name: player.banked_money for player in self.players
+            },
+            "unbanked_money": {
+                player.name: player.unbanked_money for player in self.players
+            },
         }
 
     def play_round(self):
@@ -172,46 +198,52 @@ def make_decision(self, game_state):
 
         while True:
             self.roll_no += 1
+            random.seed()  # Reset random seed each roll to prevent manipulation
             roll = self.roll_dice()
             self.add_feedback(f"\n### Roll {self.roll_no}")
             self.add_feedback(f"\n<table>")
             feedback_row = ""
-            feedback_row += f"<tr style=\"border:0px\"><th style=\"border: 0px\"></th>"
+            feedback_row += f'<tr style="border:0px"><th style="border: 0px"></th>'
             for player in self.active_players:
                 feedback_row += f"<th>&#128100;{player.name}</th>"
             feedback_row += f"</tr>"
             self.add_feedback(feedback_row)
 
-            feedback_row = f"<tr style=\"border: 0px\">"
+            feedback_row = f'<tr style="border: 0px">'
             if roll == 1:
-                feedback_row += f"<td style=\"border:0px;white-space:nowrap;\">&#127922; = <span style=\"color:red\"><b>{roll}</b></span></td>"
+                feedback_row += f'<td style="border:0px;white-space:nowrap;">&#127922; = <span style="color:red"><b>{roll}</b></span></td>'
                 for player in self.active_players:
                     if player.unbanked_money > 0:
-                        feedback_row += f"<td style=\"color:red\">$0</td>"
+                        feedback_row += f'<td style="color:red">$0</td>'
                     else:
                         feedback_row += f"<td>$0</td>"
                     player.reset_unbanked_money()
                 feedback_row += f"</tr>"
-                self.add_feedback(feedback_row) 
+                self.add_feedback(feedback_row)
                 self.add_feedback(f"</table>")
-                break                
+                break
 
-            feedback_row += f"<td style=\"border:0px;white-space:nowrap;\">&#127922; = <b>{roll}</b></td>"
+            feedback_row += f'<td style="border:0px;white-space:nowrap;">&#127922; = <b>{roll}</b></td>'
             for player in self.active_players.copy():
                 feedback_row += f"<td>${player.unbanked_money + roll}</td>"
             feedback_row += f"</tr>"
-            self.add_feedback(feedback_row) 
+            self.add_feedback(feedback_row)
 
-            feedback_row = f"<tr style=\"border:0px\"><td style=\"border: 0px\"><b>Action</b></td>"
+            feedback_row = (
+                f'<tr style="border:0px"><td style="border: 0px"><b>Action</b></td>'
+            )
             for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
                     try:
-                        decision = player.make_decision(self.get_game_state())
-                    except:
-                        decision = 'bank'
-                        
-                    if decision == 'bank':
+                        # Create a fresh game state for each player
+                        player_state = self.get_game_state()
+                        decision = player.make_decision(player_state)
+                    except Exception as e:
+                        print(f"Error in player {player.name}'s decision: {e}")
+                        decision = "bank"
+
+                    if decision == "bank":
                         feedback_row += f"<td>&#128181; bank</td>"
                         player.bank_money()
                         player.has_banked_this_turn = True
@@ -219,14 +251,8 @@ def make_decision(self, game_state):
                         self.active_players.remove(player)
                     else:
                         feedback_row += f"<td></td>"
-                    
-                    # Add player feedback
+
                     self.add_player_feedback(player)
-                    if player.feedback:
-                        self.add_feedback(f"\n<b>{player.name}'s feedback:</b>")
-                        for message in player.feedback:
-                            self.add_feedback(f"<span style='color: blue;'>{message}</span>")
-                        player.feedback = []  # Clear the feedback after adding it
 
             feedback_row += f"</tr>"
             self.add_feedback(feedback_row)
@@ -252,21 +278,29 @@ def make_decision(self, game_state):
             self.play_round()
             self.add_feedback("\n### End of Round")
             for player in self.players:
-                self.add_feedback(f"  - &#128100;<b>{player.name}</b>: ${player.banked_money}")
+                self.add_feedback(
+                    f"  - &#128100;<b>{player.name}</b>: ${player.banked_money}"
+                )
 
         game_state = self.get_game_state()
         results = self.assign_points(game_state, custom_rewards)
-        
+
         self.add_feedback("\n## Final Results")
         for player, points in results["points"].items():
             self.add_feedback(f"- {player}: {points} points")
-        
+
         return results
 
     def assign_points(self, game_state, custom_rewards=None):
         rewards = custom_rewards or self.custom_rewards
-        score_aggregate = {player: game_state['banked_money'][player] + game_state['unbanked_money'][player] for player in game_state['banked_money']}
-        sorted_players = sorted(score_aggregate.items(), key=lambda x: x[1], reverse=True)
+        score_aggregate = {
+            player: game_state["banked_money"][player]
+            + game_state["unbanked_money"][player]
+            for player in game_state["banked_money"]
+        }
+        sorted_players = sorted(
+            score_aggregate.items(), key=lambda x: x[1], reverse=True
+        )
 
         points = {}
         last_score = None
@@ -309,9 +343,9 @@ def make_decision(self, game_state):
         return {
             "results": results,
             "feedback": game_feedback,
-            "player_feedback": player_feedback
+            "player_feedback": player_feedback,
         }
-    
+
     @classmethod
     def run_simulations(cls, num_simulations, league, custom_rewards=None):
         game = cls(league)
@@ -321,10 +355,10 @@ def make_decision(self, game_state):
         for _ in range(num_simulations):
             game.reset()
             results = game.play_game(custom_rewards)
-            
+
             for player, points in results["points"].items():
                 total_points[player] += points
-            
+
             winner = max(results["points"], key=results["points"].get)
             total_wins[winner] += 1
 
@@ -335,7 +369,5 @@ def make_decision(self, game_state):
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
-            "table": {
-                "total_wins": total_wins
-            }
+            "table": {"total_wins": total_wins},
         }

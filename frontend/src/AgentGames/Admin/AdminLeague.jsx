@@ -1,9 +1,8 @@
-import './css/adminleague.css';
 import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ResultsDisplay from '../Utilities/ResultsDisplay';
-import MarkdownFeedback from '../Utilities/MarkdownFeedback';
+import FeedbackSelector from '../Utilities/FeedbackSelector';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
@@ -13,7 +12,7 @@ import AdminLeagueSimulation from './AdminLeagueSimulation';
 import AdminLeaguePublish from './AdminLeaguePublish';
 import CustomRewards from './CustomRewards';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCurrentLeague, setLeagues, updateExpiryDate,setCurrentSimulation, setResults, clearResults } from '../../slices/leaguesSlice';
+import { setCurrentLeague, setLeagues, updateExpiryDate, setCurrentSimulation, setResults, clearResults } from '../../slices/leaguesSlice';
 import { checkTokenExpiry } from '../../slices/authSlice';
 
 function AdminLeague() {
@@ -27,26 +26,26 @@ function AdminLeague() {
   const accessToken = useSelector((state) => state.auth.token);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  
+
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-      // Redirect to the home page if not authenticated
       navigate('/Admin');
     }
-    
   }, [navigate]);
 
-  const fetchAdminLeagues = () => {
+  useEffect(() => {
+    fetchAdminLeagues();
+  }, []);
 
+  const fetchAdminLeagues = () => {
     fetch(apiUrl + '/get_all_admin_leagues')
       .then(response => response.json())
       .then(data => {
         if (data.status === "success") {
           dispatch(setLeagues(data.data.admin_leagues));
-
         } else if (data.status === "failed") {
           toast.error(data.message)
         } else if (data.detail === "Invalid token") {
@@ -54,13 +53,7 @@ function AdminLeague() {
         }
       })
       .catch(error => console.error('Error fetching options:', error));
-    
-
   }
-
-  useEffect(() => {
-    fetchAdminLeagues();
-  }, []);
 
   useEffect(() => {
     if (currentLeague?.name) {
@@ -74,17 +67,13 @@ function AdminLeague() {
       })
         .then(response => response.json())
         .then(data => {
-          console.log(data);
           if (data.status === "success") {
             if (data.data.all_results.length == 0) {
               dispatch(clearResults());
               toast.error("No results in the selected League")
-            }
-
-            else {
+            } else {
               dispatch(setResults(data.data.all_results));
             }
-
           } else if (data.status === "failed") {
             toast.error(data.message);
             dispatch(clearResults());
@@ -93,26 +82,19 @@ function AdminLeague() {
           }
         })
         .catch(error => console.error('Error fetching league results:', error));
-      }
+    }
   }, [currentLeague]);
 
   const handleDropdownChange = (event) => {
-    
     dispatch(setCurrentLeague(event.target.value));
-    
   };
 
   const handletableDropdownChange = (event) => {
     dispatch(setCurrentSimulation(event.target.value));
-
   };
 
-
-
   const handleExpiryDateChange = (date) => {
-
-    // Update the date in the database through the API
-    const formattedDate = date.toISOString(); // Format the date as needed for your API
+    const formattedDate = date.toISOString();
     fetch(`${apiUrl}/update_expiry_date`, {
       method: 'POST',
       headers: {
@@ -123,11 +105,9 @@ function AdminLeague() {
     })
       .then(response => response.json())
       .then(data => {
-
         if (data.status === "success") {
-          dispatch(updateExpiryDate({ name: currentLeague.name, expiry_date: formattedDate}));
+          dispatch(updateExpiryDate({ name: currentLeague.name, expiry_date: formattedDate }));
           toast.success(data.message);
-          
         } else if (data.status === "failed") {
           toast.error(data.message)
         }
@@ -137,78 +117,113 @@ function AdminLeague() {
       });
   };
 
-
-
   return (
-    <>
-      <div className="main-container">
-        <h1>LEAGUE SECTION</h1>
-        {currentLeague &&
-        <select onChange={handleDropdownChange} value={currentLeague.name}>
-          {allLeagues.map((league, index) => (
-            <option key={index} value={league.name} style={{ color: moment().isBefore(moment(league.expiry_date)) ? 'green' : 'red' }}>
-              {moment().isBefore(moment(league.expiry_date)) ? '🟢' : '🔴'} {league.name} ({league.game})
-            </option>
-          ))}
-        </select>
-        }
+    <div className="min-h-screen bg-ui-lighter">
+      <div className="max-w-[1800px] mx-auto px-6 pt-20 pb-8">
+        {/* Header and League Selection */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-ui-dark mb-4">League Section</h1>
+          {currentLeague && (
+            <select
+              onChange={handleDropdownChange}
+              value={currentLeague.name}
+              className="w-full p-3 border border-ui-light rounded-lg bg-white text-ui-dark text-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+            >
+              {allLeagues.map((league, index) => (
+                <option
+                  key={index}
+                  value={league.name}
+                  className={moment().isBefore(moment(league.expiry_date)) ? 'text-success' : 'text-danger'}
+                >
+                  {moment().isBefore(moment(league.expiry_date)) ? '🟢' : '🔴'} {league.name} ({league.game})
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
 
-      </div>
-      <div className='panel-container'>
-
-        <div className='left'>
-          <div className="output-container">
-            {allSimulations &&
-              <select onChange={handletableDropdownChange}>
-                {allSimulations.map((option, index) => (
-                  <option key={index} value={option.timestamp}>
-                    {new Date(option.timestamp).toLocaleString()}
-                  </option>
-                ))}
-              </select>
-            }
-            <br></br>
-            {currentSimulation && (
-              currentSimulation.feedback ? (
-                <ResultsDisplay
-                  data={currentSimulation}
-                  highlight={false}
-                  data_message={currentSimulation.message}
-                  tablevisible={false}
-                />
-              ) : (
-                <ResultsDisplay
-                  data={currentSimulation}
-                  highlight={false}
-                  data_message={currentSimulation.message}
-                  tablevisible={true}
-                />
-              )
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left Column - League Data (3/4 width) */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Results Selection */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              {allSimulations && (
+                <select
+                  onChange={handletableDropdownChange}
+                  className="w-full p-3 mb-4 border border-ui-light rounded-lg bg-white text-ui-dark text-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                >
+                  {allSimulations.map((option, index) => (
+                    <option key={index} value={option.timestamp}>
+                      {new Date(option.timestamp).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
               )}
-            {currentSimulation?.feedback && <MarkdownFeedback feedback={currentSimulation.feedback} />}
+
+              {/* Results Display */}
+              {currentSimulation && (
+                <>
+                  <ResultsDisplay
+                    data={currentSimulation}
+                    highlight={false}
+                    data_message={currentSimulation.message}
+                    tablevisible={!currentSimulation.feedback}
+                  />
+                  {currentSimulation.feedback && (
+                    <div className="mt-6">
+                      <FeedbackSelector feedback={currentSimulation.feedback} />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Teams Grid */}
+            {currentLeague && (
+              <div className="w-full bg-white rounded-lg shadow-lg p-6">
+                <AdminLeagueTeams selected_league_name={currentLeague.name} />
+              </div>
+            )}
           </div>
-          {currentLeague && <AdminLeagueTeams selected_league_name={currentLeague.name} />}
-        </div>
-        <div className='right'>
-        {currentLeague && <AdminLeagueSimulation selected_league_name={currentLeague.name} />}
-          <CustomRewards/>
-          {currentLeague && currentSimulation &&  <AdminLeaguePublish simulation_id={currentSimulation.id} selected_league_name={currentLeague.name} />}
-          <h2 style={{ marginTop: '20%' }}>Expiry Date Picker</h2>
-          {currentLeague && 
-          <DatePicker
-            selected={currentLeague.expiry_date}
-            onChange={handleExpiryDateChange}
-            dateFormat="dd/MM/yyyy"
-            placeholderText="Select a date"
-            id="date-picker"
-          />
-          }
-        </div>
 
+          {/* Right Column - Controls (1/4 width) */}
+          <div className="space-y-4">
+            {/* Simulation Controls */}
+            <AdminLeagueSimulation selected_league_name={currentLeague?.name} />
+
+            {/* Custom Rewards */}
+            <CustomRewards />
+
+            {/* Expiry Date */}
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <h3 className="font-medium text-lg text-ui-dark mb-2">Expiry Date</h3>
+              {currentLeague && (
+                <DatePicker
+                  selected={new Date(currentLeague.expiry_date)}
+                  onChange={handleExpiryDateChange}
+                  dateFormat="dd/MM/yyyy"
+                  className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              )}
+            </div>
+
+            {/* League Creation */}
+            <AdminLeagueCreation />
+
+            {/* Publish Button */}
+            {currentLeague && currentSimulation && (
+              <div className="bg-white rounded-lg shadow-lg p-4">
+                <AdminLeaguePublish
+                  simulation_id={currentSimulation.id}
+                  selected_league_name={currentLeague.name}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      <AdminLeagueCreation />
-
-    </>
+    </div>
   );
 }
 

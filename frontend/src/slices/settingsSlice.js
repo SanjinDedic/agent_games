@@ -2,7 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   agentApiUrl: process.env.REACT_APP_AGENT_API_URL,
-  showTooltips: true,
+  showTooltips: false,
 };
 
 const settingsSlice = createSlice({

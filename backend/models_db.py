@@ -1,15 +1,12 @@
-from typing import List, Optional, Dict
-from sqlmodel import Field, SQLModel,  Relationship, UniqueConstraint, DateTime, Column, JSON
-from config import CURRENT_DB
 from datetime import datetime
+from typing import List, Optional
+
 from auth import get_password_hash, verify_password
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint
 
-
-
-
-#---------------------------------------------------------------------------------#
-#---                                 TABLES                                    ---#
-#---------------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------#
+# ---                                 TABLES                                    ---#
+# ---------------------------------------------------------------------------------#
 
 
 class League(SQLModel, table=True):
@@ -20,7 +17,7 @@ class League(SQLModel, table=True):
     deleted_date: datetime | None = None
     signup_link: str | None = None
     folder: str | None = None
-    teams: List['Team'] = Relationship(back_populates='league')
+    teams: List["Team"] = Relationship(back_populates="league")
     game: str
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
 
@@ -35,7 +32,7 @@ class Admin(SQLModel, table=True):
 
     def verify_password(self, password: str):
         return verify_password(password, self.password_hash)
-    
+
 
 class Team(SQLModel, table=True):
     id: int = Field(primary_key=True)
@@ -45,8 +42,8 @@ class Team(SQLModel, table=True):
     score: int = 0
     color: str = "rgb(171,239,177)"
     league_id: int = Field(default=None, foreign_key="league.id")
-    league: League = Relationship(back_populates='teams')
-    submissions: List['Submission'] = Relationship(back_populates='team')
+    league: League = Relationship(back_populates="teams")
+    submissions: List["Submission"] = Relationship(back_populates="team")
     __table_args__ = (UniqueConstraint("name", "league_id"),)
 
     def set_password(self, password: str):
@@ -54,14 +51,14 @@ class Team(SQLModel, table=True):
 
     def verify_password(self, password: str):
         return verify_password(password, self.password_hash)
-    
+
 
 class Submission(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     code: str
     timestamp: datetime
-    team_id: int = Field(default=None, foreign_key='team.id', nullable=True)
-    team: Team = Relationship(back_populates='submissions')
+    team_id: int = Field(default=None, foreign_key="team.id", nullable=True)
+    team: Team = Relationship(back_populates="submissions")
 
 
 class SimulationResult(SQLModel, table=True):
@@ -69,16 +66,22 @@ class SimulationResult(SQLModel, table=True):
     league_id: int = Field(foreign_key="league.id")
     league: League = Relationship(back_populates="simulation_results")
     timestamp: datetime
-    simulation_results: List["SimulationResultItem"] = Relationship(back_populates="simulation_result")
+    simulation_results: List["SimulationResultItem"] = Relationship(
+        back_populates="simulation_result"
+    )
     published: bool = False
     num_simulations: int = 0
-    custom_rewards: str = '[10, 8, 6, 4, 3, 2, 1]'
+    custom_rewards: str = "[10, 8, 6, 4, 3, 2, 1]"
+    feedback_str: str | None = None
+    feedback_json: str | None = None  # Store JSON feedback as a string
 
 
 class SimulationResultItem(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     simulation_result_id: int = Field(foreign_key="simulationresult.id")
-    simulation_result: SimulationResult = Relationship(back_populates="simulation_results")
+    simulation_result: SimulationResult = Relationship(
+        back_populates="simulation_results"
+    )
     team_id: int = Field(foreign_key="team.id")
     team: Team = Relationship()
     score: float = 0

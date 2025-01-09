@@ -21,7 +21,7 @@ idna==3.7
 importlib-resources==6.1.1
 iniconfig==2.0.0
 itsdangerous==2.2.0
-Jinja2==3.1.4
+Jinja2==3.1.5
 limits==3.7.0
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
@@ -42,7 +42,7 @@ pytest-cov==4.1.0
 pytest-mock==3.12.0
 python-dotenv==1.0.1
 python-jose==3.3.0
-python-multipart==0.0.9
+python-multipart==0.0.18
 PyYAML==6.0.1
 requests==2.32.3
 rich==13.7.0
@@ -88,7 +88,7 @@ idna==3.7
 importlib-resources==6.1.1
 iniconfig==2.0.0
 itsdangerous==2.2.0
-Jinja2==3.1.4
+Jinja2==3.1.5
 limits==3.7.0
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
@@ -109,7 +109,7 @@ pytest-cov==4.1.0
 pytest-mock==3.12.0
 python-dotenv==1.0.1
 python-jose==3.3.0
-python-multipart==0.0.9
+python-multipart==0.0.18
 pytz==2024.1
 PyYAML==6.0.1
 requests==2.32.3

@@ -1,17 +1,14 @@
-import './css/adminleague.css';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useSelector } from 'react-redux';
 
-
-
 function AdminLeagueCreation() {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector((state) => state.auth.token);
   const [games, setGames] = useState([]);
-  const [leagueInfo, setleagueInfo] = useState({
+  const [leagueInfo, setLeagueInfo] = useState({
     leagueName: '',
     gameName: '',
     selectedDate: null,
@@ -28,7 +25,7 @@ function AdminLeagueCreation() {
       .then(data => {
         if (data.status === "success") {
           setGames(data.data.games);
-          setleagueInfo(prev => ({
+          setLeagueInfo(prev => ({
             ...prev,
             gameName: data.data.games[0]
           }));
@@ -37,41 +34,37 @@ function AdminLeagueCreation() {
         }
       })
       .catch(error => {
-  
-        toast.error(`Failed to add League`);
+        toast.error('Failed to add League');
       });
-
-  }, []);
+  }, [apiUrl]);
 
   const handleGameDropdownChange = (event) => {
-    setleagueInfo(prev => ({
+    setLeagueInfo(prev => ({
       ...prev,
       gameName: event.target.value
     }));
   };
 
   const handleChange = (event) => {
-    setleagueInfo(prev => ({
+    setLeagueInfo(prev => ({
       ...prev,
       [event.target.name]: event.target.value,
     }));
   };
 
   const handleDateChange = (date) => {
-    setleagueInfo(prev => ({
+    setLeagueInfo(prev => ({
       ...prev,
       selectedDate: date
     }));
   };
 
-  
-
   const handleAddLeague = () => {
     if (!leagueInfo.leagueName.trim()) {
-      toast.error(`Please Enter the name of the league`);
+      toast.error('Please Enter the name of the league');
       return;
     }
-    
+
     fetch(`${apiUrl}/league_create`, {
       method: 'POST',
       headers: {
@@ -82,57 +75,61 @@ function AdminLeagueCreation() {
     })
       .then(response => response.json())
       .then(data => {
-
         if (data.status === "success") {
-          setleagueInfo({ leagueName: '', gameName: '', selectedDate: null });
+          setLeagueInfo({ leagueName: '', gameName: '', selectedDate: null });
           toast.success(data.message);
         } else if (data.status === "failed") {
           toast.error(data.message);
         }
       })
       .catch(error => {
-
-        toast.error(`Failed to add League`);
+        toast.error('Failed to add League');
       });
-
   };
-    
-    
-  
-    
-    
+
   return (
-    <>
-      <div className='league-creation-container'>
-        <input type="text"
+    <div className="bg-white rounded-lg shadow-lg p-4">
+      <h3 className="font-medium text-lg text-ui-dark mb-4">Create New League</h3>
+      <div className="space-y-3">
+        <input
+          type="text"
           name="leagueName"
-          className="league-creation-input"
+          value={leagueInfo.leagueName}
           onChange={handleChange}
           placeholder="Enter League name"
-          value={leagueInfo.leagueName || ''}></input>
+          className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+        />
 
-        {games &&
-        
-        <select onChange={handleGameDropdownChange} className='game-select'>
-          {games.map((name, index) => (
-            <option key={index} value={name} >
-              {name}
-            </option>
-          ))}
-        </select>
-        }
+        {games && (
+          <select
+            onChange={handleGameDropdownChange}
+            value={leagueInfo.gameName}
+            className="w-full p-3 border border-ui-light rounded-lg text-base bg-white shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+          >
+            {games.map((name, index) => (
+              <option key={index} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        )}
 
         <DatePicker
           selected={leagueInfo.selectedDate}
           onChange={handleDateChange}
           dateFormat="dd/MM/yyyy"
-          placeholderText="Select a date"
-          id="date-picker"
+          placeholderText="Select expiry date"
+          className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
         />
-        <button onClick={handleAddLeague} className='add-league-button'>ADD LEAGUE</button>
 
+        <button
+          onClick={handleAddLeague}
+          className="w-full bg-success hover:bg-success-hover text-white py-3 rounded-lg text-base font-medium transition-colors shadow-sm focus:ring-2 focus:ring-success focus:ring-offset-2"
+        >
+          ADD LEAGUE
+        </button>
       </div>
-    </>
+    </div>
   );
 }
 
