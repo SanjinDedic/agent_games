@@ -27,7 +27,7 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
     const toastId = toast.loading("Loading results...");
 
     try {
-      const response = await fetch(`${apiUrl}/run_simulation`, {
+      const response = await fetch(`${apiUrl}/admin/run-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

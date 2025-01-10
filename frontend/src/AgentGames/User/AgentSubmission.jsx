@@ -45,7 +45,7 @@ function AgentSubmission() {
 
   const handleInstructions = async () => {
     try {
-      const response = await fetch(`${apiUrl}/get_game_instructions`, {
+      const response = await fetch(`${apiUrl}/user/get-game-instructions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -90,7 +90,7 @@ function AgentSubmission() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${apiUrl}/submit_agent`, {
+      const response = await fetch(`${apiUrl}/user/submit-agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

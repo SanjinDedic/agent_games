@@ -41,7 +41,7 @@ function Admin() {
     }
 
     try {
-      const response = await fetch(`${apiUrl}/admin_login`, {
+      const response = await fetch(`${apiUrl}/auth/admin-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

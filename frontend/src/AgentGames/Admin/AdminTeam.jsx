@@ -26,11 +26,15 @@ function AdminTeam() {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${apiUrl}/get_all_teams`)
+    fetch(`${apiUrl}/admin/get-all-teams`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}` // Add the authorization header
+      }
+    })
       .then(response => response.json())
       .then(data => {
-        if (data.status === "success" && Array.isArray(data.data.all_teams)) {
-          dispatch(setTeams(data.data.all_teams));
+        if (data.status === "success" && Array.isArray(data.data.teams)) {
+          dispatch(setTeams(data.data.teams));
         } else if (data.status === "failed") {
           toast.error(data.message);
         } else if (data.detail === "Invalid token") {
@@ -52,7 +56,7 @@ function AdminTeam() {
   };
 
   const handleAddTeam = () => {
-    fetch(`${apiUrl}/team_create`, {
+    fetch(`${apiUrl}/admin/team-create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,7 +82,7 @@ function AdminTeam() {
   };
 
   const handleDelete = (id, name) => {
-    fetch(`${apiUrl}/delete_team`, {
+    fetch(`${apiUrl}/admin/delete-team`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

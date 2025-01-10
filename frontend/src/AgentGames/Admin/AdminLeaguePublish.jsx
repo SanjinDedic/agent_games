@@ -19,7 +19,7 @@ const AdminLeaguePublish = ({ simulation_id, selected_league_name }) => {
             feedback: currentSimulation?.feedback || null
         };
 
-        fetch(`${apiUrl}/publish_results`, {
+        fetch(`${apiUrl}/admin/publish-results`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

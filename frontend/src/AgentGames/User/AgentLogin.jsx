@@ -42,7 +42,7 @@ function AgentLogin() {
     }
 
     try {
-      const response = await fetch(`${apiUrl}/team_login`, {
+      const response = await fetch(`${apiUrl}/auth/team-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
