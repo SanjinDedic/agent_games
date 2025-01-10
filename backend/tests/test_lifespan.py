@@ -7,7 +7,7 @@ import pytest
 # Local application imports
 from api import lifespan
 from config import ROOT_DIR
-from docker.containers import (
+from docker_utils.containers import (
     ensure_containers_running,
     get_container_logs,
     stop_containers,

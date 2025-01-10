@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 
 import pytest
+from database.db_models import League
 from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
-from models_db import League
 
 
 @pytest.fixture

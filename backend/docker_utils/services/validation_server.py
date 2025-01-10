@@ -8,15 +8,15 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
 
-# Add the root directory to Python path
-sys.path.append("/agent_games")
+# Add the backend directory to Python path
+sys.path.insert(0, "/backend")
 
+from database.db_models import League  # Updated import path
 from fastapi import FastAPI
 from games.game_factory import GameFactory
-
-# Now we can import our local modules
-from models_db import League
 from pydantic import BaseModel
+
+# Rest of the validation_server.py code remains the same...
 
 # Configure logging
 logging.basicConfig(

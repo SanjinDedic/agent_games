@@ -6,8 +6,8 @@ import pytest
 from api import app
 from config import ROOT_DIR
 from database import get_db_engine
+from database.db_models import Submission, Team
 from fastapi.testclient import TestClient
-from models_db import Submission, Team
 from sqlmodel import Session, select
 from tests.database_setup import setup_test_db
 

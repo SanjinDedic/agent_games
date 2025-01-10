@@ -1,3 +1,5 @@
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import logging
 import os
 import sys
@@ -5,14 +7,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+# Add the backend directory to Python path
+sys.path.insert(0, "/backend")
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from database.db_models import League  # Updated import path
+from fastapi import FastAPI, HTTPException
 from games.game_factory import GameFactory
-from models_db import League
 from pydantic import BaseModel
 
-# Configure logging
+# Rest of the simulation_server.py code remains the same...
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

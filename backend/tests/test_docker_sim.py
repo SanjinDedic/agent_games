@@ -19,9 +19,9 @@ sys.path.insert(0, project_root)
 # Now import project modules
 from api import app
 from database import get_db_engine
-from docker.config import CONTAINERS
-from docker.containers import ensure_containers_running, stop_containers
-from docker.scripts.docker_simulation import (
+from docker_utils.config import CONTAINERS
+from docker_utils.containers import ensure_containers_running, stop_containers
+from docker_utils.scripts.docker_simulation import (
     SIMULATION_RESULTS_SCHEMA,
     SimulationContainerError,
     run_docker_simulation,
@@ -56,10 +56,53 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(scope="session", autouse=True)
+async def setup_containers():
+    """Setup fixture to ensure containers are running before tests start"""
+    print("\nSetting up Docker containers...")
+    try:
+        ensure_containers_running()  # Now uses ROOT_DIR from config
+        # Give containers time to fully start
+        import asyncio
+
+        await asyncio.sleep(5)
+        yield
+    finally:
+        print("\nStopping Docker containers...")
+        stop_containers()
+
+
+@pytest.mark.asyncio
+async def test_validator_container_health():
+    """Verify the validator container is running and healthy"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:8001/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+    except httpx.RequestError as e:
+        pytest.fail(f"Validator container is not running or not accessible: {str(e)}")
+
+
+@pytest.mark.asyncio
+async def test_simulator_container_health():
+    """Verify the simulator container is running and healthy"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "http://localhost:8002/"
+            )  # Note: simulator uses root path for health check
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+    except httpx.RequestError as e:
+        pytest.fail(f"Simulator container is not running or not accessible: {str(e)}")
+
+
 @pytest.fixture(scope="module")
 def admin_token(client):
     admin_login_response = client.post(
-        "/admin_login", json={"username": "Administrator", "password": "BOSSMAN"}
+        "/auth/admin_login",  # Updated route
+        json={"username": "Administrator", "password": "BOSSMAN"},
     )
     assert admin_login_response.status_code == 200
     return admin_login_response.json()["data"]["access_token"]

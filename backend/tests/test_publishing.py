@@ -5,8 +5,8 @@ import json
 import pytest
 from api import app
 from database import get_db_engine
+from database.db_models import SimulationResult
 from fastapi.testclient import TestClient
-from models_db import SimulationResult
 from sqlmodel import Session, select
 from tests.database_setup import setup_test_db
 

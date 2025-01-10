@@ -1,5 +1,5 @@
 import pytest
-from docker.services.simulation_server import aggregate_simulation_results, app
+from docker_utils.services.simulation_server import aggregate_simulation_results, app
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
