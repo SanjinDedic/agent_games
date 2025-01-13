@@ -30,22 +30,16 @@ class TeamSignup(BaseModel):
     """Model for creating a new team"""
 
     name: str
-    school_name: str = "Not Available"
     password: str
-    score: int = 0
-    color: str = "rgb(171,239,177)"
+    school_name: Optional[str] = "Not Available"
+    color: Optional[str] = "rgb(0,0,0)"
+    score: Optional[int] = 0
 
     @validator("name")
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError("Team name cannot be empty")
         return v.strip()
-
-    @validator("password")
-    def validate_password(cls, v):
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters long")
-        return v
 
 
 class SimulationConfig(BaseModel):

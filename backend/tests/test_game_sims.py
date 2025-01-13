@@ -1,53 +1,61 @@
-import os
+from datetime import datetime, timedelta
 
 import pytest
-from api import app
-from database import get_db_engine
+from database.db_models import League, SimulationResult
 from fastapi.testclient import TestClient
-from sqlmodel import Session
-from tests.database_setup import setup_test_db
-
-os.environ["TESTING"] = "1"
+from sqlmodel import Session, select
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup_database():
-    setup_test_db()
+@pytest.fixture(scope="function")
+def comp_test_league(db_session: Session) -> League:
+    """Create comp_test league for testing simulations"""
+    # Delete any existing league and its simulation results first
+    existing_league = db_session.exec(
+        select(League).where(League.name == "comp_test")
+    ).first()
+    if existing_league:
+        # First delete associated simulation results
+        simulation_results = db_session.exec(
+            select(SimulationResult).where(
+                SimulationResult.league_id == existing_league.id
+            )
+        ).all()
+        for result in simulation_results:
+            db_session.delete(result)
+        db_session.delete(existing_league)
+        db_session.commit()
 
-
-@pytest.fixture(scope="module")
-def db_session():
-    engine = get_db_engine()
-    with Session(engine) as session:
-        yield session
-        session.rollback()
-
-
-@pytest.fixture(scope="module")
-def client(db_session):
-    def get_db_session_override():
-        return db_session
-
-    app.dependency_overrides[get_db_engine] = get_db_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture(scope="module")
-def admin_token(client):
-    admin_login_response = client.post(
-        "/admin_login", json={"username": "Administrator", "password": "BOSSMAN"}
+    # Create new league
+    league = League(
+        name="comp_test",
+        created_date=datetime.now(),
+        expiry_date=datetime.now() + timedelta(days=7),
+        folder="leagues/admin/comp_test",
+        game="greedy_pig",
     )
-    assert admin_login_response.status_code == 200
-    return admin_login_response.json()["data"]["access_token"]
+    db_session.add(league)
+    db_session.commit()
+
+    yield league
+
+    # Clean up after test
+    # Delete associated simulation results first
+    simulation_results = db_session.exec(
+        select(SimulationResult).where(SimulationResult.league_id == league.id)
+    ).all()
+    for result in simulation_results:
+        db_session.delete(result)
+    db_session.delete(league)
+    db_session.commit()
 
 
-def test_greedy_pig_simulation(client, admin_token):
+def test_greedy_pig_simulation(
+    client: TestClient, auth_headers: dict, comp_test_league: League
+):
     simulation_response = client.post(
-        "/run_simulation",
+        "/admin/run-simulation",
         json={"league_name": "comp_test", "num_simulations": 100, "use_docker": False},
-        headers={"Authorization": f"Bearer {admin_token}"},
+        headers=auth_headers,
     )
     assert simulation_response.status_code == 200
     response_data = simulation_response.json()
@@ -55,17 +63,19 @@ def test_greedy_pig_simulation(client, admin_token):
     assert "total_points" in response_data["data"]
 
 
-def test_greedy_pig_simulation_with_custom_rewards(client, admin_token):
+def test_greedy_pig_simulation_with_custom_rewards(
+    client: TestClient, auth_headers: dict, comp_test_league: League
+):
     custom_rewards = [15, 10, 5, 3, 2, 1]
     simulation_response = client.post(
-        "/run_simulation",
+        "/admin/run-simulation",
         json={
             "league_name": "comp_test",
             "num_simulations": 100,
             "custom_rewards": custom_rewards,
             "use_docker": False,
         },
-        headers={"Authorization": f"Bearer {admin_token}"},
+        headers=auth_headers,
     )
     assert simulation_response.status_code == 200
     response_data = simulation_response.json()

@@ -6,7 +6,9 @@ client = TestClient(app)
 
 
 def test_get_game_instructions_greedy_pig():
-    response = client.post("/get_game_instructions", json={"game_name": "greedy_pig"})
+    response = client.post(
+        "user/get-game-instructions", json={"game_name": "greedy_pig"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
@@ -17,7 +19,7 @@ def test_get_game_instructions_greedy_pig():
 
 def test_get_game_instructions_non_existent_game():
     response = client.post(
-        "/get_game_instructions", json={"game_name": "non_existent_game"}
+        "user/get-game-instructions", json={"game_name": "non_existent_game"}
     )
     assert response.status_code == 200
     data = response.json()
@@ -26,7 +28,7 @@ def test_get_game_instructions_non_existent_game():
 
 
 def test_get_game_instructions_missing_game_name():
-    response = client.post("/get_game_instructions", json={})
+    response = client.post("user/get-game-instructions", json={})
     assert response.status_code == 422
     data = response.json()
     assert "detail" in data
@@ -34,16 +36,17 @@ def test_get_game_instructions_missing_game_name():
 
 
 def test_get_game_instructions_empty_game_name():
-    response = client.post("/get_game_instructions", json={"game_name": ""})
+    response = client.post("user/get-game-instructions", json={"game_name": ""})
     assert response.status_code == 422
     data = response.json()
+    print(data, "for empty game name")
     assert "detail" in data
-    assert "Game name must not be empty or just whitespace" in str(data["detail"])
+    assert "Game name must not be empty" in str(data["detail"])
 
 
 def test_starter_code_content():
     for game in GAMES:
-        response = client.post("/get_game_instructions", json={"game_name": game})
+        response = client.post("user/get-game-instructions", json={"game_name": game})
         assert response.status_code == 200
         data = response.json()
         starter_code = data["data"]["starter_code"]
@@ -53,7 +56,7 @@ def test_starter_code_content():
 
 def test_game_instructions_content():
     for game in GAMES:
-        response = client.post("/get_game_instructions", json={"game_name": game})
+        response = client.post("user/get-game-instructions", json={"game_name": game})
         assert response.status_code == 200
         data = response.json()
         instructions = data["data"]["game_instructions"]

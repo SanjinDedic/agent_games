@@ -15,7 +15,6 @@ from routes.admin.admin_db import (
     get_all_teams,
     get_league,
     publish_sim_results,
-    run_simulation,
     save_simulation_results,
     update_expiry_date,
 )

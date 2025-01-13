@@ -6,11 +6,16 @@ from typing import Dict, Optional, Tuple, Union
 
 import pytz
 from config import ROOT_DIR
-from database.db_models import League, SimulationResult, SimulationResultItem, Team
-from docker_utils.scripts.docker_simulation import run_docker_simulation
+from database.db_models import (
+    League,
+    SimulationResult,
+    SimulationResultItem,
+    Submission,
+    Team,
+)
 from games.game_factory import GameFactory
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -160,12 +165,16 @@ async def create_team(session: Session, team_data) -> Dict:
 
 async def delete_team(session: Session, team_name: str) -> str:
     """Delete a team and its associated data"""
+    # TODO: Enforcre unique team names
     team = session.exec(select(Team).where(Team.name == team_name)).first()
-
+    print("team", team)
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
 
     try:
+        # Delete associated submissions first
+        session.exec(delete(Submission).where(Submission.team_id == team.id))
+
         # Delete team's code files if they exist
         if team.league:
             for game_name in ["greedy_pig", "prisoners_dilemma"]:
@@ -175,14 +184,13 @@ async def delete_team(session: Session, team_name: str) -> str:
                 if os.path.exists(team_file):
                     os.remove(team_file)
 
-        # Delete team from database
-        session.delete(team)
-        session.commit()
-        return f"Team '{team_name}' successfully deleted"
+        # Delete the team itself
+        session.delete(team)  # Add this line
+        session.commit()  # Add this line
 
+        return f"Team '{team_name}' deleted successfully"
     except Exception as e:
-        session.rollback()
-        logger.error(f"Error deleting team: {e}")
+        logger.error(f"Error deleting team submissions: {e}")
         raise
 
 
@@ -203,53 +211,6 @@ async def get_all_teams(session: Session) -> Dict:
         }
     except Exception as e:
         logger.error(f"Error retrieving teams: {e}")
-        raise
-
-
-async def run_simulation(session: Session, simulation_config) -> Dict:
-    """Run a simulation for a league"""
-    try:
-        league = session.exec(
-            select(League).where(League.name == simulation_config.league_name)
-        ).first()
-
-        if not league:
-            raise LeagueNotFoundError(
-                f"League '{simulation_config.league_name}' not found"
-            )
-
-        is_successful, results = await run_docker_simulation(
-            league.name,
-            league.game,
-            league.folder,
-            simulation_config.custom_rewards,
-            player_feedback=True,
-            num_simulations=simulation_config.num_simulations,
-        )
-
-        if not is_successful:
-            raise Exception(results)
-
-        if league.name != "test_league":
-            simulation_result = await save_simulation_results(
-                session,
-                league.id,
-                results["simulation_results"],
-                simulation_config.custom_rewards,
-                results.get("feedback"),
-            )
-        else:
-            simulation_result = None
-
-        return {
-            "simulation_id": simulation_result.id if simulation_result else None,
-            "results": results["simulation_results"],
-            "feedback": results.get("feedback"),
-            "player_feedback": results.get("player_feedback"),
-        }
-
-    except Exception as e:
-        logger.error(f"Error running simulation: {e}")
         raise
 
 

@@ -1,11 +1,13 @@
 import os
 import sys
+import time
 from pathlib import Path
 
 # Add the project root directory to the Python path
 project_root = str(Path(__file__).parent.parent)
 sys.path.append(project_root)
 
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, Generator
 
@@ -14,12 +16,71 @@ from api import app
 from config import get_database_url
 from database.db_models import Admin, League, Team
 from database.db_session import get_db
+from docker_utils.containers import ensure_containers_running, stop_containers
 from fastapi.testclient import TestClient
 from routes.auth.auth_core import create_access_token, get_password_hash
 from sqlmodel import Session, SQLModel, create_engine, select
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 # Set testing environment variable
 os.environ["TESTING"] = "1"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Primary test environment setup fixture"""
+    logger.info("Starting test environment setup")
+
+    try:
+        # Create test directories
+        root_dir = Path(__file__).parent.parent
+        test_dirs = {
+            "prisoners": {
+                "test": root_dir
+                / "games"
+                / "prisoners_dilemma"
+                / "leagues"
+                / "test_league",
+                "admin": root_dir / "games" / "prisoners_dilemma" / "leagues" / "admin",
+            },
+            "greedy": {
+                "test": root_dir / "games" / "greedy_pig" / "leagues" / "test_league",
+                "admin": root_dir / "games" / "greedy_pig" / "leagues" / "admin",
+            },
+        }
+
+        # Create directories
+        for game_dirs in test_dirs.values():
+            for path in game_dirs.values():
+                try:
+                    path.mkdir(parents=True, exist_ok=True)
+                    if not path.exists():
+                        raise RuntimeError(f"Failed to create directory: {path}")
+                    logger.info(f"Verified directory exists: {path}")
+                except Exception as e:
+                    logger.error(f"Error creating directory {path}: {str(e)}")
+                    raise
+
+        # Start containers
+        logger.info("Starting Docker containers")
+        ensure_containers_running()
+
+        # Allow container startup time
+        time.sleep(5)  # Give containers time to fully start
+        logger.info("Test environment setup completed successfully")
+
+        yield test_dirs
+
+        # Cleanup
+        logger.info("Starting test environment cleanup")
+        stop_containers()
+        logger.info("Test environment cleanup completed")
+
+    except Exception as e:
+        logger.error(f"Error in test environment setup/teardown: {str(e)}")
+        raise
 
 
 @pytest.fixture
@@ -67,14 +128,22 @@ def admin_token(db_session) -> str:
 @pytest.fixture
 def team_token(db_session) -> str:
     """Create a test team and return a team token"""
+    # First get the unassigned league
+    unassigned_league = db_session.exec(
+        select(League).where(League.name == "unassigned")
+    ).one()
+
+    # Create team with league_id
     team = Team(
         name="test_team",
         school_name="Test School",
         password_hash=get_password_hash("test_password"),
+        league_id=unassigned_league.id,  # Add the league_id here
     )
     db_session.add(team)
     db_session.commit()
 
+    # Create access token
     access_token = create_access_token(
         data={"sub": team.name, "role": "student"}, expires_delta=timedelta(minutes=30)
     )
