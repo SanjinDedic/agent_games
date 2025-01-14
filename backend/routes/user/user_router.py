@@ -11,7 +11,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from games.game_factory import GameFactory
 from models_api import ErrorResponseModel, ResponseModel
 from routes.admin.admin_models import LeagueName
-from routes.auth.auth_core import get_current_user
+from routes.auth.auth_core import (
+    get_current_user,
+    verify_admin_or_student,
+    verify_any_role,
+    verify_student_role,
+)
 from routes.auth.auth_db import get_db
 from routes.user.user_db import (
     SubmissionLimitExceededError,
@@ -33,6 +38,7 @@ user_router = APIRouter()
 
 
 @user_router.post("/submit-agent", response_model=ResponseModel)
+@verify_student_role
 async def submit_agent(
     submission: SubmissionCode,
     current_user: dict = Depends(get_current_user),
@@ -124,6 +130,7 @@ async def submit_agent(
 
 
 @user_router.post("/league-assign", response_model=ResponseModel)
+@verify_admin_or_student
 async def assign_team_to_league_endpoint(
     league: LeagueAssignRequest,
     current_user: dict = Depends(get_current_user),
@@ -132,13 +139,6 @@ async def assign_team_to_league_endpoint(
     """Assign a team to a league"""
     team_name = current_user["team_name"]
     logger.info(f'Team Name "{team_name} about to assign to league "{league.name}"')
-
-    if current_user["role"] not in ["admin", "student"]:
-        return ErrorResponseModel(
-            status="error",
-            message="Only admin and student users can assign teams to leagues",
-        )
-
     try:
         msg = assign_team_to_league(session, team_name, league.name)
         return ResponseModel(status="success", message=msg)
@@ -237,6 +237,7 @@ async def get_available_games():
 
 
 @user_router.get("/get-all-leagues", response_model=ResponseModel)
+@verify_admin_or_student
 async def get_leagues_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
@@ -244,12 +245,6 @@ async def get_leagues_endpoint(
     """Get all leagues - accessible to both admin and student roles"""
     logger.info("Received request for get-all-leagues")
     logger.info(f"Current user data: {current_user}")
-    print(f"Current user data: {current_user}")
-    # Verify user has allowed role
-    if current_user["role"] not in ["admin", "student"]:
-        raise HTTPException(
-            status_code=403, detail="You must be an admin or student to access leagues"
-        )
 
     try:
         # Reuse existing admin function
