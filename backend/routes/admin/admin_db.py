@@ -137,7 +137,6 @@ async def delete_team(session: Session, team_name: str) -> str:
     """Delete a team and its associated data"""
     # TODO: Enforcre unique team names
     team = session.exec(select(Team).where(Team.name == team_name)).first()
-    print("team", team)
     if not team:
         raise TeamError(f"Team '{team_name}' not found")
 

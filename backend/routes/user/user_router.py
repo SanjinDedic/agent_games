@@ -44,7 +44,6 @@ async def submit_agent(
 
     try:
         logger.info(f"Sending submission to validation server for team {team_name}")
-        print(f"Sending submission to validation server for team {team_name}")
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "http://localhost:8001/validate",

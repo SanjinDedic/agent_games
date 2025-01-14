@@ -6,6 +6,9 @@ from database.db_models import Admin, League, Team
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+# The idea of this test is to test all the endpoints that get called by the admin user on the frontend
+# The only exception is running simulations, which is tested in test_simulation.py
+
 
 def print_db_state(session: Session):
     """Helper function to print current database state"""
