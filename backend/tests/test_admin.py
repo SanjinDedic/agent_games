@@ -5,6 +5,7 @@ import pytest
 from database.db_models import Admin, League, Team
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+from utils import get_games_names
 
 # The idea of this test is to test all the endpoints that get called by the admin user on the frontend
 # The only exception is running simulations, which is tested in test_simulation.py
@@ -64,13 +65,13 @@ def test_create_league_invalid_game(client: TestClient, auth_headers: dict):
         headers=auth_headers,
         json={"name": "new_league", "game": "invalid_game"},
     )
+    valid_games = get_games_names()
     assert response.status_code == 422
     data = response.json()
     assert data["detail"][0]["type"] == "value_error"
-    assert (
-        data["detail"][0]["msg"]
-        == "Value error, Game must be one of: prisoners_dilemma, greedy_pig"
-    )
+    assert "Value error, Game must be one of" in data["detail"][0]["msg"]
+    for game in valid_games:
+        assert game in data["detail"][0]["msg"]
 
 
 def test_create_team_success(client: TestClient, auth_headers: dict):
