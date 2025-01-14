@@ -33,38 +33,8 @@ class LeagueNotFoundError(Exception):
     pass
 
 
-class TeamExistsError(Exception):
-    """Raised when attempting to create a team that already exists"""
-
-    pass
-
-
-class TeamNotFoundError(Exception):
-    """Raised when team is not found"""
-
-    pass
-
-
-class TeamCreationError(Exception):
-    """Base exception for team creation errors"""
-
-    pass
-
-
-class TeamValidationError(TeamCreationError):
-    """Raised when team data is invalid"""
-
-    pass
-
-
-class TeamExistsError(TeamCreationError):
-    """Raised when attempting to create a duplicate team"""
-
-    pass
-
-
-class TeamLeagueError(TeamCreationError):
-    """Raised when there are issues with team league assignment"""
+class TeamError(Exception):
+    """Base exception for all team-related errors"""
 
     pass
 
@@ -120,21 +90,21 @@ async def create_team(session: Session, team_data) -> Dict:
     try:
         # Validate team data
         if not team_data.name or not team_data.password:
-            raise TeamValidationError("Team name and password are required")
+            raise TeamError("Team name and password are required")
 
         # Check for existing team
         existing_team = session.exec(
             select(Team).where(Team.name == team_data.name)
         ).first()
         if existing_team:
-            raise TeamExistsError(f"Team with name '{team_data.name}' already exists")
+            raise TeamError(f"Team with name '{team_data.name}' already exists")
 
         # Get unassigned league
         unassigned_league = session.exec(
             select(League).where(League.name == "unassigned")
         ).first()
         if not unassigned_league:
-            raise TeamLeagueError("Unable to assign team to default league")
+            raise TeamError("Unable to assign team to default league")
 
         team = Team(
             name=team_data.name,
@@ -150,17 +120,17 @@ async def create_team(session: Session, team_data) -> Dict:
 
         return {"team_id": team.id, "name": team.name, "school": team.school_name}
 
-    except (TeamValidationError, TeamExistsError, TeamLeagueError) as e:
+    except TeamError as e:
         session.rollback()
         raise
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Database integrity error creating team: {e}")
-        raise TeamCreationError("Unable to create team due to data constraints")
+        raise TeamError("Unable to create team due to data constraints")
     except Exception as e:
         session.rollback()
         logger.error(f"Unexpected error creating team: {e}")
-        raise TeamCreationError("An unexpected error occurred creating the team")
+        raise TeamError("An unexpected error occurred creating the team")
 
 
 async def delete_team(session: Session, team_name: str) -> str:
@@ -169,7 +139,7 @@ async def delete_team(session: Session, team_name: str) -> str:
     team = session.exec(select(Team).where(Team.name == team_name)).first()
     print("team", team)
     if not team:
-        raise TeamNotFoundError(f"Team '{team_name}' not found")
+        raise TeamError(f"Team '{team_name}' not found")
 
     try:
         # Delete associated submissions first

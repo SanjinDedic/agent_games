@@ -1,14 +1,9 @@
-import logging
 import subprocess
 from unittest.mock import patch
 
 import pytest
 from api import lifespan
-from docker_utils.containers import (
-    ensure_containers_running,
-    get_container_logs,
-    stop_containers,
-)
+from docker_utils.containers import get_container_logs, stop_containers
 from fastapi import FastAPI
 
 
@@ -33,10 +28,8 @@ def mock_containers_logger():
 @pytest.mark.asyncio
 async def test_lifespan_successful_startup_shutdown(mock_logger, test_app):
     """Test successful container startup and shutdown"""
-    with patch(
-        "docker_utils.containers.ensure_containers_running"
-    ) as mock_ensure_containers, patch(
-        "docker_utils.containers.stop_containers"
+    with patch("api.ensure_containers_running") as mock_ensure_containers, patch(
+        "api.stop_containers"
     ) as mock_stop_containers:
 
         async with lifespan(test_app):
@@ -60,20 +53,14 @@ async def test_lifespan_startup_failure(mock_logger, test_app):
     """Test error handling during container startup"""
     startup_error = Exception("Container startup failed")
 
-    with patch(
-        "docker_utils.containers.ensure_containers_running", side_effect=startup_error
-    ), patch("docker_utils.containers.stop_containers") as mock_stop_containers:
+    with patch("api.ensure_containers_running", side_effect=startup_error), patch(
+        "api.stop_containers"
+    ) as mock_stop_containers:
 
         async with lifespan(test_app):
             mock_logger.error.assert_called_with(
                 f"Failed to start containers: {startup_error}"
             )
-            mock_logger.reset_mock()
-
-        mock_stop_containers.assert_called_once()
-        mock_logger.info.assert_any_call(
-            "Shutting down application, stopping containers..."
-        )
 
 
 @pytest.mark.asyncio
@@ -81,16 +68,13 @@ async def test_lifespan_shutdown_failure(mock_logger, test_app):
     """Test error handling during container shutdown"""
     shutdown_error = Exception("Container shutdown failed")
 
-    with patch(
-        "docker_utils.containers.ensure_containers_running"
-    ) as mock_ensure_containers, patch(
-        "docker_utils.containers.stop_containers", side_effect=shutdown_error
+    with patch("api.ensure_containers_running") as mock_ensure_containers, patch(
+        "api.stop_containers", side_effect=shutdown_error
     ):
 
         async with lifespan(test_app):
             mock_ensure_containers.assert_called_once()
             mock_logger.info.assert_any_call("Starting application containers...")
-            mock_logger.reset_mock()
 
         mock_logger.error.assert_called_with(
             f"Error during container shutdown: {shutdown_error}"

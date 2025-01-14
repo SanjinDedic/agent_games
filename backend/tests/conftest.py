@@ -126,28 +126,39 @@ def admin_token(db_session) -> str:
 
 
 @pytest.fixture
-def team_token(db_session) -> str:
-    """Create a test team and return a team token"""
-    # First get the unassigned league
-    unassigned_league = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).one()
+def team_token(db_session):
+    """Create a test team with league assignment"""
 
-    # Create team with league_id
+    # First create and commit the league
+    league = db_session.exec(select(League).where(League.name == "comp_test")).first()
+    if not league:
+        league = League(
+            name="comp_test",
+            created_date=datetime.now(),
+            expiry_date=datetime.now() + timedelta(days=7),
+            folder="leagues/admin/comp_test",
+            game="greedy_pig",
+        )
+        db_session.add(league)
+        db_session.commit()  # Commit league first to get its ID
+
+        # Refresh the league to ensure we have its ID
+        db_session.refresh(league)
+
+    # Now create the team with the committed league's ID
     team = Team(
         name="test_team",
         school_name="Test School",
         password_hash=get_password_hash("test_password"),
-        league_id=unassigned_league.id,  # Add the league_id here
+        league_id=league.id,  # Now league.id will be valid
     )
     db_session.add(team)
     db_session.commit()
 
-    # Create access token
-    access_token = create_access_token(
+    # Create and return token
+    return create_access_token(
         data={"sub": team.name, "role": "student"}, expires_delta=timedelta(minutes=30)
     )
-    return access_token
 
 
 @pytest.fixture
