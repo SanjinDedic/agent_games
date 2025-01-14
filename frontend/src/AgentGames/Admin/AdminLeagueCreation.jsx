@@ -15,7 +15,7 @@ function AdminLeagueCreation() {
   });
 
   useEffect(() => {
-    fetch(`${apiUrl}/get_available_games`, {
+    fetch(`${apiUrl}/user/get-available-games`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -65,7 +65,7 @@ function AdminLeagueCreation() {
       return;
     }
 
-    fetch(`${apiUrl}/league_create`, {
+    fetch(`${apiUrl}/admin/league-create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

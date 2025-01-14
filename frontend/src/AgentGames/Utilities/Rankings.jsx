@@ -15,7 +15,7 @@ function AgentRankings() {
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    fetch(`${apiUrl}/get_published_results_for_all_leagues`)
+    fetch(`${apiUrl}/user/get-published-results-for-all-leagues`)
       .then(response => response.json())
       .then(data => {
         if (data.status === "success") {

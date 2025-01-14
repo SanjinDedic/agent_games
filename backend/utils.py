@@ -2,7 +2,8 @@ import json
 import os
 
 from config import ROOT_DIR
-from database import create_team
+from routes.admin.admin_db import create_team  # Move this import from database.py
+from routes.auth.auth_core import encode_id  # Updated import
 
 
 def add_teams_from_json(session, teams_json_path):

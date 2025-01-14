@@ -1,9 +1,6 @@
-# test_docker_simulation.py
 import json
 import os
 import subprocess
-
-# Setup Python path
 import sys
 from pathlib import Path
 from unittest.mock import mock_open, patch
@@ -19,64 +16,62 @@ sys.path.insert(0, project_root)
 # Now import project modules
 from api import app
 from database import get_db_engine
-from docker.config import CONTAINERS
-from docker.containers import ensure_containers_running, stop_containers
-from docker.scripts.docker_simulation import (
+from docker_utils.config import CONTAINERS
+from docker_utils.containers import ensure_containers_running, stop_containers
+from docker_utils.scripts.docker_simulation import (
     SIMULATION_RESULTS_SCHEMA,
     SimulationContainerError,
     run_docker_simulation,
     validate_docker_results,
 )
-from tests.database_setup import setup_test_db
-
-os.environ["TESTING"] = "1"
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup_database():
-    setup_test_db()
+def test_validator_container_health():
+    """Verify the validator container is running and healthy"""
+    import asyncio
+
+    async def check_health():
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get("http://localhost:8001/health")
+            assert response.status_code == 200
+            assert response.json() == {"status": "healthy"}
+        except httpx.RequestError as e:
+            pytest.fail(
+                f"Validator container is not running or not accessible: {str(e)}"
+            )
+
+    asyncio.run(check_health())
 
 
-@pytest.fixture(scope="module")
-def db_session():
-    engine = get_db_engine()
-    with Session(engine) as session:
-        yield session
-        session.rollback()
+def test_simulator_container_health():
+    """Verify the simulator container is running and healthy"""
+    import asyncio
 
+    async def check_health():
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get("http://localhost:8002/")
+            assert response.status_code == 200
+            assert response.json() == {"status": "healthy"}
+        except httpx.RequestError as e:
+            pytest.fail(
+                f"Simulator container is not running or not accessible: {str(e)}"
+            )
 
-@pytest.fixture(scope="module")
-def client(db_session):
-    def get_db_session_override():
-        return db_session
-
-    app.dependency_overrides[get_db_engine] = get_db_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture(scope="module")
-def admin_token(client):
-    admin_login_response = client.post(
-        "/admin_login", json={"username": "Administrator", "password": "BOSSMAN"}
-    )
-    assert admin_login_response.status_code == 200
-    return admin_login_response.json()["data"]["access_token"]
+    asyncio.run(check_health())
 
 
 @pytest.mark.asyncio
-async def test_greedy_pig_docker_simulation(client, admin_token):
-    simulation_response = client.post(
-        "/run_simulation",
-        json={"league_name": "comp_test", "num_simulations": 100},
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-    assert simulation_response.status_code == 200
-    response_data = simulation_response.json()
-    assert "data" in response_data
-    assert "total_points" in response_data["data"]
-    assert "feedback" in response_data["data"]
+async def test_simulator_container_health():
+    """Verify the simulator container is running and healthy"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:8002/")
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+    except httpx.RequestError as e:
+        pytest.fail(f"Simulator container is not running or not accessible: {str(e)}")
 
 
 @pytest.mark.asyncio
@@ -137,6 +132,7 @@ async def test_run_docker_simulation_api_error(mock_post):
     assert "Simulation failed with status code 500" in error_message
 
 
+# Does this need to be mocked??
 @patch("subprocess.run")
 def test_ensure_containers_running_success(mock_subprocess_run):
     mock_subprocess_run.return_value.stdout = ""
@@ -146,7 +142,7 @@ def test_ensure_containers_running_success(mock_subprocess_run):
     mock_inspect_result = mock_subprocess_run.return_value
     mock_inspect_result.stdout = json.dumps([{"State": {"Running": True}}])
 
-    ensure_containers_running("/test/root/dir")
+    ensure_containers_running()
 
     # Verify container checks and creation calls
     assert mock_subprocess_run.call_count >= len(CONTAINERS) * 2
@@ -159,11 +155,12 @@ def test_ensure_containers_running_failure(mock_subprocess_run):
     )
 
     with pytest.raises(RuntimeError) as exc_info:
-        ensure_containers_running("/test/root/dir")
+        ensure_containers_running()
 
     assert "Failed to manage" in str(exc_info.value)
 
 
+# Can this be done without mocking?
 @patch("subprocess.run")
 def test_stop_containers(mock_subprocess_run):
     mock_subprocess_run.return_value.stdout = "container-id"

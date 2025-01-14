@@ -41,11 +41,15 @@ function AdminLeague() {
   }, []);
 
   const fetchAdminLeagues = () => {
-    fetch(apiUrl + '/get_all_admin_leagues')
+    fetch(`${apiUrl}/user/get-all-leagues`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
       .then(response => response.json())
       .then(data => {
         if (data.status === "success") {
-          dispatch(setLeagues(data.data.admin_leagues));
+          dispatch(setLeagues(data.data.leagues));
         } else if (data.status === "failed") {
           toast.error(data.message)
         } else if (data.detail === "Invalid token") {
@@ -57,7 +61,7 @@ function AdminLeague() {
 
   useEffect(() => {
     if (currentLeague?.name) {
-      fetch(`${apiUrl}/get_all_league_results`, {
+      fetch(`${apiUrl}/admin/get-all-league-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,11 +72,11 @@ function AdminLeague() {
         .then(response => response.json())
         .then(data => {
           if (data.status === "success") {
-            if (data.data.all_results.length == 0) {
+            if (data.data.results.length == 0) {
               dispatch(clearResults());
               toast.error("No results in the selected League")
             } else {
-              dispatch(setResults(data.data.all_results));
+              dispatch(setResults(data.data.results));
             }
           } else if (data.status === "failed") {
             toast.error(data.message);
@@ -95,7 +99,7 @@ function AdminLeague() {
 
   const handleExpiryDateChange = (date) => {
     const formattedDate = date.toISOString();
-    fetch(`${apiUrl}/update_expiry_date`, {
+    fetch(`${apiUrl}/admin/update-expiry-date`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

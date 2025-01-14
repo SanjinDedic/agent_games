@@ -7,8 +7,8 @@ backend_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(backend_dir)
 sys.path.append(backend_dir)
 
+from database.db_models import League
 from games.greedy_pig.greedy_pig import GreedyPigGame
-from models_db import League
 
 # Set up the test league
 test_league_folder = os.path.join(

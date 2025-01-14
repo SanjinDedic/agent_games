@@ -7,8 +7,8 @@ backend_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(backend_dir)
 sys.path.append(backend_dir)
 
+from database.db_models import League
 from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
-from models_db import League
 
 # Set up the test league
 test_league_folder = os.path.join(

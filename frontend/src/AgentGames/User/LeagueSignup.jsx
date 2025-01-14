@@ -29,10 +29,14 @@ function AgentLeagueSignUp() {
   useEffect(() => {
     const fetchLeagues = async () => {
       try {
-        const response = await fetch(`${apiUrl}/get_all_admin_leagues`);
+        const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
         const data = await response.json();
         if (data.status === "success") {
-          dispatch(setLeagues(data.data.admin_leagues));
+          dispatch(setLeagues(data.data.leagues));
         } else if (data.status === "failed") {
           toast.error(data.message);
         }
@@ -57,7 +61,7 @@ function AgentLeagueSignUp() {
     }
 
     try {
-      const response = await fetch(`${apiUrl}/league_assign`, {
+      const response = await fetch(`${apiUrl}/user/league-assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

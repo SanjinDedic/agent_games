@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from auth import get_password_hash, verify_password
+from routes.auth.auth_core import get_password_hash, verify_password  # Updated import
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint
 
 # ---------------------------------------------------------------------------------#
@@ -41,7 +41,7 @@ class Team(SQLModel, table=True):
     password_hash: str
     score: int = 0
     color: str = "rgb(171,239,177)"
-    league_id: int = Field(default=None, foreign_key="league.id")
+    league_id: int = Field(foreign_key="league.id")
     league: League = Relationship(back_populates="teams")
     submissions: List["Submission"] = Relationship(back_populates="team")
     __table_args__ = (UniqueConstraint("name", "league_id"),)

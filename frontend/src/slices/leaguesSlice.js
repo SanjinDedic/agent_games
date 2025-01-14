@@ -5,7 +5,7 @@ const initialState = {
   currentLeague: null,
   currentLeagueResults: [],
   currentLeagueResultSelected: null,
-  currentRewards: [],
+  currentRewards: null,
 };
 
 const leaguesSlice = createSlice({
@@ -45,14 +45,14 @@ const leaguesSlice = createSlice({
       }
     },
     setCurrentLeague: (state, action) => {
-        const league = state.list.find(league => league.name === action.payload);
-        if (league) {
-          state.currentLeague = league;
-        }
+      const league = state.list.find(league => league.name === action.payload);
+      if (league) {
+        state.currentLeague = league;
+      }
     },
     clearLeagues: (state, action) => {
-        state.list = [];
-        state.currentLeague = null;
+      state.list = [];
+      state.currentLeague = null;
     },
     setResults: (state, action) => {
       state.currentLeagueResults = action.payload;
@@ -61,14 +61,14 @@ const leaguesSlice = createSlice({
       }
     },
     addSimulationResult: (state, action) => {
-        state.currentLeagueResults.unshift(action.payload);
-        state.currentLeagueResultSelected = action.payload;
+      state.currentLeagueResults.unshift(action.payload);
+      state.currentLeagueResultSelected = action.payload;
     },
     setCurrentSimulation: (state, action) => {
       const timestamp = state.currentLeagueResults.find(league => league.timestamp === action.payload);
-        if (timestamp) {
-          state.currentLeagueResultSelected = timestamp;
-        }
+      if (timestamp) {
+        state.currentLeagueResultSelected = timestamp;
+      }
     },
     setRewards: (state, action) => {
       state.currentRewards = action.payload;

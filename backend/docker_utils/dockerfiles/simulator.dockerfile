@@ -1,6 +1,6 @@
 FROM python:3.12
 
-WORKDIR /agent_games
+WORKDIR /backend
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -16,14 +16,14 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Copy application files
-COPY . /agent_games/
+COPY . /backend/
 
-# Set ownership of the working directory
-RUN chown -R simuser:simgroup /agent_games
+# Set ownership of the working directory and all files
+RUN chown -R simuser:simgroup /backend
 
 # Switch to non-root user
 USER simuser
 
 EXPOSE 8002
 
-CMD ["python", "docker/services/simulation_server.py"]
+CMD ["python", "docker_utils/services/simulation_server.py"]

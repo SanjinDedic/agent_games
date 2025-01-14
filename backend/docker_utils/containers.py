@@ -4,17 +4,19 @@ import subprocess
 import time
 from typing import Optional
 
+from config import ROOT_DIR  # Import our robust ROOT_DIR
+
 logger = logging.getLogger(__name__)
 
 # Container configuration
 CONTAINERS = {
     "validator": {
         "port": "8001:8001",
-        "dockerfile": "docker/dockerfiles/validator.dockerfile",
+        "dockerfile": "docker_utils/dockerfiles/validator.dockerfile",
     },
     "simulator": {
         "port": "8002:8002",
-        "dockerfile": "docker/dockerfiles/simulator.dockerfile",
+        "dockerfile": "docker_utils/dockerfiles/simulator.dockerfile",
     },
 }
 
@@ -63,7 +65,7 @@ def stop_containers():
             logger.error(f"Unexpected error stopping {container_name} container: {e}")
 
 
-def ensure_containers_running(root_dir: str):
+def ensure_containers_running():  # Removed root_dir parameter since we use ROOT_DIR from config
     """Ensure both validator and simulator containers are running, building images if needed"""
     for container_name, config in CONTAINERS.items():
         try:
@@ -95,6 +97,7 @@ def ensure_containers_running(root_dir: str):
                         ".",
                     ],
                     check=True,
+                    cwd=ROOT_DIR,  # Use ROOT_DIR from config
                 )
 
             # Start container with read-only mount
@@ -109,11 +112,12 @@ def ensure_containers_running(root_dir: str):
                     "-p",
                     config["port"],
                     "-v",
-                    f"{root_dir}:/agent_games:ro",  # Mount as read-only
+                    f"{ROOT_DIR}:/agent_games:ro",  # Mount ROOT_DIR as /agent_games in container
                     "--restart=unless-stopped",
                     container_name,
                 ],
                 check=True,
+                cwd=ROOT_DIR,  # Use ROOT_DIR from config
             )
 
             # Wait briefly for container to start
