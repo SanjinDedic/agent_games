@@ -27,7 +27,7 @@ from routes.admin.admin_models import (
     TeamDelete,
     TeamSignup,
 )
-from routes.auth.auth_core import get_current_user
+from routes.auth.auth_core import get_current_user, verify_admin_role, verify_any_role
 from routes.auth.auth_db import get_db
 from sqlmodel import Session
 from utils import transform_result
@@ -37,21 +37,12 @@ logger = logging.getLogger(__name__)
 admin_router = APIRouter()
 
 
-# Helper function to verify admin role
-async def verify_admin(current_user: dict = Depends(get_current_user)):
-    print("Current user in admin verify: ", current_user)
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=403, detail="Only admin users are authorized for this operation"
-        )
-    return current_user
-
-
 # League Management Routes
 @admin_router.post("/league-create", response_model=ResponseModel)
+@verify_admin_role
 async def create_league_endpoint(
     league: LeagueSignUp,
-    current_user: dict = Depends(verify_admin),
+    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Create a new league"""
@@ -72,9 +63,10 @@ async def create_league_endpoint(
 
 # Team Management Routes
 @admin_router.post("/team-create", response_model=ResponseModel)
+@verify_admin_role
 async def create_team_endpoint(
     team: TeamSignup,
-    current_user: dict = Depends(verify_admin),
+    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Create a new team"""
@@ -91,9 +83,10 @@ async def create_team_endpoint(
 
 
 @admin_router.post("/delete-team", response_model=ResponseModel)
+@verify_admin_role
 async def delete_team_endpoint(
     team: TeamDelete,
-    current_user: dict = Depends(verify_admin),
+    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Delete a team"""
@@ -108,9 +101,10 @@ async def delete_team_endpoint(
 
 
 @admin_router.get("/get-all-teams", response_model=ResponseModel)
+@verify_admin_role
 async def get_teams_endpoint(
-    current_user: dict = Depends(verify_admin),
     session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     print("Get all teams called")
     """Get all teams"""
@@ -127,6 +121,7 @@ async def get_teams_endpoint(
 
 
 @admin_router.post("/run-simulation", response_model=ResponseModel)
+@verify_admin_role
 async def run_simulation_endpoint(
     simulation_config: SimulationConfig,
     current_user: dict = Depends(get_current_user),
@@ -134,11 +129,6 @@ async def run_simulation_endpoint(
 ):
     """Run a simulation"""
     try:
-        if current_user["role"] != "admin":
-            return ErrorResponseModel(
-                status="error", message="Only admin users can run simulations"
-            )
-
         try:
             league = await get_league(session, simulation_config.league_name)
         except Exception as e:
@@ -231,9 +221,10 @@ async def run_simulation_endpoint(
 
 
 @admin_router.post("/get-all-league-results", response_model=ResponseModel)
+@verify_any_role
 async def get_league_results_endpoint(
     league: LeagueName,
-    current_user: dict = Depends(verify_admin),
+    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Get all results for a specific league"""
@@ -252,9 +243,10 @@ async def get_league_results_endpoint(
 
 
 @admin_router.post("/publish-results", response_model=ResponseModel)
+@verify_admin_role
 async def publish_results_endpoint(
     results: LeagueResults,
-    current_user: dict = Depends(verify_admin),
+    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Publish simulation results"""
@@ -271,9 +263,10 @@ async def publish_results_endpoint(
 
 
 @admin_router.post("/update-expiry-date", response_model=ResponseModel)
+@verify_admin_role
 async def update_expiry_endpoint(
     expiry: ExpiryDate,
-    current_user: dict = Depends(verify_admin),
+    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Update league expiry date"""
