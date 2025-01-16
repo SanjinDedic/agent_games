@@ -24,8 +24,10 @@ from routes.user.user_db import (
     assign_team_to_league,
     get_all_leagues,
     get_all_published_results,
+    get_latest_submissions_for_league,
     get_published_result,
     get_team,
+    get_team_submission,
     save_submission,
 )
 from routes.user.user_models import GameName, LeagueAssignRequest, SubmissionCode
@@ -258,4 +260,48 @@ async def get_leagues_endpoint(
         logger.error(f"Error retrieving leagues: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to retrieve leagues: {str(e)}"
+        )
+
+
+@user_router.get("/get-league-submissions/{league_id}", response_model=ResponseModel)
+@verify_any_role
+async def get_league_submissions(
+    league_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get latest submissions for all teams in a league"""
+    try:
+        submissions = await get_latest_submissions_for_league(session, league_id)
+        return ResponseModel(
+            status="success",
+            message="Submissions retrieved successfully",
+            data=submissions,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving submissions: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve submissions: {str(e)}"
+        )
+
+
+@user_router.get("/get-team-submission", response_model=ResponseModel)
+@verify_any_role
+async def get_team_submission_endpoint(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get latest submission for the current team"""
+    team_name = current_user["team_name"]
+    try:
+        submission = get_team_submission(session, team_name)
+        return ResponseModel(
+            status="success",
+            message="Submission retrieved successfully",
+            data=submission,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving submission: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve submission: {str(e)}"
         )

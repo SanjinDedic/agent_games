@@ -2,11 +2,12 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, Optional
 
 import pytz
 from config import ROOT_DIR
 from database.db_models import League, Submission, Team
+from sqlalchemy import and_
 from sqlmodel import Session, select
 
 logger = logging.getLogger(__name__)
@@ -219,3 +220,70 @@ def get_team(session, team_name):
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     return team
+
+
+# routes/user/user_db.py
+
+
+# routes/user/user_db.py
+
+
+async def get_latest_submissions_for_league(
+    session: Session, league_id: int
+) -> Dict[str, str]:
+    """Get latest submissions for all teams in a league"""
+    # Use a subquery to get the latest submission for each team
+    subquery = (
+        select(
+            Submission.team_id, func.max(Submission.timestamp).label("max_timestamp")
+        )
+        .group_by(Submission.team_id)
+        .subquery()
+    )
+
+    # Join with the teams and submissions tables to get the actual submission data
+    query = (
+        select(Team, Submission)
+        .join(subquery, Team.id == subquery.c.team_id)
+        .join(
+            Submission,
+            and_(
+                Submission.team_id == subquery.c.team_id,
+                Submission.timestamp == subquery.c.max_timestamp,
+            ),
+        )
+        .where(Team.league_id == league_id)
+    )
+
+    results = session.exec(query).all()
+
+    submissions = {}
+    for team, submission in results:
+        submissions[team.name] = submission.code
+
+    return submissions
+
+
+async def get_team_submission(session: Session, team_id: int) -> Optional[str]:
+    """Get latest submission for a specific team"""
+    submission = session.exec(
+        select(Submission)
+        .where(Submission.team_id == team_id)
+        .order_by(Submission.timestamp.desc())
+        .limit(1)
+    ).first()
+
+    return submission.code if submission else None
+
+
+async def save_submission(session: Session, code: str, team_id: int) -> int:
+    """Save a code submission"""
+    # Simply create new submission - no need to update any is_latest flags
+    db_submission = Submission(
+        code=code,
+        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        team_id=team_id,
+    )
+    session.add(db_submission)
+    session.commit()
+    return db_submission.id
