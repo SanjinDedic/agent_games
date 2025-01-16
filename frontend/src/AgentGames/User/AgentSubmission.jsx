@@ -13,6 +13,7 @@ import { checkTokenExpiry } from '../../slices/authSlice';
 function AgentSubmission() {
   const monacoRef = useRef(null);
   const [code, setCode] = useState('');
+  const [starterCode, setStarterCode] = useState('');
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -37,11 +38,32 @@ function AgentSubmission() {
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    handleInstructions();
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       navigate('/AgentLogin');
+    } else {
+      loadLatestSubmission();
     }
   }, [navigate]);
+
+  const loadLatestSubmission = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/user/get-team-submission`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await response.json();
+
+      if (data.status === "success" && data.data) {
+        setCode(data.data);
+      } else {
+        handleInstructions(); // Load starter code if no submission exists
+      }
+    } catch (error) {
+      console.error('Error loading submission:', error);
+      handleInstructions(); // Load starter code on error
+    }
+  };
 
   const handleInstructions = async () => {
     try {
@@ -57,6 +79,7 @@ function AgentSubmission() {
         let code_sample = data.data.starter_code;
         code_sample = code_sample.slice(1);
         setCode(code_sample);
+        setStarterCode(code_sample); // Store starter code for reset functionality
         setInstructionData(data.data.game_instructions);
       } else if (data.status === "error") {
         toast.error(data.message, { position: "top-center" });
@@ -64,6 +87,15 @@ function AgentSubmission() {
     } catch (error) {
       console.error('Error:', error);
       setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (starterCode && monacoRef.current) {
+      monacoRef.current.setValue(starterCode);
+      toast.success('Code reset to starter template', { position: "top-center" });
+    } else {
+      handleInstructions();
     }
   };
 
@@ -153,7 +185,7 @@ function AgentSubmission() {
             </div>
           )}
 
-          <div className="mt-6">
+          <div className="mt-6 flex gap-4">
             <UserTooltip
               title="⚠️ INFO <br />Enter your code above and then submit to see results below."
               arrow
@@ -163,9 +195,24 @@ function AgentSubmission() {
               <button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover disabled:bg-ui-light rounded-lg transition-colors duration-200"
+                className="flex-1 py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover disabled:bg-ui-light rounded-lg transition-colors duration-200"
               >
                 {isLoading ? 'Submitting...' : 'Submit Code'}
+              </button>
+            </UserTooltip>
+
+            <UserTooltip
+              title="⚠️ INFO <br />Reset your code to the original starter template."
+              arrow
+              disableFocusListener
+              disableTouchListener
+            >
+              <button
+                onClick={handleReset}
+                disabled={isLoading}
+                className="py-3 px-6 text-lg font-medium text-white bg-notice-orange hover:bg-notice-orange/90 disabled:bg-ui-light rounded-lg transition-colors duration-200"
+              >
+                Reset Code
               </button>
             </UserTooltip>
           </div>
