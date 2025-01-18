@@ -15,9 +15,15 @@ from fastapi import FastAPI, HTTPException
 from games.game_factory import GameFactory
 from pydantic import BaseModel
 
-# Rest of the simulation_server.py code remains the same...
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('validation_server.log'),
+        logging.StreamHandler()
+    ]
+)
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
@@ -99,9 +105,20 @@ def aggregate_simulation_results(simulation_results, num_simulations):
     }
 
 
-@app.get("/")
+@app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/logs")
+async def get_logs():
+    """Get recent log entries"""
+    logger.info("Received request for recent logs")
+    try:
+        with open("validation_server.log", "r") as f:
+            logs = f.read()
+        return {"logs": logs}
+    except FileNotFoundError:
+        return {"logs": "No logs found"}
 
 
 @app.post("/simulate")
