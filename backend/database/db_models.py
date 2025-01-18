@@ -27,7 +27,6 @@ class League(SQLModel, table=True):
     folder: str | None = None  # Made optional
     teams: List["Team"] = Relationship(back_populates="league")
     game: str
-    is_validation: bool = False  # New field to identify validation leagues
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
 
 

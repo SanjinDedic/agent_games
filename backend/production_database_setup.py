@@ -8,20 +8,6 @@ from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
 from database.db_models import League, Team, Admin
 from sqlmodel import Session, SQLModel, create_engine, select
 
-def create_validation_leagues(session: Session):
-    """Create validation leagues for each game type"""
-    games = ["greedy_pig", "prisoners_dilemma"]  # Could be fetched from config
-    for game in games:
-        validation_league = League(
-            name=f"{game}_validation",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(days=36500)),  # Set far in future
-            active=True,
-            game=game,
-            is_validation=True
-        )
-        session.add(validation_league)
-    session.commit()
 
 def create_and_populate_database():
     os.environ["TESTING"] = "0"  # Set the TESTING environment variable to "0"
@@ -34,9 +20,7 @@ def create_and_populate_database():
         # Create administrator
         admin = Admin(username="admin", password_hash=get_password_hash("admin"))
         session.add(admin)
-        
-        # Create validation leagues
-        create_validation_leagues(session)
+    
         
         # Create unnasigned league
         unassigned_league = League(
