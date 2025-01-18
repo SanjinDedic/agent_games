@@ -3,9 +3,9 @@ import os
 import random
 from types import MappingProxyType
 
-from config import ROOT_DIR
-from games.base_game import BaseGame
-from games.greedy_pig.player import Player as GreedyPigPlayer
+from backend.config import ROOT_DIR
+from backend.games.base_game import BaseGame
+from backend.games.greedy_pig.player import Player as GreedyPigPlayer
 
 
 class GreedyPigGame(BaseGame):

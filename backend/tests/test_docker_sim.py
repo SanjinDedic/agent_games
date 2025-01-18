@@ -1,29 +1,15 @@
 import json
-import os
 import subprocess
-import sys
-from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session
 
-project_root = str(Path(__file__).parent.parent)
-sys.path.insert(0, project_root)
-
-# Now import project modules
-from api import app
-from database import get_db_engine
-from docker_utils.config import CONTAINERS
-from docker_utils.containers import ensure_containers_running, stop_containers
-from docker_utils.scripts.docker_simulation import (
-    SIMULATION_RESULTS_SCHEMA,
-    SimulationContainerError,
-    run_docker_simulation,
-    validate_docker_results,
-)
+from backend.docker_utils.config import CONTAINERS
+from backend.docker_utils.containers import (
+    ensure_containers_running, stop_containers)
+from backend.docker_utils.scripts.docker_simulation import (
+    SIMULATION_RESULTS_SCHEMA, run_docker_simulation, validate_docker_results)
 
 
 def test_validator_container_health():

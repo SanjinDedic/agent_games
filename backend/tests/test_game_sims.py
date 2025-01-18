@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 
 import pytest
-from database.db_models import League, SimulationResult
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+
+from backend.database.db_models import League, SimulationResult
 
 
 @pytest.fixture(scope="function")

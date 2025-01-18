@@ -1,25 +1,21 @@
-import os
-import sys
-import time
-from pathlib import Path
-
-# Add the project root directory to the Python path
-project_root = str(Path(__file__).parent.parent)
-sys.path.append(project_root)
-
 import logging
+import os
+import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, Generator
 
 import pytest
-from api import app
-from config import get_database_url
-from database.db_models import Admin, League, Team
-from database.db_session import get_db
-from docker_utils.containers import ensure_containers_running, stop_containers
 from fastapi.testclient import TestClient
-from routes.auth.auth_core import create_access_token, get_password_hash
 from sqlmodel import Session, SQLModel, create_engine, select
+
+from backend.api import app
+from backend.config import get_database_url
+from backend.database.db_models import Admin, League, Team
+from backend.database.db_session import get_db
+from backend.docker_utils.containers import (
+    ensure_containers_running, stop_containers)
+from backend.routes.auth.auth_core import create_access_token, get_password_hash
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

@@ -1,36 +1,25 @@
-import json
+
 import logging
 import os
-from typing import Dict, Optional
 
 import httpx
-from config import ROOT_DIR
-from database.db_models import Team
-from docker_utils.scripts.docker_simulation import run_docker_simulation
-from fastapi import APIRouter, Depends, HTTPException
-from games.game_factory import GameFactory
-from models_api import ErrorResponseModel, ResponseModel
-from routes.admin.admin_models import LeagueName
-from routes.auth.auth_core import (
-    get_current_user,
-    verify_admin_or_student,
-    verify_any_role,
-    verify_student_role,
-)
-from routes.auth.auth_db import get_db
-from routes.user.user_db import (
-    SubmissionLimitExceededError,
-    allow_submission,
-    assign_team_to_league,
-    get_all_leagues,
-    get_all_published_results,
-    get_published_result,
-    get_team,
-    save_submission,
-)
-from routes.user.user_models import GameName, LeagueAssignRequest, SubmissionCode
+from fastapi import APIRouter, Depends
 from sqlmodel import Session
-from utils import get_games_names
+
+from backend.config import ROOT_DIR
+from backend.games.game_factory import GameFactory
+from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.admin.admin_models import LeagueName
+from backend.routes.auth.auth_core import (
+    get_current_user, verify_admin_or_student, verify_student_role)
+from backend.routes.auth.auth_db import get_db
+from backend.routes.user.user_db import (
+    SubmissionLimitExceededError, allow_submission, assign_team_to_league,
+    get_all_leagues, get_all_published_results, get_published_result,
+    get_team, save_submission)
+from backend.routes.user.user_models import (
+    GameName, LeagueAssignRequest, SubmissionCode)
+from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
 

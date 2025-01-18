@@ -5,11 +5,12 @@ from functools import wraps
 from typing import Callable, List, Union
 
 import pytz
-from config import ALGORITHM, SECRET_KEY
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+from backend.config import ALGORITHM, SECRET_KEY
 
 logger = logging.getLogger(__name__)
 

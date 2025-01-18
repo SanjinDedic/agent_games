@@ -1,12 +1,12 @@
 import json
 import logging
-import os
+
 from datetime import datetime, timedelta
 from typing import Dict
 
 import pytz
-from config import ROOT_DIR
-from database.db_models import League, Submission, Team
+
+from backend.database.db_models import League, Submission, Team
 from sqlmodel import Session, select
 
 logger = logging.getLogger(__name__)

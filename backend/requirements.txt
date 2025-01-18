@@ -134,3 +134,5 @@ websockets==12.0
 wrapt==1.16.0
 zipp==3.19.1
 jsonschema==4.23.0
+locust==2.32.6
+aiohttp==3.11.11

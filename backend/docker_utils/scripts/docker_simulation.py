@@ -1,10 +1,7 @@
-import json
 import logging
 import subprocess
-import time
 
 import httpx
-from config import ROOT_DIR
 from jsonschema import ValidationError, validate
 
 logger = logging.getLogger(__name__)

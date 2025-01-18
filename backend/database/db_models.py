@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import List, Optional
 
-from routes.auth.auth_core import get_password_hash, verify_password  # Updated import
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint
+from sqlmodel import (
+    Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint)
+
+from backend.routes.auth.auth_core import get_password_hash, verify_password
 
 # ---------------------------------------------------------------------------------#
 # ---                                 TABLES                                    ---#

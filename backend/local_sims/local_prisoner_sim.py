@@ -1,14 +1,11 @@
 import os
-import sys
+from pathlib import Path
 
-# Add the project root directory to the Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.dirname(current_dir)
-project_root = os.path.dirname(backend_dir)
-sys.path.append(backend_dir)
+from backend.database.db_models import League
+from backend.games.prisoners_dilemma.prisoners_dilemma import (
+    PrisonersDilemmaGame)
 
-from database.db_models import League
-from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
+backend_dir = Path(__file__).parent
 
 # Set up the test league
 test_league_folder = os.path.join(

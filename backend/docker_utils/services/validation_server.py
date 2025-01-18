@@ -2,19 +2,16 @@ import ast
 import logging
 import os
 import shutil
-import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
 
-# Add the backend directory to Python path
-sys.path.insert(0, "/backend")
-
-from database.db_models import League  # Updated import path
 from fastapi import FastAPI
-from games.game_factory import GameFactory
 from pydantic import BaseModel
+
+from backend.database.db_models import League  # Updated import path
+from backend.games.game_factory import GameFactory
 
 # Rest of the validation_server.py code remains the same...
 

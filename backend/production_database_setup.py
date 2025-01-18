@@ -3,11 +3,12 @@ import os
 import shutil
 from datetime import datetime, timedelta
 
-from auth.auth_core import get_password_hash
 from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
-from database import create_administrator
-from database.db_models import League, Team
 from sqlmodel import Session, SQLModel, create_engine, select
+
+# from database import create_administrator
+from backend.database.db_models import League, Team
+from backend.routes.auth.auth_core import get_password_hash
 
 
 def create_and_populate_database():
@@ -19,7 +20,7 @@ def create_and_populate_database():
 
     with Session(engine) as session:
         # Create administrator
-        create_administrator(session, "Administrator", "BOSSMAN1378")
+        # create_administrator(session, "Administrator", "BOSSMAN1378")
 
         # Create admin leagues
         admin_leagues = []

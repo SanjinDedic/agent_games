@@ -1,9 +1,10 @@
 from datetime import timedelta
 
-from config import ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url
-from database.db_models import Admin, Team
-from routes.auth.auth_core import create_access_token
 from sqlmodel import Session, create_engine, select
+
+from backend.config import ACCESS_TOKEN_EXPIRE_MINUTES, get_database_url
+from backend.database import db_models
+from backend.routes.auth.auth_core import create_access_token
 
 
 class InvalidCredentialsError(Exception):
@@ -21,7 +22,7 @@ def get_db():
 
 def get_team_token(session: Session, team_name: str, team_password: str):
     """Get authentication token for team login"""
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    team = session.exec(select(db_models.Team).where(db_models.Team.name == team_name)).one_or_none()
 
     if not team:
         raise InvalidCredentialsError(f"Team '{team_name}' not found")
@@ -39,7 +40,7 @@ def get_team_token(session: Session, team_name: str, team_password: str):
 
 def get_admin_token(session: Session, username: str, password: str):
     """Get authentication token for admin login"""
-    admin = session.exec(select(Admin).where(Admin.username == username)).one_or_none()
+    admin = session.exec(select(db_models.Admin).where(db_models.Admin.username == username)).one_or_none()
 
     if not admin or not admin.verify_password(password):
         raise InvalidCredentialsError("Invalid credentials")

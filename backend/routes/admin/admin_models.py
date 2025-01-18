@@ -2,7 +2,8 @@ from datetime import datetime
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, validator
-from utils import get_games_names
+
+from backend.utils import get_games_names
 
 
 class LeagueSignUp(BaseModel):

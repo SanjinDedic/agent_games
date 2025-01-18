@@ -5,9 +5,9 @@ import signal
 import sys
 import time
 
-from config import ROOT_DIR
-from database.db_models import League
-from games.game_factory import GameFactory
+from backend.config import ROOT_DIR
+from backend.database.db_models import League
+from backend.games.game_factory import GameFactory
 
 # Set up logging to write to both a file and stream to stdout
 log_file_path = os.path.join(ROOT_DIR, "dockerfile_script.log")

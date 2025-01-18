@@ -2,9 +2,10 @@ import subprocess
 from unittest.mock import patch
 
 import pytest
-from api import lifespan
-from docker_utils.containers import get_container_logs, stop_containers
 from fastapi import FastAPI
+
+from backend.api import lifespan
+from backend.docker_utils.containers import get_container_logs, stop_containers
 
 
 @pytest.fixture

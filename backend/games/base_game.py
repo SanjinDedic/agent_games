@@ -2,7 +2,7 @@ import importlib.util
 import os
 from abc import ABC, abstractmethod
 
-from config import ROOT_DIR
+from backend.config import ROOT_DIR
 
 
 class BaseGame(ABC):

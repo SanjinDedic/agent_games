@@ -1,11 +1,11 @@
-import json
+
 from datetime import datetime, timedelta
 
-import pytest
-from database.db_models import Admin, League, Team
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
-from utils import get_games_names
+
+from backend.database.db_models import Admin, League, Team
+from backend.utils import get_games_names
 
 # The idea of this test is to test all the endpoints that get called by the admin user on the frontend
 # The only exception is running simulations, which is tested in test_simulation.py

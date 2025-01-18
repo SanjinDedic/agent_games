@@ -2,9 +2,8 @@ import json
 import logging
 import subprocess
 import time
-from typing import Optional
 
-from config import ROOT_DIR  # Import our robust ROOT_DIR
+from backend.config import ROOT_DIR
 
 logger = logging.getLogger(__name__)
 

@@ -1,36 +1,23 @@
 import json
 import logging
-from typing import List, Optional
 
-from database.db_models import League, Team
-from docker_utils.scripts.docker_simulation import run_docker_simulation
-from fastapi import APIRouter, Depends, HTTPException
-from games.game_factory import GameFactory
-from models_api import ErrorResponseModel, ResponseModel
-from routes.admin.admin_db import (
-    create_league,
-    create_team,
-    delete_team,
-    get_all_league_results,
-    get_all_teams,
-    get_league,
-    publish_sim_results,
-    save_simulation_results,
-    update_expiry_date,
-)
-from routes.admin.admin_models import (
-    ExpiryDate,
-    LeagueName,
-    LeagueResults,
-    LeagueSignUp,
-    SimulationConfig,
-    TeamDelete,
-    TeamSignup,
-)
-from routes.auth.auth_core import get_current_user, verify_admin_role, verify_any_role
-from routes.auth.auth_db import get_db
+from fastapi import APIRouter, Depends
 from sqlmodel import Session
-from utils import transform_result
+
+from backend.docker_utils.scripts.docker_simulation import run_docker_simulation
+from backend.games.game_factory import GameFactory
+from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.admin.admin_db import (
+    create_league, create_team, delete_team, get_all_league_results,
+    get_all_teams, get_league, publish_sim_results, save_simulation_results,
+    update_expiry_date)
+from backend.routes.admin.admin_models import (
+    ExpiryDate, LeagueName, LeagueResults, LeagueSignUp,
+    SimulationConfig, TeamDelete, TeamSignup)
+from backend.routes.auth.auth_core import (
+    get_current_user, verify_admin_role, verify_any_role)
+from backend.routes.auth.auth_db import get_db
+from backend.utils import transform_result
 
 logger = logging.getLogger(__name__)
 
