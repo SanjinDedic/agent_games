@@ -1,7 +1,13 @@
+# games/prisoners_dilemma/prisoners_dilemma.py
+
 import itertools
 import random
 
 from games.base_game import BaseGame
+
+import importlib
+
+
 
 
 class PrisonersDilemmaGame(BaseGame):
@@ -60,7 +66,6 @@ When you log out, navigate away, or refresh the page, your code will be lost. Pl
 
 Good luck and have fun!
 """
-
     def __init__(
         self,
         league,
@@ -69,8 +74,7 @@ Good luck and have fun!
         rounds_per_pairing=5,
         collect_player_feedback=True,
     ):
-        super().__init__(league, verbose)
-        self.histories = {str(player.name): {} for player in self.players}
+        super().__init__(league, verbose)  # This will load validation players automatically
         self.reward_matrix = reward_matrix or {
             "collude,collude": (4, 4),
             "collude,defect": (0, 6),
@@ -81,9 +85,57 @@ Good luck and have fun!
         self.game_feedback = {"game": "prisoners_dilemma", "pairings": []}
         self.player_feedback = {}
         self.collect_player_feedback = collect_player_feedback
+
+    def initialize_histories_and_scores(self):
+        """Initialize histories and scores after players are loaded"""
+        self.histories = {str(player.name): {} for player in self.players}
         self.scores = {str(player.name): 0 for player in self.players}
+        
+    def play_game(self, custom_rewards=None):
+        """Play a complete game between all players"""
+        if not self.players:
+            print("No players loaded for the game.")
+            return {"points": {}, "score_aggregate": {}}
+
+        # Add debug print
+        print("\nPlayers at start of play_game:", [p.name for p in self.players])
+
+        # Initialize histories and scores
+        self.initialize_histories_and_scores()
+        
+        # Add debug print after initialization
+        print("Players after initialization:", [p.name for p in self.players])
+
+        if custom_rewards:
+            self.reward_matrix = {
+                "collude,collude": (custom_rewards[0], custom_rewards[0]),
+                "collude,defect": (custom_rewards[1], custom_rewards[2]),
+                "defect,collude": (custom_rewards[2], custom_rewards[1]),
+                "defect,defect": (custom_rewards[3], custom_rewards[3]),
+            }
+
+        self.game_feedback["game_info"] = {
+            "players": [str(player.name) for player in self.players],
+            "reward_matrix": self.reward_matrix,
+            "rounds_per_pairing": self.rounds_per_pairing,
+        }
+
+        # Add debug print before creating pairs
+        print("Players before creating pairs:", [p.name for p in self.players])
+
+        player_pairs = list(itertools.combinations(self.players, 2))
+        random.shuffle(player_pairs)
+
+        for player1, player2 in player_pairs:
+            print(f"\nPlaying pair: {player1.name} vs {player2.name}")  # Debug print
+            self.play_pairing(player1, player2)
+
+        self.game_feedback["final_scores"] = dict(self.scores)
+
+        return {"points": dict(self.scores), "score_aggregate": dict(self.scores)}
 
     def get_game_state(self, player_name, opponent_name, round_number):
+        """Get the current game state for a player"""
         histories_copy = {}
         for p1, opponents in self.histories.items():
             histories_copy[str(p1)] = {}
@@ -106,10 +158,12 @@ Good luck and have fun!
         return state
 
     def add_feedback(self, pairing_data):
+        """Add feedback for a pairing"""
         if self.verbose:
             self.game_feedback["pairings"].append(pairing_data)
 
     def add_player_feedback(self, player, round_number, opponent_name):
+        """Add feedback from a player for a specific round"""
         if self.collect_player_feedback and player.feedback:
             player_name = str(player.name)
             if player_name not in self.player_feedback:
@@ -128,11 +182,21 @@ Good luck and have fun!
             player.feedback = []
 
     def play_pairing(self, player1, player2):
+        """Play a series of rounds between two players"""
         pairing_data = {
             "player1": str(player1.name),
             "player2": str(player2.name),
             "rounds": [],
         }
+
+        p1_name = str(player1.name)
+        p2_name = str(player2.name)
+
+        # Initialize histories for this pairing if needed
+        if p1_name not in self.histories[p2_name]:
+            self.histories[p2_name][p1_name] = []
+        if p2_name not in self.histories[p1_name]:
+            self.histories[p1_name][p2_name] = []
 
         for round_number in range(1, self.rounds_per_pairing + 1):
             game_state1 = self.get_game_state(player1.name, player2.name, round_number)
@@ -155,22 +219,10 @@ Good luck and have fun!
                 decision2 = "collude"
 
             # Update histories
-            p1_name = str(player1.name)
-            p2_name = str(player2.name)
-
-            if p1_name not in self.histories:
-                self.histories[p1_name] = {}
-            if p2_name not in self.histories[p1_name]:
-                self.histories[p1_name][p2_name] = []
             self.histories[p1_name][p2_name].append(decision1)
-
-            if p2_name not in self.histories:
-                self.histories[p2_name] = {}
-            if p1_name not in self.histories[p2_name]:
-                self.histories[p2_name][p1_name] = []
             self.histories[p2_name][p1_name].append(decision2)
 
-            # Calculate scores using string key
+            # Calculate scores
             key = f"{decision1},{decision2}"
             score1, score2 = self.reward_matrix[key]
             self.scores[p1_name] += score1
@@ -191,32 +243,8 @@ Good luck and have fun!
 
         self.add_feedback(pairing_data)
 
-    def play_game(self, custom_rewards=None):
-        if custom_rewards:
-            self.reward_matrix = {
-                "collude,collude": (custom_rewards[0], custom_rewards[0]),
-                "collude,defect": (custom_rewards[1], custom_rewards[2]),
-                "defect,collude": (custom_rewards[2], custom_rewards[1]),
-                "defect,defect": (custom_rewards[3], custom_rewards[3]),
-            }
-
-        self.game_feedback["game_info"] = {
-            "players": [str(player.name) for player in self.players],
-            "reward_matrix": self.reward_matrix,
-            "rounds_per_pairing": self.rounds_per_pairing,
-        }
-
-        player_pairs = list(itertools.combinations(self.players, 2))
-        random.shuffle(player_pairs)
-
-        for player1, player2 in player_pairs:
-            self.play_pairing(player1, player2)
-
-        self.game_feedback["final_scores"] = dict(self.scores)
-
-        return {"points": dict(self.scores), "score_aggregate": dict(self.scores)}
-
     def reset(self):
+        """Reset the game state"""
         super().reset()
         self.histories = {str(player.name): {} for player in self.players}
         self.game_feedback = {"pairings": []}
@@ -225,6 +253,7 @@ Good luck and have fun!
 
     @classmethod
     def run_single_game_with_feedback(cls, league, custom_rewards=None):
+        """Run a single game with feedback"""
         game = cls(league, verbose=True, collect_player_feedback=True)
         results = game.play_game(custom_rewards)
         return {
@@ -233,21 +262,20 @@ Good luck and have fun!
             "player_feedback": game.player_feedback,
         }
 
-    @classmethod
-    def run_simulations(cls, num_simulations, league, custom_rewards=None):
-        game = cls(league, collect_player_feedback=False)
-        total_points = {str(player.name): 0 for player in game.players}
-        defections = {str(player.name): 0 for player in game.players}
-        collusions = {str(player.name): 0 for player in game.players}
+    def run_simulations(self, num_simulations, league, custom_rewards=None):
+        """Run multiple simulations"""
+        total_points = {str(player.name): 0 for player in self.players}
+        defections = {str(player.name): 0 for player in self.players}
+        collusions = {str(player.name): 0 for player in self.players}
 
         for _ in range(num_simulations):
-            game.reset()
-            results = game.play_game(custom_rewards)
+            self.reset()
+            results = self.play_game(custom_rewards)
 
             for player, points in results["points"].items():
                 total_points[str(player)] += points
 
-            for player_name, opponents in game.histories.items():
+            for player_name, opponents in self.histories.items():
                 for opponent_name, decisions in opponents.items():
                     defections[str(player_name)] += decisions.count("defect")
                     collusions[str(player_name)] += decisions.count("collude")
@@ -257,3 +285,4 @@ Good luck and have fun!
             "num_simulations": num_simulations,
             "table": {"defections": defections, "collusions": collusions},
         }
+        

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-
+import uuid
 
 class Player(ABC):
     def __init__(self):
-        self.name = None
+        self.name = self.__class__.__name__
         self.feedback = []
 
     @abstractmethod

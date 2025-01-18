@@ -3,8 +3,7 @@ import os
 from datetime import datetime, timedelta
 
 from config import ADMIN_LEAGUE_EXPIRY, get_database_url
-from database.db_models import Admin, League, Submission, Team
-from routes.auth.auth_core import get_password_hash
+from database.db_models import Admin, League, Submission, Team, get_password_hash
 from sqlmodel import Session, SQLModel, create_engine, delete
 
 

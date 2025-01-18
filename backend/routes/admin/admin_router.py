@@ -1,8 +1,7 @@
 import json
 import logging
-from typing import List, Optional
+import httpx
 
-from database.db_models import League, Team
 from docker_utils.scripts.docker_simulation import run_docker_simulation
 from fastapi import APIRouter, Depends, HTTPException
 from games.game_factory import GameFactory
@@ -277,4 +276,58 @@ async def update_expiry_endpoint(
         logger.error(f"Error updating expiry date: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to update expiry date: {str(e)}"
+        )
+
+
+
+@admin_router.get("/get-validator-logs", response_model=ResponseModel)  
+@verify_admin_role
+async def get_validator_logs_endpoint(
+    current_user: dict = Depends(get_current_user),
+):
+    """Get logs from validator service"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get('http://localhost:8001/logs')
+            if response.status_code == 200:
+                return ResponseModel(
+                    status="success",
+                    message="Validator logs retrieved successfully",
+                    data={"logs": response.json()["logs"]}
+                )
+            else:
+                return ErrorResponseModel(
+                    status="error",
+                    message=f"Failed to retrieve validator logs: {response.text}"
+                )
+    except Exception as e:
+        return ErrorResponseModel(
+            status="error", 
+            message=f"Failed to connect to validator service: {str(e)}"
+        )
+
+@admin_router.get("/get-simulator-logs", response_model=ResponseModel)  
+@verify_admin_role
+async def get_simulator_logs_endpoint(
+    current_user: dict = Depends(get_current_user),
+):
+    """Get logs from validator service"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get('http://localhost:8002/logs')
+            if response.status_code == 200:
+                return ResponseModel(
+                    status="success",
+                    message="Simulator logs retrieved successfully",
+                    data={"logs": response.json()["logs"]}
+                )
+            else:
+                return ErrorResponseModel(
+                    status="error",
+                    message=f"Failed to retrieve simulator logs: {response.text}"
+                )
+    except Exception as e:
+        return ErrorResponseModel(
+            status="error", 
+            message=f"Failed to connect to simulator service: {str(e)}"
         )

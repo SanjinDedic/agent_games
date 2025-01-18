@@ -1,174 +1,19 @@
 {
   "teams": [
     {
-      "name": "SiriusCollege1(7-8)",
-      "password": "Rk9xL1mN",
+      "name": "TeamA",
+      "password": "AA",
       "school": "Sirius College - Ibrahim Dellal Campus"
     },
     {
-      "name": "SiriusCollege2(7-8)",
-      "password": "Zt7bP3qX",
+      "name": "TeamB",
+      "password": "BB",
       "school": "Sirius College - Ibrahim Dellal Campus"
     },
     {
-      "name": "GlenWaverley1(7-8)",
-      "password": "Hj2cF8vK",
+      "name": "TeamC",
+      "password": "CC",
       "school": "Glen Waverley Secondary College"
-    },
-    {
-      "name": "GlenWaverley2(7-8)",
-      "password": "Wy5nT6bL",
-      "school": "Glen Waverley Secondary College"
-    },
-    {
-      "name": "CaulfieldGrammar1(7-8)",
-      "password": "Qm8sG4dJ",
-      "school": "Caulfield Grammar School Wheelers Hill"
-    },
-    {
-      "name": "CaulfieldGrammar2(7-8)",
-      "password": "Xp3fD7hN",
-      "school": "Caulfield Grammar School Wheelers Hill"
-    },
-    {
-      "name": "PrestonHigh1(7-8)",
-      "password": "Vt1kM9cB",
-      "school": "Preston High School"
-    },
-    {
-      "name": "PrestonHigh2(7-8)",
-      "password": "Lz6gH2yR",
-      "school": "Preston High School"
-    },
-    {
-      "name": "BroadfordSecondary(7-8)",
-      "password": "Bj4wS8mP",
-      "school": "Broadford Secondary College"
-    },
-    {
-      "name": "PlentyValleyChristian1(7-8)",
-      "password": "Nk7rF1tX",
-      "school": "Plenty Valley Christian College"
-    },
-    {
-      "name": "PlentyValleyChristian2(7-8)",
-      "password": "Yd9pL5qZ",
-      "school": "Plenty Valley Christian College"
-    },
-    {
-      "name": "BoxHillHigh(7-8)",
-      "password": "Gc3vJ8nM",
-      "school": "Box Hill High School"
-    },
-    {
-      "name": "AcademyofMaryImmaculate(7-8)",
-      "password": "Tf2bK7hS",
-      "school": "Academy of Mary Immaculate"
-    },
-    {
-      "name": "HumeAnglican1(7-8)",
-      "password": "Wq5mD9xR",
-      "school": "Hume Anglican Grammar, Donnybrook"
-    },
-    {
-      "name": "HumeAnglican2(7-8)",
-      "password": "Jh8cN3pL",
-      "school": "Hume Anglican Grammar, Donnybrook"
-    },
-    {
-      "name": "GlenWaverley1(9-10)",
-      "password": "Kf1sT6yB",
-      "school": "Glen Waverley Secondary College"
-    },
-    {
-      "name": "GlenWaverley2(9-10)",
-      "password": "Zm7gV2wQ",
-      "school": "Glen Waverley Secondary College"
-    },
-    {
-      "name": "CaulfieldGrammar1(9-10)",
-      "password": "Px4nH9dF",
-      "school": "Caulfield Grammar School Wheelers Hill"
-    },
-    {
-      "name": "CaulfieldGrammar2(9-10)",
-      "password": "Rt6kL3bM",
-      "school": "Caulfield Grammar School Wheelers Hill"
-    },
-    {
-      "name": "MountAlexander(9-10)",
-      "password": "Nh2fS8jX",
-      "school": "Mount Alexander College"
-    },
-    {
-      "name": "PrestonHigh1(9-10)",
-      "password": "Cq9wG5tP",
-      "school": "Preston High School"
-    },
-    {
-      "name": "PrestonHigh2(9-10)",
-      "password": "Vb3mK7yL",
-      "school": "Preston High School"
-    },
-    {
-      "name": "McClelland(9-10)",
-      "password": "Fj5rD1xZ",
-      "school": "McClelland College"
-    },
-    {
-      "name": "SpringsideWest(9-10)",
-      "password": "Ys8hN4bQ",
-      "school": "Springside West Secondary College"
-    },
-    {
-      "name": "BroadfordSecondary(9-10)",
-      "password": "Lm1pT7gW",
-      "school": "Broadford Secondary College"
-    },
-    {
-      "name": "HumeCentral(9-10)",
-      "password": "Dw6cF3kR",
-      "school": "Hume Central Secondary College"
-    },
-    {
-      "name": "PlentyValleyChristian1(9-10)",
-      "password": "Xq9sJ2nB",
-      "school": "Plenty Valley Christian College"
-    },
-    {
-      "name": "PlentyValleyChristian2(9-10)",
-      "password": "Hv4mG8yS",
-      "school": "Plenty Valley Christian College"
-    },
-    {
-      "name": "Ringwood1(9-10)",
-      "password": "Zk7bL5wM",
-      "school": "Ringwood Secondary College"
-    },
-    {
-      "name": "Ringwood2(9-10)",
-      "password": "Tp2fN9dX",
-      "school": "Ringwood Secondary College"
-    },
-    {
-      "name": "Castlemaine(9-10)",
-      "password": "Qc6rH3jL",
-      "school": "Castlemaine Secondary College"
-    },
-    {
-      "name": "WaverleyChristian1(9-10)",
-      "password": "Bm8kS1tP",
-      "school": "Waverley Christian College"
-    },
-    {
-      "name": "WaverleyChristian2(9-10)",
-      "password": "Wf3gD7yR",
-      "school": "Waverley Christian College"
-    },
-    {
-      "name": "Koonung(9-10)",
-      "password": "Jn5vK9bZ",
-      "school": "Koonung Secondary College"
     }
   ]
 }

@@ -1,8 +1,16 @@
 from datetime import datetime
 from typing import List, Optional
 
-from routes.auth.auth_core import get_password_hash, verify_password  # Updated import
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 # ---------------------------------------------------------------------------------#
 # ---                                 TABLES                                    ---#
@@ -16,9 +24,10 @@ class League(SQLModel, table=True):
     expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     deleted_date: datetime | None = None
     signup_link: str | None = None
-    folder: str | None = None
+    folder: str | None = None  # Made optional
     teams: List["Team"] = Relationship(back_populates="league")
     game: str
+    is_validation: bool = False  # New field to identify validation leagues
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
 
 

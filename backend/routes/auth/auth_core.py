@@ -11,6 +11,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+
 logger = logging.getLogger(__name__)
 
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -25,14 +26,6 @@ ROLE_INSTITUTION = "institution"
 ROLE_AI_AGENT = "ai_agent"
 
 ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT]
-
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):

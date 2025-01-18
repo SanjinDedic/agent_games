@@ -14,11 +14,11 @@ from typing import Dict, Generator
 import pytest
 from api import app
 from config import get_database_url
-from database.db_models import Admin, League, Team
+from database.db_models import Admin, League, Team, get_password_hash
 from database.db_session import get_db
 from docker_utils.containers import ensure_containers_running, stop_containers
 from fastapi.testclient import TestClient
-from routes.auth.auth_core import create_access_token, get_password_hash
+from routes.auth.auth_core import create_access_token
 from sqlmodel import Session, SQLModel, create_engine, select
 
 logging.basicConfig(level=logging.DEBUG)

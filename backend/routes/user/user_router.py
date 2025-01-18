@@ -100,18 +100,6 @@ async def submit_agent(
     except SubmissionLimitExceededError as e:
         return ErrorResponseModel(status="error", message=str(e))
 
-    league_folder = (
-        team.league.folder.lstrip("/")
-        if team.league.folder
-        else f"leagues/user/{team.league.name}"
-    )
-    file_path = os.path.join(
-        ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py"
-    )
-
-    with open(file_path, "w") as file:
-        file.write(submission.code)
-
     try:
         submission_id = save_submission(session, submission.code, team.id)
         return ResponseModel(

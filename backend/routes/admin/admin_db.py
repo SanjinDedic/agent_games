@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import pytz
 from config import ROOT_DIR

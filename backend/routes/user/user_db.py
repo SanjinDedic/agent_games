@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 import pytz
-from config import ROOT_DIR
 from database.db_models import League, Submission, Team
 from sqlalchemy import and_
 from sqlmodel import Session, select
@@ -222,68 +221,53 @@ def get_team(session, team_name):
     return team
 
 
-# routes/user/user_db.py
-
-
-# routes/user/user_db.py
-
-
-async def get_latest_submissions_for_league(
-    session: Session, league_id: int
-) -> Dict[str, str]:
+async def get_latest_submissions_for_league(session: Session, league_id: int) -> Dict[str, str]:
     """Get latest submissions for all teams in a league"""
-    # Use a subquery to get the latest submission for each team
-    subquery = (
-        select(
-            Submission.team_id, func.max(Submission.timestamp).label("max_timestamp")
-        )
-        .group_by(Submission.team_id)
-        .subquery()
-    )
+    try:
+        # First get all teams in the league
+        teams = session.exec(
+            select(Team).where(Team.league_id == league_id)
+        ).all()
 
-    # Join with the teams and submissions tables to get the actual submission data
-    query = (
-        select(Team, Submission)
-        .join(subquery, Team.id == subquery.c.team_id)
-        .join(
-            Submission,
-            and_(
-                Submission.team_id == subquery.c.team_id,
-                Submission.timestamp == subquery.c.max_timestamp,
-            ),
-        )
-        .where(Team.league_id == league_id)
-    )
+        submissions = {}
+        for team in teams:
+            # Get latest submission for each team
+            latest_submission = session.exec(
+                select(Submission)
+                .where(Submission.team_id == team.id)
+                .order_by(Submission.timestamp.desc())
+                .limit(1)
+            ).first()
+            
+            if latest_submission:
+                submissions[team.name] = latest_submission.code
 
-    results = session.exec(query).all()
+        logger.info(f"Found {len(submissions)} submissions for league {league_id}")
+        return submissions
 
-    submissions = {}
-    for team, submission in results:
-        submissions[team.name] = submission.code
+    except Exception as e:
+        logger.error(f"Error getting league submissions: {str(e)}")
+        raise
 
-    return submissions
-
-
-async def get_team_submission(session: Session, team_id: int) -> Optional[str]:
+def get_team_submission(session: Session, team_name: str) -> Optional[str]:
     """Get latest submission for a specific team"""
-    submission = session.exec(
-        select(Submission)
-        .where(Submission.team_id == team_id)
-        .order_by(Submission.timestamp.desc())
-        .limit(1)
-    ).first()
+    try:
+        team = session.exec(
+            select(Team).where(Team.name == team_name)
+        ).first()
+        
+        if not team:
+            return None
 
-    return submission.code if submission else None
+        submission = session.exec(
+            select(Submission)
+            .where(Submission.team_id == team.id)
+            .order_by(Submission.timestamp.desc())
+            .limit(1)
+        ).first()
 
+        return submission.code if submission else None
 
-async def save_submission(session: Session, code: str, team_id: int) -> int:
-    """Save a code submission"""
-    # Simply create new submission - no need to update any is_latest flags
-    db_submission = Submission(
-        code=code,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        team_id=team_id,
-    )
-    session.add(db_submission)
-    session.commit()
-    return db_submission.id
+    except Exception as e:
+        logger.error(f"Error getting team submission: {str(e)}")
+        raise

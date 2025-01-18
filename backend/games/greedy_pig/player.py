@@ -9,7 +9,7 @@ class Player(ABC):
         self.unbanked_money = 0
         self.has_banked_this_turn = False  # Track banking status within a turn
         self.color = 'white'
-        self.name = '' # Assigned when files are loaded onto server
+        self.name = self.__class__.__name__
         self.feedback = []  # New attribute to store feedback
 
     def reset_unbanked_money(self):
