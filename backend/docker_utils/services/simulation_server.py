@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import List, Optional
 
+import pytz
+
 # Add the backend directory to Python path
 sys.path.insert(0, "/backend")
 
@@ -15,13 +17,12 @@ from fastapi import FastAPI, HTTPException
 from games.game_factory import GameFactory
 from pydantic import BaseModel
 
+AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('validation_server.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("validation_server.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -31,9 +32,8 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 
 class SimulationRequest(BaseModel):
-    league_name: str
-    league_game: str
-    league_folder: str
+    league_id: int
+    game_name: str  # Added this field
     num_simulations: int = 100
     custom_rewards: Optional[List[int]] = None
     player_feedback: bool = False
@@ -50,30 +50,6 @@ def handle_simulation_error(e: Exception, context: str):
     error_msg = f"{context} error: {str(e)}"
     logger.error(error_msg)
     raise HTTPException(status_code=500, detail=error_msg)
-
-
-def run_single_simulation(game_class, league, custom_rewards=None):
-    """Run a single simulation with the given parameters"""
-    try:
-        game = game_class(league)
-        return game.play_game(custom_rewards)
-    except Exception as e:
-        logger.error(f"Error in simulation: {str(e)}")
-        return None
-
-
-def run_parallel_simulations(game_class, league, num_sims=100, custom_rewards=None):
-    """Run multiple simulations in parallel using threads"""
-    results = []
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [
-            executor.submit(run_single_simulation, game_class, league, custom_rewards)
-            for _ in range(num_sims)
-        ]
-        for future in as_completed(futures):
-            if future.result() is not None:
-                results.append(future.result())
-    return results
 
 
 def aggregate_simulation_results(simulation_results, num_simulations):
@@ -109,6 +85,7 @@ def aggregate_simulation_results(simulation_results, num_simulations):
 def health_check():
     return {"status": "healthy"}
 
+
 @app.get("/logs")
 async def get_logs():
     """Get recent log entries"""
@@ -123,35 +100,40 @@ async def get_logs():
 
 @app.post("/simulate")
 async def run_simulation(request: SimulationRequest):
-    """
-    Run simulation with the provided parameters.
-    Returns 200 for successful simulations and application-level errors,
-    500 only for serious server errors.
-    """
+    """Run simulation with the provided parameters."""
+    logger.info(f"Received simulation request: {request.model_dump()}")
     try:
-        # Get game class - this can raise ValueError for unknown games
-        try:
-            game_class = GameFactory.get_game_class(request.league_game)
-        except ValueError as e:
-            # Application-level error: unknown game
+        league = League(
+            id=request.league_id,
+            name="simulation_league",
+            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+            expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=1),
+            game=request.game_name,  # We'll need to add this to the request model
+        )
+        if not league:
+            raise HTTPException(
+                status_code=404, detail=f"League with ID {request.league_id} not found"
+            )
+
+        # Get game class and create single instance
+        logger.info("Loading game class")
+        game_class = GameFactory.get_game_class(request.game_name)
+        game = game_class(league)  # Create instance
+        logger.info(f"Game class loaded and instance created")
+        # Load players - make sure to await this call
+        await game.get_all_player_classes_via_api()
+        logger.info(f"Players loaded: {game.players}")
+
+        if not game.players:
             return {
                 "status": "error",
-                "message": f"Unknown game: {request.league_game}",
+                "message": "No players loaded for simulation",
                 "simulation_results": {
                     "total_points": {},
                     "num_simulations": request.num_simulations,
                     "table": {},
                 },
             }
-
-        # Create league instance
-        league = League(
-            name=request.league_name,
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=1),
-            folder=request.league_folder,
-            game=request.league_game,
-        )
 
         # Run a single game with feedback if required
         feedback_result = {
@@ -161,8 +143,8 @@ async def run_simulation(request: SimulationRequest):
 
         if request.player_feedback:
             try:
-                feedback_result = game_class.run_single_game_with_feedback(
-                    league, request.custom_rewards
+                feedback_result = game.run_single_game_with_feedback(
+                    request.custom_rewards
                 )
             except Exception as e:
                 logger.error(f"Error running feedback game: {str(e)}")
@@ -176,11 +158,15 @@ async def run_simulation(request: SimulationRequest):
                     },
                 }
 
-        # Run parallel simulations
+        # Run simulations (now synchronously since players are loaded)
+        simulation_results = []
         try:
-            simulation_results = run_parallel_simulations(
-                game_class, league, request.num_simulations, request.custom_rewards
-            )
+            for _ in range(request.num_simulations):
+                game.reset()  # Reset but keep players
+                result = game.play_game(request.custom_rewards)
+                if result is not None:
+                    simulation_results.append(result)
+
         except Exception as e:
             logger.error(f"Error running simulations: {str(e)}")
             return {
@@ -210,7 +196,6 @@ async def run_simulation(request: SimulationRequest):
         }
 
     except Exception as e:
-        # Only return 500 for unexpected server errors
         logger.error(f"Unexpected server error: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Unexpected server error: {str(e)}"

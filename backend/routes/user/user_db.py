@@ -204,7 +204,6 @@ def get_all_leagues(session: Session) -> Dict:
                     "game": league.game,
                     "created_date": league.created_date,
                     "expiry_date": league.expiry_date,
-                    "folder": league.folder,
                 }
                 for league in leagues
             ]
@@ -221,13 +220,13 @@ def get_team(session, team_name):
     return team
 
 
-async def get_latest_submissions_for_league(session: Session, league_id: int) -> Dict[str, str]:
+def get_latest_submissions_for_league(
+    session: Session, league_id: int
+) -> Dict[str, str]:
     """Get latest submissions for all teams in a league"""
     try:
         # First get all teams in the league
-        teams = session.exec(
-            select(Team).where(Team.league_id == league_id)
-        ).all()
+        teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
 
         submissions = {}
         for team in teams:
@@ -238,7 +237,7 @@ async def get_latest_submissions_for_league(session: Session, league_id: int) ->
                 .order_by(Submission.timestamp.desc())
                 .limit(1)
             ).first()
-            
+
             if latest_submission:
                 submissions[team.name] = latest_submission.code
 
@@ -249,16 +248,18 @@ async def get_latest_submissions_for_league(session: Session, league_id: int) ->
         logger.error(f"Error getting league submissions: {str(e)}")
         raise
 
-def get_team_submission(session: Session, team_name: str) -> Optional[str]:
+
+def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[str]]:
     """Get latest submission for a specific team"""
     try:
-        team = session.exec(
-            select(Team).where(Team.name == team_name)
-        ).first()
-        
-        if not team:
-            return None
+        # Get team first
+        team = session.exec(select(Team).where(Team.name == team_name)).first()
 
+        if not team:
+            logger.warning(f"Team not found: {team_name}")
+            return {"code": None}
+
+        # Get latest submission
         submission = session.exec(
             select(Submission)
             .where(Submission.team_id == team.id)
@@ -266,7 +267,8 @@ def get_team_submission(session: Session, team_name: str) -> Optional[str]:
             .limit(1)
         ).first()
 
-        return submission.code if submission else None
+        # Return dictionary with code
+        return {"code": submission.code if submission else None}
 
     except Exception as e:
         logger.error(f"Error getting team submission: {str(e)}")

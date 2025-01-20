@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from "@monaco-editor/react";
-import { constrainedEditor } from "constrained-editor-plugin";
 import ResultsDisplay from '../Utilities/ResultsDisplay';
 import FeedbackSelector from '../Utilities/FeedbackSelector';
 import { toast } from 'react-toastify';
@@ -11,9 +10,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { checkTokenExpiry } from '../../slices/authSlice';
 
 function AgentSubmission() {
-  const monacoRef = useRef(null);
+  const editorRef = useRef(null);
   const [code, setCode] = useState('');
   const [starterCode, setStarterCode] = useState('');
+  const [lastSubmission, setLastSubmission] = useState('');
+  const [hasLastSubmission, setHasLastSubmission] = useState(false);
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -25,7 +26,6 @@ function AgentSubmission() {
   const [instructionData, setInstructionData] = useState('');
   const [messageData, setMessageData] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const restrictions = [];
   const navigate = useNavigate();
 
   const editorOptions = {
@@ -54,14 +54,18 @@ function AgentSubmission() {
       });
       const data = await response.json();
 
-      if (data.status === "success" && data.data) {
-        setCode(data.data);
+      if (data.status === "success" && data.data && data.data.code) {
+        setLastSubmission(data.data.code);
+        setCode(data.data.code);
+        setHasLastSubmission(true);
       } else {
-        handleInstructions(); // Load starter code if no submission exists
+        handleInstructions();
+        setHasLastSubmission(false);
       }
     } catch (error) {
       console.error('Error loading submission:', error);
-      handleInstructions(); // Load starter code on error
+      handleInstructions();
+      setHasLastSubmission(false);
     }
   };
 
@@ -79,7 +83,7 @@ function AgentSubmission() {
         let code_sample = data.data.starter_code;
         code_sample = code_sample.slice(1);
         setCode(code_sample);
-        setStarterCode(code_sample); // Store starter code for reset functionality
+        setStarterCode(code_sample);
         setInstructionData(data.data.game_instructions);
       } else if (data.status === "error") {
         toast.error(data.message, { position: "top-center" });
@@ -90,26 +94,8 @@ function AgentSubmission() {
     }
   };
 
-  const handleReset = () => {
-    if (starterCode && monacoRef.current) {
-      monacoRef.current.setValue(starterCode);
-      toast.success('Code reset to starter template', { position: "top-center" });
-    } else {
-      handleInstructions();
-    }
-  };
-
-  const handleEditorDidMount = (editor, monaco) => {
-    monacoRef.current = editor;
-    const constrainedInstance = constrainedEditor(monaco);
-    const model = editor.getModel();
-    constrainedInstance.initializeIn(editor);
-    const maxLines = model.getLineCount();
-    restrictions.push({
-      range: [6, 1, maxLines, 1],
-      allowMultiline: true
-    });
-    constrainedInstance.addRestrictionsTo(model, restrictions);
+  const handleEditorDidMount = (editor) => {
+    editorRef.current = editor;
   };
 
   const handleEditorChange = (value) => {
@@ -136,6 +122,7 @@ function AgentSubmission() {
         setOutput(data.data.results);
         setFeedback(data.data.feedback);
         setMessageData(data.message);
+        loadLatestSubmission(); // Refresh last submission status
       } else if (data.status === "error") {
         toast.error(data.message, { position: "top-center" });
         setIsLoading(false);
@@ -143,6 +130,24 @@ function AgentSubmission() {
     } catch (error) {
       console.error('Error:', error);
       setIsLoading(false);
+    }
+  };
+
+  const handleLoadLastSubmission = () => {
+    if (hasLastSubmission && editorRef.current) {
+      editorRef.current.setValue(lastSubmission);
+      setCode(lastSubmission);
+      toast.success('Loaded last submission', { position: "top-center" });
+    }
+  };
+
+  const handleReset = () => {
+    if (starterCode && editorRef.current) {
+      editorRef.current.setValue(starterCode);
+      setCode(starterCode);
+      toast.success('Code reset to starter template', { position: "top-center" });
+    } else {
+      handleInstructions();
     }
   };
 
@@ -177,7 +182,7 @@ function AgentSubmission() {
                 width="100%"
                 theme="vs-dark"
                 defaultLanguage="python"
-                defaultValue={code}
+                value={code}
                 onChange={handleEditorChange}
                 onMount={handleEditorDidMount}
                 options={editorOptions}
@@ -187,7 +192,7 @@ function AgentSubmission() {
 
           <div className="mt-6 flex gap-4">
             <UserTooltip
-              title="⚠️ INFO <br />Enter your code above and then submit to see results below."
+              title="⚠️ INFO <br />Submit your code to see results below."
               arrow
               disableFocusListener
               disableTouchListener
@@ -202,6 +207,21 @@ function AgentSubmission() {
             </UserTooltip>
 
             <UserTooltip
+              title="⚠️ INFO <br />Load your last submitted code."
+              arrow
+              disableFocusListener
+              disableTouchListener
+            >
+              <button
+                onClick={handleLoadLastSubmission}
+                disabled={!hasLastSubmission || isLoading}
+                className="flex-1 py-3 px-4 text-lg font-medium text-white bg-league-blue hover:bg-league-hover disabled:bg-ui-light rounded-lg transition-colors duration-200"
+              >
+                Last Submission
+              </button>
+            </UserTooltip>
+
+            <UserTooltip
               title="⚠️ INFO <br />Reset your code to the original starter template."
               arrow
               disableFocusListener
@@ -210,7 +230,7 @@ function AgentSubmission() {
               <button
                 onClick={handleReset}
                 disabled={isLoading}
-                className="py-3 px-6 text-lg font-medium text-white bg-notice-orange hover:bg-notice-orange/90 disabled:bg-ui-light rounded-lg transition-colors duration-200"
+                className="flex-1 py-3 px-4 text-lg font-medium text-white bg-notice-orange hover:bg-notice-orange/90 disabled:bg-ui-light rounded-lg transition-colors duration-200"
               >
                 Reset Code
               </button>

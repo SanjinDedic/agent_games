@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+from routes.auth.auth_tokens import create_service_token
 
 
 # Get path to the directory containing config.py, then go up directories until we hit the right level
@@ -40,25 +41,11 @@ ROOT_DIR = find_project_root()
 load_dotenv()
 
 # Other config variables
-SECRET_KEY = os.getenv("SECRET_KEY")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
 GAMES = ["greedy_pig", "prisoners_dilemma"]
-
-
-def get_database_url():
-    if os.environ.get("TESTING") == "1":
-        test_db_path = os.path.join(ROOT_DIR, "test.db")
-        return f"sqlite:///{test_db_path}"
-    else:
-        teams_db_path = os.path.join(ROOT_DIR, "teams.db")
-        return f"sqlite:///{teams_db_path}"
-
-
-if __name__ == "__main__":
-    print(f"Project root directory: {ROOT_DIR}")
-    print(f"Database URL: {get_database_url()}")
+# Update Docker API URL to use localhost instead of Docker's internal IP
+DOCKER_API_URL = os.getenv("DOCKER_API_URL", "http://localhost:8002")
+SERVICE_TOKEN = create_service_token()

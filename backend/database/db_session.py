@@ -1,4 +1,4 @@
-from config import get_database_url
+from database.db_config import get_database_url
 from sqlmodel import Session, create_engine
 
 

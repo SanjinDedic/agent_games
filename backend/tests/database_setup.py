@@ -2,7 +2,8 @@ import json
 import os
 from datetime import datetime, timedelta
 
-from config import ADMIN_LEAGUE_EXPIRY, get_database_url
+from config import ADMIN_LEAGUE_EXPIRY
+from database.db_config import get_database_url
 from database.db_models import Admin, League, Submission, Team, get_password_hash
 from sqlmodel import Session, SQLModel, create_engine, delete
 
@@ -30,7 +31,6 @@ def setup_test_db(engine=db_engine()):
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             active=True,
-            folder="leagues/admin/unassigned",
             game="greedy_pig",
         )
         session.add(unnassigned)
@@ -41,7 +41,6 @@ def setup_test_db(engine=db_engine()):
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             active=True,
-            folder="leagues/admin/comp_test",
             game="greedy_pig",
         )
         session.add(comp_test)

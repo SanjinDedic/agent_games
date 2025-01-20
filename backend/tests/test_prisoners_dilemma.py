@@ -11,7 +11,6 @@ def test_league():
         name="test_league",
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=7),
-        folder="leagues/test_league",
         game="prisoners_dilemma",
     )
 
@@ -92,7 +91,10 @@ def test_reset(test_league):
 
 
 def test_run_single_game_with_feedback(test_league):
-    result = PrisonersDilemmaGame.run_single_game_with_feedback(test_league)
+    game = PrisonersDilemmaGame(test_league, verbose=True)
+    # Pass None or custom rewards list instead of the league object
+    result = game.run_single_game_with_feedback(custom_rewards=[4, 0, 6, 2])  # Fixed
+
     assert "results" in result
     assert "feedback" in result
     assert isinstance(result["feedback"], dict)
@@ -102,7 +104,8 @@ def test_run_single_game_with_feedback(test_league):
 
 def test_run_simulations(test_league):
     num_simulations = 10
-    results = PrisonersDilemmaGame.run_simulations(num_simulations, test_league)
+    game = PrisonersDilemmaGame(test_league)
+    results = game.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "defections" in results["table"]
@@ -114,22 +117,12 @@ def test_run_simulations(test_league):
 def test_run_simulations_with_custom_rewards(test_league):
     num_simulations = 10
     custom_rewards = [4, 0, 6, 2]
-    results = PrisonersDilemmaGame.run_simulations(
-        num_simulations, test_league, custom_rewards
-    )
+    game = PrisonersDilemmaGame(test_league)
+    results = game.run_simulations(num_simulations, test_league, custom_rewards)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "num_simulations" in results
     assert results["num_simulations"] == num_simulations
-
-
-def test_get_all_player_classes_from_folder(test_league):
-    game = PrisonersDilemmaGame(test_league, verbose=True)
-    assert len(game.players) > 0
-    player_names = [player.name for player in game.players]
-    print(f"Player names: {player_names}")
-    assert "cooperator" in player_names
-    assert "defector" in player_names
 
 
 def test_starter_code():

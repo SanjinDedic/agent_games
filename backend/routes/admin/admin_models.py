@@ -44,9 +44,10 @@ class TeamSignup(BaseModel):
 
 class SimulationConfig(BaseModel):
     """Model for simulation configuration"""
-
-    num_simulations: int = Field(gt=0)
-    league_name: str
+    num_simulations: int = Field(gt=0, le=10000)
+    league_id: int
+    league_name: Optional[str] = None  # For backwards compatibility
+    game: Optional[str] = None
     custom_rewards: Optional[List[int]] = None
     use_docker: bool = True
 

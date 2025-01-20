@@ -27,12 +27,18 @@ class BankRoll4(Player):
         if game_state["roll_no"] == 4:
             return 'bank'
         return 'continue'
+    
+class StopAt21(Player):
+    """Player that banks after accumulating more than 21 points"""
+    def make_decision(self, game_state):
+        if game_state["unbanked_money"][self.name] > 21:
+            return 'bank'
+        return 'continue'
 
-def get_validation_players():
-    """Returns a list of player instances for validation"""
-    return [
+players = [
         Bank5(),
         Bank15(),
         BankRoll3(),
-        BankRoll4()
+        BankRoll4(),
+        StopAt21()
     ]

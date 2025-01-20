@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { addSimulationResult } from '../../slices/leaguesSlice';
 
-const AdminLeagueSimulation = ({ selected_league_name }) => {
+const AdminLeagueSimulation = ({ league }) => {
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector((state) => state.auth.token);
@@ -11,10 +11,12 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
 
   const [simulationNumber, setSimulationNumber] = useState(1);
   const [useDocker, setUseDocker] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Input validation
   const handleNumberChange = (event) => {
     const value = parseInt(event.target.value, 10);
-    if (value > 0) {
+    if (value > 0 && value <= 10000) { // Added upper limit
       setSimulationNumber(value);
     }
   };
@@ -24,7 +26,13 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
   };
 
   const handleSimulation = async () => {
-    const toastId = toast.loading("Loading results...");
+    if (!league?.id) {
+      toast.error('Please select a valid league first');
+      return;
+    }
+
+    setIsLoading(true);
+    const toastId = toast.loading("Running simulation...");
 
     try {
       const response = await fetch(`${apiUrl}/admin/run-simulation`, {
@@ -35,13 +43,16 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
         },
         body: JSON.stringify({
           num_simulations: simulationNumber,
-          league_name: selected_league_name,
+          league_id: league.id,
+          league_name: league.name, // Keep for backwards compatibility if needed
+          game: league.game,
           use_docker: useDocker,
           custom_rewards: rewards,
         }),
       });
 
       const data = await response.json();
+
       if (data.status === "success") {
         dispatch(addSimulationResult(data.data));
         toast.update(toastId, {
@@ -50,21 +61,24 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
           isLoading: false,
           autoClose: 2000
         });
-      } else if (data.status === "failed" || data.status === "error") {
+      } else {
         toast.update(toastId, {
-          render: data.message,
+          render: data.message || 'Failed to run simulation',
           type: "error",
           isLoading: false,
           autoClose: 2000
         });
       }
     } catch (error) {
+      console.error('Simulation error:', error);
       toast.update(toastId, {
-        render: "Error loading results",
+        render: "Error running simulation",
         type: "error",
         isLoading: false,
         autoClose: 2000
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -74,16 +88,28 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
         <div className="flex items-center justify-between gap-3">
           <button
             onClick={handleSimulation}
-            className="flex-grow bg-notice-orange hover:bg-notice-orange/90 text-white px-6 py-3 rounded-lg font-semibold text-lg transition-colors focus:ring-2 focus:ring-notice-orange focus:ring-offset-2 outline-none"
+            disabled={isLoading || !league?.id}
+            className={`
+              flex-grow px-6 py-3 rounded-lg font-semibold text-lg transition-colors
+              focus:ring-2 focus:ring-offset-2 outline-none
+              ${isLoading
+                ? 'bg-ui-light text-ui cursor-not-allowed'
+                : 'bg-notice-orange hover:bg-notice-orange/90 text-white'}
+            `}
           >
-            RUN SIMULATION
+            {isLoading ? 'RUNNING...' : 'RUN SIMULATION'}
           </button>
+
           <input
             type="number"
             value={simulationNumber}
             onChange={handleNumberChange}
             min="1"
-            className="w-20 p-2 border border-ui-light rounded-lg text-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+            max="10000"
+            disabled={isLoading}
+            className="w-24 p-2 border border-ui-light rounded-lg text-lg shadow-sm 
+                     focus:ring-2 focus:ring-primary focus:border-primary outline-none
+                     disabled:bg-ui-light disabled:cursor-not-allowed"
           />
         </div>
 
@@ -92,10 +118,18 @@ const AdminLeagueSimulation = ({ selected_league_name }) => {
             type="checkbox"
             checked={useDocker}
             onChange={handleDockerToggle}
-            className="w-4 h-4 rounded border-ui-light text-primary focus:ring-primary"
+            disabled={isLoading}
+            className="w-4 h-4 rounded border-ui-light text-primary focus:ring-primary
+                     disabled:cursor-not-allowed"
           />
           <span>Use Docker</span>
         </label>
+
+        {league && (
+          <div className="text-sm text-ui">
+            Selected League: {league.name} ({league.game})
+          </div>
+        )}
       </div>
     </div>
   );

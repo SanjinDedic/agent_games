@@ -1,13 +1,12 @@
 # games/prisoners_dilemma/prisoners_dilemma.py
 
 import itertools
+import logging
 import random
 
 from games.base_game import BaseGame
 
-import importlib
-
-
+logger = logging.getLogger(__name__)
 
 
 class PrisonersDilemmaGame(BaseGame):
@@ -66,6 +65,7 @@ When you log out, navigate away, or refresh the page, your code will be lost. Pl
 
 Good luck and have fun!
 """
+
     def __init__(
         self,
         league,
@@ -74,7 +74,9 @@ Good luck and have fun!
         rounds_per_pairing=5,
         collect_player_feedback=True,
     ):
-        super().__init__(league, verbose)  # This will load validation players automatically
+        super().__init__(
+            league, verbose
+        )  # This will load validation players automatically
         self.reward_matrix = reward_matrix or {
             "collude,collude": (4, 4),
             "collude,defect": (0, 6),
@@ -85,12 +87,13 @@ Good luck and have fun!
         self.game_feedback = {"game": "prisoners_dilemma", "pairings": []}
         self.player_feedback = {}
         self.collect_player_feedback = collect_player_feedback
+        self.initialize_histories_and_scores()  # Initialize histories here
 
     def initialize_histories_and_scores(self):
         """Initialize histories and scores after players are loaded"""
         self.histories = {str(player.name): {} for player in self.players}
         self.scores = {str(player.name): 0 for player in self.players}
-        
+
     def play_game(self, custom_rewards=None):
         """Play a complete game between all players"""
         if not self.players:
@@ -98,13 +101,13 @@ Good luck and have fun!
             return {"points": {}, "score_aggregate": {}}
 
         # Add debug print
-        print("\nPlayers at start of play_game:", [p.name for p in self.players])
+        logger.info(f"Players loaded: {[p.name for p in self.players]}")
 
         # Initialize histories and scores
         self.initialize_histories_and_scores()
-        
+
         # Add debug print after initialization
-        print("Players after initialization:", [p.name for p in self.players])
+        logger.info(f"Players initialized: {[p.name for p in self.players]}")
 
         if custom_rewards:
             self.reward_matrix = {
@@ -120,14 +123,10 @@ Good luck and have fun!
             "rounds_per_pairing": self.rounds_per_pairing,
         }
 
-        # Add debug print before creating pairs
-        print("Players before creating pairs:", [p.name for p in self.players])
-
         player_pairs = list(itertools.combinations(self.players, 2))
         random.shuffle(player_pairs)
 
         for player1, player2 in player_pairs:
-            print(f"\nPlaying pair: {player1.name} vs {player2.name}")  # Debug print
             self.play_pairing(player1, player2)
 
         self.game_feedback["final_scores"] = dict(self.scores)
@@ -251,15 +250,19 @@ Good luck and have fun!
         self.player_feedback = {}
         self.scores = {str(player.name): 0 for player in self.players}
 
-    @classmethod
-    def run_single_game_with_feedback(cls, league, custom_rewards=None):
+    def run_single_game_with_feedback(self, custom_rewards=None):
         """Run a single game with feedback"""
-        game = cls(league, verbose=True, collect_player_feedback=True)
-        results = game.play_game(custom_rewards)
+        # Enable feedback for this run
+        self.verbose = True
+        self.collect_player_feedback = True
+
+        # Run the game
+        results = self.play_game(custom_rewards)
+
         return {
             "results": results,
-            "feedback": game.game_feedback,
-            "player_feedback": game.player_feedback,
+            "feedback": self.game_feedback,
+            "player_feedback": self.player_feedback,
         }
 
     def run_simulations(self, num_simulations, league, custom_rewards=None):
@@ -285,4 +288,3 @@ Good luck and have fun!
             "num_simulations": num_simulations,
             "table": {"defections": defections, "collusions": collusions},
         }
-        

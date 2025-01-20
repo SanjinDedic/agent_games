@@ -194,7 +194,7 @@ function AdminLeague() {
           {/* Right Column - Controls (1/4 width) */}
           <div className="space-y-4">
             {/* Simulation Controls */}
-            <AdminLeagueSimulation selected_league_name={currentLeague?.name} />
+            <AdminLeagueSimulation league={currentLeague} />
 
             {/* Custom Rewards */}
             <CustomRewards />
