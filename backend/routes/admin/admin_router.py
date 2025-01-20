@@ -3,8 +3,7 @@ import logging
 
 import httpx
 from config import DOCKER_API_URL
-from fastapi import APIRouter, Depends, HTTPException
-from games.game_factory import GameFactory
+from fastapi import APIRouter, Depends
 from models_api import ErrorResponseModel, ResponseModel
 from routes.admin.admin_db import (
     create_league,

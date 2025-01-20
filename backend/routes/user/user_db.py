@@ -1,12 +1,10 @@
 import json
 import logging
-import os
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 import pytz
 from database.db_models import League, Submission, Team
-from sqlalchemy import and_
 from sqlmodel import Session, select
 
 logger = logging.getLogger(__name__)

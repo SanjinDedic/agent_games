@@ -1,12 +1,7 @@
-import json
 import logging
-import os
-from typing import Dict, Optional
 
 import httpx
-from config import ROOT_DIR
-from database.db_models import Team
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from games.game_factory import GameFactory
 from models_api import ErrorResponseModel, ResponseModel
 from routes.admin.admin_models import LeagueName

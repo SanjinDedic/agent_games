@@ -1,14 +1,16 @@
 from datetime import timedelta
+
 from database.db_config import get_database_url
 from database.db_models import Admin, Team
 from routes.auth.auth_core import create_access_token
 from sqlmodel import Session, create_engine, select
-import os 
+
 
 class InvalidCredentialsError(Exception):
     """Raised when login credentials are invalid"""
 
     pass
+
 
 def get_db():
     """Database session dependency"""
