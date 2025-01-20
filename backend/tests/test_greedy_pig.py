@@ -13,7 +13,6 @@ def test_league():
         name="test_league",
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=7),
-        folder="leagues/test_league",
         game="greedy_pig",
     )
 
@@ -60,17 +59,6 @@ def test_assign_points(test_league):
     assert results["points"]["Player3"] == 4
 
 
-def test_get_all_player_classes_from_folder(test_league):
-    game = GreedyPigGame(test_league, verbose=True)
-    assert len(game.players) == 5
-    player_names = [player.name for player in game.players]
-    assert "AlwaysBank" in player_names
-    assert "Bank5" in player_names
-    assert "Bank15" in player_names
-    assert "BankRoll3" in player_names
-    assert "BankRoll4" in player_names
-
-
 def test_game_reset(test_league):
     game = GreedyPigGame(test_league)
     game.play_round()
@@ -87,7 +75,8 @@ def test_game_reset(test_league):
 @patch("sys.stdout", new_callable=StringIO)
 def test_run_simulations(mock_stdout, test_league):
     num_simulations = 10
-    results = GreedyPigGame.run_simulations(num_simulations, test_league)
+    game = GreedyPigGame(test_league)
+    results = game.run_simulations(num_simulations, test_league)
     assert isinstance(results, dict)
     assert "total_points" in results
     assert "num_simulations" in results

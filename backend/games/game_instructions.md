@@ -70,9 +70,7 @@ agent_games/
    - Add your game to `game_factory.py`
    - Include proper imports and game class registration
 
-6. **Add Test League Bots**
-   - Create example bots in `test_league` folder
-   - Demonstrate feedback usage in example bots
+MUST REWRITE THIS TO NO FOLDERS
 
 7. **Create Unit Tests**
    - Test game logic and scoring

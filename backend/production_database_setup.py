@@ -1,12 +1,11 @@
 import json
 import os
-import shutil
 from datetime import datetime, timedelta
 
-from auth.auth_core import get_password_hash
+from database.db_models import get_password_hash
 from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
-from database import create_administrator
-from database.db_models import League, Team
+
+from database.db_models import League, Team, Admin
 from sqlmodel import Session, SQLModel, create_engine, select
 
 
@@ -19,27 +18,40 @@ def create_and_populate_database():
 
     with Session(engine) as session:
         # Create administrator
-        create_administrator(session, "Administrator", "BOSSMAN1378")
+        admin = Admin(username="admin", password_hash=get_password_hash("admin"))
+        session.add(admin)
+    
+        
+        # Create unnasigned league
+        unassigned_league = League(
+            name="unassigned",
+            created_date=datetime.now(),
+            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            game="greedy_pig",
+        )
+        session.add(unassigned_league)
 
-        # Create admin leagues
-        admin_leagues = []
-        league_names = ["unassigned", "prelim7-8", "prelim9-10"]
-        for league_name in league_names:
-            league = League(
-                name=league_name,
-                created_date=datetime.now(),
-                expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-                active=True,
-                folder=f"leagues/admin/{league_name}",
-                game="greedy_pig",
-            )
-            admin_leagues.append(league)
+        #create greedy pig league
 
-            # Create league folder
-            league_folder = os.path.join(ROOT_DIR, "games", "greedy_pig", league.folder)
-            os.makedirs(league_folder, exist_ok=True)
+        greedy_pig_league = League(
+            name="greedy_pig_league",
+            created_date=datetime.now(),
+            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            game="greedy_pig"
+        )
+        session.add(greedy_pig_league)
 
-        session.add_all(admin_leagues)
+        #create prisoners dilemma league
+
+        prisoners_dilemma_league = League(
+            name="prisoners_dilemma_league",
+            created_date=datetime.now(),
+            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            game="prisoners_dilemma"
+        )
+
+        session.add(prisoners_dilemma_league)
+
         session.commit()
 
         # Get the unassigned league
@@ -64,25 +76,5 @@ def create_and_populate_database():
         session.commit()
         print("Database created and populated successfully")
 
-
-def clean_league_folders():
-    for league_name in [
-        "unassigned",
-        "prelim7-8",
-        "prelim9-10",
-        "week1",
-        "week2",
-        "week3",
-    ]:
-        league_folder = os.path.join(
-            ROOT_DIR, "games", "greedy_pig", f"leagues/admin/{league_name}"
-        )
-        if os.path.exists(league_folder):
-            shutil.rmtree(league_folder)
-            os.makedirs(league_folder)
-    print("League folders have been cleaned.")
-
-
 if __name__ == "__main__":
-    clean_league_folders()
     create_and_populate_database()

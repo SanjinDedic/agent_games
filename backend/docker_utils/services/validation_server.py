@@ -1,38 +1,26 @@
 import ast
 import logging
-import os
-import shutil
 import sys
-import tempfile
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
 
 # Add the backend directory to Python path
 sys.path.insert(0, "/backend")
 
-from database.db_models import League  # Updated import path
+from database.db_models import League
 from fastapi import FastAPI
 from games.game_factory import GameFactory
 from pydantic import BaseModel
 
-# Rest of the validation_server.py code remains the same...
-
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("validation_server.log"), logging.StreamHandler()],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-executor = ThreadPoolExecutor(max_workers=4)
 
 # Security configuration
 ALLOWED_MODULES = {
@@ -106,14 +94,12 @@ class CodeValidator(ast.NodeVisitor):
     def _is_allowed_import(self, module: str, submodule: str = None) -> bool:
         parts = module.split(".")
         current = ALLOWED_MODULES
-
         for part in parts:
             if part not in current:
                 return False
             if current[part] is None:
                 return True
             current = current[part]
-
         return submodule in current if submodule else True
 
 
@@ -129,92 +115,83 @@ def validate_code(code: str) -> Tuple[bool, Optional[str]]:
     return validator.safe, validator.error_message
 
 
-def setup_test_environment(
-    code: str, team_name: str, game_name: str
-) -> Tuple[str, str]:
-    """Set up temporary test environment"""
-    temp_dir = tempfile.mkdtemp()
-    temp_league_path = os.path.join(temp_dir, "test_league")
-    os.makedirs(temp_league_path)
-
-    # Copy test league bots
-    test_league_path = os.path.join(
-        "/agent_games/games", game_name, "leagues/test_league"
-    )
-    if os.path.exists(test_league_path):
-        for item in os.listdir(test_league_path):
-            if item.endswith(".py"):
-                shutil.copy2(
-                    os.path.join(test_league_path, item),
-                    os.path.join(temp_league_path, item),
-                )
-
-    # Write submitted code
-    with open(os.path.join(temp_league_path, f"{team_name}.py"), "w") as f:
-        f.write(code)
-
-    return temp_league_path, temp_dir
-
-
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/logs")
+async def get_logs():
+    """Get recent log entries"""
+    logger.info("Received request for recent logs")
+    try:
+        with open("validation_server.log", "r") as f:
+            logs = f.read()
+        return {"logs": logs}
+    except FileNotFoundError:
+        return {"logs": "No logs found"}
+
+
 @app.post("/validate", response_model=ValidationResponse)
 async def validate_submission(request: ValidationRequest) -> ValidationResponse:
     """Validate submitted code and run test simulation"""
+    logger.info(f"Received validation request for team {request.team_name}")
     try:
-        # Validate code safety first
+        # First check if the code is safe
         is_safe, error_message = validate_code(request.code)
         if not is_safe:
             return ValidationResponse(
                 status="error", message=f"Agent code is not safe: {error_message}"
             )
 
-        # Set up test environment
-        temp_league_path, temp_dir = setup_test_environment(
-            request.code, request.team_name, request.game_name
+        # Create test league with validation players
+        test_league = League(
+            name="validation_leagueX",
+            created_date=datetime.now(),
+            expiry_date=datetime.now() + timedelta(days=1),
+            game=request.game_name,
         )
 
+        # Create instance and add validation players
         try:
-            test_league = League(
-                name="test_league",
-                created_date=datetime.now(),
-                expiry_date=datetime.now() + timedelta(days=1),
-                folder=temp_league_path,
-                game=request.game_name,
-            )
-
-            # Get game class and run simulations
             game_class = GameFactory.get_game_class(request.game_name)
-
-            # Run simulations within a timeout context
-            feedback_result = game_class.run_single_game_with_feedback(
-                test_league, request.custom_rewards
+            game_instance = game_class(test_league)
+        except Exception as e:
+            logger.error(f"Error creating game instance: {str(e)}")
+            return ValidationResponse(
+                status="error", message=f"Error initializing game: {str(e)}"
             )
-            simulation_results = game_class.run_simulations(
+
+        # Add the submitted player code
+        try:
+            game_instance.add_player(request.code, request.team_name)
+        except Exception as e:
+            logger.error(f"Error adding player: {str(e)}")
+            return ValidationResponse(
+                status="error", message=f"Error adding player: {str(e)}"
+            )
+
+        try:
+            # Run simulations
+            feedback_result = game_instance.run_single_game_with_feedback(
+                request.custom_rewards
+            )
+            sim_game_instance = game_class(test_league)
+            sim_game_instance.add_player(request.code, request.team_name)
+            simulation_results = sim_game_instance.run_simulations(
                 request.num_simulations, test_league, request.custom_rewards
             )
-
-            return ValidationResponse(
-                status="success",
-                feedback=feedback_result.get("feedback"),
-                simulation_results=simulation_results,
-            )
-
         except Exception as e:
-            logger.error(f"Simulation error: {str(e)}")
+            logger.error(f"Error during simulation: {str(e)}")
             return ValidationResponse(
                 status="error", message=f"Error during simulation: {str(e)}"
             )
 
-        finally:
-            # Clean up temporary files
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                logger.error(f"Error cleaning up temporary directory: {str(e)}")
+        return ValidationResponse(
+            status="success",
+            feedback=feedback_result.get("feedback"),
+            simulation_results=simulation_results,
+        )
 
     except Exception as e:
         logger.error(f"Unexpected error during validation: {str(e)}")

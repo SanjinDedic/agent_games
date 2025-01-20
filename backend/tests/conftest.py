@@ -13,12 +13,12 @@ from typing import Dict, Generator
 
 import pytest
 from api import app
-from config import get_database_url
-from database.db_models import Admin, League, Team
+from database.db_config import get_database_url
+from database.db_models import Admin, League, Team, get_password_hash
 from database.db_session import get_db
 from docker_utils.containers import ensure_containers_running, stop_containers
 from fastapi.testclient import TestClient
-from routes.auth.auth_core import create_access_token, get_password_hash
+from routes.auth.auth_core import create_access_token
 from sqlmodel import Session, SQLModel, create_engine, select
 
 logging.basicConfig(level=logging.DEBUG)
@@ -136,7 +136,6 @@ def team_token(db_session):
             name="comp_test",
             created_date=datetime.now(),
             expiry_date=datetime.now() + timedelta(days=7),
-            folder="leagues/admin/comp_test",
             game="greedy_pig",
         )
         db_session.add(league)
@@ -168,7 +167,6 @@ def test_league(db_session) -> League:
         name="test_league",
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=1),
-        folder="leagues/test_league",
         game="greedy_pig",
     )
     db_session.add(league)
@@ -200,7 +198,6 @@ def setup_unassigned_league(db_session):
             name="unassigned",
             created_date=datetime.now(),
             expiry_date=datetime.now() + timedelta(days=7),
-            folder="leagues/admin/unassigned",
             game="greedy_pig",
         )
         db_session.add(unassigned)

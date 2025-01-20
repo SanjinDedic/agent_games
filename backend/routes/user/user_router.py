@@ -1,13 +1,7 @@
-import json
 import logging
-import os
-from typing import Dict, Optional
 
 import httpx
-from config import ROOT_DIR
-from database.db_models import Team
-from docker_utils.scripts.docker_simulation import run_docker_simulation
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from games.game_factory import GameFactory
 from models_api import ErrorResponseModel, ResponseModel
 from routes.admin.admin_models import LeagueName
@@ -20,12 +14,15 @@ from routes.auth.auth_core import (
 from routes.auth.auth_db import get_db
 from routes.user.user_db import (
     SubmissionLimitExceededError,
+    TeamNotFoundError,
     allow_submission,
     assign_team_to_league,
     get_all_leagues,
     get_all_published_results,
+    get_latest_submissions_for_league,
     get_published_result,
     get_team,
+    get_team_submission,
     save_submission,
 )
 from routes.user.user_models import GameName, LeagueAssignRequest, SubmissionCode
@@ -46,8 +43,32 @@ async def submit_agent(
 ):
     """Submit agent code for validation and storage"""
     team_name = current_user["team_name"]
-    team = get_team(session, team_name)
+    try:
+        team = get_team(session, team_name)
+    except TeamNotFoundError:
+        return ResponseModel(status="error", message=f"Team '{team_name}' not found")
 
+    # Check league assignment first
+    if not team.league:
+        return ResponseModel(
+            status="error", message="Team is not assigned to a league."
+        )
+
+    if team.league.name == "unassigned":
+        return ResponseModel(
+            status="error", message="Team is not assigned to a valid league."
+        )
+
+    # Then check submission limit
+    try:
+        if not allow_submission(session, team.id):
+            return ResponseModel(
+                status="error", message="You can only make 5 submissions per minute."
+            )
+    except SubmissionLimitExceededError as e:
+        return ResponseModel(status="error", message=str(e))
+
+    # Then proceed with validation
     try:
         logger.info(f"Sending submission to validation server for team {team_name}")
         async with httpx.AsyncClient() as client:
@@ -55,7 +76,7 @@ async def submit_agent(
                 "http://localhost:8001/validate",
                 json={
                     "code": submission.code,
-                    "game_name": team.league.game if team.league else "greedy_pig",
+                    "game_name": team.league.game,
                     "team_name": team_name,
                     "num_simulations": 100,
                 },
@@ -63,52 +84,22 @@ async def submit_agent(
             )
 
         if response.status_code != 200:
-            return ErrorResponseModel(
+            return ResponseModel(
                 status="error", message=f"Validation failed: {response.text}"
             )
 
         validation_result = response.json()
         if validation_result.get("status") == "error":
-            return ErrorResponseModel(
+            return ResponseModel(
                 status="error",
                 message=validation_result.get("message", "Code validation failed"),
             )
 
     except Exception as e:
         logger.error(f"Error during validation: {e}")
-        return ErrorResponseModel(
+        return ResponseModel(
             status="error", message=f"An error occurred during validation: {str(e)}"
         )
-
-    if not team.league:
-        return ErrorResponseModel(
-            status="error", message="Team is not assigned to a league."
-        )
-
-    if team.league.name == "unassigned":
-        return ErrorResponseModel(
-            status="error", message="Team is not assigned to a valid league."
-        )
-
-    try:
-        if not allow_submission(session, team.id):
-            return ErrorResponseModel(
-                status="error", message="You can only make 5 submissions per minute."
-            )
-    except SubmissionLimitExceededError as e:
-        return ErrorResponseModel(status="error", message=str(e))
-
-    league_folder = (
-        team.league.folder.lstrip("/")
-        if team.league.folder
-        else f"leagues/user/{team.league.name}"
-    )
-    file_path = os.path.join(
-        ROOT_DIR, "games", team.league.game, league_folder, f"{team_name}.py"
-    )
-
-    with open(file_path, "w") as file:
-        file.write(submission.code)
 
     try:
         submission_id = save_submission(session, submission.code, team.id)
@@ -116,14 +107,14 @@ async def submit_agent(
             status="success",
             message=f"Code submitted successfully. Submission ID: {submission_id}",
             data={
-                "results": validation_result.get("simulation_results"),
                 "team_name": team_name,
+                "results": validation_result.get("simulation_results"),
                 "feedback": validation_result.get("feedback"),
             },
         )
     except Exception as e:
         logger.error(f"Error saving submission: {e}")
-        return ErrorResponseModel(
+        return ResponseModel(
             status="error",
             message=f"An error occurred while saving the submission: {str(e)}",
         )
@@ -258,4 +249,50 @@ async def get_leagues_endpoint(
         logger.error(f"Error retrieving leagues: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to retrieve leagues: {str(e)}"
+        )
+
+
+@user_router.get("/get-league-submissions/{league_id}", response_model=ResponseModel)
+@verify_any_role
+async def get_league_submissions(
+    league_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get latest submissions for all teams in a league"""
+    try:
+        submissions = await get_latest_submissions_for_league(session, league_id)
+        return ResponseModel(
+            status="success",
+            message="Submissions retrieved successfully",
+            data=submissions,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving submissions: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve submissions: {str(e)}"
+        )
+
+
+@user_router.get("/get-team-submission", response_model=ResponseModel)
+@verify_any_role
+async def get_team_submission_endpoint(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get latest submission for the current team"""
+    team_name = current_user["team_name"]
+    try:
+        submission_data = get_team_submission(session, team_name)
+        return ResponseModel(
+            status="success",
+            message="Submission retrieved successfully",
+            data=submission_data,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving submission: {e}")
+        return ResponseModel(
+            status="error",
+            message=f"Failed to retrieve submission: {str(e)}",
+            data={"code": None},
         )

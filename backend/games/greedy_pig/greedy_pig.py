@@ -113,52 +113,6 @@ def make_decision(self, game_state):
         }
         return MappingProxyType(state)
 
-    def get_all_player_classes_from_folder(self):
-        players = []
-        league_directory = os.path.join(
-            ROOT_DIR, "games", self.league.game, self.league.folder
-        )
-
-        if self.verbose:
-            print(f"Searching for player classes in: {league_directory}")
-
-        if not os.path.exists(league_directory):
-            print(f"The folder '{league_directory}' does not exist.")
-            return players
-
-        for item in os.listdir(league_directory):
-            if item.endswith(".py"):
-                module_name = item[:-3]
-                module_path = os.path.join(league_directory, item)
-
-                if self.verbose:
-                    print(f"Found Python file: {module_path}")
-
-                spec = importlib.util.spec_from_file_location(module_name, module_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-
-                if hasattr(module, "CustomPlayer"):
-                    player_class = getattr(module, "CustomPlayer")
-                    player = player_class()
-
-                    # Validate that the player is an instance of GreedyPigPlayer
-                    if not isinstance(player, GreedyPigPlayer):
-                        print(
-                            f"Warning: {module_name} does not contain a valid Greedy Pig player. Skipping."
-                        )
-                        continue
-
-                    player.name = module_name
-                    players.append(player)
-                    if self.verbose:
-                        print(f"Added player: {player.name}")
-
-        if self.verbose:
-            print(f"Total players found: {len(players)}, {players}")
-
-        return players
-
     def add_feedback(self, message):
         if self.verbose:
             self.game_feedback.append(message)
@@ -334,40 +288,44 @@ def make_decision(self, game_state):
             player.unbanked_money = 0
             player.has_banked_this_turn = False
 
-    @classmethod
-    def run_single_game_with_feedback(cls, league, custom_rewards=None):
-        game = cls(league, verbose=True, custom_rewards=custom_rewards)
+    def run_single_game_with_feedback(self, custom_rewards=None):
+        """Run a single game with feedback"""
+        game = self  # Use the current instance instead of creating a new one
+        game.verbose = True  # Enable feedback for this run
+
         results = game.play_game(custom_rewards)
         game_feedback = "\n".join(game.game_feedback)
         player_feedback = "\n".join(game.player_feedback)
+
         return {
             "results": results,
             "feedback": game_feedback,
             "player_feedback": player_feedback,
         }
 
-    @classmethod
-    def run_simulations(cls, num_simulations, league, custom_rewards=None):
-        game = cls(league)
-        total_points = {player.name: 0 for player in game.players}
-        total_wins = {player.name: 0 for player in game.players}
+    def run_simulations(self, num_simulations, league, custom_rewards=None):
+        """Run multiple simulations - now an instance method"""
+        total_points = {str(player.name): 0 for player in self.players}
+        rolls = {str(player.name): 0 for player in self.players}
+        holds = {str(player.name): 0 for player in self.players}
 
         for _ in range(num_simulations):
-            game.reset()
-            results = game.play_game(custom_rewards)
+            self.reset()  # Reset game state but keep players
+            results = self.play_game(custom_rewards)
 
+            # Update totals
             for player, points in results["points"].items():
-                total_points[player] += points
+                total_points[str(player)] += points
 
-            winner = max(results["points"], key=results["points"].get)
-            total_wins[winner] += 1
-
-        print("TOTAL POINTS:", total_points)
-        print("NUM SIMULATIONS:", num_simulations)
-        print("TOTAL WINS:", total_wins)
+            # Update statistics if available
+            if "table" in results:
+                for player_name, stats in results["table"].get("rolls", {}).items():
+                    rolls[str(player_name)] += stats
+                for player_name, stats in results["table"].get("holds", {}).items():
+                    holds[str(player_name)] += stats
 
         return {
             "total_points": total_points,
             "num_simulations": num_simulations,
-            "table": {"total_wins": total_wins},
+            "table": {"rolls": rolls, "holds": holds},
         }

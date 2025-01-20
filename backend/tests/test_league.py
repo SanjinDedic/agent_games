@@ -8,7 +8,6 @@ import pytest
 from config import ROOT_DIR
 from database.db_models import League, SimulationResult, Team
 from fastapi.testclient import TestClient
-from routes.admin.admin_db import get_league
 from routes.auth.auth_core import create_access_token
 from routes.user.user_db import get_all_leagues
 from sqlmodel import Session, select
@@ -43,16 +42,11 @@ def setup_comp_test_league(db_session):
         name="comp_test",
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=7),
-        folder="leagues/admin/comp_test",
         game="greedy_pig",
         active=True,
     )
     db_session.add(league)
     db_session.commit()
-
-    # Create the league folder if it doesn't exist
-    folder_path = os.path.join(ROOT_DIR, "games", league.game, league.folder)
-    os.makedirs(folder_path, exist_ok=True)
 
     return league
 
@@ -93,36 +87,6 @@ def test_league_creation(client, auth_headers):
     assert "already exists" in response.json()["message"]
 
 
-def test_league_folder_creation(client, auth_headers):
-    """Test creation of league folders"""
-    league_name = "test_league_admin"
-    response = client.post(
-        "/admin/league-create",
-        json={"name": league_name, "game": "greedy_pig"},
-        headers=auth_headers,
-    )
-    assert response.status_code == 200
-    assert "success" in response.json()["status"]
-
-    expected_folder = os.path.join(
-        ROOT_DIR, "games", "greedy_pig", "leagues", "admin", league_name
-    )
-    assert os.path.isdir(expected_folder)
-
-    # Clean up: remove the created folder
-    if os.path.exists(expected_folder):
-        shutil.rmtree(expected_folder)
-
-
-def test_league_folder_creation_no_auth(client):
-    """Test league folder creation without authentication"""
-    league_name = "test_league_user"
-    response = client.post(
-        "/admin/league-create", json={"name": league_name, "game": "greedy_pig"}
-    )
-    assert response.status_code == 401
-
-
 def test_get_all_leagues(client, team_token, setup_comp_test_league):
     """Test retrieving all leagues"""
     response = client.get(
@@ -144,17 +108,19 @@ def test_get_all_leagues(client, team_token, setup_comp_test_league):
         assert "game" in league
         assert "created_date" in league
         assert "expiry_date" in league
-        assert "folder" in league
 
 
 def test_league_simulation_workflow(
     client, auth_headers, setup_comp_test_league, db_session
 ):
-    """Test complete simulation workflow including running and publishing results with different feedback types"""
-    # Test with markdown feedback
+    # First simulation request
     simulation_response = client.post(
         "/admin/run-simulation",
-        json={"league_name": "comp_test", "num_simulations": 10, "use_docker": False},
+        json={
+            "league_id": setup_comp_test_league.id,
+            "num_simulations": 10,
+            "use_docker": False,
+        },
         headers=auth_headers,
     )
     assert simulation_response.status_code == 200
@@ -190,10 +156,14 @@ def test_league_simulation_workflow(
     assert results["league_name"] == "comp_test"
     assert results["feedback"] == markdown_feedback
 
-    # Test with JSON feedback
+    # Test with JSON feedback - now using league_id
     simulation_response2 = client.post(
         "/admin/run-simulation",
-        json={"league_name": "comp_test", "num_simulations": 10, "use_docker": False},
+        json={
+            "league_id": setup_comp_test_league.id,  # Using league_id instead of league_name
+            "num_simulations": 10,
+            "use_docker": False,
+        },
         headers=auth_headers,
     )
     assert simulation_response2.status_code == 200

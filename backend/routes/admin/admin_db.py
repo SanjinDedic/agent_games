@@ -1,8 +1,7 @@
 import json
 import logging
-import os
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import pytz
 from config import ROOT_DIR
@@ -56,8 +55,6 @@ async def create_league(session: Session, league_data) -> Dict:
             f"Invalid game name: {league_data.game}. Available games are: greedy_pig, prisoners_dilemma"
         )
 
-    league_folder = f"leagues/admin/{league_data.name}"
-
     try:
         league = League(
             name=league_data.name,
@@ -65,17 +62,11 @@ async def create_league(session: Session, league_data) -> Dict:
             expiry_date=(
                 datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24)
             ),  # Default 24 hour expiry
-            folder=league_folder,
             game=league_data.game,
         )
 
         session.add(league)
         session.flush()
-
-        # Create league folder
-        absolute_folder = os.path.join(ROOT_DIR, "games", league.game, league.folder)
-        os.makedirs(absolute_folder, exist_ok=True)
-
         session.commit()
         return {"league_id": league.id, "name": league.name}
 
@@ -143,15 +134,6 @@ async def delete_team(session: Session, team_name: str) -> str:
     try:
         # Delete associated submissions first
         session.exec(delete(Submission).where(Submission.team_id == team.id))
-
-        # Delete team's code files if they exist
-        if team.league:
-            for game_name in ["greedy_pig", "prisoners_dilemma"]:
-                team_file = os.path.join(
-                    ROOT_DIR, "games", game_name, team.league.folder, f"{team_name}.py"
-                )
-                if os.path.exists(team_file):
-                    os.remove(team_file)
 
         # Delete the team itself
         session.delete(team)  # Add this line
@@ -353,10 +335,17 @@ async def process_simulation_results(sim: SimulationResult, league_name: str) ->
     }
 
 
-async def get_league(session, league_name):
+async def get_league_by_name(session, league_name):
     league = session.exec(
         select(League).where(League.name == league_name)
     ).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
+    return league
+
+
+async def get_league_by_id(session, league_id):
+    league = session.exec(select(League).where(League.id == league_id)).one_or_none()
+    if not league:
+        raise LeagueNotFoundError(f"League with league id {league_id} not found")
     return league

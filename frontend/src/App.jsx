@@ -14,6 +14,7 @@ import { useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { toggleTooltips } from './slices/settingsSlice';
+import DockerStatus from './AgentGames/Admin/DockerStatus';
 
 function App() {
   const dispatch = useDispatch();
@@ -36,6 +37,7 @@ function App() {
           <Route path="AdminLeague" element={<AdminLeague />} />
           <Route path="AdminTeam" element={<AdminTeam />} />
           <Route path="StyleGuide" element={<StyleGuide />} />
+          <Route path="AdminDockerStatus" element={<DockerStatus />} />
         </Routes>
 
         <ToastContainer

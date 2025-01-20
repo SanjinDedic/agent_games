@@ -1,11 +1,9 @@
 import json
 import logging
-import os
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, Optional
 
 import pytz
-from config import ROOT_DIR
 from database.db_models import League, Submission, Team
 from sqlmodel import Session, select
 
@@ -204,7 +202,6 @@ def get_all_leagues(session: Session) -> Dict:
                     "game": league.game,
                     "created_date": league.created_date,
                     "expiry_date": league.expiry_date,
-                    "folder": league.folder,
                 }
                 for league in leagues
             ]
@@ -219,3 +216,58 @@ def get_team(session, team_name):
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
     return team
+
+
+def get_latest_submissions_for_league(
+    session: Session, league_id: int
+) -> Dict[str, str]:
+    """Get latest submissions for all teams in a league"""
+    try:
+        # First get all teams in the league
+        teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
+
+        submissions = {}
+        for team in teams:
+            # Get latest submission for each team
+            latest_submission = session.exec(
+                select(Submission)
+                .where(Submission.team_id == team.id)
+                .order_by(Submission.timestamp.desc())
+                .limit(1)
+            ).first()
+
+            if latest_submission:
+                submissions[team.name] = latest_submission.code
+
+        logger.info(f"Found {len(submissions)} submissions for league {league_id}")
+        return submissions
+
+    except Exception as e:
+        logger.error(f"Error getting league submissions: {str(e)}")
+        raise
+
+
+def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[str]]:
+    """Get latest submission for a specific team"""
+    try:
+        # Get team first
+        team = session.exec(select(Team).where(Team.name == team_name)).first()
+
+        if not team:
+            logger.warning(f"Team not found: {team_name}")
+            return {"code": None}
+
+        # Get latest submission
+        submission = session.exec(
+            select(Submission)
+            .where(Submission.team_id == team.id)
+            .order_by(Submission.timestamp.desc())
+            .limit(1)
+        ).first()
+
+        # Return dictionary with code
+        return {"code": submission.code if submission else None}
+
+    except Exception as e:
+        logger.error(f"Error getting team submission: {str(e)}")
+        raise
