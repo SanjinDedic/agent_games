@@ -10,7 +10,7 @@ To get started with the Multi-Game Simulation Platform, follow these steps:
 1. Clone the repository: `git clone https://github.com/your-username/multi-game-simulation.git`
 2. Install the required dependencies: `pip install -r requirements.txt`
 3. Set up the database by running the database initialization script: `python initialize_db.py`
-4. Start the FastAPI server: `uvicorn api:app --reload`
+4. Start the FastAPI server: `PYTHONPATH=$PYTHONPATH:$(pwd | xargs dirname): uvicorn api:app --reload`
 5. Access the platform through the provided front-end interface.
 
 ## 🎲 Available Games

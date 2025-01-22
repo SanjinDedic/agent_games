@@ -1,6 +1,7 @@
-from api import app
-from config import GAMES
 from fastapi.testclient import TestClient
+
+from backend.api import app
+from backend.config import GAMES
 
 client = TestClient(app)
 

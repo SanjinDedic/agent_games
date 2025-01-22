@@ -1,5 +1,6 @@
-from database.db_config import get_database_url
 from sqlmodel import Session, create_engine
+
+from backend.database.db_config import get_database_url
 
 
 def get_db_engine():

@@ -1,5 +1,5 @@
-from games.greedy_pig.greedy_pig import GreedyPigGame
-from games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
+from backend.games.greedy_pig.greedy_pig import GreedyPigGame
+from backend.games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
 
 
 class GameFactory:

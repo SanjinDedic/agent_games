@@ -1,11 +1,10 @@
 import json
 import logging
+import os
 import subprocess
 import time
-from typing import Optional
-import os
 
-from config import ROOT_DIR  # Import our robust ROOT_DIR
+from backend.config import ROOT_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,7 @@ def ensure_containers_running():
                     "-e",
                     f"SERVICE_TOKEN={os.getenv('SERVICE_TOKEN')}",  # Make sure this line is present
                     "-e",
-                    f"SECRET_KEY={os.getenv('SECRET_KEY')}", 
+                    f"SECRET_KEY={os.getenv('SECRET_KEY')}",
                     "--restart=unless-stopped",
                     container_name,
                 ],

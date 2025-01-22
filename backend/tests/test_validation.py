@@ -1,13 +1,11 @@
 import ast
-import json
 import os
-import sys
-from datetime import datetime, timedelta
 
 import pytest
-from database.db_models import League
-from docker_utils.services.validation_server import CodeValidator, app, validate_code
 from fastapi.testclient import TestClient
+
+from backend.docker_utils.services.validation_server import (
+    CodeValidator, app, validate_code)
 
 # Create test client
 client = TestClient(app)

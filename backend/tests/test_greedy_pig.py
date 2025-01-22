@@ -3,8 +3,9 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
-from database.db_models import League
-from games.greedy_pig.greedy_pig import GreedyPigGame
+
+from backend.database.db_models import League
+from backend.games.greedy_pig.greedy_pig import GreedyPigGame
 
 
 @pytest.fixture

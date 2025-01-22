@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 import pytz
-from database.db_models import League, Submission, Team
 from sqlmodel import Session, select
+
+from backend.database.db_models import League, Submission, Team
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")

@@ -1,17 +1,10 @@
-import os
 from datetime import datetime, timedelta
-from unittest.mock import patch
 
-import database
 import pytest
-from api import app
-from config import ROOT_DIR
-from database import get_db_engine
-from database.db_models import League, Submission, Team
-from fastapi.testclient import TestClient
-from routes.user.user_db import get_team
-from sqlmodel import Session, delete, select
-from tests.database_setup import setup_test_db
+from sqlmodel import delete, select
+
+from backend.database.db_models import League, Submission, Team
+from backend.routes.user.user_db import get_team
 
 
 @pytest.fixture

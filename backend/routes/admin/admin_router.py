@@ -2,10 +2,12 @@ import json
 import logging
 
 import httpx
-from config import DOCKER_API_URL
 from fastapi import APIRouter, Depends
-from models_api import ErrorResponseModel, ResponseModel
-from routes.admin.admin_db import (
+from sqlmodel import Session
+
+from backend.config import DOCKER_API_URL
+from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.admin.admin_db import (
     create_league,
     create_team,
     delete_team,
@@ -16,7 +18,7 @@ from routes.admin.admin_db import (
     save_simulation_results,
     update_expiry_date,
 )
-from routes.admin.admin_models import (
+from backend.routes.admin.admin_models import (
     ExpiryDate,
     LeagueName,
     LeagueResults,
@@ -25,10 +27,13 @@ from routes.admin.admin_models import (
     TeamDelete,
     TeamSignup,
 )
-from routes.auth.auth_core import get_current_user, verify_admin_role, verify_any_role
-from routes.auth.auth_db import get_db
-from sqlmodel import Session
-from utils import transform_result
+from backend.routes.auth.auth_core import (
+    get_current_user,
+    verify_admin_role,
+    verify_any_role,
+)
+from backend.routes.auth.auth_db import get_db
+from backend.utils import transform_result
 
 logger = logging.getLogger(__name__)
 

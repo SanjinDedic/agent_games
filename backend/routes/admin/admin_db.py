@@ -4,17 +4,13 @@ from datetime import datetime, timedelta
 from typing import Dict, Tuple, Union
 
 import pytz
-from config import ROOT_DIR
-from database.db_models import (
-    League,
-    SimulationResult,
-    SimulationResultItem,
-    Submission,
-    Team,
-)
-from games.game_factory import GameFactory
+from backend.games.game_factory import GameFactory
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select
+
+from backend.config import ROOT_DIR
+from backend.database.db_models import (
+    League, SimulationResult, SimulationResultItem, Submission, Team)
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")

@@ -2,11 +2,10 @@ import json
 import os
 from datetime import datetime, timedelta
 
-from database.db_models import get_password_hash
-from config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
-
-from database.db_models import League, Team, Admin
 from sqlmodel import Session, SQLModel, create_engine, select
+
+from backend.config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
+from backend.database.db_models import Admin, League, Team, get_password_hash
 
 
 def create_and_populate_database():
@@ -20,8 +19,7 @@ def create_and_populate_database():
         # Create administrator
         admin = Admin(username="admin", password_hash=get_password_hash("admin"))
         session.add(admin)
-    
-        
+
         # Create unnasigned league
         unassigned_league = League(
             name="unassigned",
@@ -31,23 +29,23 @@ def create_and_populate_database():
         )
         session.add(unassigned_league)
 
-        #create greedy pig league
+        # create greedy pig league
 
         greedy_pig_league = League(
             name="greedy_pig_league",
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-            game="greedy_pig"
+            game="greedy_pig",
         )
         session.add(greedy_pig_league)
 
-        #create prisoners dilemma league
+        # create prisoners dilemma league
 
         prisoners_dilemma_league = League(
             name="prisoners_dilemma_league",
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-            game="prisoners_dilemma"
+            game="prisoners_dilemma",
         )
 
         session.add(prisoners_dilemma_league)
@@ -75,6 +73,7 @@ def create_and_populate_database():
 
         session.commit()
         print("Database created and populated successfully")
+
 
 if __name__ == "__main__":
     create_and_populate_database()

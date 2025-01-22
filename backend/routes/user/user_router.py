@@ -2,17 +2,19 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends
-from games.game_factory import GameFactory
-from models_api import ErrorResponseModel, ResponseModel
-from routes.admin.admin_models import LeagueName
-from routes.auth.auth_core import (
+from sqlmodel import Session
+
+from backend.games.game_factory import GameFactory
+from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.admin.admin_models import LeagueName
+from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_student,
     verify_any_role,
     verify_student_role,
 )
-from routes.auth.auth_db import get_db
-from routes.user.user_db import (
+from backend.routes.auth.auth_db import get_db
+from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
     allow_submission,
@@ -25,9 +27,12 @@ from routes.user.user_db import (
     get_team_submission,
     save_submission,
 )
-from routes.user.user_models import GameName, LeagueAssignRequest, SubmissionCode
-from sqlmodel import Session
-from utils import get_games_names
+from backend.routes.user.user_models import (
+    GameName,
+    LeagueAssignRequest,
+    SubmissionCode,
+)
+from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
 

@@ -4,13 +4,11 @@ import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
 
-# Add the backend directory to Python path
-sys.path.insert(0, "/backend")
-
-from database.db_models import League
 from fastapi import FastAPI
-from games.game_factory import GameFactory
 from pydantic import BaseModel
+
+from backend.database.db_models import League
+from backend.games.game_factory import GameFactory
 
 logging.basicConfig(
     level=logging.INFO,

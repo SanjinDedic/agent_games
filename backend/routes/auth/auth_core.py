@@ -15,6 +15,8 @@ from routes.auth.auth_tokens import (
     ALGORITHM,
 )
 
+from backend.config import ALGORITHM, SECRET_KEY
+
 logger = logging.getLogger(__name__)
 
 

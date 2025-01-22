@@ -1,10 +1,10 @@
 import importlib
 import logging
-from abc import ABC, abstractmethod
-from typing import List
+from abc import ABC
 
 import httpx
-from config import DOCKER_API_URL, SERVICE_TOKEN
+
+from backend.config import DOCKER_API_URL, SERVICE_TOKEN
 
 logger = logging.getLogger(__name__)
 

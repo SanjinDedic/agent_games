@@ -1,14 +1,15 @@
 import logging
 from contextlib import asynccontextmanager
 
-from config import ROOT_DIR
-from docker_utils.containers import ensure_containers_running, stop_containers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from models_api import ResponseModel
-from routes.admin.admin_router import admin_router
-from routes.auth.auth_router import auth_router
-from routes.user.user_router import user_router
+
+from backend.docker_utils.containers import (
+    ensure_containers_running, stop_containers)
+from backend.models_api import ResponseModel
+from backend.routes.admin.admin_router import admin_router
+from backend.routes.auth.auth_router import auth_router
+from backend.routes.user.user_router import user_router
 
 logger = logging.getLogger(__name__)
 
