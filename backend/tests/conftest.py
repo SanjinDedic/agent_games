@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Dict, Generator
 
 import pytest
-from api import app
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 
+from backend.api import app
 from backend.database.db_config import get_database_url
 from backend.database.db_models import Admin, League, Team, get_password_hash
 from backend.database.db_session import get_db

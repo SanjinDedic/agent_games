@@ -4,8 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.docker_utils.containers import (
-    ensure_containers_running, stop_containers)
+from backend.docker_utils.containers import ensure_containers_running, stop_containers
 from backend.models_api import ResponseModel
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.auth.auth_router import auth_router

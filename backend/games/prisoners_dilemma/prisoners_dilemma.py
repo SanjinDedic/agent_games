@@ -4,7 +4,7 @@ import itertools
 import logging
 import random
 
-from games.base_game import BaseGame
+from backend.games.base_game import BaseGame
 
 logger = logging.getLogger(__name__)
 

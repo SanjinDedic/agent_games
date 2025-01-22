@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import select
 
-from backend.config import ROOT_DIR
 from backend.database.db_models import League, SimulationResult
 from backend.routes.auth.auth_core import create_access_token
 

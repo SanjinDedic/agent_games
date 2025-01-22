@@ -1,10 +1,8 @@
 import os
 
 from dotenv import load_dotenv
-from routes.auth.auth_tokens import create_service_token
 
 
-# Get path to the directory containing config.py, then go up directories until we hit the right level
 def find_project_root(current_dir=os.path.dirname(os.path.abspath(__file__))):
     """
     Find the project root directory by looking for key project files/directories.
@@ -41,11 +39,14 @@ ROOT_DIR = find_project_root()
 load_dotenv()
 
 # Other config variables
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
 GAMES = ["greedy_pig", "prisoners_dilemma"]
 # Update Docker API URL to use localhost instead of Docker's internal IP
 DOCKER_API_URL = os.getenv("DOCKER_API_URL", "http://localhost:8002")
+
+# Import after defining constants to avoid circular import
+from backend.routes.auth.auth_config import create_service_token
+
 SERVICE_TOKEN = create_service_token()

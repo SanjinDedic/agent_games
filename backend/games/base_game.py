@@ -38,7 +38,7 @@ class BaseGame(ABC):
             game_name = self.__class__.__module__.split(".")[2]
 
             # Import the validation_players module for this specific game
-            module_path = f"games.{game_name}.validation_players"
+            module_path = f"backend.games.{game_name}.validation_players"
             validation_module = importlib.import_module(module_path)
 
             # Get the players list and create a copy

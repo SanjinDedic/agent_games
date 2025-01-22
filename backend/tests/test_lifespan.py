@@ -10,7 +10,7 @@ from backend.docker_utils.containers import get_container_logs, stop_containers
 
 @pytest.fixture
 def mock_logger():
-    with patch("api.logger") as mock_log:
+    with patch("backend.api.logger") as mock_log:
         yield mock_log
 
 
@@ -22,15 +22,17 @@ def test_app():
 @pytest.fixture
 def mock_containers_logger():
     """Fixture to provide a mock logger for the containers module"""
-    with patch("docker_utils.containers.logger") as mock_log:
+    with patch("backend.docker_utils.containers.logger") as mock_log:
         yield mock_log
 
 
 @pytest.mark.asyncio
 async def test_lifespan_successful_startup_shutdown(mock_logger, test_app):
     """Test successful container startup and shutdown"""
-    with patch("api.ensure_containers_running") as mock_ensure_containers, patch(
-        "api.stop_containers"
+    with patch(
+        "backend.api.ensure_containers_running"
+    ) as mock_ensure_containers, patch(
+        "backend.api.stop_containers"
     ) as mock_stop_containers:
 
         async with lifespan(test_app):
@@ -54,9 +56,9 @@ async def test_lifespan_startup_failure(mock_logger, test_app):
     """Test error handling during container startup"""
     startup_error = Exception("Container startup failed")
 
-    with patch("api.ensure_containers_running", side_effect=startup_error), patch(
-        "api.stop_containers"
-    ) as mock_stop_containers:
+    with patch(
+        "backend.api.ensure_containers_running", side_effect=startup_error
+    ), patch("backend.api.stop_containers") as mock_stop_containers:
 
         async with lifespan(test_app):
             mock_logger.error.assert_called_with(
@@ -69,8 +71,10 @@ async def test_lifespan_shutdown_failure(mock_logger, test_app):
     """Test error handling during container shutdown"""
     shutdown_error = Exception("Container shutdown failed")
 
-    with patch("api.ensure_containers_running") as mock_ensure_containers, patch(
-        "api.stop_containers", side_effect=shutdown_error
+    with patch(
+        "backend.api.ensure_containers_running"
+    ) as mock_ensure_containers, patch(
+        "backend.api.stop_containers", side_effect=shutdown_error
     ):
 
         async with lifespan(test_app):

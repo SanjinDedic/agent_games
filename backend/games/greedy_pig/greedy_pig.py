@@ -1,7 +1,4 @@
-import importlib.util
-import os
 import random
-from types import MappingProxyType
 
 from backend.config import ROOT_DIR
 from backend.games.base_game import BaseGame
@@ -93,25 +90,8 @@ def make_decision(self, game_state):
         self.roll_no = 0
         self.game_over = False
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
-        self.game_feedback = []
-        self.player_feedback = []
-
-    def get_game_state(self):
-        # Create an immutable copy of the game state using MappingProxyType
-        state = {
-            "round_no": self.round_no,
-            "roll_no": self.roll_no,
-            "players_banked_this_round": tuple(
-                self.players_banked_this_round
-            ),  # Convert list to immutable tuple
-            "banked_money": MappingProxyType(
-                {player.name: player.banked_money for player in self.players}
-            ),
-            "unbanked_money": MappingProxyType(
-                {player.name: player.unbanked_money for player in self.players}
-            ),
-        }
-        return MappingProxyType(state)
+        self.game_feedback = {"game": "greedy_pig", "pairings": []}
+        self.player_feedback = {}
 
     def add_feedback(self, message):
         if self.verbose:

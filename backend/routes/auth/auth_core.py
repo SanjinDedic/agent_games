@@ -9,13 +9,8 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from routes.auth.auth_tokens import (
-    create_access_token,
-    SECRET_KEY,
-    ALGORITHM,
-)
 
-from backend.config import ALGORITHM, SECRET_KEY
+from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY, create_access_token
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +45,7 @@ def verify_role(allowed_roles: Union[str, List[str]]):
     Decorator factory to verify if the current user has one of the allowed roles.
     Always allows service role.
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -59,14 +55,16 @@ def verify_role(allowed_roles: Union[str, List[str]]):
 
             roles = [allowed_roles] if isinstance(allowed_roles, str) else allowed_roles
             roles.append(ROLE_SERVICE)  # Always allow service role
-            
+
             if current_user["role"] not in roles:
                 raise HTTPException(
                     status_code=403,
                     detail=f"This operation requires one of these roles: {roles}",
                 )
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -91,10 +89,7 @@ verify_any_role = verify_role(ALL_ROLES)
 
 def create_service_token() -> str:
     """Create a long-lived JWT token for service-to-service communication"""
-    service_data = {
-        "sub": "service",
-        "role": ROLE_SERVICE
-    }
+    service_data = {"sub": "service", "role": ROLE_SERVICE}
     # Create a token that expires far in the future (e.g., 1 year)
     expires = datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365)
     return create_access_token(service_data, timedelta(days=365))
