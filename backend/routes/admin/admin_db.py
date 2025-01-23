@@ -4,13 +4,18 @@ from datetime import datetime, timedelta
 from typing import Dict, Tuple, Union
 
 import pytz
-from backend.games.game_factory import GameFactory
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select
 
 from backend.config import ROOT_DIR
 from backend.database.db_models import (
-    League, SimulationResult, SimulationResultItem, Submission, Team)
+    League,
+    SimulationResult,
+    SimulationResultItem,
+    Submission,
+    Team,
+)
+from backend.games.game_factory import GameFactory
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -34,7 +39,7 @@ class TeamError(Exception):
     pass
 
 
-async def create_league(session: Session, league_data) -> Dict:
+def create_league(session: Session, league_data) -> Dict:
     """Create a new league"""
     existing_league = session.exec(
         select(League).where(League.name == league_data.name)
@@ -72,7 +77,7 @@ async def create_league(session: Session, league_data) -> Dict:
         raise
 
 
-async def create_team(session: Session, team_data) -> Dict:
+def create_team(session: Session, team_data) -> Dict:
     """Create a new team"""
     try:
         # Validate team data
@@ -120,7 +125,7 @@ async def create_team(session: Session, team_data) -> Dict:
         raise TeamError("An unexpected error occurred creating the team")
 
 
-async def delete_team(session: Session, team_name: str) -> str:
+def delete_team(session: Session, team_name: str) -> str:
     """Delete a team and its associated data"""
     # TODO: Enforcre unique team names
     team = session.exec(select(Team).where(Team.name == team_name)).first()
@@ -141,7 +146,7 @@ async def delete_team(session: Session, team_name: str) -> str:
         raise
 
 
-async def get_all_teams(session: Session) -> Dict:
+def get_all_teams(session: Session) -> Dict:
     """Get all teams"""
     try:
         teams = session.exec(select(Team)).all()
@@ -161,7 +166,7 @@ async def get_all_teams(session: Session) -> Dict:
         raise
 
 
-async def get_all_league_results(session: Session, league_name: str) -> Dict:
+def get_all_league_results(session: Session, league_name: str) -> Dict:
     """Get all simulation results for a league"""
     league = session.exec(select(League).where(League.name == league_name)).first()
 
@@ -171,7 +176,7 @@ async def get_all_league_results(session: Session, league_name: str) -> Dict:
     try:
         results = []
         for sim in league.simulation_results:
-            result = await process_simulation_results(sim, league_name)
+            result = process_simulation_results(sim, league_name)
             results.append(result)
 
         return {"results": sorted(results, key=lambda x: x["id"], reverse=True)}
@@ -181,7 +186,7 @@ async def get_all_league_results(session: Session, league_name: str) -> Dict:
         raise
 
 
-async def publish_sim_results(
+def publish_sim_results(
     session: Session,
     league_name: str,
     sim_id: int,
@@ -231,7 +236,7 @@ async def publish_sim_results(
         raise
 
 
-async def update_expiry_date(
+def update_expiry_date(
     session: Session, league_name: str, expiry_date: datetime
 ) -> str:
     """Update league expiry date"""
@@ -252,7 +257,7 @@ async def update_expiry_date(
         raise
 
 
-async def save_simulation_results(
+def save_simulation_results(
     session, league_id, results, rewards=None, feedback_str=None, feedback_json=None
 ):
     timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
@@ -295,7 +300,7 @@ async def save_simulation_results(
     return simulation_result
 
 
-async def process_simulation_results(sim: SimulationResult, league_name: str) -> Dict:
+def process_simulation_results(sim: SimulationResult, league_name: str) -> Dict:
     """Helper function to process simulation results"""
     total_points = {}
     table_data = {}
@@ -331,7 +336,7 @@ async def process_simulation_results(sim: SimulationResult, league_name: str) ->
     }
 
 
-async def get_league_by_name(session, league_name):
+def get_league_by_name(session, league_name):
     league = session.exec(
         select(League).where(League.name == league_name)
     ).one_or_none()
@@ -340,7 +345,7 @@ async def get_league_by_name(session, league_name):
     return league
 
 
-async def get_league_by_id(session, league_id):
+def get_league_by_id(session, league_id):
     league = session.exec(select(League).where(League.id == league_id)).one_or_none()
     if not league:
         raise LeagueNotFoundError(f"League with league id {league_id} not found")

@@ -266,7 +266,7 @@ async def get_league_submissions(
 ):
     """Get latest submissions for all teams in a league"""
     try:
-        submissions = await get_latest_submissions_for_league(session, league_id)
+        submissions = get_latest_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="Submissions retrieved successfully",

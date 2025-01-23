@@ -1,9 +1,15 @@
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Generator
+
+print("\nCurrent working directory:", os.getcwd())
+print("\nPYTHONPATH:", os.environ.get("PYTHONPATH", "Not set"))
+print("\nsys.path:", "\n".join(sys.path))
+
 
 import pytest
 from fastapi.testclient import TestClient

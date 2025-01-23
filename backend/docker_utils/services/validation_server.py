@@ -162,7 +162,13 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
 
         # Add the submitted player code
         try:
-            game_instance.add_player(request.code, request.team_name)
+            player = game_instance.add_player(request.code, request.team_name)
+            if player is None:  # Add explicit check
+                logger.error(f"Failed to add player for team {request.team_name}")
+                return ValidationResponse(
+                    status="error",
+                    message=f"Failed to create player for team {request.team_name}",
+                )
         except Exception as e:
             logger.error(f"Error adding player: {str(e)}")
             return ValidationResponse(

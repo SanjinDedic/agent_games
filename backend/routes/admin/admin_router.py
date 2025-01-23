@@ -53,7 +53,7 @@ async def create_league_endpoint(
         if not league.name:
             return ResponseModel(status="failed", message="League name cannot be empty")
 
-        data = await create_league(session, league)
+        data = create_league(session, league)
         return ResponseModel(
             status="success", message="League created successfully", data=data
         )
@@ -74,7 +74,7 @@ async def create_team_endpoint(
 ):
     """Create a new team"""
     try:
-        data = await create_team(session, team)
+        data = create_team(session, team)
         return ResponseModel(
             status="success", message="Team created successfully", data=data
         )
@@ -94,7 +94,7 @@ async def delete_team_endpoint(
 ):
     """Delete a team"""
     try:
-        msg = await delete_team(session, team.name)
+        msg = delete_team(session, team.name)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error deleting team: {e}")
@@ -111,7 +111,7 @@ async def get_teams_endpoint(
 ):
     """Get all teams"""
     try:
-        teams = await get_all_teams(session)
+        teams = get_all_teams(session)
         return ResponseModel(
             status="success", message="Teams retrieved successfully", data=teams
         )
@@ -132,7 +132,7 @@ async def run_simulation_endpoint(
     """Run a simulation"""
     try:
         # Get the league using the ID
-        league = await get_league_by_id(session, simulation_config.league_id)
+        league = get_league_by_id(session, simulation_config.league_id)
         if not league:
             return ErrorResponseModel(
                 status="error",
@@ -167,7 +167,7 @@ async def run_simulation_endpoint(
                 # Save simulation results if not a test league
                 if league.name != "test_league":
                     try:
-                        sim_result = await save_simulation_results(
+                        sim_result = save_simulation_results(
                             session,
                             league.id,
                             simulation_results,
@@ -227,7 +227,7 @@ async def get_league_results_endpoint(
 ):
     """Get all results for a specific league"""
     try:
-        results = await get_all_league_results(session, league.name)
+        results = get_all_league_results(session, league.name)
         return ResponseModel(
             status="success",
             message="League results retrieved successfully",
@@ -249,7 +249,7 @@ async def publish_results_endpoint(
 ):
     """Publish simulation results"""
     try:
-        msg, data = await publish_sim_results(
+        msg, data = publish_sim_results(
             session, results.league_name, results.id, results.feedback
         )
         return ResponseModel(status="success", message=msg, data=data)
@@ -269,7 +269,7 @@ async def update_expiry_endpoint(
 ):
     """Update league expiry date"""
     try:
-        msg = await update_expiry_date(session, expiry.league, expiry.date)
+        msg = update_expiry_date(session, expiry.league, expiry.date)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error updating expiry date: {e}")
