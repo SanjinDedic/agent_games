@@ -108,16 +108,16 @@ def ensure_containers_running():
                     container_name,
                     "--network=host",
                     "-v",
-                    f"{ROOT_DIR}:/agent_games:ro",
+                    # Updated mount path
+                    f"{ROOT_DIR}:/agent_games/backend:ro",
                     "-e",
-                    f"SERVICE_TOKEN={os.getenv('SERVICE_TOKEN')}",  # Make sure this line is present
+                    f"SERVICE_TOKEN={os.getenv('SERVICE_TOKEN')}",
                     "-e",
                     f"SECRET_KEY={os.getenv('SECRET_KEY')}",
                     "--restart=unless-stopped",
                     container_name,
                 ],
                 check=True,
-                cwd=ROOT_DIR,
             )
 
             # Wait briefly for container to start

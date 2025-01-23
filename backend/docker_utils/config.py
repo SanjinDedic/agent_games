@@ -32,4 +32,4 @@ DEFAULT_NUM_SIMULATIONS = 100
 DEFAULT_TIMEOUT = 40  # seconds
 
 # Volume mount path inside containers
-CONTAINER_MOUNT_PATH = "/agent_games"
+CONTAINER_MOUNT_PATH = "/agent_games/backend"

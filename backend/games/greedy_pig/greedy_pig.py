@@ -90,13 +90,15 @@ def make_decision(self, game_state):
         self.roll_no = 0
         self.game_over = False
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
-        self.game_feedback = {"game": "greedy_pig", "pairings": []}
-        self.player_feedback = {}
+        self.game_feedback = []  # Initialize as empty list for collecting strings
+        self.player_feedback = (
+            []
+        )  # Also should be a list for collecting individual player feedback
 
     def add_feedback(self, message):
+        """Add a feedback message to the list if verbose mode is on"""
         if self.verbose:
             self.game_feedback.append(message)
-            self.player_feedback.append(message)
 
     def add_player_feedback(self, player):
         if player.feedback:
@@ -274,12 +276,14 @@ def make_decision(self, game_state):
         game.verbose = True  # Enable feedback for this run
 
         results = game.play_game(custom_rewards)
-        game_feedback = "\n".join(game.game_feedback)
-        player_feedback = "\n".join(game.player_feedback)
+        game_feedback = "\n".join(
+            game.game_feedback
+        )  # Join the list into a single string
+        player_feedback = "\n".join(game.player_feedback)  # Join player feedback too
 
         return {
             "results": results,
-            "feedback": game_feedback,
+            "feedback": game_feedback,  # Return as single string
             "player_feedback": player_feedback,
         }
 
