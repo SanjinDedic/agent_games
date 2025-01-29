@@ -98,10 +98,16 @@ def create_service_token() -> str:
 def get_current_user(token: str = Depends(oauth2_scheme)):
     logger.info(f"Attempting to validate token: {token[:20]}...")
     try:
-        # All tokens are now JWT tokens
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         team_name: str = payload.get("sub")
         user_role: str = payload.get("role")
+        exp_timestamp = payload.get("exp")
+
+        # Check expiration using timestamp comparison
+        current_timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ).timestamp()
+        if exp_timestamp is None or current_timestamp > exp_timestamp:
+            logger.error("Token has expired")
+            raise HTTPException(status_code=401, detail="Token has expired")
 
         if team_name is None or user_role not in ALL_ROLES:
             logger.error(
