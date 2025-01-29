@@ -205,3 +205,15 @@ def setup_unassigned_league(db_session):
         db_session.commit()
 
     return unassigned
+
+
+@pytest.fixture
+def simulator_client() -> TestClient:
+    """Create a test client for the simulator service"""
+    return TestClient(app, base_url="http://localhost:8002")
+
+
+@pytest.fixture
+def validator_client() -> TestClient:
+    """Create a test client for the validator service"""
+    return TestClient(app, base_url="http://localhost:8001")
