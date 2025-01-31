@@ -5,12 +5,15 @@ from sqlmodel import Session
 
 from backend.models_api import ResponseModel
 from backend.routes.auth.auth_db import (
-    InvalidCredentialsError, get_admin_token, get_db, get_team_token)
+    InvalidCredentialsError,
+    get_admin_token,
+    get_db,
+    get_team_token,
+)
 from backend.routes.auth.auth_models import AdminLogin, TeamLogin
 
 logger = logging.getLogger(__name__)
 
-# Create the router instance
 auth_router = APIRouter()
 
 

@@ -1,12 +1,18 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent_games"
 version = "0.1.0"
-requires-python = ">=3.10"
+description = "Agent Games Backend"
+requires-python = ">=3.12"
 
-[tool.setuptools]
-packages = ["backend"]
-package-dir = {""= "."}
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
+testpaths = [
+    "backend/tests",
+]
+addopts = "-v"
