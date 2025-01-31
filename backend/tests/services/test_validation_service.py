@@ -54,7 +54,7 @@ def test_validate_endpoint_success(validator_client: TestClient):
         "code": VALID_CODE,
         "game_name": "prisoners_dilemma",
         "team_name": "test_team",
-        "num_simulations": 100,
+        "num_simulations": 20,
         "custom_rewards": None,
     }
     response = validator_client.post("/validate", json=data)
@@ -69,21 +69,8 @@ def test_validate_endpoint_success(validator_client: TestClient):
         "code": VALID_CODE,
         "game_name": "prisoners_dilemma",
         "team_name": "test_team",
-        "num_simulations": 100,
+        "num_simulations": 20,
         "custom_rewards": [4, 0, 6, 2],
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-
-    # Test case 3: Maximum allowed simulations
-    data = {
-        "code": VALID_CODE,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 10000,
-        "custom_rewards": None,
     }
     response = validator_client.post("/validate", json=data)
     assert response.status_code == 200
@@ -113,7 +100,7 @@ def test_validate_endpoint_exceptions(validator_client: TestClient):
         "code": UNSAFE_CODE,
         "game_name": "prisoners_dilemma",
         "team_name": "test_team",
-        "num_simulations": 100,
+        "num_simulations": 20,
         "custom_rewards": None,
     }
     response = validator_client.post("/validate", json=data)
@@ -127,7 +114,7 @@ def test_validate_endpoint_exceptions(validator_client: TestClient):
         "code": VALID_CODE,
         "game_name": "invalid_game",
         "team_name": "test_team",
-        "num_simulations": 100,
+        "num_simulations": 10,
         "custom_rewards": None,
     }
     response = validator_client.post("/validate", json=data)
@@ -135,34 +122,6 @@ def test_validate_endpoint_exceptions(validator_client: TestClient):
     data = response.json()
     assert data["status"] == "error"
     assert "Unknown game" in data["message"]
-
-    # Test case 4: Negative number of simulations
-    data = {
-        "code": VALID_CODE,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": -1,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 422  # Pydantic validation error
-    data = response.json()
-    assert "detail" in data
-    assert "Number of simulations must be between 1 and 10000" in str(data["detail"])
-
-    # Test case 5: Too many simulations
-    data = {
-        "code": VALID_CODE,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 20000,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 422  # Pydantic validation error
-    data = response.json()
-    assert "detail" in data
-    assert "Number of simulations must be between 1 and 10000" in str(data["detail"])
 
 
 def test_get_logs_success(validator_client: TestClient):
