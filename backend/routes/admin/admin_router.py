@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 admin_router = APIRouter()
 
 
-# League Management Routes
 @admin_router.post("/league-create", response_model=ResponseModel)
 @verify_admin_role
 async def create_league_endpoint(
@@ -64,7 +63,6 @@ async def create_league_endpoint(
         )
 
 
-# Team Management Routes
 @admin_router.post("/team-create", response_model=ResponseModel)
 @verify_admin_role
 async def create_team_endpoint(
