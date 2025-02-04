@@ -182,3 +182,71 @@ def test_code_validator_exceptions():
     validator.visit(tree)
     assert not validator.safe
     assert "unauthorized function" in validator.error_message.lower()
+
+
+def test_code_validator_unsafe_functions():
+    """Test code validator for unsafe function calls"""
+    validator = CodeValidator()
+
+    # Test case 1: Unauthorized eval
+    code = "eval('1 + 1')"
+    tree = ast.parse(code)
+    validator.visit(tree)
+    assert not validator.safe
+    assert "unauthorized function" in validator.error_message.lower()
+
+    # Test case 2: Unauthorized exec
+    code = "exec('print(\"hello\")')"
+    tree = ast.parse(code)
+    validator.safe = True  # Reset for new test
+    validator.visit(tree)
+    assert not validator.safe
+    assert "unauthorized function" in validator.error_message.lower()
+
+
+def test_validate_endpoint_simulation_error(validator_client: TestClient):
+    """Test handling of simulation errors"""
+    error_code = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return 1 / 0  # Will cause ZeroDivisionError
+"""
+    data = {
+        "code": error_code,
+        "game_name": "prisoners_dilemma",
+        "team_name": "test_team",
+        "num_simulations": 10,
+        "custom_rewards": None,
+    }
+    response = validator_client.post("/validate", json=data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["simulation_results"]["table"]["defections"]["test_team"] == 0
+
+
+def test_validate_endpoint_player_feedback(validator_client: TestClient):
+    """Test that player feedback is properly captured"""
+    feedback_code = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        self.add_feedback("Testing feedback mechanism")
+        return 'collude'
+"""
+    data = {
+        "code": feedback_code,
+        "game_name": "prisoners_dilemma",
+        "team_name": "test_team",
+        "num_simulations": 10,
+        "custom_rewards": None,
+    }
+    response = validator_client.post("/validate", json=data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "feedback" in data
+    assert isinstance(data["feedback"], (dict, str))
