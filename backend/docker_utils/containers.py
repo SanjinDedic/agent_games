@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 import time
+import traceback
 
 from backend.config import ROOT_DIR
 
@@ -34,6 +35,7 @@ def get_container_logs(container_name: str) -> str:
 
 def stop_containers():
     """Stop and remove running containers"""
+    logger.info(f"Stopping containers called from: {traceback.extract_stack()[-2]}")
     for container_name in CONTAINERS:
         try:
             # Check if container exists

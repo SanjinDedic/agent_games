@@ -64,7 +64,6 @@ async def submit_agent(
             status="error", message="Team is not assigned to a valid league."
         )
 
-    # Then check submission limit
     try:
         if not allow_submission(session, team.id):
             return ResponseModel(
@@ -73,7 +72,6 @@ async def submit_agent(
     except SubmissionLimitExceededError as e:
         return ResponseModel(status="error", message=str(e))
 
-    # Then proceed with validation
     try:
         logger.info(f"Sending submission to validation server for team {team_name}")
         async with httpx.AsyncClient() as client:
@@ -266,7 +264,7 @@ async def get_league_submissions(
 ):
     """Get latest submissions for all teams in a league"""
     try:
-        submissions = await get_latest_submissions_for_league(session, league_id)
+        submissions = get_latest_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="Submissions retrieved successfully",

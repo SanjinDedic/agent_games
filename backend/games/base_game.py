@@ -101,12 +101,13 @@ class BaseGame(ABC):
                     raise Exception(f"Failed to fetch submissions: {response.text}")
 
                 data = response.json()
-                logger.info("Received API response")
+                logger.info(f"Received API response: {data}")
                 submissions = data.get("data", {})
 
                 if submissions:
                     # Only clear players if we have submissions to replace them with
                     logger.info("Found league submissions, clearing validation players")
+                    logger.info(f"Submissions: {submissions}")
                     self.players = []
                     self.scores = {}
 
@@ -139,17 +140,27 @@ class BaseGame(ABC):
             # Get the game name from the class name for dynamic imports
             game_name = self.__class__.__module__.split(".")[2]
 
+            logger.info(f"Adding player for {name} with game {game_name}")
+
             # Create a module namespace with required imports
             namespace = {
                 "__builtins__": __builtins__,
             }
 
-            # Dynamically import the correct player module based on game
-            player_module = importlib.import_module(f"games.{game_name}.player")
+            # Dynamically import the correct player module based on game using backend prefix
+            logger.info(f"Importing player module for {game_name}")
+            player_module = importlib.import_module(f"backend.games.{game_name}.player")
             namespace["Player"] = player_module.Player
 
-            # Execute the code in the prepared namespace
-            exec(code, namespace)
+            # Need to modify the code to use the correct import path too
+            modified_code = code.replace(
+                f"from games.{game_name}.player",
+                f"from backend.games.{game_name}.player",
+            )
+
+            logger.info("Executing submitted code")
+            # Execute the modified code in the prepared namespace
+            exec(modified_code, namespace)
 
             if "CustomPlayer" not in namespace:
                 logger.error(f"No CustomPlayer class found in code for {name}")
@@ -167,8 +178,14 @@ class BaseGame(ABC):
             player = player_class()
             player.name = name
 
+            logger.info(f"Successfully created player instance for {name}")
+
             self.players.append(player)
             self.scores[str(player.name)] = 0
+
+            logger.info(
+                f"Current players after adding {name}: {[p.name for p in self.players]}"
+            )
 
             return player
 

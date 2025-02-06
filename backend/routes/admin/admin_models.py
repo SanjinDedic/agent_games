@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from backend.utils import get_games_names
 
@@ -12,13 +12,13 @@ class LeagueSignUp(BaseModel):
     name: str
     game: str
 
-    @validator("name")
+    @field_validator("name")
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError("League name cannot be empty")
         return v.strip()
 
-    @validator("game")
+    @field_validator("game")
     def validate_game(cls, v):
 
         valid_games = get_games_names()
@@ -36,7 +36,7 @@ class TeamSignup(BaseModel):
     color: Optional[str] = "rgb(0,0,0)"
     score: Optional[int] = 0
 
-    @validator("name")
+    @field_validator("name")
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError("Team name cannot be empty")
@@ -45,6 +45,7 @@ class TeamSignup(BaseModel):
 
 class SimulationConfig(BaseModel):
     """Model for simulation configuration"""
+
     num_simulations: int = Field(gt=0, le=10000)
     league_id: int
     league_name: Optional[str] = None  # For backwards compatibility
@@ -52,10 +53,10 @@ class SimulationConfig(BaseModel):
     custom_rewards: Optional[List[int]] = None
     use_docker: bool = True
 
-    @validator("num_simulations")
+    @field_validator("num_simulations")
     def validate_num_simulations(cls, v):
-        if v > 10000:
-            raise ValueError("Maximum number of simulations is 10000")
+        if v < 1 or v > 20000:
+            raise ValueError("Simulations must be between 1 and 20000")
         return v
 
 
@@ -64,7 +65,7 @@ class LeagueName(BaseModel):
 
     name: str
 
-    @validator("name")
+    @field_validator("name")
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError("League name cannot be empty")
@@ -76,7 +77,7 @@ class TeamDelete(BaseModel):
 
     name: str
 
-    @validator("name")
+    @field_validator("name")
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError("Team name cannot be empty")
@@ -97,13 +98,13 @@ class ExpiryDate(BaseModel):
     date: datetime
     league: str
 
-    @validator("league")
+    @field_validator("league")
     def validate_league(cls, v):
         if not v.strip():
             raise ValueError("League name cannot be empty")
         return v.strip()
 
-    @validator("date")
+    @field_validator("date")
     def validate_date(cls, v):
         if v < datetime.now():
             raise ValueError("Expiry date cannot be in the past")

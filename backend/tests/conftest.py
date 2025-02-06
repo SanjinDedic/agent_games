@@ -1,10 +1,11 @@
 import logging
 import os
-import time
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Generator
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -13,7 +14,7 @@ from backend.api import app
 from backend.database.db_config import get_database_url
 from backend.database.db_models import Admin, League, Team, get_password_hash
 from backend.database.db_session import get_db
-from backend.docker_utils.containers import ensure_containers_running, stop_containers
+from backend.docker_utils.containers import ensure_containers_running
 from backend.routes.auth.auth_core import create_access_token
 
 logging.basicConfig(level=logging.DEBUG)
@@ -23,59 +24,80 @@ logger = logging.getLogger(__name__)
 os.environ["TESTING"] = "1"
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_environment():
-    """Primary test environment setup fixture"""
-    logger.info("Starting test environment setup")
-
+def verify_containers() -> tuple[bool, str]:
+    """
+    Verify both containers are running and healthy.
+    Returns (True, "") if both containers are healthy,
+    (False, error_message) otherwise
+    """
     try:
-        # Create test directories
-        root_dir = Path(__file__).parent.parent
-        test_dirs = {
-            "prisoners": {
-                "test": root_dir
-                / "games"
-                / "prisoners_dilemma"
-                / "leagues"
-                / "test_league",
-                "admin": root_dir / "games" / "prisoners_dilemma" / "leagues" / "admin",
-            },
-            "greedy": {
-                "test": root_dir / "games" / "greedy_pig" / "leagues" / "test_league",
-                "admin": root_dir / "games" / "greedy_pig" / "leagues" / "admin",
-            },
-        }
 
-        # Create directories
-        for game_dirs in test_dirs.values():
-            for path in game_dirs.values():
-                try:
-                    path.mkdir(parents=True, exist_ok=True)
-                    if not path.exists():
-                        raise RuntimeError(f"Failed to create directory: {path}")
-                    logger.info(f"Verified directory exists: {path}")
-                except Exception as e:
-                    logger.error(f"Error creating directory {path}: {str(e)}")
-                    raise
+        async def check_containers():
+            async with httpx.AsyncClient() as client:
+                validator = await client.get(
+                    "http://localhost:8001/health", timeout=2.0
+                )
+                simulator = await client.get(
+                    "http://localhost:8002/health", timeout=2.0
+                )
+                both_running = (
+                    validator.status_code == 200
+                    and simulator.status_code == 200
+                    and validator.json()["status"] == "healthy"
+                    and simulator.json()["status"] == "healthy"
+                )
+                if not both_running:
+                    validator_status = f"Validator: {validator.status_code}"
+                    simulator_status = f"Simulator: {simulator.status_code}"
+                    return (
+                        False,
+                        f"Unhealthy containers - {validator_status}, {simulator_status}",
+                    )
+                return True, ""
 
-        # Start containers
-        logger.info("Starting Docker containers")
-        ensure_containers_running()
+        import asyncio
 
-        # Allow container startup time
-        time.sleep(5)  # Give containers time to fully start
-        logger.info("Test environment setup completed successfully")
-
-        yield test_dirs
-
-        # Cleanup
-        logger.info("Starting test environment cleanup")
-        stop_containers()
-        logger.info("Test environment cleanup completed")
+        healthy, msg = asyncio.run(check_containers())
+        if healthy:
+            logger.info("Container health check passed")
+        else:
+            logger.error(f"Container health check failed: {msg}")
+        return healthy, msg
 
     except Exception as e:
-        logger.error(f"Error in test environment setup/teardown: {str(e)}")
-        raise
+        error_msg = f"Container verification failed: {str(e)}"
+        logger.error(error_msg)
+        return False, error_msg
+
+
+@pytest.fixture(scope="session", autouse=True)
+def docker_environment():
+    """Primary fixture for Docker container management"""
+    logger.info("Starting Docker containers for test session")
+    ensure_containers_running()
+
+    # Initial health check
+    is_healthy, msg = verify_containers()
+    if not is_healthy:
+        logger.error(f"Initial container health check failed: {msg}")
+        pytest.fail(f"Container setup failed: {msg}")
+
+    yield
+
+    logger.info("Test session complete - containers will remain running")
+
+
+@pytest.fixture
+def ensure_containers(request):
+    """
+    Fixture for tests that require containers.
+    Verifies containers are healthy before each test.
+    """
+    logger.info(f"Verifying containers for test: {request.node.name}")
+    is_healthy, msg = verify_containers()
+    if not is_healthy:
+        pytest.fail(f"Containers not healthy before test {request.node.name}: {msg}")
+    return True
 
 
 @pytest.fixture
@@ -114,17 +136,14 @@ def admin_token(db_session) -> str:
     db_session.add(admin)
     db_session.commit()
 
-    access_token = create_access_token(
+    return create_access_token(
         data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(minutes=30)
     )
-    return access_token
 
 
 @pytest.fixture
 def team_token(db_session):
     """Create a test team with league assignment"""
-
-    # First create and commit the league
     league = db_session.exec(select(League).where(League.name == "comp_test")).first()
     if not league:
         league = League(
@@ -134,22 +153,18 @@ def team_token(db_session):
             game="greedy_pig",
         )
         db_session.add(league)
-        db_session.commit()  # Commit league first to get its ID
-
-        # Refresh the league to ensure we have its ID
+        db_session.commit()
         db_session.refresh(league)
 
-    # Now create the team with the committed league's ID
     team = Team(
         name="test_team",
         school_name="Test School",
         password_hash=get_password_hash("test_password"),
-        league_id=league.id,  # Now league.id will be valid
+        league_id=league.id,
     )
     db_session.add(team)
     db_session.commit()
 
-    # Create and return token
     return create_access_token(
         data={"sub": team.name, "role": "student"}, expires_delta=timedelta(minutes=30)
     )
@@ -183,7 +198,7 @@ def team_auth_headers(team_token) -> Dict[str, str]:
 
 @pytest.fixture(autouse=True)
 def setup_unassigned_league(db_session):
-    # Create unassigned league if it doesn't exist
+    """Create unassigned league if it doesn't exist"""
     unassigned = db_session.exec(
         select(League).where(League.name == "unassigned")
     ).first()
