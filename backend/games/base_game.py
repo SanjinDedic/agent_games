@@ -25,8 +25,14 @@ class BaseGame(ABC):
         self.league = league
         self.players = []
         self.scores = {}
-        # Load validation players during initialization
+        self.game_feedback = []
+        self.player_feedback = {}
         self.load_validation_players()
+
+    def add_feedback(self, message):
+        """Add a feedback message if verbose mode is on"""
+        if self.verbose:
+            self.game_feedback.append(message)
 
     def load_validation_players(self):
         """
@@ -68,15 +74,6 @@ class BaseGame(ABC):
             if not self.players:
                 self.players = []
                 self.scores = {}
-
-    def __init__(self, league, verbose=False):
-        """Initialize with validation players by default"""
-        self.verbose = verbose
-        self.league = league
-        self.players = []
-        self.scores = {}
-        # Load validation players by default for new leagues
-        self.load_validation_players()
 
     async def get_all_player_classes_via_api(
         self, api_url: str = "http://localhost:8000", auth_token: str = None
@@ -193,6 +190,16 @@ class BaseGame(ABC):
             logger.error(f"Error creating player {name}: {str(e)}", exc_info=True)
             return None
 
+    def run_single_game_with_feedback(self, custom_rewards=None):
+        """Run a single game with feedback"""
+        self.verbose = True  # Enable feedback for this run
+        results = self.play_game(custom_rewards)
+        return {
+            "results": results,
+            "feedback": self.game_feedback,
+            "player_feedback": self.player_feedback,
+        }
+
     def reset(self):
         """Reset scores but maintain the players list"""
         # Store current players
@@ -201,3 +208,6 @@ class BaseGame(ABC):
         self.scores = {str(player.name): 0 for player in current_players}
         # Make sure we keep all current players
         self.players = current_players
+        # Reset feedback
+        self.game_feedback = []
+        self.player_feedback = {}
