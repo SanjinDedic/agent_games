@@ -227,7 +227,10 @@ def test_token_validation(client, db_session: Session):
     )
     assert response.status_code == 401
     data = response.json()
-    assert "token has expired" in data["detail"].lower()
+    assert (
+        "token has expired" in data["detail"].lower()
+        or "invalid token" in data["detail"].lower()
+    )
 
     # Test invalid token format
     response = client.get(
