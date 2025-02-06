@@ -9,10 +9,5 @@ class GameFactory:
             return GreedyPigGame
         elif game_name == "prisoners_dilemma":
             return PrisonersDilemmaGame
-        elif game_name == "alpha_guess":
-            from backend.games.alpha_guess.alpha_guess import AlphaGuessGame
-
-            return AlphaGuessGame
-
         else:
             raise ValueError(f"Unknown game: {game_name}")
