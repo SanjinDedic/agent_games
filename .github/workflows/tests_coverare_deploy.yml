@@ -59,48 +59,80 @@ jobs:
         HOST: ${{ secrets.EC2_HOST }}
         USERNAME: ${{ secrets.EC2_USERNAME }}
         KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+        SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
         mkdir -p ~/.ssh
         echo "$KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh -o StrictHostKeyChecking=no $USERNAME@$HOST << 'EOF'
-          # Debug line to confirm successful deployment
-          touch successful_deployment
-          echo "deploy successful" > successful_deployment
-          # Check if Docker is installed and running
-          if ! command -v docker &> /dev/null; then
-            echo "Docker not found. Installing Docker..."
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo systemctl start docker
-            sudo systemctl enable docker
-          else
-            echo "Docker is already installed."
-          fi
-
+        ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY"
+          SERVICE_TOKEN=$1
+          SECRET_KEY=$2
+          
+          echo "Starting deployment..."
+          
           # Ensure Docker is running
           if ! sudo systemctl is-active --quiet docker; then
             echo "Starting Docker service..."
             sudo systemctl start docker
           fi
 
-          mkdir -p ~/agent_games
-          cd ~/agent_games
+          # Setup directories
+          mkdir -p ~/main_application/agent_games
+          cd ~/main_application/agent_games
 
+          # Clone and copy files
           tmp_dir=$(mktemp -d)
           git clone --depth 1 --filter=blob:none --sparse https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
           cd "$tmp_dir"
           git sparse-checkout set backend
 
-          # Copy backend contents to the current directory
-          cp -r backend/* ~/agent_games/
-          cp -r backend/.[^.]* ~/agent_games/ 2>/dev/null || true
+          # Copy backend contents
+          cp -r backend/* ~/main_application/agent_games/
+          cp -r backend/.[^.]* ~/main_application/agent_games/ 2>/dev/null || true
 
           # Clean up temporary directory
           rm -rf "$tmp_dir"
 
-          cd ~/agent_games
-          docker build -t run-with-docker .
-          sudo systemctl restart Agent_Games_Service
-  
-        EOF
+          cd ~/main_application/agent_games
+
+          # Build Docker containers
+          echo "Building simulator container..."
+          sudo docker build -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
+          
+          echo "Building validator container..."
+          sudo docker build -t validator -f docker_utils/dockerfiles/validator.dockerfile .
+          
+          # Stop any existing containers
+          sudo docker stop validator simulator || true
+          sudo docker rm validator simulator || true
+          
+          # Start new containers with environment variables
+          sudo docker run -d --name validator \
+            --network=host \
+            -v $(pwd):/agent_games/backend:ro \
+            -e SERVICE_TOKEN="$SERVICE_TOKEN" \
+            -e SECRET_KEY="$SECRET_KEY" \
+            validator
+
+          sudo docker run -d --name simulator \
+            --network=host \
+            -v $(pwd):/agent_games/backend:ro \
+            -e SERVICE_TOKEN="$SERVICE_TOKEN" \
+            -e SECRET_KEY="$SECRET_KEY" \
+            simulator
+
+          # Restart the Agent Games service using PM2
+          cd ~/main_application
+          pm2 restart Agent_Games
+          
+          # Debug line to confirm successful deployment
+          touch successful_deployment
+          echo "deploy successful" > successful_deployment
+          
+          # Echo docker container status
+          echo "Docker container status:"
+          sudo docker ps | grep -E 'validator|simulator'
+          
+          echo "Deployment completed"
+        ENDSSH
