@@ -261,11 +261,22 @@ def make_decision(self, game_state):
 
     def reset(self):
         """Reset game state"""
-        super().reset()
+        super().reset()  # Calls BaseGame.reset()
         self.histories = {str(player.name): {} for player in self.players}
         self.game_feedback = ""  # Reset to empty string
         self.player_feedback = []
         self.scores = {str(player.name): 0 for player in self.players}
+        # Reset GreedyPigGame specific state
+        self.round_no = 0
+        self.roll_no = 0
+        self.game_over = False
+        self.active_players = list(self.players)  # Reset active players list
+
+        # Reset all player states
+        for player in self.players:
+            player.banked_money = 0
+            player.unbanked_money = 0
+            player.has_banked_this_turn = False
 
     def run_single_game_with_feedback(self, custom_rewards=None):
         """Run a single game with feedback"""
