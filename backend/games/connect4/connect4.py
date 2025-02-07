@@ -1,3 +1,5 @@
+import itertools
+import random
 import string
 
 from backend.games.base_game import BaseGame
@@ -56,9 +58,8 @@ class CustomPlayer(Player):
     def __init__(self, league, verbose=False):
         super().__init__(league, verbose)
         self.board = {}
-        self.current_player_idx = 0
         self.move_history = []
-        self.game_feedback = {"game": "connect4", "moves": []}
+        self.game_feedback = {"game": "connect4", "matches": []}
         self.initialize_board()
 
     def initialize_board(self):
@@ -68,7 +69,6 @@ class CustomPlayer(Player):
             for row in string.ascii_uppercase[:6]:  # 6 rows A-F
                 self.board[f"{col}{row}"] = None
         self.move_history = []
-        self.current_player_idx = 0
 
     def get_possible_moves(self):
         """Get list of valid moves"""
@@ -139,46 +139,44 @@ class CustomPlayer(Player):
         """Check if the board is full"""
         return all(self.board[pos] is not None for pos in self.board)
 
-    def get_game_state(self):
+    def get_game_state(self, current_player):
         """Get the current game state"""
         return {
             "board": dict(self.board),
             "possible_moves": self.get_possible_moves(),
-            "current_player": str(self.players[self.current_player_idx].name),
+            "current_player": str(current_player.name),
             "last_move": self.move_history[-1] if self.move_history else None,
             "move_history": list(self.move_history),
         }
 
-    def add_feedback(self, message):
-        """Add a feedback message if verbose mode is on"""
-        if self.verbose:
-            if isinstance(self.game_feedback, dict):
-                if "moves" not in self.game_feedback:
-                    self.game_feedback["moves"] = []
-                self.game_feedback["moves"].append(message)
-            else:
-                self.game_feedback = {"game": "connect4", "moves": [message]}
-
-    def play_game(self, custom_rewards=None):
-        """Play a complete game"""
+    def play_match(self, player1, player2):
+        """Play a single match between two players"""
         self.initialize_board()
-        self.game_feedback = {"game": "connect4", "moves": []}
-        self.player_feedback = {}
+        match_feedback = {
+            "player1": str(player1.name),
+            "player2": str(player2.name),
+            "moves": [],
+            "winner": None,
+            "final_board": None,
+        }
 
-        # Assign symbols to players
-        self.players[0].symbol = "X"
-        self.players[1].symbol = "O"
+        # Assign symbols
+        player1.symbol = "X"
+        player2.symbol = "O"
 
-        game_data = {"moves": [], "winner": None, "final_board": None}
+        current_player = player1
+        other_player = player2
 
         while True:
-            current_player = self.players[self.current_player_idx]
-            game_state = self.get_game_state()
+            game_state = self.get_game_state(current_player)
 
             try:
                 move = current_player.make_decision(game_state)
             except Exception as e:
-                self.add_feedback(f"Error in player {current_player.name}'s move: {e}")
+                if self.verbose:
+                    match_feedback["moves"].append(
+                        f"Error in player {current_player.name}'s move: {e}"
+                    )
                 move = self.get_possible_moves()[0]  # Make a valid move
 
             # Record the move
@@ -188,14 +186,14 @@ class CustomPlayer(Player):
                 "position": move,
                 "board_state": dict(self.board),
             }
-            game_data["moves"].append(move_data)
-
-            # Add move to feedback
-            self.add_feedback(move_data)
+            match_feedback["moves"].append(move_data)
 
             # Make the move
             if not self.make_move(move, current_player.symbol):
-                self.add_feedback(f"Invalid move by {current_player.name}: {move}")
+                if self.verbose:
+                    match_feedback["moves"].append(
+                        f"Invalid move by {current_player.name}: {move}"
+                    )
                 continue
 
             # Add any player feedback
@@ -209,34 +207,66 @@ class CustomPlayer(Player):
 
             # Check for winner
             if self.check_winner():
-                game_data["winner"] = str(current_player.name)
+                match_feedback["winner"] = str(current_player.name)
                 break
 
             # Check for draw
             if self.is_board_full():
-                game_data["winner"] = "draw"
+                match_feedback["winner"] = "draw"
                 break
 
             # Switch players
-            self.current_player_idx = (self.current_player_idx + 1) % 2
+            current_player, other_player = other_player, current_player
 
         # Record final board state
-        game_data["final_board"] = dict(self.board)
+        match_feedback["final_board"] = dict(self.board)
 
-        # Add final state to feedback
-        self.add_feedback(
-            {"final_board": dict(self.board), "winner": game_data["winner"]}
-        )
+        return match_feedback
 
-        # Calculate points
-        points = {str(player.name): 0 for player in self.players}
-        if game_data["winner"] and game_data["winner"] != "draw":
-            points[game_data["winner"]] = 1
+    def play_game(self, custom_rewards=None):
+        """Play a complete game (round-robin tournament)"""
+        self.game_feedback = {"game": "connect4", "matches": []}
+        self.player_feedback = {}
 
-        return {"points": points, "score_aggregate": points, "table": game_data}
+        # Create all possible pairs of players
+        player_pairs = list(itertools.combinations(self.players, 2))
+        random.shuffle(player_pairs)  # Randomize order of matches
+
+        # Initialize scores
+        scores = {str(player.name): 0 for player in self.players}
+
+        # Play each match
+        for player1, player2 in player_pairs:
+            # Each pair plays twice, alternating who goes first
+            for first, second in [(player1, player2), (player2, player1)]:
+                match_result = self.play_match(first, second)
+                if self.verbose:
+                    self.game_feedback["matches"].append(match_result)
+
+                # Award points
+                if match_result["winner"] == str(first.name):
+                    scores[str(first.name)] += 1
+                elif match_result["winner"] == str(second.name):
+                    scores[str(second.name)] += 1
+                # No points for draws
+
+        return {
+            "points": scores,
+            "score_aggregate": dict(scores),
+            "table": {"matches_played": len(player_pairs) * 2},
+        }
 
     def run_simulations(self, num_simulations, league, custom_rewards=None):
         """Run multiple simulations"""
+        multiplier_round_robin = 1
+        num_players = len(self.players)
+        if num_players > 1:
+            multiplier_round_robin = num_players * (num_players - 1)
+        if multiplier_round_robin * num_simulations > 1000:
+            num_simulations = 1000 // multiplier_round_robin
+        if num_simulations < 2:
+            num_simulations = 2
+
         total_points = {str(player.name): 0 for player in self.players}
         wins = {str(player.name): 0 for player in self.players}
         draws = 0
@@ -248,15 +278,10 @@ class CustomPlayer(Player):
             # Update total points
             for player, points in results["points"].items():
                 total_points[str(player)] += points
-
-            # Update wins/draws
-            if results["table"]["winner"] == "draw":
-                draws += 1
-            elif results["table"]["winner"]:
-                wins[str(results["table"]["winner"])] += 1
+                wins[str(player)] += points  # In this case, points = wins
 
         return {
             "total_points": total_points,
-            "num_simulations": num_simulations,
+            "num_simulations": num_simulations * multiplier_round_robin,
             "table": {"wins": wins, "draws": draws},
         }
