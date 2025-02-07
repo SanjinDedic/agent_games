@@ -77,24 +77,29 @@ jobs:
             sudo systemctl start docker
           fi
 
-          # Setup directories
-          mkdir -p ~/main_application/agent_games
+          # Setup directories with correct structure
+          mkdir -p ~/main_application/agent_games/backend
           cd ~/main_application/agent_games
 
-          # Clone and copy files
+          # Clean old deployment
+          sudo docker system prune -f
+          sudo docker image prune -af
+          
+          # Clone and copy files with correct structure
           tmp_dir=$(mktemp -d)
           git clone --depth 1 --filter=blob:none --sparse https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
           cd "$tmp_dir"
           git sparse-checkout set backend
 
-          # Copy backend contents
-          cp -r backend/* ~/main_application/agent_games/
-          cp -r backend/.[^.]* ~/main_application/agent_games/ 2>/dev/null || true
+          # Copy backend contents to the correct directory
+          cp -r backend/* ~/main_application/agent_games/backend/
+          cp -r backend/.[^.]* ~/main_application/agent_games/backend/ 2>/dev/null || true
 
           # Clean up temporary directory
           rm -rf "$tmp_dir"
 
-          cd ~/main_application/agent_games
+          # Change to backend directory for Docker builds
+          cd ~/main_application/agent_games/backend
 
           # Build Docker containers
           echo "Building simulator container..."
