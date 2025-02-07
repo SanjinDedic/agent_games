@@ -1,0 +1,106 @@
+name: Test, Coverage and Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**' 
+
+jobs:
+  test_and_coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.12
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio httpx pytest-cov
+        pip install -r requirements.txt
+
+    - name: Run tests with coverage
+      run: |
+        cd backend
+        pytest --cov=. --cov-report=xml --cov-report=term tests/
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: SanjinDedic/agent_games
+        directory: ./backend
+        flags: backend
+        fail_ci_if_error: true
+        verbose: true
+
+  deploy:
+    needs: test_and_coverage  # This ensures deployment only runs after successful tests
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'  # Only deploy on main branch pushes
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to EC2
+      env:
+        HOST: ${{ secrets.EC2_HOST }}
+        USERNAME: ${{ secrets.EC2_USERNAME }}
+        KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh -o StrictHostKeyChecking=no $USERNAME@$HOST << 'EOF'
+          # Debug line to confirm successful deployment
+          touch successful_deployment
+          echo "deploy successful" > successful_deployment
+          # Check if Docker is installed and running
+          if ! command -v docker &> /dev/null; then
+            echo "Docker not found. Installing Docker..."
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo systemctl enable docker
+          else
+            echo "Docker is already installed."
+          fi
+
+          # Ensure Docker is running
+          if ! sudo systemctl is-active --quiet docker; then
+            echo "Starting Docker service..."
+            sudo systemctl start docker
+          fi
+
+          mkdir -p ~/agent_games
+          cd ~/agent_games
+
+          tmp_dir=$(mktemp -d)
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
+          cd "$tmp_dir"
+          git sparse-checkout set backend
+
+          # Copy backend contents to the current directory
+          cp -r backend/* ~/agent_games/
+          cp -r backend/.[^.]* ~/agent_games/ 2>/dev/null || true
+
+          # Clean up temporary directory
+          rm -rf "$tmp_dir"
+
+          cd ~/agent_games
+          docker build -t run-with-docker .
+          sudo systemctl restart Agent_Games_Service
+  
+        EOF
