@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from "@monaco-editor/react";
 import ResultsDisplay from '../Utilities/ResultsDisplay';
-import FeedbackSelector from '../Utilities/FeedbackSelector';
+import FeedbackSelector from '../Feedback/FeedbackSelector';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import UserTooltip from '../Utilities/UserTooltips';

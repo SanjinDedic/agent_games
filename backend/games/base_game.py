@@ -25,14 +25,24 @@ class BaseGame(ABC):
         self.league = league
         self.players = []
         self.scores = {}
-        self.game_feedback = []
+        self.game_feedback = []  # Can be overridden by games to be a dict if needed
         self.player_feedback = {}
         self.load_validation_players()
 
     def add_feedback(self, message):
         """Add a feedback message if verbose mode is on"""
         if self.verbose:
-            self.game_feedback.append(message)
+            if isinstance(self.game_feedback, list):
+                self.game_feedback.append(message)
+            elif isinstance(self.game_feedback, dict):
+                # For games using dictionary feedback structure
+                if "moves" in self.game_feedback:
+                    self.game_feedback["moves"].append(message)
+                elif "matches" in self.game_feedback:
+                    self.game_feedback["matches"].append(message)
+            elif isinstance(self.game_feedback, str):
+                # For games using string/markdown feedback
+                self.game_feedback += str(message) + "\n"
 
     def load_validation_players(self):
         """
@@ -208,6 +218,12 @@ class BaseGame(ABC):
         self.scores = {str(player.name): 0 for player in current_players}
         # Make sure we keep all current players
         self.players = current_players
-        # Reset feedback
-        self.game_feedback = []
+        # Reset feedback - maintain the same type as initialized
+        if isinstance(self.game_feedback, list):
+            self.game_feedback = []
+        elif isinstance(self.game_feedback, dict):
+            game_name = self.__class__.__module__.split(".")[2]
+            self.game_feedback = {"game": game_name, "moves": []}
+        elif isinstance(self.game_feedback, str):
+            self.game_feedback = ""
         self.player_feedback = {}

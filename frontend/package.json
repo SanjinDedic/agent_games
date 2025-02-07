@@ -15,6 +15,7 @@
     "date-fns": "^3.6.0",
     "file-saver": "^2.0.5",
     "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.474.0",
     "moment-timezone": "^0.5.45",
     "prismjs": "^1.29.0",
     "react": "^18.2.0",

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ResultsDisplay from '../Utilities/ResultsDisplay';
-import FeedbackSelector from '../Utilities/FeedbackSelector';
+import FeedbackSelector from '../Feedback/FeedbackSelector';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';

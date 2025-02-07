@@ -90,15 +90,18 @@ def make_decision(self, game_state):
         self.roll_no = 0
         self.game_over = False
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
-        self.game_feedback = []  # Initialize as empty list for collecting strings
-        self.player_feedback = (
-            []
-        )  # Also should be a list for collecting individual player feedback
+        # Initialize feedback as string for markdown
+        self.game_feedback = ""
+        self.player_feedback = []
 
     def add_feedback(self, message):
-        """Add a feedback message to the list if verbose mode is on"""
+        """Add a feedback message if verbose mode is on"""
         if self.verbose:
-            self.game_feedback.append(message)
+            if isinstance(message, str):
+                self.game_feedback += message + "\n"
+            else:
+                self.game_feedback += str(message) + "\n"
+                self.game_feedback.append(message)
 
     def add_player_feedback(self, player):
         if player.feedback:
@@ -257,34 +260,26 @@ def make_decision(self, game_state):
         return {"points": points, "score_aggregate": score_aggregate}
 
     def reset(self):
+        """Reset game state"""
         super().reset()
-        self.active_players = list(self.players)
-        self.players_banked_this_round = []
-        self.round_no = 0
-        self.roll_no = 0
-        self.game_over = False
-        self.feedback = []
-
-        for player in self.players:
-            player.banked_money = 0
-            player.unbanked_money = 0
-            player.has_banked_this_turn = False
+        self.histories = {str(player.name): {} for player in self.players}
+        self.game_feedback = ""  # Reset to empty string
+        self.player_feedback = []
+        self.scores = {str(player.name): 0 for player in self.players}
 
     def run_single_game_with_feedback(self, custom_rewards=None):
         """Run a single game with feedback"""
-        game = self  # Use the current instance instead of creating a new one
-        game.verbose = True  # Enable feedback for this run
+        # Enable feedback for this run
+        self.verbose = True
+        self.collect_player_feedback = True
 
-        results = game.play_game(custom_rewards)
-        game_feedback = "\n".join(
-            game.game_feedback
-        )  # Join the list into a single string
-        player_feedback = "\n".join(game.player_feedback)  # Join player feedback too
+        # Run the game
+        results = self.play_game(custom_rewards)
 
         return {
             "results": results,
-            "feedback": game_feedback,  # Return as single string
-            "player_feedback": player_feedback,
+            "feedback": self.game_feedback,  # Already a string
+            "player_feedback": self.player_feedback,
         }
 
     def run_simulations(self, num_simulations, league, custom_rewards=None):
