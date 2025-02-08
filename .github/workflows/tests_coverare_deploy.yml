@@ -27,15 +27,24 @@ jobs:
       with:
         python-version: 3.12
 
+    - name: Debug directory contents
+      run: |
+        echo "Current directory:"
+        pwd
+        echo "Contents:"
+        ls -la
+        echo "Backend directory contents:"
+        ls -la backend/
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pytest pytest-asyncio httpx pytest-cov
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
 
     - name: Run tests with coverage
       run: |
-        pytest --cov=backend --cov-report=xml --cov-report=term tests/
+        pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
@@ -91,7 +100,7 @@ jobs:
           tmp_dir=$(mktemp -d)
           git clone --depth 1 https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
           
-          # Copy all required files
+          # Copy all required files with correct structure
           cp -r "$tmp_dir/backend" .
           cp "$tmp_dir/pyproject.toml" .
           cp "$tmp_dir/requirements.txt" .
