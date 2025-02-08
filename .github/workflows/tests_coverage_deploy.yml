@@ -89,9 +89,9 @@ jobs:
           fi
 
           # Setup directories
-          mkdir -p ~/main_application/agent_games
-          cd ~/main_application/agent_games
-
+          mkdir -p ~/main_application
+          cd ~/main_application
+          
           # Clean old deployment
           sudo docker system prune -f
           sudo docker image prune -af
@@ -100,17 +100,27 @@ jobs:
           tmp_dir=$(mktemp -d)
           git clone --depth 1 https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
           
-          # Copy all required files with correct structure
-          cp -r "$tmp_dir/backend" .
-          cp "$tmp_dir/pyproject.toml" .
-          cp "$tmp_dir/requirements.txt" .
+          # Set up correct directory structure for Python imports
+          rm -rf agent_games  # Remove old directory if exists
+          mv "$tmp_dir" agent_games
+          cd agent_games
 
-          # Clean up temporary directory
-          rm -rf "$tmp_dir"
+          # Create virtual environment if it doesn't exist
+          python3 -m venv venv || true
+          source venv/bin/activate
+
+          # Install dependencies
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r backend/requirements.txt
+
+          # Set up Python path
+          export PYTHONPATH=/home/ubuntu/main_application/agent_games:$PYTHONPATH
+
+          # Initialize database
+          cd backend
+          python3 production_database_setup.py
 
           # Build Docker containers
-          cd backend
-          
           echo "Building simulator container..."
           sudo docker build -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
           
@@ -121,12 +131,13 @@ jobs:
           sudo docker stop validator simulator || true
           sudo docker rm validator simulator || true
           
-          # Start new containers with environment variables
+          # Start new containers with environment variables and pythonpath
           sudo docker run -d --name validator \
             --network=host \
             -v $(pwd):/agent_games/backend:ro \
             -e SERVICE_TOKEN="$SERVICE_TOKEN" \
             -e SECRET_KEY="$SECRET_KEY" \
+            -e PYTHONPATH=/agent_games \
             validator
 
           sudo docker run -d --name simulator \
@@ -134,23 +145,30 @@ jobs:
             -v $(pwd):/agent_games/backend:ro \
             -e SERVICE_TOKEN="$SERVICE_TOKEN" \
             -e SECRET_KEY="$SECRET_KEY" \
+            -e PYTHONPATH=/agent_games \
             simulator
 
-          # Restart the Agent Games service using PM2
-          cd ~/main_application
-          pm2 restart Agent_Games
+          # Update PM2 configuration
+          cd ~/main_application/agent_games/backend
+          pm2 delete Agent_Games || true
           
-          # Debug line to confirm successful deployment
-          touch successful_deployment
-          echo "deploy successful" > successful_deployment
+          # Start the service with PM2, ensuring PYTHONPATH is set
+          PYTHONPATH=/home/ubuntu/main_application/agent_games pm2 start \
+            --name Agent_Games \
+            --interpreter python3 \
+            "$(which uvicorn)" \
+            -- backend.api:app --host 0.0.0.0 --port 8002
           
-          # Echo docker container status
+          # Log container status
           echo "Docker container status:"
           sudo docker ps | grep -E 'validator|simulator'
           
           # List directory structure for debugging
           echo "Final directory structure:"
           ls -R ~/main_application/agent_games/
+          
+          # Log PM2 status
+          pm2 list
           
           echo "Deployment completed"
         ENDSSH
