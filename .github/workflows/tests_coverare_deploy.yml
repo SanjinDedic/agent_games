@@ -6,11 +6,15 @@ on:
       - main
     paths:
       - 'backend/**'
+      - 'pyproject.toml'
+      - 'requirements.txt'
   pull_request:
     branches:
       - main
     paths:
-      - 'backend/**' 
+      - 'backend/**'
+      - 'pyproject.toml'
+      - 'requirements.txt'
 
 jobs:
   test_and_coverage:
@@ -25,29 +29,27 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd backend
         python -m pip install --upgrade pip
         pip install pytest pytest-asyncio httpx pytest-cov
         pip install -r requirements.txt
 
     - name: Run tests with coverage
       run: |
-        cd backend
-        pytest --cov=. --cov-report=xml --cov-report=term tests/
+        pytest --cov=backend --cov-report=xml --cov-report=term tests/
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: SanjinDedic/agent_games
-        directory: ./backend
+        directory: .
         flags: backend
         fail_ci_if_error: true
         verbose: true
 
   deploy:
-    needs: test_and_coverage  # This ensures deployment only runs after successful tests
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'  # Only deploy on main branch pushes
+    needs: test_and_coverage
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -77,31 +79,29 @@ jobs:
             sudo systemctl start docker
           fi
 
-          # Setup directories with correct structure
-          mkdir -p ~/main_application/agent_games/backend
+          # Setup directories
+          mkdir -p ~/main_application/agent_games
           cd ~/main_application/agent_games
 
           # Clean old deployment
           sudo docker system prune -f
           sudo docker image prune -af
           
-          # Clone and copy files with correct structure
+          # Clone and copy files
           tmp_dir=$(mktemp -d)
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
-          cd "$tmp_dir"
-          git sparse-checkout set backend
-
-          # Copy backend contents to the correct directory
-          cp -r backend/* ~/main_application/agent_games/backend/
-          cp -r backend/.[^.]* ~/main_application/agent_games/backend/ 2>/dev/null || true
+          git clone --depth 1 https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
+          
+          # Copy all required files
+          cp -r "$tmp_dir/backend" .
+          cp "$tmp_dir/pyproject.toml" .
+          cp "$tmp_dir/requirements.txt" .
 
           # Clean up temporary directory
           rm -rf "$tmp_dir"
 
-          # Change to backend directory for Docker builds
-          cd ~/main_application/agent_games/backend
-
           # Build Docker containers
+          cd backend
+          
           echo "Building simulator container..."
           sudo docker build -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
           
@@ -138,6 +138,10 @@ jobs:
           # Echo docker container status
           echo "Docker container status:"
           sudo docker ps | grep -E 'validator|simulator'
+          
+          # List directory structure for debugging
+          echo "Final directory structure:"
+          ls -R ~/main_application/agent_games/
           
           echo "Deployment completed"
         ENDSSH
