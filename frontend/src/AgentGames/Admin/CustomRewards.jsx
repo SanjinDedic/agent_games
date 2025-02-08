@@ -35,7 +35,6 @@ const CustomRewards = () => {
     }
   };
 
-
   return (
     <div style={{
       backgroundColor: "#f4f4f4",
