@@ -121,7 +121,6 @@ async def health_check():
 @app.get("/logs")
 async def get_logs():
     """Get recent log entries"""
-    logger.info("Received request for recent logs")
     try:
         with open("validation_server.log", "r") as f:
             logs = f.read()

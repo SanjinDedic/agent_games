@@ -1,6 +1,4 @@
 import logging
-import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -8,7 +6,7 @@ import pytz
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from backend.database.db_models import League  # Updated import path
+from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -22,12 +20,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-executor = ThreadPoolExecutor(max_workers=4)
 
 
 class SimulationRequest(BaseModel):
     league_id: int
-    game_name: str  # Added this field
+    game_name: str
     num_simulations: int = 100
     custom_rewards: Optional[List[int]] = None
     player_feedback: bool = False
@@ -83,7 +80,6 @@ def health_check():
 @app.get("/logs")
 async def get_logs():
     """Get recent log entries"""
-    logger.info("Received request for recent logs")
     try:
         with open("validation_server.log", "r") as f:
             logs = f.read()
@@ -102,7 +98,7 @@ async def run_simulation(request: SimulationRequest):
             name="simulation_league",
             created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
             expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=1),
-            game=request.game_name,  # We'll need to add this to the request model
+            game=request.game_name,
         )
         if not league:
             raise HTTPException(
@@ -112,9 +108,10 @@ async def run_simulation(request: SimulationRequest):
         # Get game class and create single instance
         logger.info("Loading game class")
         game_class = GameFactory.get_game_class(request.game_name)
-        game = game_class(league)  # Create instance
+        game = game_class(league)
         logger.info(f"Game class loaded and instance created")
-        # Load players - make sure to await this call
+
+        # Load players
         await game.get_all_player_classes_via_api()
         logger.info(f"Players loaded: {game.players}")
 
@@ -129,12 +126,12 @@ async def run_simulation(request: SimulationRequest):
                 },
             }
 
-        # Run a single game with feedback if required
         feedback_result = {
             "feedback": "No feedback",
             "player_feedback": "No player feedback",
         }
 
+        # Run single game with feedback if requested
         if request.player_feedback:
             try:
                 feedback_result = game.run_single_game_with_feedback(
@@ -152,11 +149,11 @@ async def run_simulation(request: SimulationRequest):
                     },
                 }
 
-        # Run simulations (now synchronously since players are loaded)
+        # Run simulations sequentially
         simulation_results = []
         try:
             for _ in range(request.num_simulations):
-                game.reset()  # Reset but keep players
+                game.reset()
                 result = game.play_game(request.custom_rewards)
                 if result is not None:
                     simulation_results.append(result)
