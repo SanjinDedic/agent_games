@@ -186,6 +186,7 @@ def test_run_simulation_exceptions(client, auth_headers, db_session):
         "GradualPlayer",
         "RandomPlayer",
     ]
+    print("Here are the playas", data["data"]["total_points"].keys())
     assert all(
         player in validation_players for player in data["data"]["total_points"].keys()
     )

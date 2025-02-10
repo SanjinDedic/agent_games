@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Generator
@@ -17,11 +16,10 @@ from backend.database.db_session import get_db
 from backend.docker_utils.containers import ensure_containers_running
 from backend.routes.auth.auth_core import create_access_token
 
+os.environ["TESTING"] = "1"
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-# Set testing environment variable
-os.environ["TESTING"] = "1"
 
 
 def verify_containers() -> tuple[bool, str]:
@@ -113,6 +111,8 @@ def db_engine():
 def db_session(db_engine) -> Generator[Session, None, None]:
     """Create a new database session for testing"""
     with Session(db_engine) as session:
+        # Add debug print
+        print(f"Test session using database: {db_engine.url}")
         yield session
 
 
