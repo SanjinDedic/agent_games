@@ -42,13 +42,11 @@ class MrCenter(Player):
     """Player that always plays in the leftmost available column"""
 
     def make_decision(self, game_state):
-        # Group possible moves by column
-        moves_by_column = {}
         preferred_columns = [4, 3, 5, 2, 6, 1, 7]
-        for move in game_state["possible_moves"]:
-            col = move[0]
-            for preferred_col in preferred_columns:
-                if col == str(preferred_col):
+        for preferred_col in preferred_columns:
+            for move in game_state["possible_moves"]:
+                col = int(move[0])  # First character is the column number
+                if col == preferred_col:
                     return move
         return random.choice(game_state["possible_moves"])
 
