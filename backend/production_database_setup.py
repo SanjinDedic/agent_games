@@ -1,11 +1,21 @@
 import json
 import os
+import secrets
 from datetime import datetime, timedelta
 
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
-from backend.database.db_models import Admin, League, Team, get_password_hash
+from backend.database.db_models import (
+    Admin,
+    AgentAPIKey,
+    League,
+    LeagueType,
+    Team,
+    TeamType,
+    get_password_hash,
+)
+from backend.routes.user.user_db import save_submission
 
 
 def create_and_populate_database():
@@ -26,29 +36,39 @@ def create_and_populate_database():
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="greedy_pig",
+            league_type=LeagueType.STUDENT,
         )
         session.add(unassigned_league)
 
         # create greedy pig league
-
         greedy_pig_league = League(
             name="greedy_pig_league",
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="greedy_pig",
+            league_type=LeagueType.STUDENT,
         )
         session.add(greedy_pig_league)
 
         # create prisoners dilemma league
-
         prisoners_dilemma_league = League(
             name="prisoners_dilemma_league",
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="prisoners_dilemma",
+            league_type=LeagueType.STUDENT,
         )
-
         session.add(prisoners_dilemma_league)
+
+        # Create an agent league for testing
+        agent_league = League(
+            name="agent_test_league",
+            created_date=datetime.now(),
+            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            game="connect4",
+            league_type=LeagueType.AGENT,
+        )
+        session.add(agent_league)
 
         session.commit()
 
@@ -68,11 +88,67 @@ def create_and_populate_database():
                 school_name=team_data["school"],
                 password_hash=get_password_hash(team_data["password"]),
                 league_id=unassigned_league.id,
+                team_type=TeamType.STUDENT,
             )
             session.add(team)
 
+        # Define initial Connect4 agent code
+        connect4_code = """
+from games.connect4.player import Player
+import random
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        # Simple strategy: choose random valid move
+        move = random.choice(game_state["possible_moves"])
+        
+        # Add custom feedback for monitoring
+        self.add_feedback(f"Selected move: {move}")
+        
+        return move
+"""
+
+        # Create two agent teams for Connect4
+        agent_teams = [
+            {
+                "name": "random_agent",
+                "school_name": "AI Lab Random",
+                "code": connect4_code,
+            },
+            {"name": "test_agent", "school_name": "AI Lab Test", "code": connect4_code},
+        ]
+
+        api_keys = []
+        for team_data in agent_teams:
+            # Create team
+            agent_team = Team(
+                name=team_data["name"],
+                school_name=team_data["school_name"],
+                league_id=agent_league.id,
+                team_type=TeamType.AGENT,
+            )
+            session.add(agent_team)
+            session.flush()  # To get the team ID
+
+            # Create API key for team
+            api_key = secrets.token_urlsafe(32)
+            agent_api_key = AgentAPIKey(
+                key=api_key, team_id=agent_team.id, is_active=True
+            )
+            session.add(agent_api_key)
+            api_keys.append((team_data["name"], api_key))
+
+            # Create initial submission for team
+            save_submission(session, team_data["code"], agent_team.id)
+
         session.commit()
-        print("Database created and populated successfully")
+
+        print("\nDatabase created and populated successfully")
+        print("\n=== Agent Test Credentials ===")
+        for team_name, api_key in api_keys:
+            print(f"Team Name: {team_name}")
+            print(f"API Key: {api_key}")
+            print("-----------------------------")
 
 
 if __name__ == "__main__":

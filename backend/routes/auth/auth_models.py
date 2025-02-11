@@ -25,3 +25,15 @@ class TeamLogin(BaseModel):
         if isinstance(v, str) and not v.strip():
             raise ValueError(f"{v} must not be empty or just whitespace.")
         return v
+
+
+class AgentLogin(BaseModel):
+    """Agent login request model"""
+
+    api_key: str
+
+    @field_validator("api_key")
+    def check_not_empty(cls, v):
+        if isinstance(v, str) and not v.strip():
+            raise ValueError("API key must not be empty")
+        return v

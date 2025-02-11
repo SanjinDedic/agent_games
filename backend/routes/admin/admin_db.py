@@ -9,13 +9,17 @@ from sqlmodel import Session, delete, select
 
 from backend.config import ROOT_DIR
 from backend.database.db_models import (
+    AgentAPIKey,
     League,
+    LeagueType,
     SimulationResult,
     SimulationResultItem,
     Submission,
     Team,
+    TeamType,
 )
 from backend.games.game_factory import GameFactory
+from backend.routes.admin.admin_models import CreateAgentTeam
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -350,3 +354,60 @@ def get_league_by_id(session, league_id):
     if not league:
         raise LeagueNotFoundError(f"League with league id {league_id} not found")
     return league
+
+
+# In backend/routes/admin/admin_db.py
+
+import secrets
+
+
+def create_agent_team(session: Session, team_data: CreateAgentTeam) -> Dict:
+    """Create a new agent team"""
+    try:
+        # Check if league exists and is agent type
+        league = session.get(League, team_data.league_id)
+        if not league:
+            raise ValueError(f"League with ID {team_data.league_id} not found")
+        if league.league_type != LeagueType.AGENT:
+            raise ValueError("Can only create agent teams in agent leagues")
+
+        # Create team
+        team = Team(
+            name=team_data.name,
+            school_name="AI Agent",
+            team_type=TeamType.AGENT,
+            league_id=team_data.league_id,
+        )
+        session.add(team)
+        session.commit()
+        session.refresh(team)
+
+        return {"team_id": team.id, "name": team.name, "league": league.name}
+
+    except Exception as e:
+        session.rollback()
+        raise
+
+
+def create_api_key(session: Session, team_id: int) -> Dict:
+    """Create a new API key for an agent team"""
+    try:
+        team = session.get(Team, team_id)
+        if not team:
+            raise ValueError(f"Team with ID {team_id} not found")
+        if team.team_type != TeamType.AGENT:
+            raise ValueError("Can only create API keys for agent teams")
+
+        # Generate secure API key
+        api_key = secrets.token_urlsafe(32)
+
+        # Create API key record
+        key_record = AgentAPIKey(key=api_key, team_id=team_id)
+        session.add(key_record)
+        session.commit()
+
+        return {"team_id": team_id, "api_key": api_key}
+
+    except Exception as e:
+        session.rollback()
+        raise

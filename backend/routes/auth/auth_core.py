@@ -14,7 +14,6 @@ from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY, create_access
 
 logger = logging.getLogger(__name__)
 
-
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -79,6 +78,9 @@ verify_admin_or_student = verify_role([ROLE_ADMIN, ROLE_STUDENT])
 verify_admin_or_institution = verify_role([ROLE_ADMIN, ROLE_INSTITUTION])
 verify_institution_or_student = verify_role([ROLE_INSTITUTION, ROLE_STUDENT])
 verify_admin_or_ai_agent = verify_role([ROLE_ADMIN, ROLE_AI_AGENT])
+verify_ai_agent_service_or_student = verify_role(
+    [ROLE_AI_AGENT, ROLE_SERVICE, ROLE_STUDENT]
+)
 
 # All roles except admin
 verify_non_admin = verify_role([ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT])

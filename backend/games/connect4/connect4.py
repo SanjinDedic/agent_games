@@ -285,3 +285,11 @@ class CustomPlayer(Player):
             "num_simulations": num_simulations * multiplier_round_robin,
             "table": {"wins": wins, "draws": draws},
         }
+
+    def reset(self):
+        """Reset game state"""
+        super().reset()  # Call base class reset
+        self.board = {}  # Clear the board
+        self.initialize_board()  # Reinitialize with empty positions
+        self.move_history = []  # Explicitly clear move history
+        self.game_feedback = {"game": "connect4", "matches": []}
