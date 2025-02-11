@@ -127,3 +127,22 @@ class PublishRequest(BaseModel):
     league_name: str
     simulation_id: int
     feedback: Optional[Union[str, dict]] = None
+
+
+class CreateAgentTeam(BaseModel):
+    """Model for creating an agent team"""
+
+    name: str
+    league_id: int
+
+    @field_validator("name")
+    def validate_name(cls, v):
+        if not v.strip():
+            raise ValueError("Team name cannot be empty")
+        return v.strip()
+
+
+class CreateAgentAPIKey(BaseModel):
+    """Model for creating an API key"""
+
+    team_id: int

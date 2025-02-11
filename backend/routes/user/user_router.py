@@ -10,6 +10,7 @@ from backend.routes.admin.admin_models import LeagueName
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_student,
+    verify_ai_agent_service_or_student,
     verify_any_role,
     verify_student_role,
 )
@@ -40,7 +41,7 @@ user_router = APIRouter()
 
 
 @user_router.post("/submit-agent", response_model=ResponseModel)
-@verify_student_role
+@verify_ai_agent_service_or_student
 async def submit_agent(
     submission: SubmissionCode,
     current_user: dict = Depends(get_current_user),
@@ -231,7 +232,7 @@ async def get_available_games():
 
 
 @user_router.get("/get-all-leagues", response_model=ResponseModel)
-@verify_admin_or_student
+@verify_any_role
 async def get_leagues_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),

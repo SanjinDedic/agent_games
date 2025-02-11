@@ -9,8 +9,9 @@ from backend.routes.auth.auth_db import (
     get_admin_token,
     get_db,
     get_team_token,
+    verify_agent_api_key,
 )
-from backend.routes.auth.auth_models import AdminLogin, TeamLogin
+from backend.routes.auth.auth_models import AdminLogin, AgentLogin, TeamLogin
 
 logger = logging.getLogger(__name__)
 
@@ -49,4 +50,20 @@ def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
         return ResponseModel(status="failed", message=str(e))
     except Exception as e:
         logger.error(f"Unexpected error during team login: {str(e)}")
+        return ResponseModel(status="failed", message="An unexpected error occurred")
+
+
+# Add this new endpoint with your other login endpoints
+@auth_router.post("/agent-login", response_model=ResponseModel)
+def agent_login(credentials: AgentLogin, session: Session = Depends(get_db)):
+    """Endpoint for agent login via API key"""
+    try:
+        agent_token = verify_agent_api_key(session, credentials.api_key)
+        return ResponseModel(
+            status="success", message="Login successful", data=agent_token
+        )
+    except InvalidCredentialsError as e:
+        return ResponseModel(status="failed", message=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error during agent login: {str(e)}")
         return ResponseModel(status="failed", message="An unexpected error occurred")

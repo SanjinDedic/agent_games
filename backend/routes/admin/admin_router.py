@@ -8,6 +8,8 @@ from sqlmodel import Session
 from backend.config import DOCKER_API_URL
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.admin.admin_db import (
+    create_agent_team,
+    create_api_key,
     create_league,
     create_team,
     delete_team,
@@ -19,6 +21,8 @@ from backend.routes.admin.admin_db import (
     update_expiry_date,
 )
 from backend.routes.admin.admin_models import (
+    CreateAgentAPIKey,
+    CreateAgentTeam,
     ExpiryDate,
     LeagueName,
     LeagueResults,
@@ -325,4 +329,44 @@ async def get_simulator_logs_endpoint(
     except Exception as e:
         return ErrorResponseModel(
             status="error", message=f"Failed to connect to simulator service: {str(e)}"
+        )
+
+
+@admin_router.post("/create-agent-team", response_model=ResponseModel)
+@verify_admin_role
+async def create_agent_team(
+    request: CreateAgentTeam,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Create a new agent team"""
+    try:
+        data = create_agent_team(session, request)
+        return ResponseModel(
+            status="success", message="Agent team created successfully", data=data
+        )
+    except Exception as e:
+        logger.error(f"Error creating agent team: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to create agent team: {str(e)}"
+        )
+
+
+@admin_router.post("/create-agent-api-key", response_model=ResponseModel)
+@verify_admin_role
+async def create_agent_api_key(
+    request: CreateAgentAPIKey,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Create a new API key for an agent team"""
+    try:
+        data = create_api_key(session, request.team_id)
+        return ResponseModel(
+            status="success", message="API key created successfully", data=data
+        )
+    except Exception as e:
+        logger.error(f"Error creating API key: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to create API key: {str(e)}"
         )
