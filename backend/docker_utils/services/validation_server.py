@@ -23,6 +23,8 @@ app = FastAPI()
 # Security configuration
 ALLOWED_MODULES = {
     "random": None,
+    "string": None,
+    "math": None,
     "games": None,
     "player": None,
     "math": None,
