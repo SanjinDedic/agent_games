@@ -32,7 +32,7 @@ ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT, ROLE_SER
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     expire = datetime.now(AUSTRALIA_SYDNEY_TZ) + (
-        expires_delta if expires_delta else timedelta(minutes=15)
+        expires_delta if expires_delta else timedelta(minutes=60)
     )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
