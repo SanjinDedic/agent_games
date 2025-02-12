@@ -14,31 +14,31 @@ class Player(ABC):
 
     def calculate_winning_sets(self):
         all_winning_sets = set()
-        
+
         # Horizontal winning sets
         for row in "ABCDEF":
             for col in range(1, 5):
                 winning_set = tuple(f"{col+i}{row}" for i in range(4))
                 all_winning_sets.add(winning_set)
-                
+
         # Vertical winning sets
         for col in range(1, 8):
             for start_row in range(3):
-                winning_set = tuple(f"{col}{"ABCDEF"[start_row+i]}" for i in range(4))
+                winning_set = tuple(f"{col}{'ABCDEF'[start_row+i]}" for i in range(4))
                 all_winning_sets.add(winning_set)
-                
+
         # Rising diagonal winning sets
         for col in range(1, 5):
             for row in range(3):
-                winning_set = tuple(f"{col+i}{"ABCDEF"[row+i]}" for i in range(4))
+                winning_set = tuple(f"{col+i}{'ABCDEF'[row+i]}" for i in range(4))
                 all_winning_sets.add(winning_set)
-                
+
         # Falling diagonal winning sets
         for col in range(1, 5):
             for row in range(3, 6):
-                winning_set = tuple(f"{col+i}{"ABCDEF"[row-i]}" for i in range(4))
+                winning_set = tuple(f"{col+i}{'ABCDEF'[row-i]}" for i in range(4))
                 all_winning_sets.add(winning_set)
-                
+
         return all_winning_sets
 
     @abstractmethod
