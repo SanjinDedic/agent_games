@@ -1,0 +1,119 @@
+{
+  "results": [
+    {
+      "team_name": "test_agent",
+      "game_name": "connect4",
+      "num_simulations": 10,
+      "custom_rewards": null,
+      "results": {
+        "status": "success",
+        "feedback": "No feedback",
+        "player_feedback": "No player feedback",
+        "simulation_results": {
+          "total_points": {
+            "RandomPlayer": 4,
+            "LeftStackPlayer": 16
+          },
+          "num_simulations": 10,
+          "table": {
+            "matches_played": 2
+          }
+        }
+      },
+      "id": 1,
+      "timestamp": "2025-02-11T16:38:51.016106"
+    },
+    {
+      "team_name": "test_agent",
+      "game_name": "connect4",
+      "num_simulations": 10,
+      "custom_rewards": null,
+      "results": {
+        "status": "success",
+        "feedback": "No feedback",
+        "player_feedback": "No player feedback",
+        "simulation_results": {
+          "total_points": {
+            "RandomPlayer": 6,
+            "LeftStackPlayer": 14
+          },
+          "num_simulations": 10,
+          "table": {
+            "matches_played": 2
+          }
+        }
+      },
+      "id": 2,
+      "timestamp": "2025-02-11T16:38:55.105804"
+    },
+    {
+      "team_name": "test_agent",
+      "game_name": "connect4",
+      "num_simulations": 10,
+      "custom_rewards": null,
+      "results": {
+        "status": "success",
+        "feedback": "No feedback",
+        "player_feedback": "No player feedback",
+        "simulation_results": {
+          "total_points": {
+            "RandomPlayer": 1,
+            "LeftStackPlayer": 19
+          },
+          "num_simulations": 10,
+          "table": {
+            "matches_played": 2
+          }
+        }
+      },
+      "id": 3,
+      "timestamp": "2025-02-11T16:41:09.097480"
+    },
+    {
+      "team_name": "test_agent",
+      "game_name": "connect4",
+      "num_simulations": 10,
+      "custom_rewards": null,
+      "results": {
+        "status": "success",
+        "feedback": "No feedback",
+        "player_feedback": "No player feedback",
+        "simulation_results": {
+          "total_points": {
+            "random_agent": 6,
+            "test_agent": 14
+          },
+          "num_simulations": 10,
+          "table": {
+            "matches_played": 2
+          }
+        }
+      },
+      "id": 4,
+      "timestamp": "2025-02-11T17:22:44.861642"
+    },
+    {
+      "team_name": "test_agent",
+      "game_name": "connect4",
+      "num_simulations": 10,
+      "custom_rewards": null,
+      "results": {
+        "status": "success",
+        "feedback": "No feedback",
+        "player_feedback": "No player feedback",
+        "simulation_results": {
+          "total_points": {
+            "random_agent": 7,
+            "test_agent": 13
+          },
+          "num_simulations": 10,
+          "table": {
+            "matches_played": 2
+          }
+        }
+      },
+      "id": 5,
+      "timestamp": "2025-02-11T17:26:09.272336"
+    }
+  ]
+}
