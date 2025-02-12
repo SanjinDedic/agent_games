@@ -60,7 +60,44 @@ class CustomPlayer(Player):
         self.board = {}
         self.move_history = []
         self.game_feedback = {"game": "connect4", "matches": []}
+        self.winning_sets = self.calculate_winning_sets()  # Pre-calculate winning sets
         self.initialize_board()
+
+    def calculate_winning_sets(self):
+        """Calculate all possible winning combinations"""
+        all_winning_sets = set()
+
+        # Horizontal winning sets
+        for row in string.ascii_uppercase[:6]:
+            for col in range(1, 5):
+                winning_set = tuple(f"{col+i}{row}" for i in range(4))
+                all_winning_sets.add(winning_set)
+
+        # Vertical winning sets
+        for col in range(1, 8):
+            for start_row in range(3):
+                winning_set = tuple(
+                    f"{col}{string.ascii_uppercase[start_row+i]}" for i in range(4)
+                )
+                all_winning_sets.add(winning_set)
+
+        # Rising diagonal winning sets
+        for col in range(1, 5):
+            for row in range(3):
+                winning_set = tuple(
+                    f"{col+i}{string.ascii_uppercase[row+i]}" for i in range(4)
+                )
+                all_winning_sets.add(winning_set)
+
+        # Falling diagonal winning sets
+        for col in range(1, 5):
+            for row in range(3, 6):
+                winning_set = tuple(
+                    f"{col+i}{string.ascii_uppercase[row-i]}" for i in range(4)
+                )
+                all_winning_sets.add(winning_set)
+
+        return all_winning_sets
 
     def initialize_board(self):
         """Set up an empty board"""
@@ -91,49 +128,22 @@ class CustomPlayer(Player):
         return False
 
     def check_winner(self):
-        """Check if anyone has won"""
-        # Check horizontal
-        for row in string.ascii_uppercase[:6]:
-            for col in range(1, 5):  # Only need to check starting positions
-                positions = [f"{col+i}{row}" for i in range(4)]
-                if self._check_line(positions):
-                    return True
+        """Check if anyone has won using pre-calculated winning sets"""
+        # Get last move if available
+        last_move = self.move_history[-1] if self.move_history else None
+        if not last_move:
+            return False
 
-        # Check vertical
-        for col in range(1, 8):
-            for row_idx in range(3):  # Only need to check bottom 3 starting positions
-                positions = [
-                    f"{col}{string.ascii_uppercase[row_idx+i]}" for i in range(4)
-                ]
-                if self._check_line(positions):
-                    return True
+        # Get the symbol at the last move
+        last_symbol = self.board[last_move]
 
-        # Check diagonal (rising)
-        for col in range(1, 5):
-            for row_idx in range(3):  # Bottom 3 rows
-                positions = [
-                    f"{col+i}{string.ascii_uppercase[row_idx+i]}" for i in range(4)
-                ]
-                if self._check_line(positions):
-                    return True
-
-        # Check diagonal (falling)
-        for col in range(1, 5):
-            for row_idx in range(3, 6):  # Top 3 rows
-                positions = [
-                    f"{col+i}{string.ascii_uppercase[row_idx-i]}" for i in range(4)
-                ]
-                if self._check_line(positions):
+        # Only check winning sets that include the last move made
+        for winning_set in self.winning_sets:
+            if last_move in winning_set:
+                if all(self.board[pos] == last_symbol for pos in winning_set):
                     return True
 
         return False
-
-    def _check_line(self, positions):
-        """Check if a line of positions contains four matching symbols"""
-        first = self.board[positions[0]]
-        if first is None:
-            return False
-        return all(self.board[pos] == first for pos in positions)
 
     def is_board_full(self):
         """Check if the board is full"""
@@ -179,15 +189,18 @@ class CustomPlayer(Player):
                     )
                 move = self.get_possible_moves()[0]  # Make a valid move
 
+            # Get the latest player feedback messages
+
             # Record the move
             move_data = {
                 "player": str(current_player.name),
                 "symbol": current_player.symbol,
                 "position": move,
+                "player_feedback": current_player.feedback,
                 "board_state": dict(self.board),
             }
             match_feedback["moves"].append(move_data)
-
+            current_player.feedback = []  # Clear feedback
             # Make the move
             if not self.make_move(move, current_player.symbol):
                 if self.verbose:
@@ -293,3 +306,17 @@ class CustomPlayer(Player):
         self.initialize_board()  # Reinitialize with empty positions
         self.move_history = []  # Explicitly clear move history
         self.game_feedback = {"game": "connect4", "matches": []}
+
+    def run_single_game_with_feedback(self, custom_rewards=None):
+        """Run a single game with feedback"""
+        self.verbose = True
+        self.collect_player_feedback = True
+
+        # Run the game
+        results = self.play_game(custom_rewards)
+
+        return {
+            "results": results,
+            "feedback": self.game_feedback,
+            "player_feedback": self.player_feedback,
+        }

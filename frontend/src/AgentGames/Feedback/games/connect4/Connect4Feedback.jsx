@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Connect4Board from './Connect4Board';
+import Connect4PlayerFeedback from './Connect4PlayerFeedback';
 
 const Connect4Feedback = ({ feedback }) => {
     const [selectedPlayer, setSelectedPlayer] = useState('all');
@@ -115,7 +116,6 @@ const Connect4Feedback = ({ feedback }) => {
         return firstMove?.symbol === 'X' ? 'text-danger' : 'text-primary';
     };
 
-
     return (
         <div className="bg-white p-6 rounded-lg shadow-lg">
             <div className="mb-6 space-y-4">
@@ -175,6 +175,8 @@ const Connect4Feedback = ({ feedback }) => {
 
             <Connect4Board boardState={currentBoard} />
 
+
+
             <div className="flex justify-center items-center gap-6 mt-6">
                 <button
                     onClick={handlePrevious}
@@ -194,6 +196,11 @@ const Connect4Feedback = ({ feedback }) => {
                     →
                 </button>
             </div>
+
+            {/* Display move feedback using the separate component */}
+            {getCurrentMove() && (
+                <Connect4PlayerFeedback currentMove={getCurrentMove()} />
+            )}
         </div>
     );
 };
