@@ -1,6 +1,6 @@
 import ast
+import asyncio
 import logging
-import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -136,14 +136,13 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
     """Validate submitted code and run test simulation"""
     logger.info(f"Received validation request for team {request.team_name}")
     try:
-        # First check if the code is safe
+        # Code validation remains the same
         is_safe, error_message = validate_code(request.code)
         if not is_safe:
             return ValidationResponse(
                 status="error", message=f"Agent code is not safe: {error_message}"
             )
 
-        # Create test league with validation players
         test_league = League(
             name="validation_leagueX",
             created_date=datetime.now(),
@@ -151,7 +150,6 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
             game=request.game_name,
         )
 
-        # Create instance and add validation players
         try:
             game_class = GameFactory.get_game_class(request.game_name)
             game_instance = game_class(test_league)
@@ -161,10 +159,9 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
                 status="error", message=f"Error initializing game: {str(e)}"
             )
 
-        # Add the submitted player code
         try:
             player = game_instance.add_player(request.code, request.team_name)
-            if player is None:  # Add explicit check
+            if player is None:
                 logger.error(f"Failed to add player for team {request.team_name}")
                 return ValidationResponse(
                     status="error",
@@ -177,14 +174,22 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
             )
 
         try:
-            # Run simulations
-            feedback_result = game_instance.run_single_game_with_feedback(
-                request.custom_rewards
-            )
-            sim_game_instance = game_class(test_league)
-            sim_game_instance.add_player(request.code, request.team_name)
-            simulation_results = sim_game_instance.run_simulations(
-                request.num_simulations, test_league, request.custom_rewards
+            # Run in thread pool with timeout
+            async with asyncio.timeout(15):
+                feedback_result = await asyncio.to_thread(
+                    game_instance.run_single_game_with_feedback, request.custom_rewards
+                )
+                await asyncio.to_thread(game_instance.reset)
+                simulation_results = await asyncio.to_thread(
+                    game_instance.run_simulations,
+                    request.num_simulations,
+                    test_league,
+                    request.custom_rewards,
+                )
+        except TimeoutError:
+            return ValidationResponse(
+                status="error",
+                message="Operation timed out - agent may be too slow or stuck in a loop",
             )
         except Exception as e:
             logger.error(f"Error during simulation: {str(e)}")

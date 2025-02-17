@@ -215,15 +215,11 @@ def test_player_decision_exception(test_league):
 
     player1.make_decision = mock_decision
 
-    # Play match and verify exception is handled gracefully
-    match_feedback = game.play_match(player1, player2)
+    # Test that the expected ValueError is raised
+    with pytest.raises(ValueError) as exc_info:
+        game.play_match(player1, player2)
 
-    # Game should complete despite the exception
-    assert match_feedback["winner"] is not None
-    assert len(match_feedback["moves"]) > 0
-    # First move should be valid despite the exception
-    first_move = match_feedback["moves"][0]["position"]
-    assert first_move in ["1A", "2A", "3A", "4A", "5A", "6A", "7A"]
+    assert str(exc_info.value) == "Invalid move by RandomPlayer: Test exception"
 
 
 def test_starter_code():

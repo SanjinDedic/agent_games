@@ -116,7 +116,7 @@ def ensure_containers_running():
                     f"SERVICE_TOKEN={os.getenv('SERVICE_TOKEN')}",
                     "-e",
                     f"SECRET_KEY={os.getenv('SECRET_KEY')}",
-                    "--restart=unless-stopped",
+                    "--restart=on-failure:3",
                     container_name,
                 ],
                 check=True,

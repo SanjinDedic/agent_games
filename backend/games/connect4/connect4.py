@@ -182,12 +182,12 @@ class CustomPlayer(Player):
 
             try:
                 move = current_player.make_decision(game_state)
-            except Exception as e:
-                if self.verbose:
-                    match_feedback["moves"].append(
-                        f"Error in player {current_player.name}'s move: {e}"
+                if move not in game_state["possible_moves"]:
+                    raise ValueError(
+                        f"Invalid move {move} - must be one of {game_state['possible_moves']}"
                     )
-                move = self.get_possible_moves()[0]  # Make a valid move
+            except Exception as e:
+                raise ValueError(f"Invalid move by {current_player.name}: {str(e)}")
 
             # Get the latest player feedback messages
 

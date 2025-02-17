@@ -84,7 +84,7 @@ async def submit_agent(
                     "team_name": team_name,
                     "num_simulations": 100,
                 },
-                timeout=30.0,
+                timeout=20.0,
             )
 
         if response.status_code != 200:
@@ -100,7 +100,7 @@ async def submit_agent(
             )
 
     except Exception as e:
-        logger.error(f"Error during validation: {e}")
+        logger.error(f"Error or timeout during validation {e}")
         return ResponseModel(
             status="error", message=f"An error occurred during validation: {str(e)}"
         )
