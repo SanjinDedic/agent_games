@@ -4,8 +4,12 @@ const Connect4Board = ({ boardState }) => {
     const getCellContent = (cell) => {
         if (!cell) return null;
         return cell === 'X' ?
-            <div className="w-12 h-12 rounded-full bg-primary shadow-md" /> :
-            <div className="w-12 h-12 rounded-full bg-danger shadow-md" />;
+            <div className="w-12 h-12 rounded-full bg-primary shadow-md flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">{cell}</span>
+            </div> :
+            <div className="w-12 h-12 rounded-full bg-danger shadow-md flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">{cell}</span>
+            </div>;
     };
 
     // Board layout: columns 1-7, rows A-F (bottom to top)
