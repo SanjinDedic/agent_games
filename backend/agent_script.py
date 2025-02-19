@@ -6,8 +6,8 @@ from typing import Dict, List, Optional
 import requests
 
 # Configuration
-API_BASE_URL = "http://localhost:8000"  # Update with your API URL
-API_KEY = "FDSWUqv0k1ljbkgyV6bSoz0Y9YC2bytNGiYtpteRWvw"
+API_BASE_URL = "https://vccfinal.net/agent_games/"  # Update with your API URL
+API_KEY = "M5DUxi3eSqtjuvuD7QV55RSNE9_W3l_Iqzq4SmAv_TE"
 RESULTS_FILE = "simulation_results.json"
 
 # Sample Connect4 agent code
@@ -213,11 +213,12 @@ def main():
         )
 
         if simulation_result:
+            print(simulation_result)
             print("\nSimulation Results:")
             print(f"Status: {simulation_result['status']}")
             print(f"Message: {simulation_result['message']}")
             if simulation_result.get("data"):
-                results = simulation_result["data"]
+                results = simulation_result["data"]["simulation_results"]
                 print("\nPoints Distribution:")
                 for player, points in results.get("total_points", {}).items():
                     print(f"{player}: {points} points")

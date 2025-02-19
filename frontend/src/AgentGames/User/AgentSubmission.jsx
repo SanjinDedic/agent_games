@@ -8,6 +8,7 @@ import UserTooltip from '../Utilities/UserTooltips';
 import InstructionPopup from '../Utilities/InstructionPopup';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkTokenExpiry } from '../../slices/authSlice';
+import GameResultsWrapper from '../Feedback/GameResultsWrapper';
 
 function AgentSubmission() {
   const editorRef = useRef(null);
@@ -42,8 +43,12 @@ function AgentSubmission() {
       navigate('/AgentLogin');
     } else {
       loadLatestSubmission();
+      // Load instructions regardless of submission status
+      if (currentLeague && currentLeague.game) {
+        handleInstructions();
+      }
     }
-  }, [navigate]);
+  }, [navigate, currentLeague]);
 
   const loadLatestSubmission = async () => {
     try {
@@ -55,22 +60,29 @@ function AgentSubmission() {
       const data = await response.json();
 
       if (data.status === "success" && data.data && data.data.code) {
+        console.log("Found previous submission, loading it");
         setLastSubmission(data.data.code);
         setCode(data.data.code);
         setHasLastSubmission(true);
       } else {
-        handleInstructions();
+        console.log("No previous submission found");
         setHasLastSubmission(false);
+        // We'll still load instructions in the useEffect
       }
     } catch (error) {
       console.error('Error loading submission:', error);
-      handleInstructions();
       setHasLastSubmission(false);
     }
   };
 
   const handleInstructions = async () => {
+    if (!currentLeague || !currentLeague.game) {
+      console.error('Cannot fetch game instructions: currentLeague or game is undefined');
+      return;
+    }
+
     try {
+      console.log(`Fetching instructions for game: ${currentLeague.game}`);
       const response = await fetch(`${apiUrl}/user/get-game-instructions`, {
         method: 'POST',
         headers: {
@@ -78,19 +90,32 @@ function AgentSubmission() {
         },
         body: JSON.stringify({ game_name: currentLeague.game }),
       });
+
       const data = await response.json();
-      if (data.status === "success") {
-        let code_sample = data.data.starter_code;
-        code_sample = code_sample.slice(1);
-        setCode(code_sample);
-        setStarterCode(code_sample);
-        setInstructionData(data.data.game_instructions);
+      console.log("Game instructions response:", data);
+
+      if (data.status === "success" && data.data) {
+        if (data.data.starter_code) {
+          let code_sample = data.data.starter_code;
+          // Remove leading newline if present
+          if (code_sample.startsWith('\n')) {
+            code_sample = code_sample.slice(1);
+          }
+          setStarterCode(code_sample);
+          // Only set code if we don't already have a submission
+          if (!hasLastSubmission) {
+            setCode(code_sample);
+          }
+        }
+
+        if (data.data.game_instructions) {
+          setInstructionData(data.data.game_instructions);
+        }
       } else if (data.status === "error") {
-        toast.error(data.message, { position: "top-center" });
+        toast.error(data.message || 'Failed to load game instructions', { position: "top-center" });
       }
     } catch (error) {
-      console.error('Error:', error);
-      setIsLoading(false);
+      console.error('Error fetching game instructions:', error);
     }
   };
 
@@ -103,6 +128,11 @@ function AgentSubmission() {
   };
 
   const handleSubmit = async () => {
+    if (!code || code.trim() === '') {
+      toast.error('Please enter some code before submitting', { position: "top-center" });
+      return;
+    }
+
     setOutput('');
     setFeedback('');
     setIsLoading(true);
@@ -128,7 +158,8 @@ function AgentSubmission() {
         setIsLoading(false);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error during submission:', error);
+      toast.error('Network error during submission. Please try again.', { position: "top-center" });
       setIsLoading(false);
     }
   };
@@ -138,6 +169,8 @@ function AgentSubmission() {
       editorRef.current.setValue(lastSubmission);
       setCode(lastSubmission);
       toast.success('Loaded last submission', { position: "top-center" });
+    } else {
+      toast.error('No previous submission found', { position: "top-center" });
     }
   };
 
@@ -147,9 +180,12 @@ function AgentSubmission() {
       setCode(starterCode);
       toast.success('Code reset to starter template', { position: "top-center" });
     } else {
+      toast.error('Starter code template not available', { position: "top-center" });
       handleInstructions();
     }
   };
+
+
 
   return (
     <div className="min-h-screen pt-16 flex flex-col items-center bg-ui-lighter">
@@ -159,10 +195,10 @@ function AgentSubmission() {
           {currentUser.name && (
             <div className="text-lg font-medium">TEAM: {currentUser.name}</div>
           )}
-          {currentLeague.game && (
+          {currentLeague?.game && (
             <div className="text-lg font-medium">GAME: {currentLeague.game}</div>
           )}
-          {currentLeague.name && (
+          {currentLeague?.name && (
             <div className="text-lg font-medium">LEAGUE: {currentLeague.name}</div>
           )}
         </div>
@@ -173,7 +209,16 @@ function AgentSubmission() {
             AGENT GAMES CODE SUBMISSION
           </h1>
 
-          <InstructionPopup instructions={instructionData} homescreen={false} />
+          {instructionData ? (
+            <InstructionPopup instructions={instructionData} homescreen={false} />
+          ) : (
+            <div className="mb-8 p-4 bg-notice-yellowBg border border-notice-yellow rounded-lg">
+              <p className="text-ui-dark">
+                Loading game instructions...
+                {!currentLeague?.game && " Please select a league first."}
+              </p>
+            </div>
+          )}
 
           {code && (
             <div className="mt-6">
@@ -229,7 +274,7 @@ function AgentSubmission() {
             >
               <button
                 onClick={handleReset}
-                disabled={isLoading}
+                disabled={isLoading || !starterCode}
                 className="flex-1 py-3 px-4 text-lg font-medium text-white bg-notice-orange hover:bg-notice-orange/90 disabled:bg-ui-light rounded-lg transition-colors duration-200"
               >
                 Reset Code
@@ -241,7 +286,7 @@ function AgentSubmission() {
           <div className="mt-8">
             {output ? (
               <>
-                <ResultsDisplay
+                <GameResultsWrapper
                   data={output}
                   data_message={messageData}
                   tablevisible={true}

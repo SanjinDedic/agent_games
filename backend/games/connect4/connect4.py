@@ -15,44 +15,36 @@ class CustomPlayer(Player):
         # Available information in game_state:
         # - board: Dictionary mapping positions ('1A' to '7F') to symbols ('X', 'O', None)
         # - possible_moves: List of valid moves you can make
-        # - current_player: Your player name
-        # - last_move: The last move made
-        # - move_history: List of all moves made so far
-        
-        # Simple example: Make a random valid move
-        move = random.choice(game_state["possible_moves"])
-        
+        # - last_move: The last move made by your opponent
+
+        # Other available information:
+        # - self.symbol tells you whether you are 'X' or 'O'
+           
         # Add custom feedback (will appear in game output)
-        self.add_feedback(f"I chose move {move}")
+        self.add_feedback("Everything you write here you will see in the game output")
         
-        return move
+        return random.choice(game_state["possible_moves"]) # fallback to random move
 """
 
     game_instructions = """
-    <h1>Connect 4 Game Instructions</h1>
-    
-    <p>Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 grid.</p>
-    
-    <h2>Board Layout</h2>
-    <ul>
-        <li>The board is 7 columns wide (numbered 1-7) and 6 rows high (lettered A-F)</li>
-        <li>Positions are referenced by column then row (e.g., '1A' is bottom-left, '7F' is top-right)</li>
-        <li>Pieces stack from the bottom up (like real Connect 4)</li>
-    </ul>
-    
-    <h2>Game Rules</h2>
-    <ul>
-        <li>Players alternate placing pieces</li>
-        <li>First player to connect 4 pieces horizontally, vertically, or diagonally wins</li>
-        <li>If the board fills up with no winner, the game is a draw</li>
-    </ul>
-    
-    <h2>Implementation Notes</h2>
-    <ul>
-        <li>Your make_decision method receives the full game state including valid moves</li>
-        <li>You can use random.choice(game_state["possible_moves"]) for a valid random move</li>
-        <li>Add feedback with self.add_feedback() to help debug your strategy</li>
-    </ul>
+# Connect 4 Game Instructions
+
+Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 grid.
+
+## Board Layout
+- The board is 7 columns wide (numbered 1-7) and 6 rows high (lettered A-F)
+- Positions are referenced by column then row (e.g., '1A' is bottom-left, '7F' is top-right)
+- Pieces stack from the bottom up (like real Connect 4)
+
+## Game Rules
+- Players alternate placing pieces
+- First player to connect 4 pieces horizontally, vertically, or diagonally wins
+- If the board fills up with no winner, the game is a draw
+
+## Implementation Notes
+- Your make_decision method receives the full game state including valid moves
+- You can use random.choice(game_state["possible_moves"]) for a valid random move
+- Add feedback with self.add_feedback() to help debug your strategy
     """
 
     def __init__(self, league, verbose=False):
@@ -189,8 +181,6 @@ class CustomPlayer(Player):
             except Exception as e:
                 raise ValueError(f"Invalid move by {current_player.name}: {str(e)}")
 
-            # Get the latest player feedback messages
-
             # Record the move
             move_data = {
                 "player": str(current_player.name),
@@ -201,6 +191,7 @@ class CustomPlayer(Player):
             }
             match_feedback["moves"].append(move_data)
             current_player.feedback = []  # Clear feedback
+
             # Make the move
             if not self.make_move(move, current_player.symbol):
                 if self.verbose:
@@ -223,7 +214,7 @@ class CustomPlayer(Player):
                 match_feedback["winner"] = str(current_player.name)
                 break
 
-            # Check for draw
+            # Check for draw - board is full with no winner
             if self.is_board_full():
                 match_feedback["winner"] = "draw"
                 break
@@ -245,28 +236,52 @@ class CustomPlayer(Player):
         player_pairs = list(itertools.combinations(self.players, 2))
         random.shuffle(player_pairs)  # Randomize order of matches
 
-        # Initialize scores
+        # Initialize scores and statistics
         scores = {str(player.name): 0 for player in self.players}
+        wins = {str(player.name): 0 for player in self.players}
+        draws = {str(player.name): 0 for player in self.players}
+        matches_played = {str(player.name): 0 for player in self.players}
+        total_draws = 0
 
         # Play each match
         for player1, player2 in player_pairs:
             # Each pair plays twice, alternating who goes first
             for first, second in [(player1, player2), (player2, player1)]:
                 match_result = self.play_match(first, second)
+
+                # Track matches played for both players
+                matches_played[str(first.name)] += 1
+                matches_played[str(second.name)] += 1
+
                 if self.verbose:
                     self.game_feedback["matches"].append(match_result)
 
-                # Award points
+                # Award points - 2 points for win, 1 point for draw
                 if match_result["winner"] == str(first.name):
-                    scores[str(first.name)] += 1
+                    scores[str(first.name)] += 2
+                    wins[str(first.name)] += 1
                 elif match_result["winner"] == str(second.name):
+                    scores[str(second.name)] += 2
+                    wins[str(second.name)] += 1
+                elif match_result["winner"] == "draw":
+                    scores[str(first.name)] += 1
                     scores[str(second.name)] += 1
-                # No points for draws
+                    draws[str(first.name)] += 1
+                    draws[str(second.name)] += 1
+                    total_draws += 1
+
+        # Prepare game statistics
+        stats = {
+            "matches_played": matches_played,
+            "wins": wins,
+            "draws": draws,
+            "total_draws": total_draws,
+        }
 
         return {
             "points": scores,
             "score_aggregate": dict(scores),
-            "table": {"matches_played": len(player_pairs) * 2},
+            "table": stats,
         }
 
     def run_simulations(self, num_simulations, league, custom_rewards=None):
@@ -280,23 +295,41 @@ class CustomPlayer(Player):
         if num_simulations < 2:
             num_simulations = 2
 
+        # Initialize counters
         total_points = {str(player.name): 0 for player in self.players}
-        wins = {str(player.name): 0 for player in self.players}
-        draws = 0
+        total_wins = {str(player.name): 0 for player in self.players}
+        total_draws = {str(player.name): 0 for player in self.players}
+        total_games_played = {str(player.name): 0 for player in self.players}
 
         for _ in range(num_simulations):
             self.reset()
             results = self.play_game(custom_rewards)
 
-            # Update total points
+            # Accumulate points
             for player, points in results["points"].items():
                 total_points[str(player)] += points
-                wins[str(player)] += points  # In this case, points = wins
+
+            # Accumulate statistics
+            for player, wins in results["table"]["wins"].items():
+                total_wins[str(player)] += wins
+
+            for player, draws in results["table"]["draws"].items():
+                total_draws[str(player)] += draws
+
+            for player, games in results["table"]["matches_played"].items():
+                total_games_played[str(player)] += games
+
+        # Calculate actual total games played across all simulations
+        actual_games_played = sum(total_games_played.values()) // 2
 
         return {
             "total_points": total_points,
-            "num_simulations": num_simulations * multiplier_round_robin,
-            "table": {"wins": wins, "draws": draws},
+            "num_simulations": actual_games_played,
+            "table": {
+                "wins": total_wins,
+                "draws": total_draws,
+                "games_played": total_games_played,
+            },
         }
 
     def reset(self):

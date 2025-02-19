@@ -147,17 +147,11 @@ jobs:
             -e SECRET_KEY="$SECRET_KEY" \
             -e PYTHONPATH=/agent_games \
             simulator
-
-          # Update PM2 configuration
-          cd ~/main_application/agent_games/backend
-          pm2 delete Agent_Games || true
           
           # Start the service with PM2, ensuring PYTHONPATH is set
-          PYTHONPATH=/home/ubuntu/main_application/agent_games pm2 start \
-            --name Agent_Games \
-            --interpreter python3 \
-            "$(which uvicorn)" \
-            -- backend.api:app --host 0.0.0.0 --port 8002
+          PYTHONPATH=/home/ubuntu/main_application/agent_games
+
+          pm2 restart ecosystem.config.js
           
           # Log container status
           echo "Docker container status:"

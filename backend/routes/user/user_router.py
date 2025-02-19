@@ -82,7 +82,7 @@ async def submit_agent(
                     "code": submission.code,
                     "game_name": team.league.game,
                     "team_name": team_name,
-                    "num_simulations": 100,
+                    "num_simulations": 20,
                 },
                 timeout=20.0,
             )
