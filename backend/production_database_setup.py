@@ -111,11 +111,30 @@ class CustomPlayer(Player):
         # Create two agent teams for Connect4
         agent_teams = [
             {
-                "name": "random_agent",
+                "name": "test_agent1",
                 "school_name": "AI Lab Random",
                 "code": connect4_code,
             },
-            {"name": "test_agent", "school_name": "AI Lab Test", "code": connect4_code},
+            {
+                "name": "test_agent2",
+                "school_name": "AI Lab Test",
+                "code": connect4_code,
+            },
+            {
+                "name": "test_agent3",
+                "school_name": "AI Lab Test",
+                "code": connect4_code,
+            },
+            {
+                "name": "test_agent4",
+                "school_name": "AI Lab Test",
+                "code": connect4_code,
+            },
+            {
+                "name": "test_agent5",
+                "school_name": "AI Lab Test",
+                "code": connect4_code,
+            },
         ]
 
         api_keys = []

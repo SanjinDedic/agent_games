@@ -44,7 +44,7 @@ def get_team_token(session: Session, team_name: str, team_password: str):
     if not team.verify_password(team_password):
         raise InvalidCredentialsError("Invalid team password")
 
-    access_token_expires = timedelta(minutes=20)
+    access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(
         data={"sub": team_name, "role": "student"}, expires_delta=access_token_expires
     )

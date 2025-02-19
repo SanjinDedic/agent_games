@@ -27,7 +27,6 @@ ALLOWED_MODULES = {
     "math": None,
     "games": None,
     "player": None,
-    "math": None,
 }
 
 RISKY_FUNCTIONS = [
