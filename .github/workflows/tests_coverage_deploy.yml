@@ -92,34 +92,81 @@ jobs:
           mkdir -p ~/main_application
           cd ~/main_application
           
-          # Clean old deployment
+          # Clean Docker resources but preserve critical files
           sudo docker system prune -f
           sudo docker image prune -af
           
-          # Clone and copy files
-          tmp_dir=$(mktemp -d)
-          git clone --depth 1 https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
+          # Backup existing database
+          if [ -f "agent_games/backend/teams.db" ]; then
+            echo "Backing up existing database..."
+            cp agent_games/backend/teams.db ~/teams.db.backup
+          fi
           
-          # Set up correct directory structure for Python imports
-          rm -rf agent_games  # Remove old directory if exists
-          mv "$tmp_dir" agent_games
-          cd agent_games
-
-          # Create virtual environment if it doesn't exist
-          python3 -m venv venv || true
+          # Clone only backend files
+          tmp_dir=$(mktemp -d)
+          git clone --depth 1 --no-checkout https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
+          cd "$tmp_dir"
+          git sparse-checkout init
+          git sparse-checkout set 'backend' '__init__.py' 'pyproject.toml' 'requirements.txt'
+          git checkout
+          
+          # Move only the backend files to the main directory
+          cd ..
+          
+          # Remove old backend (but keep database)
+          if [ -d "agent_games/backend" ]; then
+            # Save database first
+            if [ -f "agent_games/backend/teams.db" ]; then
+              mv agent_games/backend/teams.db ~/teams.db.temp
+            fi
+            
+            # Remove old directories but preserve any custom frontend
+            rm -rf agent_games/backend agent_games/__init__.py agent_games/pyproject.toml
+          else
+            # If no previous installation, create directory
+            mkdir -p agent_games
+          fi
+          
+          # Copy new backend files
+          cp -r "$tmp_dir/backend" agent_games/
+          cp -r "$tmp_dir/__init__.py" "$tmp_dir/pyproject.toml" "$tmp_dir/requirements.txt" agent_games/
+          
+          # Restore database
+          if [ -f "~/teams.db.temp" ]; then
+            echo "Restoring database..."
+            mv ~/teams.db.temp agent_games/backend/teams.db
+          elif [ -f "~/teams.db.backup" ]; then
+            echo "Restoring from backup..."
+            cp ~/teams.db.backup agent_games/backend/teams.db
+          fi
+          
+          # Clean up temporary directory
+          rm -rf "$tmp_dir"
+          
+          # Move to backend directory
+          cd agent_games/backend
+          
+          # Create/update Python 3.13 virtual environment
+          if [ -d "venv" ]; then
+            echo "Updating existing virtual environment..."
+            rm -rf venv
+          fi
+          
+          # Create new virtual environment with Python 3.13
+          /usr/bin/python3.13 -m venv venv
           source venv/bin/activate
-
+          
+          # Verify Python version
+          python_version=$(python --version)
+          echo "Using $python_version"
+          
           # Install dependencies
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r backend/requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
-          # Set up Python path
-          export PYTHONPATH=/home/ubuntu/main_application/agent_games:$PYTHONPATH
-
-          # Initialize database
-          cd backend
-          # python3 production_database_setup.py
-
+          # Set up Python path - needed for imports to work correctly
+          export PYTHONPATH=/home/ubuntu/main_application/agent_games
+          
           # Build Docker containers
           echo "Building simulator container..."
           sudo docker build -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
@@ -148,18 +195,24 @@ jobs:
             -e PYTHONPATH=/agent_games \
             simulator
           
-          # Start the service with PM2, ensuring PYTHONPATH is set
-          PYTHONPATH=/home/ubuntu/main_application/agent_games
-
+          # Make sure ecosystem.config.js points to the correct uvicorn path
+          cd ~/main_application
+          sed -i 's|script: .*/uvicorn|script: "/home/ubuntu/main_application/agent_games/backend/venv/bin/uvicorn"|g' ecosystem.config.js
+          
+          # Update PYTHONPATH in ecosystem.config.js if needed
+          grep -q "PYTHONPATH.*agent_games" ecosystem.config.js || \
+            sed -i 's|env: {|env: {\n      PYTHONPATH: "/home/ubuntu/main_application/agent_games",|g' ecosystem.config.js
+          
+          # Start the service with PM2
           pm2 restart ecosystem.config.js
           
           # Log container status
           echo "Docker container status:"
           sudo docker ps | grep -E 'validator|simulator'
           
-          # List directory structure for debugging
-          echo "Final directory structure:"
-          ls -R ~/main_application/agent_games/
+          # Log disk usage after deployment
+          echo "Disk usage after deployment:"
+          df -h /
           
           # Log PM2 status
           pm2 list
