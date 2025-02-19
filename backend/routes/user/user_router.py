@@ -12,7 +12,6 @@ from backend.routes.auth.auth_core import (
     verify_admin_or_student,
     verify_ai_agent_service_or_student,
     verify_any_role,
-    verify_student_role,
 )
 from backend.routes.auth.auth_db import get_db
 from backend.routes.user.user_db import (

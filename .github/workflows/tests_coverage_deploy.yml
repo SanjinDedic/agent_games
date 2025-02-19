@@ -118,7 +118,7 @@ jobs:
 
           # Initialize database
           cd backend
-          python3 production_database_setup.py
+          # python3 production_database_setup.py
 
           # Build Docker containers
           echo "Building simulator container..."
