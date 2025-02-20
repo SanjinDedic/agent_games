@@ -7,7 +7,7 @@ import requests
 
 # Configuration
 API_BASE_URL = "https://vccfinal.net/agent_games/"  # Update with your API URL
-API_KEY = "WbxFmiir1IA2FkGHWXmCp3N37wZ9c3SzQrEqXkk0pP0"
+API_KEY = "YOUR API CODE HERE"
 RESULTS_FILE = "simulation_results.json"
 
 # Sample Connect4 agent code

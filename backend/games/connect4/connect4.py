@@ -181,24 +181,24 @@ Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 
             except Exception as e:
                 raise ValueError(f"Invalid move by {current_player.name}: {str(e)}")
 
-            # Record the move
-            move_data = {
-                "player": str(current_player.name),
-                "symbol": current_player.symbol,
-                "position": move,
-                "player_feedback": current_player.feedback,
-                "board_state": dict(self.board),
-            }
-            match_feedback["moves"].append(move_data)
-            current_player.feedback = []  # Clear feedback
-
-            # Make the move
+            # Make the move FIRST
             if not self.make_move(move, current_player.symbol):
                 if self.verbose:
                     match_feedback["moves"].append(
                         f"Invalid move by {current_player.name}: {move}"
                     )
                 continue
+
+            # THEN record the move data with updated board state
+            move_data = {
+                "player": str(current_player.name),
+                "symbol": current_player.symbol,
+                "position": move,
+                "player_feedback": current_player.feedback,
+                "board_state": dict(self.board),  # Now includes the move just made
+            }
+            match_feedback["moves"].append(move_data)
+            current_player.feedback = []  # Clear feedback
 
             # Add any player feedback
             if current_player.feedback:
@@ -214,7 +214,7 @@ Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 
                 match_feedback["winner"] = str(current_player.name)
                 break
 
-            # Check for draw - board is full with no winner
+            # Check for draw
             if self.is_board_full():
                 match_feedback["winner"] = "draw"
                 break
