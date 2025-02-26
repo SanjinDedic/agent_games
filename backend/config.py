@@ -45,6 +45,7 @@ ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
 GAMES = ["greedy_pig", "prisoners_dilemma"]
 # Update Docker API URL to use localhost instead of Docker's internal IP
 DOCKER_API_URL = os.getenv("DOCKER_API_URL", "http://localhost:8002")
+DEMO_TOKEN_EXPIRY = 60  # minutes - Add this line
 
 # Import after defining constants to avoid circular import
 from backend.routes.auth.auth_config import create_service_token

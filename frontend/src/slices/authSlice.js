@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import moment from 'moment-timezone';
-import { clearLeagues } from './leaguesSlice'; 
+import { clearLeagues } from './leaguesSlice';
 import { clearTeam } from './teamsSlice';
 
 moment.tz.setDefault("Australia/Sydney");
@@ -13,6 +13,7 @@ const authSlice = createSlice({
       name: null,
       role: null,
       exp: null,
+      is_demo: false,  // Add this field
     },
     isAuthenticated: false,
   },
@@ -24,9 +25,9 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
     },
     login: (state, action) => {
-      const { token, name, role, exp } = action.payload;
+      const { token, name, role, exp, is_demo } = action.payload;  // Extract is_demo
       state.token = token;
-      state.currentUser = { name, role, exp };
+      state.currentUser = { name, role, exp, is_demo: is_demo || false };  // Include is_demo
       state.isAuthenticated = true;
     },
     logout: (state) => {

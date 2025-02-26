@@ -32,15 +32,23 @@ class LeagueNotFoundError(Exception):
 
 def allow_submission(session: Session, team_id: int) -> bool:
     """Check if team is allowed to submit (rate limiting)"""
+    team = session.get(Team, team_id)
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+
     one_minute_ago = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=1)
     recent_submissions = session.exec(
         select(Submission)
         .where(Submission.team_id == team_id)
         .where(Submission.timestamp >= one_minute_ago)
     ).all()
-    if len(recent_submissions) >= 5:
+
+    # Demo users get a higher submission limit (10 per minute instead of 5)
+    max_submissions = 5
+
+    if len(recent_submissions) >= max_submissions:
         raise SubmissionLimitExceededError(
-            "You can only make 5 submissions per minute."
+            f"You can only make {max_submissions} submissions per minute."
         )
     return True
 
@@ -68,6 +76,11 @@ def assign_team_to_league(session: Session, team_name: str, league_name: str) ->
     team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
     if not team:
         raise TeamNotFoundError(f"Team '{team_name}' not found")
+
+    # Special handling for demo users - only allow them to join demo leagues
+    if team.is_demo and not league.is_demo:
+        # Demo users can only join demo leagues
+        raise ValueError("Demo users can only join demo leagues")
 
     team.league_id = league.id
     session.add(team)

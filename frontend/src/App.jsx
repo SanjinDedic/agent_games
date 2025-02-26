@@ -4,6 +4,9 @@ import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from './AgentGames/Utilities/Rankings';
 import AgentSubmission from './AgentGames/User/AgentSubmission';
 import AgentLeagueSignUp from './AgentGames/User/LeagueSignup';
+import Demo from './AgentGames/Demo';
+import Institutions from './AgentGames/Institutions';
+import Leaderboards from './AgentGames/Leaderboards';
 import Admin from './AgentGames/Admin/Admin';
 import AdminLeague from './AgentGames/Admin/AdminLeague';
 import AdminTeam from './AgentGames/Admin/AdminTeam';
@@ -33,6 +36,9 @@ function App() {
           <Route path="AgentLeagueSignUp" element={<AgentLeagueSignUp />} />
           <Route path="AgentSubmission" element={<AgentSubmission />} />
           <Route path="Rankings" element={<AgentRankings />} />
+          <Route path="Demo" element={<Demo />} />
+          <Route path="Institutions" element={<Institutions />} />
+          <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="Admin" element={<Admin />} />
           <Route path="AdminLeague" element={<AdminLeague />} />
           <Route path="AdminTeam" element={<AdminTeam />} />
