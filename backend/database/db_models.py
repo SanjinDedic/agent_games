@@ -131,3 +131,12 @@ class AgentAPIKey(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_used: datetime | None = None
     is_active: bool = Field(default=True)
+
+
+class DemoUser(SQLModel, table=True):
+    """Model for demo users with tracking information"""
+
+    id: int = Field(primary_key=True, default=None)
+    username: str = Field(index=True)  # Original username provided by user
+    email: str | None = None  # Optional email provided by user
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))

@@ -4,27 +4,23 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 import { login } from '../slices/authSlice';
-import Modal from '@mui/material/Modal';
-import Box from '@mui/material/Box';
-import { setCurrentLeague } from '../slices/leaguesSlice'; // Add this import
 
 function Demo() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const apiUrl = useSelector((state) => state.settings.agentApiUrl);
     const [isLoading, setIsLoading] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [demoData, setDemoData] = useState(null);
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [errors, setErrors] = useState({});
     const [countdown, setCountdown] = useState('');
-    const [availableGames, setAvailableGames] = useState([]);
-    const [selectedGame, setSelectedGame] = useState('');
 
-    // Timer for countdown display
+    // Timer for countdown display if we have a demo session
     useEffect(() => {
         let timer;
-        if (demoData && demoData.expires_at) {
+        if (countdown) {
             timer = setInterval(() => {
-                const expiryTime = moment(demoData.expires_at);
+                const expiryTime = moment(countdown);
                 const now = moment();
                 const diff = expiryTime.diff(now);
 
@@ -46,39 +42,64 @@ function Demo() {
         return () => {
             if (timer) clearInterval(timer);
         };
-    }, [demoData, navigate]);
+    }, [countdown, navigate]);
+
+    const validateInputs = () => {
+        const newErrors = {};
+
+        // Username validation (alphanumeric, max 10 chars)
+        if (!username.trim()) {
+            newErrors.username = 'Username is required';
+        } else if (username.length > 10) {
+            newErrors.username = 'Username must be 10 characters or less';
+        } else if (!/^[a-zA-Z0-9]+$/.test(username)) {
+            newErrors.username = 'Username must be alphanumeric';
+        }
+
+        // Email validation (optional)
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleLaunchDemo = async () => {
+        if (!validateInputs()) {
+            return;
+        }
+
         setIsLoading(true);
         try {
             const response = await fetch(`${apiUrl}/demo/launch_demo`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email || null
+                })
             });
 
             const data = await response.json();
 
             if (data.status === 'success') {
                 // Store demo user data
-                setDemoData(data.data);
-                setAvailableGames(data.data.available_games || []);
-                if (data.data.available_games?.length > 0) {
-                    setSelectedGame(data.data.available_games[0]);
-                }
+                const demoData = data.data;
 
                 // Login with temporary demo credentials
                 dispatch(login({
-                    token: data.data.access_token,
-                    name: data.data.username,
+                    token: demoData.access_token,
+                    name: demoData.username,
                     role: 'student',
                     is_demo: true,
-                    exp: moment(data.data.expires_at).unix()
+                    exp: moment(demoData.expires_at).unix()
                 }));
 
-                // Show modal with game selection
-                setModalOpen(true);
+                toast.success(`Demo started! You have ${demoData.expires_in_minutes} minutes to explore.`);
+                navigate('/AgentLeagueSignUp');
             } else {
                 toast.error(data.message || 'Failed to start demo');
             }
@@ -88,58 +109,6 @@ function Demo() {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleGameSelect = async () => {
-        if (!selectedGame) {
-            toast.error('Please select a game to play');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${apiUrl}/demo/select_game`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${demoData.access_token}`
-                },
-                body: JSON.stringify({
-                    game_name: selectedGame
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                // IMPORTANT: Save the league information to Redux before navigating
-                // This ensures the submission page knows which league is selected
-                dispatch(setCurrentLeague({
-                    name: data.data.league_name,
-                    game: data.data.game,
-                    id: data.data.league_id
-                }));
-
-                // Close modal and redirect to submission page
-                setModalOpen(false);
-                toast.success(`Starting demo with ${selectedGame}!`);
-
-                // Short delay to ensure Redux state is updated
-                setTimeout(() => {
-                    navigate('/AgentSubmission');
-                }, 100);
-            } else {
-                toast.error(data.message || 'Failed to select game');
-            }
-        } catch (error) {
-            console.error('Error selecting game:', error);
-            toast.error('Network error while selecting game');
-        }
-    };
-
-    const handleCloseModal = () => {
-        setModalOpen(false);
-        // Navigate back to home if user cancels
-        navigate('/');
     };
 
     return (
@@ -185,6 +154,42 @@ function Demo() {
                             </div>
                         </div>
 
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h2 className="text-xl font-semibold text-ui-dark mb-4">Get Started</h2>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-ui-dark mb-2">
+                                        Username <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        placeholder="Enter a username (max 10 chars)"
+                                        className={`w-full p-3 rounded-lg border ${errors.username ? 'border-danger' : 'border-ui-light'}`}
+                                        maxLength={10}
+                                    />
+                                    {errors.username && <p className="text-danger mt-1 text-sm">{errors.username}</p>}
+                                    <p className="text-ui text-sm mt-1">Alphanumeric characters only, 10 characters max.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-ui-dark mb-2">
+                                        Email <span className="text-ui text-sm">(Optional)</span>
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="Enter your email (optional)"
+                                        className={`w-full p-3 rounded-lg border ${errors.email ? 'border-danger' : 'border-ui-light'}`}
+                                    />
+                                    {errors.email && <p className="text-danger mt-1 text-sm">{errors.email}</p>}
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex justify-center">
                             <button
                                 onClick={handleLaunchDemo}
@@ -201,56 +206,6 @@ function Demo() {
                     </div>
                 </div>
             </div>
-
-            {/* Game Selection Modal */}
-            <Modal
-                open={modalOpen}
-                onClose={handleCloseModal}
-                aria-labelledby="game-selection-modal"
-            >
-                <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-96">
-                    <h2 className="text-xl font-bold text-ui-dark mb-4">Choose a Game to Play</h2>
-
-                    <div className="mb-6">
-                        <p className="text-ui mb-2">
-                            Your demo session will expire in: <span className="font-bold text-primary">{countdown}</span>
-                        </p>
-                        <p className="text-sm text-ui">
-                            You'll be able to submit agents and see their performance for the next hour.
-                        </p>
-                    </div>
-
-                    <div className="mb-6">
-                        <label className="block text-ui-dark mb-2">Select Game:</label>
-                        <select
-                            value={selectedGame}
-                            onChange={(e) => setSelectedGame(e.target.value)}
-                            className="w-full p-3 border border-ui-light rounded-lg bg-white text-ui-dark"
-                        >
-                            {availableGames.map((game) => (
-                                <option key={game} value={game}>
-                                    {game}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex justify-between">
-                        <button
-                            onClick={handleCloseModal}
-                            className="py-2 px-4 text-ui border border-ui-light rounded hover:bg-ui-lighter transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleGameSelect}
-                            className="py-2 px-4 text-white bg-primary hover:bg-primary-hover rounded transition-colors"
-                        >
-                            Start Playing
-                        </button>
-                    </div>
-                </Box>
-            </Modal>
         </div>
     );
 }

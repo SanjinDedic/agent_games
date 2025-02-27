@@ -2,12 +2,14 @@ import logging
 import secrets
 import string
 from datetime import datetime, timedelta
+from typing import List, Tuple
 
 import pytz
 from sqlmodel import Session, select
 
 from backend.config import DEMO_TOKEN_EXPIRY
-from backend.database.db_models import (  # Added import for get_password_hash
+from backend.database.db_models import (
+    DemoUser,
     League,
     LeagueType,
     Submission,
@@ -15,6 +17,7 @@ from backend.database.db_models import (  # Added import for get_password_hash
     TeamType,
     get_password_hash,
 )
+from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -26,15 +29,26 @@ def generate_demo_password(length=12):
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def create_demo_user(session: Session) -> tuple[Team, str]:
+def create_demo_user(
+    session: Session, username: str, email: str = None
+) -> Tuple[Team, str]:
     """Create a temporary demo user"""
-    demo_username = f"demo_user_{secrets.token_hex(4)}"
+    # Save user info to DemoUser table
+    save_demo_user_info(session, username, email)
+
+    # Create a unique username with suffix
+    demo_username = f"{username}_Demo"
     demo_password = generate_demo_password()
 
     # Check if demo user already exists (shouldn't happen but just in case)
     existing_user = session.exec(select(Team).where(Team.name == demo_username)).first()
 
     if existing_user:
+        # If it does exist, regenerate the password
+        existing_user.password_hash = get_password_hash(demo_password)
+        session.add(existing_user)
+        session.commit()
+        session.refresh(existing_user)
         return existing_user, demo_password
 
     # Get unassigned league for initial placement
@@ -49,14 +63,12 @@ def create_demo_user(session: Session) -> tuple[Team, str]:
     # Create new demo user - using get_password_hash instead of set_password
     demo_user = Team(
         name=demo_username,
-        school_name="Demo User",
+        school_name=f"Demo User: {username}",
         team_type=TeamType.STUDENT,
         is_demo=True,
         league_id=unassigned_league.id,
         created_at=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        password_hash=get_password_hash(
-            demo_password
-        ),  # Use get_password_hash directly
+        password_hash=get_password_hash(demo_password),
     )
 
     session.add(demo_user)
@@ -67,9 +79,32 @@ def create_demo_user(session: Session) -> tuple[Team, str]:
     return demo_user, demo_password
 
 
+def save_demo_user_info(session: Session, username: str, email: str = None):
+    """Save demo user information for tracking purposes"""
+    demo_user_info = DemoUser(
+        username=username, email=email, created_at=datetime.now(AUSTRALIA_SYDNEY_TZ)
+    )
+
+    session.add(demo_user_info)
+    session.commit()
+    logger.info(f"Saved demo user info for: {username}, email: {email}")
+
+
+def ensure_demo_leagues_exist(session: Session) -> List[League]:
+    """Ensure demo leagues exist for all available games"""
+    all_games = get_games_names()
+    demo_leagues = []
+
+    for game_name in all_games:
+        demo_league = get_or_create_demo_league(session, game_name)
+        demo_leagues.append(demo_league)
+
+    return demo_leagues
+
+
 def get_or_create_demo_league(session: Session, game_name: str) -> League:
     """Get an existing demo league or create a new one for the given game"""
-    league_name = f"{game_name}_demo_league"
+    league_name = f"{game_name}_demo"
 
     # Check if league already exists
     existing_league = session.exec(

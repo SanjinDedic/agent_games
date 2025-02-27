@@ -16,6 +16,7 @@ function AgentLeagueSignUp() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
+  const isDemo = useSelector((state) => state.auth.currentUser?.is_demo || false);
 
   moment.tz.setDefault("Australia/Sydney");
 
@@ -24,7 +25,7 @@ function AgentLeagueSignUp() {
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       navigate('/AgentLogin');
     }
-  }, [navigate]);
+  }, [navigate, dispatch, isAuthenticated, currentUser]);
 
   useEffect(() => {
     const fetchLeagues = async () => {
@@ -46,7 +47,7 @@ function AgentLeagueSignUp() {
     };
 
     fetchLeagues();
-  }, [apiUrl, dispatch]);
+  }, [apiUrl, dispatch, accessToken]);
 
   const handleCheckboxChange = (event) => {
     dispatch(setCurrentLeague(event.target.name));
@@ -89,6 +90,13 @@ function AgentLeagueSignUp() {
     }
   };
 
+
+  const displayLeagues = isDemo
+    ? allLeagues.filter(league => league.name.toLowerCase().includes('_demo'))
+    : allLeagues.filter(league => !league.name.toLowerCase().includes('_demo'));
+
+
+
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center bg-ui-lighter">
       <div className="w-full max-w-4xl mx-4">
@@ -97,34 +105,54 @@ function AgentLeagueSignUp() {
             PICK A LEAGUE TO JOIN
           </h1>
 
+          {isDemo && (
+            <div className="mb-6 bg-notice-yellowBg border border-notice-yellow rounded-lg p-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">🕒</span>
+                <p className="text-ui-dark font-medium">
+                  DEMO MODE - You are using the demo version of Agent Games
+                </p>
+              </div>
+              <p className="text-ui-dark mt-2">
+                Only demo leagues are displayed. Your progress will be available for the duration of your demo session.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-ui-lighter p-6 rounded-lg">
-            {allLeagues.map((league) => (
-              <label
-                key={league.id}
-                className={`
-                  flex items-center p-4 rounded-lg cursor-pointer
-                  bg-league-blue hover:bg-league-hover
-                  transform transition-all duration-200 hover:scale-105
-                  shadow-md
-                `}
-              >
-                <input
-                  type="checkbox"
-                  name={league.name}
-                  checked={currentLeague?.name === league.name}
-                  onChange={handleCheckboxChange}
-                  className="w-5 h-5 mr-4 rounded border-league-text"
-                />
-                <div className="text-white">
-                  <span className="block font-bold text-lg">
-                    {league.name}
-                  </span>
-                  <span className="block text-league-text text-sm italic">
-                    {league.game}
-                  </span>
-                </div>
-              </label>
-            ))}
+            {displayLeagues.length > 0 ? (
+              displayLeagues.map((league) => (
+                <label
+                  key={league.id}
+                  className={`
+                    flex items-center p-4 rounded-lg cursor-pointer
+                    ${isDemo ? 'bg-notice-orange hover:bg-notice-orange/90' : 'bg-league-blue hover:bg-league-hover'}
+                    transform transition-all duration-200 hover:scale-105
+                    shadow-md
+                  `}
+                >
+                  <input
+                    type="checkbox"
+                    name={league.name}
+                    checked={currentLeague?.name === league.name}
+                    onChange={handleCheckboxChange}
+                    className="w-5 h-5 mr-4 rounded border-league-text"
+                  />
+                  <div className="text-white">
+                    <span className="block font-bold text-lg">
+                      {league.name}
+                    </span>
+                    <span className="block text-league-text text-sm italic">
+                      {league.game}
+                    </span>
+                  </div>
+                </label>
+              ))
+            ) : (
+              <div className="col-span-3 text-center p-4">
+                <p className="text-ui-dark">No leagues available at this time.</p>
+              </div>
+            )}
           </div>
 
           <div className="mt-8">
@@ -136,10 +164,10 @@ function AgentLeagueSignUp() {
             >
               <button
                 onClick={handleSignUp}
-                className="w-full py-3 px-4 text-lg font-medium text-white 
-                         bg-primary hover:bg-primary-hover 
+                className={`w-full py-3 px-4 text-lg font-medium text-white 
+                         ${isDemo ? 'bg-notice-orange hover:bg-notice-orange/90' : 'bg-primary hover:bg-primary-hover'}
                          rounded-lg transition-colors duration-200
-                         shadow-md hover:shadow-lg"
+                         shadow-md hover:shadow-lg`}
               >
                 Join League
               </button>

@@ -9,6 +9,7 @@ import InstructionPopup from '../Utilities/InstructionPopup';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkTokenExpiry } from '../../slices/authSlice';
 import GameResultsWrapper from '../Feedback/GameResultsWrapper';
+import DemoMessage from './DemoMessage';
 
 function AgentSubmission() {
   const editorRef = useRef(null);
@@ -202,6 +203,8 @@ function AgentSubmission() {
             <div className="text-lg font-medium">LEAGUE: {currentLeague.name}</div>
           )}
         </div>
+        {/* Demo Mode Indicator */}
+        {currentUser.is_demo && <DemoMessage />}
 
         {/* Main Content */}
         <div className="bg-white rounded-b-lg shadow-lg p-6">
