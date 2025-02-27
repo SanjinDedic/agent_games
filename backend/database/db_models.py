@@ -36,6 +36,7 @@ class League(SQLModel, table=True):
     teams: List["Team"] = Relationship(back_populates="league")
     game: str
     league_type: LeagueType = Field(default=LeagueType.STUDENT)
+    is_demo: bool = Field(default=False)  # Add this field
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
 
 
@@ -60,11 +61,12 @@ class Team(SQLModel, table=True):
     color: str = "rgb(171,239,177)"
     league_id: int = Field(foreign_key="league.id")
     team_type: TeamType = Field(default=TeamType.STUDENT)
+    is_demo: bool = Field(default=False)  # Add this field
     league: League = Relationship(back_populates="teams")
     submissions: List["Submission"] = Relationship(back_populates="team")
     api_key: Optional["AgentAPIKey"] = Relationship(
         back_populates="team",
-        sa_relationship_kwargs={"uselist": False},  # Ensures one-to-one relationship
+        sa_relationship_kwargs={"uselist": False},
     )
     __table_args__ = (UniqueConstraint("name", "league_id"),)
 
@@ -129,3 +131,12 @@ class AgentAPIKey(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_used: datetime | None = None
     is_active: bool = Field(default=True)
+
+
+class DemoUser(SQLModel, table=True):
+    """Model for demo users with tracking information"""
+
+    id: int = Field(primary_key=True, default=None)
+    username: str = Field(index=True)  # Original username provided by user
+    email: str | None = None  # Optional email provided by user
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))
