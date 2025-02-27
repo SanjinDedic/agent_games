@@ -36,8 +36,11 @@ def create_demo_user(
     # Save user info to DemoUser table
     save_demo_user_info(session, username, email)
 
-    # Create a unique username with suffix
-    demo_username = f"{username}_Demo"
+    # Create a unique username with suffix - truncate if too long
+    # Ensure total length with suffix stays within 30 characters
+    max_base_length = 30 - len("_Demo")
+    truncated_username = username[:max_base_length]
+    demo_username = f"{truncated_username}_Demo"
     demo_password = generate_demo_password()
 
     # Check if demo user already exists (shouldn't happen but just in case)
@@ -49,7 +52,7 @@ def create_demo_user(
         session.add(existing_user)
         session.commit()
         session.refresh(existing_user)
-        return existing_user, demo_password
+        return existing_user
 
     # Get unassigned league for initial placement
     unassigned_league = session.exec(
@@ -76,7 +79,7 @@ def create_demo_user(
     session.refresh(demo_user)
 
     logger.info(f"Created demo user: {demo_username}")
-    return demo_user, demo_password
+    return demo_user
 
 
 def save_demo_user_info(session: Session, username: str, email: str = None):
