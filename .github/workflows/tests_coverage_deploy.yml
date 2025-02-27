@@ -194,8 +194,9 @@ jobs:
             -e SECRET_KEY="$SECRET_KEY" \
             -e PYTHONPATH=/agent_games \
             simulator
-            
+           
           # Start the service with PM2
+          cd ~/main_application
           pm2 restart ecosystem.config.js
           
           # Log container status
