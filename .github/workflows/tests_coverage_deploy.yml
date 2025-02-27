@@ -194,15 +194,7 @@ jobs:
             -e SECRET_KEY="$SECRET_KEY" \
             -e PYTHONPATH=/agent_games \
             simulator
-          
-          # Make sure ecosystem.config.js points to the correct uvicorn path
-          cd ~/main_application
-          sed -i 's|script: .*/uvicorn|script: "/home/ubuntu/main_application/agent_games/backend/venv/bin/uvicorn"|g' ecosystem.config.js
-          
-          # Update PYTHONPATH in ecosystem.config.js if needed
-          grep -q "PYTHONPATH.*agent_games" ecosystem.config.js || \
-            sed -i 's|env: {|env: {\n      PYTHONPATH: "/home/ubuntu/main_application/agent_games",|g' ecosystem.config.js
-          
+            
           # Start the service with PM2
           pm2 restart ecosystem.config.js
           

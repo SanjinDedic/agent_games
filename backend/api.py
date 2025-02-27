@@ -45,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# routers now include demo router
+# routers now include demo router here
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(admin_router, prefix="/admin", tags=["Administration"])
 app.include_router(user_router, prefix="/user", tags=["User Operations"])
