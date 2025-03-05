@@ -19,6 +19,7 @@ function AgentSubmission() {
     const [instructionData, setInstructionData] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [hasLastSubmission, setHasLastSubmission] = useState(false);
+    const [shouldCollapseInstructions, setShouldCollapseInstructions] = useState(false);
     const editorRef = useRef(null);
 
     // Redux hooks
@@ -108,6 +109,7 @@ function AgentSubmission() {
         setOutput('');
         setFeedback('');
         setIsLoading(true);
+        setShouldCollapseInstructions(true);
 
         try {
             const response = await fetch(`${apiUrl}/user/submit-agent`, {
@@ -165,10 +167,10 @@ function AgentSubmission() {
     };
 
     return (
-        <div className="min-h-screen pt-16 flex flex-col bg-ui-lighter">
+        <div className="min-h-screen pt-12 flex flex-col bg bg-white">
             <div className="flex flex-1 overflow-hidden">
                 {/* Left side - Code Editor */}
-                <div className="w-1/2 h-[calc(100vh-64px)] border-r border-ui-light">
+                <div className="w-1/2 h-[calc(100vh-64px)] border-r border-[#1e1e1e] border-t-0 bg-[#1e1e1e] -mt-[1px]">
                     <CodeEditor
                         code={code}
                         onCodeChange={setCode}
@@ -193,6 +195,7 @@ function AgentSubmission() {
                             output={output}
                             feedback={feedback}
                             isLoading={isLoading}
+                            collapseInstructions={shouldCollapseInstructions}
                         />
                     </div>
 

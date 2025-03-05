@@ -3,8 +3,8 @@ import React from 'react';
 
 function StatusBar({ team, game, league, isDemo }) {
     return (
-        <div className="bg-ui p-4 text-white">
-            <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="bg-ui pl-0 pr-4 py-4 text-white sticky top-0 z-10 border-b border-ui-dark shadow-md">
+            <div className="grid grid-cols-3 gap-4 text-center pl-4">
                 {team && (
                     <div className="text-lg font-medium overflow-hidden text-ellipsis whitespace-nowrap">
                         TEAM: {team}

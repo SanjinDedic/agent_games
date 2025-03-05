@@ -1,12 +1,20 @@
 // FeedbackDisplay.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FeedbackSelector from '../Feedback/FeedbackSelector';
 import GameResultsWrapper from '../Feedback/GameResultsWrapper';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 
-function FeedbackDisplay({ instructions, output, feedback, isLoading }) {
-    const [showInstructions, setShowInstructions] = useState(false);
+function FeedbackDisplay({ instructions, output, feedback, isLoading, collapseInstructions }) {
+    // Start with instructions open by default
+    const [showInstructions, setShowInstructions] = useState(true);
+
+    // Collapse instructions when code is submitted and output is received
+    useEffect(() => {
+        if (collapseInstructions) {
+            setShowInstructions(false);
+        }
+    }, [collapseInstructions]);
 
     return (
         <div className="p-4 h-full overflow-y-auto">

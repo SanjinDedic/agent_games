@@ -17,9 +17,11 @@ function CodeEditor({ code, onCodeChange, onMount }) {
     };
 
     return (
-        <div className="h-full">
+        <div className="h-full flex flex-col">
+            {/* Add 10px padding div with same color as Monaco editor */}
+            <div className="h-[10px] bg-[#1e1e1e]"></div>
             <Editor
-                height="100%"
+                height="calc(100% - 10px)"
                 width="100%"
                 theme="vs-dark"
                 defaultLanguage="python"
