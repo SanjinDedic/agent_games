@@ -5,9 +5,9 @@ import string
 from backend.games.base_game import BaseGame
 
 
-class Connect4Game(BaseGame):
+class Lineup4Game(BaseGame):
     starter_code = """
-from games.connect4.player import Player
+from games.lineup4.player import Player
 import random
 
 class CustomPlayer(Player):
@@ -27,18 +27,18 @@ class CustomPlayer(Player):
 """
 
     game_instructions = """
-# Connect 4 Game Instructions
+# Lineup 4 Game Instructions
 
-Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 grid.
+Implement a Lineup 4 player by creating a strategy for choosing moves on a 7x6 grid.
 
 ## Board Layout
 - The board is 7 columns wide (numbered 1-7) and 6 rows high (lettered A-F)
 - Positions are referenced by column then row (e.g., '1A' is bottom-left, '7F' is top-right)
-- Pieces stack from the bottom up (like real Connect 4)
+- Pieces stack from the bottom up (like real Lineup 4)
 
 ## Game Rules
 - Players alternate placing pieces
-- First player to connect 4 pieces horizontally, vertically, or diagonally wins
+- First player to lineup 4 pieces horizontally, vertically, or diagonally wins
 - If the board fills up with no winner, the game is a draw
 
 ## Implementation Notes
@@ -51,7 +51,7 @@ Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 
         super().__init__(league, verbose)
         self.board = {}
         self.move_history = []
-        self.game_feedback = {"game": "connect4", "matches": []}
+        self.game_feedback = {"game": "lineup4", "matches": []}
         self.winning_sets = self.calculate_winning_sets()  # Pre-calculate winning sets
         self.initialize_board()
 
@@ -229,7 +229,7 @@ Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 
 
     def play_game(self, custom_rewards=None):
         """Play a complete game (round-robin tournament)"""
-        self.game_feedback = {"game": "connect4", "matches": []}
+        self.game_feedback = {"game": "lineup4", "matches": []}
         self.player_feedback = {}
 
         # Create all possible pairs of players
@@ -338,7 +338,7 @@ Implement a Connect 4 player by creating a strategy for choosing moves on a 7x6 
         self.board = {}  # Clear the board
         self.initialize_board()  # Reinitialize with empty positions
         self.move_history = []  # Explicitly clear move history
-        self.game_feedback = {"game": "connect4", "matches": []}
+        self.game_feedback = {"game": "lineup4", "matches": []}
 
     def run_single_game_with_feedback(self, custom_rewards=None):
         """Run a single game with feedback"""

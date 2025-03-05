@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Connect4Board = ({ boardState }) => {
+const Lineup4Board = ({ boardState }) => {
     const getCellContent = (cell) => {
         if (!cell) return null;
         return cell === 'X' ?
@@ -56,4 +56,4 @@ const Connect4Board = ({ boardState }) => {
     );
 };
 
-export default Connect4Board;
+export default Lineup4Board;

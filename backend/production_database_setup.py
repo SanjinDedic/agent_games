@@ -65,7 +65,7 @@ def create_and_populate_database():
             name="agent_test_league",
             created_date=datetime.now(),
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
-            game="connect4",
+            game="lineup4",
             league_type=LeagueType.AGENT,
         )
         session.add(agent_league)
@@ -92,9 +92,9 @@ def create_and_populate_database():
             )
             session.add(team)
 
-        # Define initial Connect4 agent code
-        connect4_code = """
-from games.connect4.player import Player
+        # Define initial Lineup4 agent code
+        lineup4_code = """
+from games.lineup4.player import Player
 import random
 
 class CustomPlayer(Player):
@@ -108,32 +108,32 @@ class CustomPlayer(Player):
         return move
 """
 
-        # Create two agent teams for Connect4
+        # Create two agent teams for Lineup4
         agent_teams = [
             {
                 "name": "test_agent1",
                 "school_name": "AI Lab Random",
-                "code": connect4_code,
+                "code": lineup4_code,
             },
             {
                 "name": "test_agent2",
                 "school_name": "AI Lab Test",
-                "code": connect4_code,
+                "code": lineup4_code,
             },
             {
                 "name": "test_agent3",
                 "school_name": "AI Lab Test",
-                "code": connect4_code,
+                "code": lineup4_code,
             },
             {
                 "name": "test_agent4",
                 "school_name": "AI Lab Test",
-                "code": connect4_code,
+                "code": lineup4_code,
             },
             {
                 "name": "test_agent5",
                 "school_name": "AI Lab Test",
-                "code": connect4_code,
+                "code": lineup4_code,
             },
         ]
 

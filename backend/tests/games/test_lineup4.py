@@ -4,8 +4,8 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import League, Team
-from backend.games.connect4.connect4 import Connect4Game
-from backend.games.connect4.player import Player
+from backend.games.lineup4.lineup4 import Lineup4Game
+from backend.games.lineup4.player import Player
 
 
 @pytest.fixture
@@ -14,24 +14,24 @@ def test_league():
         name="test_league",
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=7),
-        game="connect4",
+        game="lineup4",
     )
 
 
 def test_game_initialization(test_league):
-    """Test basic initialization of Connect4Game"""
-    game = Connect4Game(test_league)
+    """Test basic initialization of Lineup4Game"""
+    game = Lineup4Game(test_league)
     assert len(game.players) > 0  # Should have validation players
     # Board should be initialized with empty positions
     assert all(value is None for value in game.board.values())
     assert len(game.board) == 42  # 7x6 board
     assert game.move_history == []
-    assert game.game_feedback == {"game": "connect4", "matches": []}
+    assert game.game_feedback == {"game": "lineup4", "matches": []}
 
 
 def test_board_initialization(test_league):
     """Test board initialization"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
 
     # Verify board dimensions (7x6)
@@ -47,7 +47,7 @@ def test_board_initialization(test_league):
 
 def test_get_possible_moves(test_league):
     """Test possible moves calculation"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
 
     # Initially, only bottom row should be available
@@ -63,7 +63,7 @@ def test_get_possible_moves(test_league):
 
 def test_make_move(test_league):
     """Test move execution"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
 
     # Test valid move
@@ -79,7 +79,7 @@ def test_make_move(test_league):
 
 def test_check_winner(test_league):
     """Test win condition detection"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
 
     # Test horizontal win
@@ -112,7 +112,7 @@ def test_check_winner(test_league):
 
 def test_is_board_full(test_league):
     """Test board full condition"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
 
     assert game.is_board_full() is False
@@ -127,7 +127,7 @@ def test_is_board_full(test_league):
 
 def test_get_game_state(test_league):
     """Test game state retrieval"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
 
     # Create test players
@@ -157,7 +157,7 @@ def test_get_game_state(test_league):
 
 def test_play_match(test_league):
     """Test complete match execution"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
 
     # Use validation players
     player1, player2 = game.players[:2]
@@ -176,7 +176,7 @@ def test_play_match(test_league):
 
 def test_play_game(test_league):
     """Test complete game execution"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     results = game.play_game()
 
     assert "points" in results
@@ -189,7 +189,7 @@ def test_play_game(test_league):
 
 def test_run_simulations(test_league):
     """Test multiple simulation runs"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     num_simulations = 10
     results = game.run_simulations(num_simulations, test_league)
 
@@ -205,7 +205,7 @@ def test_run_simulations(test_league):
 
 def test_player_decision_exception(test_league):
     """Test handling of player decision exceptions"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
     game.initialize_board()
     player1, player2 = game.players[:2]
 
@@ -224,22 +224,22 @@ def test_player_decision_exception(test_league):
 
 def test_starter_code():
     """Test starter code content"""
-    assert "class CustomPlayer(Player):" in Connect4Game.starter_code
-    assert "def make_decision(self, game_state):" in Connect4Game.starter_code
-    assert 'game_state["possible_moves"]' in Connect4Game.starter_code
+    assert "class CustomPlayer(Player):" in Lineup4Game.starter_code
+    assert "def make_decision(self, game_state):" in Lineup4Game.starter_code
+    assert 'game_state["possible_moves"]' in Lineup4Game.starter_code
 
 
 def test_game_instructions():
     """Test game instructions content"""
-    assert "Connect 4 Game Instructions" in Connect4Game.game_instructions
-    assert "Board Layout" in Connect4Game.game_instructions
-    assert "Game Rules" in Connect4Game.game_instructions
-    assert "Implementation Notes" in Connect4Game.game_instructions
+    assert "Lineup 4 Game Instructions" in Lineup4Game.game_instructions
+    assert "Board Layout" in Lineup4Game.game_instructions
+    assert "Game Rules" in Lineup4Game.game_instructions
+    assert "Implementation Notes" in Lineup4Game.game_instructions
 
 
 def test_game_reset(test_league):
     """Test game state reset"""
-    game = Connect4Game(test_league)
+    game = Lineup4Game(test_league)
 
     # Make some moves
     game.initialize_board()
@@ -252,7 +252,7 @@ def test_game_reset(test_league):
     # Verify board is in initial state
     assert len(game.board) == 42  # Should have all positions
     assert game.move_history == []
-    assert game.game_feedback == {"game": "connect4", "matches": []}
+    assert game.game_feedback == {"game": "lineup4", "matches": []}
     # Verify some specific positions are empty
     assert game.board["1A"] is None
     assert game.board["2A"] is None
