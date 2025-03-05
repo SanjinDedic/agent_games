@@ -10,9 +10,9 @@ API_BASE_URL = "https://vccfinal.net/agent_games/"  # Update with your API URL
 API_KEY = "YOUR API CODE HERE"
 RESULTS_FILE = "simulation_results.json"
 
-# Sample Connect4 agent code
-CONNECT4_AGENT_CODE = """
-from games.connect4.player import Player
+# Sample Lineup4 agent code
+LINEUP4_AGENT_CODE = """
+from games.lineup4.player import Player
 import random
 
 class CustomPlayer(Player):
@@ -197,7 +197,7 @@ def main():
 
     # Step 2: Validate agent
     validation_result = api.validate_agent(
-        code=CONNECT4_AGENT_CODE, game_name="connect4", team_name=api.team_name
+        code=LINEUP4_AGENT_CODE, game_name="lineup4", team_name=api.team_name
     )
 
     if validation_result:
@@ -207,8 +207,8 @@ def main():
     # Step 3: Run simulation
     if validation_result and validation_result["status"] == "success":
         simulation_result = api.run_simulation(
-            code=CONNECT4_AGENT_CODE,
-            game_name="connect4",
+            code=LINEUP4_AGENT_CODE,
+            game_name="lineup4",
             num_simulations=10,  # Reduced for testing
         )
 

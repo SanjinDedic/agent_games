@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Connect4Board from './Connect4Board';
-import Connect4PlayerFeedback from './Connect4PlayerFeedback';
+import Lineup4Board from './Lineup4Board';
+import Lineup4PlayerFeedback from './Lineup4PlayerFeedback';
 
-const Connect4Feedback = ({ feedback }) => {
+const Lineup4Feedback = ({ feedback }) => {
     const [selectedPlayer, setSelectedPlayer] = useState('all');
     const [selectedMatch, setSelectedMatch] = useState(0);
     const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
@@ -173,7 +173,7 @@ const Connect4Feedback = ({ feedback }) => {
                 </div>
             </div>
 
-            <Connect4Board boardState={currentBoard} />
+            <Lineup4Board boardState={currentBoard} />
 
 
 
@@ -199,10 +199,10 @@ const Connect4Feedback = ({ feedback }) => {
 
             {/* Display move feedback using the separate component */}
             {getCurrentMove() && (
-                <Connect4PlayerFeedback currentMove={getCurrentMove()} />
+                <Lineup4PlayerFeedback currentMove={getCurrentMove()} />
             )}
         </div>
     );
 };
 
-export default Connect4Feedback;
+export default Lineup4Feedback;

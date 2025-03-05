@@ -148,7 +148,7 @@ function Demo() {
                                     <p className="text-sm text-ui">The classic cooperation vs. betrayal game theory problem.</p>
                                 </div>
                                 <div className="bg-white p-4 rounded shadow">
-                                    <h3 className="font-medium text-lg">Connect4</h3>
+                                    <h3 className="font-medium text-lg">Lineup4</h3>
                                     <p className="text-sm text-ui">The strategic game of connecting four pieces in a row.</p>
                                 </div>
                             </div>

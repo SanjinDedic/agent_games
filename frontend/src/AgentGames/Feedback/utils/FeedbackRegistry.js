@@ -1,7 +1,7 @@
 import MarkdownFeedback from '../types/MarkdownFeedback';
 import JsonFeedback from '../types/JsonFeedback';
 import PrisonersFeedback from '../games/prisoners_dilemma/PrisonersFeedback';
-import Connect4Feedback from '../games/connect4/Connect4Feedback';
+import Lineup4Feedback from '../games/lineup4/Lineup4Feedback';
 
 export const getFeedbackComponent = (feedback) => {
     // Handle game-specific feedback
@@ -9,8 +9,8 @@ export const getFeedbackComponent = (feedback) => {
         switch (feedback.game) {
             case 'prisoners_dilemma':
                 return PrisonersFeedback;
-            case 'connect4':
-                return Connect4Feedback;
+            case 'lineup4':
+                return Lineup4Feedback;
             default:
                 return JsonFeedback;
         }

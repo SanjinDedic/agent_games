@@ -119,13 +119,13 @@ const Homepage = () => {
             {/* Game 3 */}
             <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
               <div className="mb-4 rounded overflow-hidden">
-                <img src="games/connect4.png" alt="Connect4 game" className="w-full h-48 object-cover" />
+                <img src="games/lineup4.png" alt="Lineup4 game" className="w-full h-48 object-cover" />
               </div>
-              <h3 className="text-xl font-semibold text-ui-dark mb-2">Connect4</h3>
+              <h3 className="text-xl font-semibold text-ui-dark mb-2">Lineup4</h3>
               <p className="text-ui mb-4">
                 Program an agent to play the classic Connect Four game, requiring spatial reasoning and forward planning.
               </p>
-              <a href="/demo?game=connect4">
+              <a href="/demo?game=lineup4">
                 <span className="text-primary font-medium hover:text-primary-hover">Try it →</span>
               </a>
             </div>

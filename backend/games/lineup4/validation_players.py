@@ -1,7 +1,7 @@
 import random
 import string
 
-from backend.games.connect4.player import Player
+from backend.games.lineup4.player import Player
 
 
 class RandomPlayer(Player):
@@ -82,7 +82,7 @@ class RandomUntilWin(Player):
 
 
 class BlockUntilWin(Player):
-    """Smart Connect4 player that prioritizes wins and blocking."""
+    """Smart Lineup4 player that prioritizes wins and blocking."""
 
     def check_potential_win(self, board: dict, move: str, symbol: str) -> bool:
         """Check if making this move would create a win"""

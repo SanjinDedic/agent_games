@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Connect4PlayerFeedback = ({ currentMove }) => {
+const Lineup4PlayerFeedback = ({ currentMove }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [copySuccess, setCopySuccess] = useState('');
 
@@ -82,4 +82,4 @@ const Connect4PlayerFeedback = ({ currentMove }) => {
     );
 };
 
-export default Connect4PlayerFeedback;
+export default Lineup4PlayerFeedback;

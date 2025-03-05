@@ -9,9 +9,9 @@ class GameFactory:
             return GreedyPigGame
         elif game_name == "prisoners_dilemma":
             return PrisonersDilemmaGame
-        elif game_name == "connect4":
-            from backend.games.connect4.connect4 import Connect4Game
+        elif game_name == "lineup4":
+            from backend.games.lineup4.lineup4 import Lineup4Game
 
-            return Connect4Game
+            return Lineup4Game
         else:
             raise ValueError(f"Unknown game: {game_name}")

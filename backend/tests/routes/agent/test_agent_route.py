@@ -15,7 +15,7 @@ def setup_agent_league(db_session: Session) -> League:
     """Create a test league for agent testing"""
     league = League(
         name="agent_test_league",
-        game="connect4",
+        game="lineup4",
         created_date=datetime.now(),
         expiry_date=datetime.now() + timedelta(days=7),
         league_type="agent",
@@ -83,7 +83,7 @@ def test_agent_simulation_success(
         headers=headers,
         json={
             "league_id": setup_agent_league.id,
-            "game_name": "connect4",
+            "game_name": "lineup4",
             "num_simulations": 10,
         },
     )
@@ -100,7 +100,7 @@ def test_agent_simulation_success(
         headers=headers,
         json={
             "league_id": setup_agent_league.id,
-            "game_name": "connect4",
+            "game_name": "lineup4",
             "num_simulations": 10,
             "custom_rewards": [10, 5, 0],
         },
@@ -116,7 +116,7 @@ def test_agent_simulation_success(
         headers=headers,
         json={
             "league_id": setup_agent_league.id,
-            "game_name": "connect4",
+            "game_name": "lineup4",
             "num_simulations": 10,
             "player_feedback": True,
         },
@@ -141,7 +141,7 @@ def test_agent_simulation_exceptions(
     response = client.post(
         "/agent/simulate",
         headers=headers,
-        json={"league_id": 99999, "game_name": "connect4", "num_simulations": 10},
+        json={"league_id": 99999, "game_name": "lineup4", "num_simulations": 10},
     )
     assert response.status_code == 200
     data = response.json()
@@ -168,7 +168,7 @@ def test_agent_simulation_exceptions(
         headers=headers,
         json={
             "league_id": setup_agent_league.id,
-            "game_name": "connect4",
+            "game_name": "lineup4",
             "num_simulations": -1,
         },
     )
@@ -179,7 +179,7 @@ def test_agent_simulation_exceptions(
         "/agent/simulate",
         json={
             "league_id": setup_agent_league.id,
-            "game_name": "connect4",
+            "game_name": "lineup4",
             "num_simulations": 10,
         },
     )
@@ -194,7 +194,7 @@ def test_agent_simulation_exceptions(
         headers={"Authorization": f"Bearer {wrong_token}"},
         json={
             "league_id": setup_agent_league.id,
-            "game_name": "connect4",
+            "game_name": "lineup4",
             "num_simulations": 10,
         },
     )
@@ -249,7 +249,7 @@ def test_agent_rate_limiting(
             headers=headers,
             json={
                 "league_id": setup_agent_league.id,
-                "game_name": "connect4",
+                "game_name": "lineup4",
                 "num_simulations": 10,
             },
         )
