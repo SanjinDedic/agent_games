@@ -38,7 +38,6 @@ ROOT_DIR = find_project_root()
 # Load environment variables
 load_dotenv()
 
-# Other config variables
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
