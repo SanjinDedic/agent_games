@@ -1,13 +1,12 @@
-// Main component: AgentSubmission.jsx
+// Updated AgentSubmission.jsx with CombinedFooter
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { checkTokenExpiry } from '../../slices/authSlice';
 import CodeEditor from './CodeEditor';
-import StatusBar from './StatusBar';
+import CombinedFooter from './CombinedFooter';
 import FeedbackDisplay from './FeedbackDisplay';
-import ControlPanel from './ControlPanel';
 
 function AgentSubmission() {
     // State management
@@ -167,10 +166,10 @@ function AgentSubmission() {
     };
 
     return (
-        <div className="min-h-screen pt-12 flex flex-col bg bg-white">
-            <div className="flex flex-1 overflow-hidden">
+        <div className="min-h-screen pt-12 flex flex-col bg-white">
+            <div className="flex flex-1 overflow-hidden pb-14">
                 {/* Left side - Code Editor */}
-                <div className="w-1/2 h-[calc(100vh-64px)] border-r border-[#1e1e1e] border-t-0 bg-[#1e1e1e] -mt-[1px]">
+                <div className="w-1/2 h-[calc(100vh-112px)] border-r border-[#1e1e1e] border-t-0 bg-[#1e1e1e]">
                     <CodeEditor
                         code={code}
                         onCodeChange={setCode}
@@ -178,16 +177,8 @@ function AgentSubmission() {
                     />
                 </div>
 
-                {/* Right side - Status, Feedback, and Controls */}
-                <div className="w-1/2 flex flex-col h-[calc(100vh-64px)]">
-                    {/* Status Bar */}
-                    <StatusBar
-                        team={currentUser.name}
-                        game={currentLeague?.game}
-                        league={currentLeague?.name}
-                        isDemo={currentUser.is_demo}
-                    />
-
+                {/* Right side - Feedback */}
+                <div className="w-1/2 flex flex-col h-[calc(100vh-112px)]">
                     {/* Feedback Display */}
                     <div className="flex-1 overflow-auto">
                         <FeedbackDisplay
@@ -198,18 +189,22 @@ function AgentSubmission() {
                             collapseInstructions={shouldCollapseInstructions}
                         />
                     </div>
-
-                    {/* Control Panel */}
-                    <ControlPanel
-                        onSubmit={handleSubmit}
-                        onLoadLast={handleLoadLastSubmission}
-                        onReset={handleReset}
-                        isLoading={isLoading}
-                        hasLastSubmission={hasLastSubmission}
-                        hasStarterCode={!!starterCode}
-                    />
                 </div>
             </div>
+
+            {/* Combined Footer */}
+            <CombinedFooter
+                team={currentUser.name}
+                game={currentLeague?.game}
+                league={currentLeague?.name}
+                isDemo={currentUser.is_demo}
+                onSubmit={handleSubmit}
+                onLoadLast={handleLoadLastSubmission}
+                onReset={handleReset}
+                isLoading={isLoading}
+                hasLastSubmission={hasLastSubmission}
+                hasStarterCode={!!starterCode}
+            />
         </div>
     );
 }
