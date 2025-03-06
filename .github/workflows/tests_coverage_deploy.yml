@@ -180,44 +180,7 @@ jobs:
             cd /home/ubuntu/main_application/agent_games/backend
             
             # Create validation_players.py file for lineup4
-            mkdir -p games/lineup4
-            echo "Attempting to decode and write validation_players.py..."
-            # Check if the variable is not empty
-            if [ -n "$LINEUP4_VALIDATION_PLAYERS" ]; then
-                # Write the base64 string to a temporary file first
-                echo "$LINEUP4_VALIDATION_PLAYERS" > /tmp/lineup4_validation_base64
-                
-                # Try to decode it and check for errors
-                if base64 -d /tmp/lineup4_validation_base64 > games/lineup4/validation_players.py 2>/tmp/decode_error; then
-                    echo "Successfully decoded validation_players.py"
-                    # Check file size to ensure it's not empty
-                    file_size=$(stat -c%s "games/lineup4/validation_players.py")
-                    echo "validation_players.py size: $file_size bytes"
-                    
-                    # Show first few lines to confirm content (safely)
-                    echo "First 5 lines of validation_players.py:"
-                    head -n 5 games/lineup4/validation_players.py
-                else
-                    echo "Error decoding base64 data:"
-                    cat /tmp/decode_error
-                    
-                    # Try an alternative base64 decoding method
-                    echo "Trying alternative decoding method..."
-                    echo "$LINEUP4_VALIDATION_PLAYERS" | openssl base64 -d > games/lineup4/validation_players.py
-                    
-                    # Check if that worked
-                    if [ -s games/lineup4/validation_players.py ]; then
-                        echo "Successfully decoded using openssl"
-                    else
-                        echo "WARNING: validation_players.py appears to be empty or failed to decode!"
-                    fi
-                fi
-                
-                # Clean up temp files
-                rm -f /tmp/lineup4_validation_base64 /tmp/decode_error
-            else
-                echo "WARNING: LINEUP4_VALIDATION_PLAYERS variable is empty!"
-            fi
+            cp ~/validation_players.py ~/main_application/agent_games/backend/games/lineup4/validation_players.py
             
             # Check for existing virtual environment
             if [ -d "venv" ] && [ -f "venv/bin/python" ]; then
