@@ -209,7 +209,7 @@ def main():
         simulation_result = api.run_simulation(
             code=LINEUP4_AGENT_CODE,
             game_name="lineup4",
-            num_simulations=10,  # Reduced for testing
+            num_simulations=10,
         )
 
         if simulation_result:
