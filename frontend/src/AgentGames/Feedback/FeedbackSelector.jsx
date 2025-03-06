@@ -1,4 +1,3 @@
-// Create this file in src/AgentGames/User/FeedbackSelector.jsx
 import React, { useState } from 'react';
 import { getFeedbackComponent } from '../Feedback/utils/FeedbackRegistry';
 
