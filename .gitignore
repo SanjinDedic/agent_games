@@ -46,6 +46,7 @@ backend/games/prisoners_dilemma/leagues/
 backend/games/forty_two/leagues/
 backend/games/alpha_guess/leagues/
 backend/games/greedy_pig/leagues/
+backend/games/lineup4/validation_players.py
 
 # Ignore all db files
 *.db
