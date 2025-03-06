@@ -126,7 +126,6 @@ class AgentAPI:
         """Get headers with authentication token"""
         return {"Authorization": f"Bearer {self.token}"}
 
-    # backend/agent_script.py
     # Update the validate_agent method in AgentAPI class
     def validate_agent(self, code: str, game_name: str, team_name: str) -> Dict:
         """Submit agent code for validation and storage"""

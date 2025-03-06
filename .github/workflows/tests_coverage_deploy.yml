@@ -70,160 +70,192 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Deploy to EC2
-      env:
-        HOST: ${{ secrets.EC2_HOST }}
-        USERNAME: ${{ secrets.EC2_USERNAME }}
-        KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-        SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
-      run: |
-        mkdir -p ~/.ssh
-        echo "$KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY" "$LINEUP4_VALIDATION_PLAYERS"
-          SERVICE_TOKEN=$1
-          SECRET_KEY=$2
-          LINEUP4_VALIDATION_PLAYERS=$3
-          
-          echo "Starting deployment..."
-          
-          # Ensure Docker is running
-          if ! sudo systemctl is-active --quiet docker; then
-            echo "Starting Docker service..."
-            sudo systemctl start docker
-          fi
-
-          # Setup directories
-          mkdir -p ~/main_application
-          cd ~/main_application
-          
-          # Clean Docker resources but preserve critical files
-          sudo docker system prune -f
-          sudo docker image prune -af
-          
-          # Backup existing database
-          if [ -f "agent_games/backend/teams.db" ]; then
-            echo "Backing up existing database..."
-            cp agent_games/backend/teams.db ~/teams.db.backup
-          fi
-          
-          # Clone only backend files
-          tmp_dir=$(mktemp -d)
-          git clone --depth 1 --no-checkout https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
-          cd "$tmp_dir"
-          git sparse-checkout init
-          git sparse-checkout set 'backend' '__init__.py' 'pyproject.toml' 'requirements.txt'
-          git checkout
-          
-          # Move only the backend files to the main directory
-          cd ..
-          
-          # Remove old backend (but keep database)
-          if [ -d "agent_games/backend" ]; then
-            # Save database first
-            if [ -f "agent_games/backend/teams.db" ]; then
-              mv agent_games/backend/teams.db ~/teams.db.temp
+      - name: Checkout code
+        uses: actions/checkout@v3
+    
+      - name: Deploy to EC2
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USERNAME: ${{ secrets.EC2_USERNAME }}
+          KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY" "$LINEUP4_VALIDATION_PLAYERS"
+            SERVICE_TOKEN=$1
+            SECRET_KEY=$2
+            LINEUP4_VALIDATION_PLAYERS=$3
+            
+            echo "Starting deployment..."
+            
+            # Print initial disk space
+            echo "Disk space before cleanup:"
+            df -h /
+            
+            # Aggressive cleanup
+            echo "Running cleanup operations..."
+            sudo find /var/log -type f -name "*.gz" -delete
+            sudo find /var/log -type f -name "*.old" -delete
+            sudo find /var/log -type f -name "*.1" -delete
+            
+            # Ensure Docker is running
+            if ! sudo systemctl is-active --quiet docker; then
+              echo "Starting Docker service..."
+              sudo systemctl start docker
             fi
             
-            # Remove old directories but preserve any custom frontend
-            rm -rf agent_games/backend agent_games/__init__.py agent_games/pyproject.toml
-          else
-            # If no previous installation, create directory
-            mkdir -p agent_games
-          fi
-          
-          # Copy new backend files
-          cp -r "$tmp_dir/backend" agent_games/
-          cp -r "$tmp_dir/__init__.py" "$tmp_dir/pyproject.toml" "$tmp_dir/requirements.txt" agent_games/
-          
-          # Restore database
-          if [ -f "~/teams.db.temp" ]; then
-            echo "Restoring database..."
-            mv ~/teams.db.temp agent_games/backend/teams.db
-          elif [ -f "~/teams.db.backup" ]; then
-            echo "Restoring from backup..."
-            cp ~/teams.db.backup agent_games/backend/teams.db
-          fi
-          
-          # Clean up temporary directory
-          rm -rf "$tmp_dir"
-          
-          # Move to backend directory
-          cd agent_games/backend
-          
-          # Create validation_players.py file for lineup4
-          mkdir -p games/lineup4
-          echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > games/lineup4/validation_players.py
-          echo "Created validation_players.py for lineup4"
-          
-          # Create/update Python 3.13 virtual environment
-          if [ -d "venv" ]; then
-            echo "Updating existing virtual environment..."
-            rm -rf venv
-          fi
-          
-          # Create new virtual environment with Python 3.13
-          /usr/bin/python3.13 -m venv venv
-          source venv/bin/activate
-          
-          # Verify Python version
-          python_version=$(python --version)
-          echo "Using $python_version"
-          
-          # Install dependencies
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-
-          # Set up Python path - needed for imports to work correctly
-          export PYTHONPATH=/home/ubuntu/main_application/agent_games
-          
-          # Build Docker containers
-          echo "Building simulator container..."
-          sudo docker build -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
-          
-          echo "Building validator container..."
-          sudo docker build -t validator -f docker_utils/dockerfiles/validator.dockerfile .
-          
-          # Stop any existing containers
-          sudo docker stop validator simulator || true
-          sudo docker rm validator simulator || true
-          
-          # Start new containers with environment variables and pythonpath
-          sudo docker run -d --name validator \
-            --network=host \
-            -v $(pwd):/agent_games/backend:ro \
-            -e SERVICE_TOKEN="$SERVICE_TOKEN" \
-            -e SECRET_KEY="$SECRET_KEY" \
-            -e PYTHONPATH=/agent_games \
-            validator
-
-          sudo docker run -d --name simulator \
-            --network=host \
-            -v $(pwd):/agent_games/backend:ro \
-            -e SERVICE_TOKEN="$SERVICE_TOKEN" \
-            -e SECRET_KEY="$SECRET_KEY" \
-            -e PYTHONPATH=/agent_games \
-            simulator
-           
-          # Start the service with PM2
-          cd ~/main_application
-          pm2 restart ecosystem.config.js
-          
-          # Log container status
-          echo "Docker container status:"
-          sudo docker ps | grep -E 'validator|simulator'
-          
-          # Log disk usage after deployment
-          echo "Disk usage after deployment:"
-          df -h /
-          
-          # Log PM2 status
-          pm2 list
-          
-          echo "Deployment completed"
-        ENDSSH
+            # Clean Docker resources but preserve critical containers
+            echo "Cleaning Docker resources..."
+            sudo docker container prune -f
+            sudo docker image prune -af
+            sudo docker volume prune -f
+            sudo docker system prune -f
+    
+            # Show disk space after cleanup
+            echo "Disk space after cleanup:"
+            df -h /
+            
+            # Setup directories
+            mkdir -p ~/main_application
+            cd ~/main_application
+            
+            # Backup existing database (keep only 3 latest backups)
+            if [ -f "agent_games/backend/teams.db" ]; then
+              echo "Backing up existing database..."
+              cp agent_games/backend/teams.db ~/teams.db.backup.$(date +%Y%m%d_%H%M%S)
+              find ~/ -name "teams.db.backup*" -type f -printf '%T@ %p\n' | sort -n | head -n -3 | cut -d' ' -f2- | xargs rm -f 2>/dev/null || true
+            fi
+            
+            # Clone repository with proper sparse checkout
+            echo "Cloning repository..."
+            tmp_dir=$(mktemp -d)
+            git clone --depth 1 --no-checkout https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
+            cd "$tmp_dir"
+            git sparse-checkout init
+            git sparse-checkout set 'backend' '__init__.py' 'pyproject.toml' 'backend/requirements.txt'
+            git checkout
+            
+            # Save database file before overwriting
+            if [ -f "/home/ubuntu/main_application/agent_games/backend/teams.db" ]; then
+              echo "Saving current database..."
+              mv /home/ubuntu/main_application/agent_games/backend/teams.db ~/teams.db.temp
+            fi
+            
+            # Prepare target directory
+            if [ -d "/home/ubuntu/main_application/agent_games" ]; then
+              echo "Removing old backend code..."
+              rm -rf /home/ubuntu/main_application/agent_games/backend
+              rm -f /home/ubuntu/main_application/agent_games/__init__.py
+              rm -f /home/ubuntu/main_application/agent_games/pyproject.toml
+            else
+              mkdir -p /home/ubuntu/main_application/agent_games
+            fi
+            
+            # Copy new files
+            echo "Copying new code..."
+            cp -r backend /home/ubuntu/main_application/agent_games/
+            cp __init__.py /home/ubuntu/main_application/agent_games/
+            cp pyproject.toml /home/ubuntu/main_application/agent_games/
+            
+            # If requirements.txt is in the backend subdirectory
+            if [ -f "backend/requirements.txt" ]; then
+              cp backend/requirements.txt /home/ubuntu/main_application/agent_games/
+            fi
+            
+            # Restore database
+            if [ -f "$HOME/teams.db.temp" ]; then
+              echo "Restoring database..."
+              cp ~/teams.db.temp /home/ubuntu/main_application/agent_games/backend/teams.db
+              rm ~/teams.db.temp
+            fi
+            
+            # Clean up temporary directory
+            rm -rf "$tmp_dir"
+            
+            # Move to backend directory
+            cd /home/ubuntu/main_application/agent_games/backend
+            
+            # Create validation_players.py file for lineup4
+            mkdir -p games/lineup4
+            echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > games/lineup4/validation_players.py
+            echo "Created validation_players.py for lineup4"
+            
+            # Check for existing virtual environment
+            if [ -d "venv" ] && [ -f "venv/bin/python" ]; then
+              echo "Updating existing virtual environment..."
+              source venv/bin/activate
+              python -m pip install --upgrade pip
+              if [ -f "requirements.txt" ]; then
+                python -m pip install -r requirements.txt
+              fi
+            else
+              echo "Creating new virtual environment..."
+              rm -rf venv
+              /usr/bin/python3.13 -m venv venv
+              source venv/bin/activate
+              python -m pip install --upgrade pip
+              if [ -f "requirements.txt" ]; then
+                python -m pip install -r requirements.txt
+              fi
+            fi
+            
+            # Show disk space after installation
+            echo "Disk space after dependency installation:"
+            df -h /
+            
+            # Set up Python path
+            export PYTHONPATH=/home/ubuntu/main_application/agent_games
+            
+            # Build Docker containers with caching
+            echo "Building simulator container..."
+            sudo docker build --pull --cache-from simulator -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
+            
+            echo "Building validator container..."
+            sudo docker build --pull --cache-from validator -t validator -f docker_utils/dockerfiles/validator.dockerfile .
+            
+            # Stop any existing containers
+            sudo docker stop validator simulator || true
+            sudo docker rm validator simulator || true
+            
+            # Start new containers with environment variables and pythonpath
+            sudo docker run -d --name validator \
+              --network=host \
+              -v $(pwd):/agent_games/backend:ro \
+              -e SERVICE_TOKEN="$SERVICE_TOKEN" \
+              -e SECRET_KEY="$SECRET_KEY" \
+              -e PYTHONPATH=/agent_games \
+              validator
+    
+            sudo docker run -d --name simulator \
+              --network=host \
+              -v $(pwd):/agent_games/backend:ro \
+              -e SERVICE_TOKEN="$SERVICE_TOKEN" \
+              -e SECRET_KEY="$SECRET_KEY" \
+              -e PYTHONPATH=/agent_games \
+              simulator
+             
+            # Clean up unnecessary files
+            find . -name "*.pyc" -delete
+            find . -name "__pycache__" -type d -exec rm -rf {} +
+            
+            # Start the service with PM2
+            cd ~/main_application
+            pm2 restart ecosystem.config.js
+            
+            # Log container status
+            echo "Docker container status:"
+            sudo docker ps | grep -E 'validator|simulator'
+            
+            # Log disk usage after deployment
+            echo "Disk usage after deployment:"
+            df -h /
+            
+            # Log PM2 status
+            pm2 list
+            
+            echo "Deployment completed"
+          ENDSSH
