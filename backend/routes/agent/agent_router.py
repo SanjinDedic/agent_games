@@ -27,7 +27,7 @@ async def run_simulation(
     session: Session = Depends(get_db),
 ):
     try:
-        # check if the league_id is valid
+        # check if the league_id exists
         league = get_league_by_id(session, request.league_id)
         if not league:
             return ErrorResponseModel(
@@ -72,7 +72,7 @@ async def run_simulation(
                 message="Simulation completed successfully",
                 data=simulation_result,
             )
-
+    # Catch any exceptions and return an error response
     except Exception as e:
         logger.error(f"Error during simulation: {e}")
         return ErrorResponseModel(status="error", message=f"Simulation error: {str(e)}")
