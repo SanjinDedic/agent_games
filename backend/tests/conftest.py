@@ -6,17 +6,27 @@ from typing import Dict, Generator
 
 import httpx
 import pytest
+import pytz
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.api import app
 from backend.database.db_config import get_database_url
-from backend.database.db_models import Admin, League, Team, get_password_hash
+from backend.database.db_models import (
+    Admin,
+    DemoUser,
+    League,
+    Submission,
+    Team,
+    TeamType,
+    get_password_hash,
+)
 from backend.database.db_session import get_db
 from backend.docker_utils.containers import ensure_containers_running
 from backend.routes.auth.auth_core import create_access_token
 
 os.environ["TESTING"] = "1"
+AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -108,12 +118,14 @@ def db_engine():
 
 
 @pytest.fixture
-def db_session(db_engine) -> Generator[Session, None, None]:
-    """Create a new database session for testing"""
+def db_session(db_engine):
     with Session(db_engine) as session:
-        # Add debug print
-        print(f"Test session using database: {db_engine.url}")
-        yield session
+        try:
+            print(f"Test session using database: {db_engine.url}")
+            yield session
+            session.rollback()  # Roll back any uncommitted changes
+        finally:
+            session.close()  # Ensure session is closed
 
 
 @pytest.fixture
@@ -214,3 +226,52 @@ def setup_unassigned_league(db_session):
         db_session.commit()
 
     return unassigned
+
+
+@pytest.fixture
+def setup_demo_data(db_session: Session) -> None:
+    """Set up demo data in the test database"""
+    # Get unassigned league
+    unassigned = db_session.exec(
+        select(League).where(League.name == "unassigned")
+    ).first()
+
+    # Create demo teams and tracking records
+    for i in range(2):
+        # Check if team already exists
+        team_name = f"demo_team_{i}"
+        team = db_session.exec(select(Team).where(Team.name == team_name)).first()
+
+        if not team:
+            # Create the Team with is_demo flag
+            team = Team(
+                name=team_name + "_demo",
+                school_name=team_name,
+                password_hash="test_hash",
+                league_id=unassigned.id,
+                is_demo=True,  # Mark as demo
+                team_type=TeamType.STUDENT,
+            )
+            db_session.add(team)
+            db_session.commit()
+            db_session.refresh(team)
+
+            # Create separate DemoUser tracking record
+            demo_user = DemoUser(
+                username=team_name,  # This is the original username before adding "_Demo" suffix
+                email=f"demo{i}@example.com",
+                created_at=datetime.now(),
+            )
+            db_session.add(demo_user)
+            db_session.commit()
+
+            # Add submissions for each team
+            for j in range(3):
+                submission = Submission(
+                    code=f"Demo code {j} for team {i}",
+                    timestamp=datetime.now() - timedelta(minutes=j),
+                    team_id=team.id,
+                )
+                db_session.add(submission)
+
+    db_session.commit()

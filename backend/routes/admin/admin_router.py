@@ -12,7 +12,9 @@ from backend.routes.admin.admin_db import (
     create_api_key,
     create_league,
     create_team,
+    delete_all_demo_teams_and_subs,
     delete_team,
+    get_all_demo_users,
     get_all_league_results,
     get_all_teams,
     get_league_by_id,
@@ -369,4 +371,37 @@ async def create_agent_api_key(
         logger.error(f"Error creating API key: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to create API key: {str(e)}"
+        )
+
+
+@admin_router.get("/get_all_demo_users", response_model=ResponseModel)
+@verify_admin_role
+async def get_all_demo_users_endpoint(
+    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    """Get the name, number of sumbissions and time created for all demo users"""
+    try:
+        demo_users = get_all_demo_users(session)
+        return ResponseModel(
+            status="success", message="Demo users fetched successfully", data=demo_users
+        )
+    except Exception as e:
+        return ErrorResponseModel(
+            status="error", message=f"Failed to get the demo users{str(e)}"
+        )
+
+
+@admin_router.post("/delete_demo_teams_and_subs", response_model=ResponseModel)
+@verify_admin_role
+async def delete_all_demo_teams_and_submissions(
+    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    try:
+        delete_all_demo_teams_and_subs(session)
+        return ResponseModel(
+            status="succes", message="All demo users deleted", data=None
+        )
+    except Exception as e:
+        return ErrorResponseModel(
+            status="error", message=f"Failed to delete demo users: {str(e)}"
         )

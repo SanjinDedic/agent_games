@@ -10,6 +10,7 @@ from sqlmodel import Session, delete, select
 from backend.config import ROOT_DIR
 from backend.database.db_models import (
     AgentAPIKey,
+    DemoUser,
     League,
     LeagueType,
     SimulationResult,
@@ -411,3 +412,67 @@ def create_api_key(session: Session, team_id: int) -> Dict:
     except Exception as e:
         session.rollback()
         raise
+
+
+def get_all_demo_users(session: Session):
+    """
+    Get all demo users with their last played league, last submission timestamp,
+    and total number of submissions.
+
+    Returns:
+        List of dictionaries containing:
+        - team_name: Demo user's team name
+        - league_name: Last league the demo user played in
+        - last_submission: Timestamp of the last submission
+        - submission_count: Total number of submissions by the demo user
+    """
+    try:
+        demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
+        print(demo_teams)
+        result = []
+        if len(demo_teams) == 0:
+            return None
+
+        for team in demo_teams:
+            latest_submission = session.exec(
+                select(Submission)
+                .where(Submission.team_id == team.id)
+                .order_by(Submission.timestamp.desc())
+            ).first()
+            # get the email from the DemoUser table
+            matching_demo_user = session.exec(
+                select(DemoUser).where(DemoUser.username == team.school_name)
+            ).one_or_none()
+            email = matching_demo_user.email
+            result.append(
+                {
+                    "demo_team_name": team.name,
+                    "email": email,
+                    "league_name": team.league.name,
+                    "number_of_submissions": len(team.submissions),
+                    "latest_submission": latest_submission.timestamp,
+                }
+            )
+        print("RESULT: ", result)
+        return {"demo_users": result}
+
+    except Exception as e:
+        session.rollback()
+        raise
+
+
+def delete_all_demo_teams_and_subs(session):
+    all_demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
+
+    team_ids = [team.id for team in all_demo_teams]
+
+    # First, delete all submissions from these teams
+    session.exec(delete(Submission).where(Submission.team_id.in_(team_ids)))
+    # Delete any SimulationResultItems for these teams
+    session.exec(
+        delete(SimulationResultItem).where(SimulationResultItem.team_id.in_(team_ids))
+    )
+    # Now delete the teams themselves
+    session.exec(delete(Team).where(Team.id.in_(team_ids)))
+
+    session.commit()
