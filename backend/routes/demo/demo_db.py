@@ -66,7 +66,7 @@ def create_demo_user(
     # Create new demo user - using get_password_hash instead of set_password
     demo_user = Team(
         name=demo_username,
-        school_name=f"Demo User: {username}",
+        school_name=username,
         team_type=TeamType.STUDENT,
         is_demo=True,
         league_id=unassigned_league.id,

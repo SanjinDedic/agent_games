@@ -89,7 +89,7 @@ function AdminTeam() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       },
-      body: JSON.stringify({ name: name }),
+      body: JSON.stringify({ id: id }),
     })
       .then(response => response.json())
       .then(data => {

@@ -143,7 +143,7 @@ def test_delete_team_success(client, auth_headers, db_session):
     db_session.commit()
 
     response = client.post(
-        "/admin/delete-team", headers=auth_headers, json={"name": "team_to_delete"}
+        "/admin/delete-team", headers=auth_headers, json={"id": team.id}
     )
     assert response.status_code == 200
     data = response.json()
@@ -168,7 +168,7 @@ def test_delete_team_success(client, auth_headers, db_session):
     db_session.commit()
 
     response = client.post(
-        "/admin/delete-team", headers=auth_headers, json={"name": "team_with_data"}
+        "/admin/delete-team", headers=auth_headers, json={"id": team.id}
     )
     assert response.status_code == 200
     data = response.json()
@@ -179,7 +179,6 @@ def test_delete_team_success(client, auth_headers, db_session):
         select(Team).where(Team.name == "team_with_data")
     ).first()
     assert deleted_team is None
-    # ... verify associated data is deleted ...
 
 
 def test_delete_team_exceptions(client, auth_headers):
@@ -187,7 +186,7 @@ def test_delete_team_exceptions(client, auth_headers):
 
     # Test case 1: Delete non-existent team
     response = client.post(
-        "/admin/delete-team", headers=auth_headers, json={"name": "non_existent_team"}
+        "/admin/delete-team", headers=auth_headers, json={"id": 9999999}
     )
     assert response.status_code == 200
     data = response.json()
@@ -195,13 +194,11 @@ def test_delete_team_exceptions(client, auth_headers):
     assert "not found" in data["message"].lower()
 
     # Test case 2: Delete with empty team name
-    response = client.post(
-        "/admin/delete-team", headers=auth_headers, json={"name": ""}
-    )
+    response = client.post("/admin/delete-team", headers=auth_headers, json={"id": ""})
     assert response.status_code == 422  # Validation error
 
     # Test case 3: Unauthorized access (no token)
-    response = client.post("/admin/delete-team", json={"name": "unauthorized_delete"})
+    response = client.post("/admin/delete-team", json={"id": "unauthorized_delete"})
     assert response.status_code == 401
 
     # Test case 4: Non-admin token
@@ -211,7 +208,7 @@ def test_delete_team_exceptions(client, auth_headers):
     response = client.post(
         "/admin/delete-team",
         headers={"Authorization": f"Bearer {non_admin_token}"},
-        json={"name": "non_admin_delete"},
+        json={"id": 1},
     )
     assert response.status_code == 403
 
