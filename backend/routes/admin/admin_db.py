@@ -435,7 +435,7 @@ def get_all_demo_users(session: Session):
         print(demo_teams)
         result = []
         if len(demo_teams) == 0:
-            return None
+            return {"demo_users": []}
 
         for team in demo_teams:
             latest_submission = session.exec(
