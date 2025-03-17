@@ -98,7 +98,7 @@ async def delete_team_endpoint(
 ):
     """Delete a team"""
     try:
-        msg = delete_team(session, team.name)
+        msg = delete_team(session, team.id)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error deleting team: {e}")

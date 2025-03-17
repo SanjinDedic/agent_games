@@ -130,22 +130,26 @@ def create_team(session: Session, team_data) -> Dict:
         raise TeamError("An unexpected error occurred creating the team")
 
 
-def delete_team(session: Session, team_name: str) -> str:
+def delete_team(session: Session, team_id: str) -> str:
     """Delete a team and its associated data"""
     # TODO: Enforcre unique team names
-    team = session.exec(select(Team).where(Team.name == team_name)).first()
+    team = session.exec(select(Team).where(Team.id == team_id)).first()
     if not team:
-        raise TeamError(f"Team '{team_name}' not found")
+        raise TeamError(f"Team with team_id'{team_id}' not found")
 
     try:
         # Delete associated submissions first
         session.exec(delete(Submission).where(Submission.team_id == team.id))
 
-        # Delete the team itself
-        session.delete(team)  # Add this line
-        session.commit()  # Add this line
+        # Delete all result items
+        session.exec(
+            delete(SimulationResultItem).where(SimulationResultItem.team_id == team_id)
+        )
 
-        return f"Team '{team_name}' deleted successfully"
+        session.delete(team)
+        session.commit()
+
+        return f"Team with team_id: {team_id} deleted successfully"
     except Exception as e:
         logger.error(f"Error deleting team submissions: {e}")
         raise
@@ -439,18 +443,23 @@ def get_all_demo_users(session: Session):
                 .where(Submission.team_id == team.id)
                 .order_by(Submission.timestamp.desc())
             ).first()
+            # Add a null check before accessing .timestamp
+            latest_submission_timestamp = None
+            if latest_submission is not None:
+                latest_submission_timestamp = latest_submission.timestamp
             # get the email from the DemoUser table
             matching_demo_user = session.exec(
                 select(DemoUser).where(DemoUser.username == team.school_name)
             ).one_or_none()
-            email = matching_demo_user.email
+            email = matching_demo_user.email if matching_demo_user is not None else None
             result.append(
                 {
+                    "demo_team_id": team.id,
                     "demo_team_name": team.name,
                     "email": email,
                     "league_name": team.league.name,
                     "number_of_submissions": len(team.submissions),
-                    "latest_submission": latest_submission.timestamp,
+                    "latest_submission": latest_submission_timestamp,
                 }
             )
         print("RESULT: ", result)

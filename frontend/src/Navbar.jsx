@@ -11,7 +11,7 @@ function AgentGamesNavbar() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const adminRoutes = ['/AdminTeam', '/AdminLeague', '/AdminDockerStatus'];
+  const adminRoutes = ['/AdminTeam', '/AdminLeague', '/AdminDockerStatus', '/AdminDemoUsers'];
   const isAdminRoute = adminRoutes.includes(location.pathname);
   const currentUser = useSelector((state) => state.auth.currentUser);
 
@@ -48,6 +48,9 @@ function AgentGamesNavbar() {
                 </Link>
                 <Link to="/AdminDockerStatus" className={navLinkClasses}>
                   Docker Status
+                </Link>
+                <Link to="/AdminDemoUsers" className={navLinkClasses}>
+                  Demo Users
                 </Link>
               </>
             ) : (
