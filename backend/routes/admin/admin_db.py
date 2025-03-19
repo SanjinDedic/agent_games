@@ -420,15 +420,17 @@ def create_api_key(session: Session, team_id: int) -> Dict:
 
 def get_all_demo_users(session: Session):
     """
-    Get all demo users with their last played league, last submission timestamp,
-    and total number of submissions.
-
+    Retrieve all demo users along with their team, league, and submission details.
+    
     Returns:
-        List of dictionaries containing:
-        - team_name: Demo user's team name
-        - league_name: Last league the demo user played in
-        - last_submission: Timestamp of the last submission
-        - submission_count: Total number of submissions by the demo user
+        dict: A dictionary with a single key "demo_users" mapping to a list of dictionaries.
+              Each dictionary contains:
+                  demo_team_id (int): The demo team's unique identifier.
+                  demo_team_name (str): The name of the demo team.
+                  email (str or None): The demo user's email address, if available.
+                  league_name (str): The name of the league the team is associated with.
+                  number_of_submissions (int): The total number of submissions by the team.
+                  latest_submission (datetime or None): The timestamp of the most recent submission.
     """
     try:
         demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
