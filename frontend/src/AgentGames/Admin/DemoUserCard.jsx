@@ -1,61 +1,84 @@
-import React from 'react';
-import moment from 'moment-timezone';
+import React, { useState } from "react";
+import moment from "moment-timezone";
 
 const DemoUserCard = ({ user, onDelete }) => {
-    // Format timestamp to a readable format
-    const formatTimestamp = (timestamp) => {
-        return moment(timestamp).format('MMM DD, YYYY HH:mm:ss');
-    };
+  const [isExpanded, setIsExpanded] = useState(false);
 
-    // Calculate time elapsed since creation (assuming latest_submission is close to creation)
-    const getTimeElapsed = (timestamp) => {
-        const now = moment();
-        const created = moment(timestamp);
-        return moment.duration(now.diff(created)).humanize() + ' ago';
-    };
+  // Format timestamp to a readable format
+  const formatTimestamp = (timestamp) => {
+    return moment(timestamp).format("MMM DD, YYYY HH:mm:ss");
+  };
 
-    return (
-        <div className="bg-ui-lighter rounded-lg overflow-hidden shadow-md border border-ui-light hover:shadow-lg transition-shadow duration-200">
-            <div className="bg-league-blue text-white p-4 flex justify-between items-center">
-                <div className="font-semibold text-lg truncate">{user.demo_team_name}</div>
-                <button
-                    onClick={onDelete}
-                    className="w-8 h-8 flex items-center justify-center bg-danger hover:bg-danger-hover text-white rounded-full transition-colors"
-                    title="Delete demo user"
-                >
-                    X
-                </button>
-            </div>
+  // Calculate time elapsed since creation
+  const getTimeElapsed = (timestamp) => {
+    const now = moment();
+    const created = moment(timestamp);
+    return moment.duration(now.diff(created)).humanize() + " ago";
+  };
 
-            <div className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="text-ui text-sm">Team ID:</div>
-                    <div className="text-ui-dark font-medium">{user.demo_team_id}</div>
+  const toggleExpand = (e) => {
+    // Prevent expanding when clicking the delete button
+    if (e.target.closest(".delete-btn")) return;
+    setIsExpanded(!isExpanded);
+  };
 
-                    <div className="text-ui text-sm">Email:</div>
-                    <div className="text-ui-dark font-medium truncate">
-                        {user.email || 'Not provided'}
-                    </div>
-
-                    <div className="text-ui text-sm">League:</div>
-                    <div className="text-ui-dark font-medium">{user.league_name}</div>
-
-                    <div className="text-ui text-sm">Submissions:</div>
-                    <div className="text-ui-dark font-medium">{user.number_of_submissions}</div>
-                </div>
-
-                <div className="border-t border-ui-light pt-3">
-                    <div className="text-ui text-sm">Latest Activity:</div>
-                    <div className="text-ui-dark">
-                        {formatTimestamp(user.latest_submission)}
-                    </div>
-                    <div className="text-ui text-xs mt-1">
-                        ({getTimeElapsed(user.latest_submission)})
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-ui-light hover:shadow transition-shadow duration-200">
+      <div
+        onClick={toggleExpand}
+        className="bg-league-blue text-white p-2 flex justify-between items-center cursor-pointer"
+      >
+        <div className="font-medium text-sm truncate">
+          {user.demo_team_name}
         </div>
-    );
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-league-text">
+            {isExpanded ? "▲" : "▼"}
+          </span>
+          <button
+            onClick={onDelete}
+            className="delete-btn w-5 h-5 flex items-center justify-center bg-danger hover:bg-danger-hover text-white rounded-full transition-colors text-xs"
+            title="Delete demo user"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div className="p-2 text-sm">
+        <div className="flex flex-col">
+          <div className="text-ui-dark truncate">
+            {user.email || "No email"}
+          </div>
+          <div className="text-ui">
+            League: <span className="text-ui-dark">{user.league_name}</span>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="mt-2 pt-2 border-t border-ui-light">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 mb-2">
+              <div className="text-ui">Team ID:</div>
+              <div className="text-ui-dark">{user.demo_team_id}</div>
+
+              <div className="text-ui">Submissions:</div>
+              <div className="text-ui-dark">{user.number_of_submissions}</div>
+            </div>
+
+            <div>
+              <div className="text-ui">Latest Activity:</div>
+              <div className="text-ui-dark">
+                {formatTimestamp(user.latest_submission)}
+              </div>
+              <div className="text-ui text-xs">
+                ({getTimeElapsed(user.latest_submission)})
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default DemoUserCard;
