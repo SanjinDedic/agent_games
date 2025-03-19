@@ -432,7 +432,6 @@ def get_all_demo_users(session: Session):
     """
     try:
         demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
-        print(demo_teams)
         result = []
         if len(demo_teams) == 0:
             return {"demo_users": []}
@@ -450,7 +449,7 @@ def get_all_demo_users(session: Session):
             # get the email from the DemoUser table
             matching_demo_user = session.exec(
                 select(DemoUser).where(DemoUser.username == team.school_name)
-            ).one_or_none()
+            ).first()  # for the special case of demo users, the username they typed in is saved as the school_name
             email = matching_demo_user.email if matching_demo_user is not None else None
             result.append(
                 {
@@ -462,7 +461,6 @@ def get_all_demo_users(session: Session):
                     "latest_submission": latest_submission_timestamp,
                 }
             )
-        print("RESULT: ", result)
         return {"demo_users": result}
 
     except Exception as e:

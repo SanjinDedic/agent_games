@@ -399,7 +399,7 @@ async def delete_all_demo_teams_and_submissions(
     try:
         delete_all_demo_teams_and_subs(session)
         return ResponseModel(
-            status="succes", message="All demo users deleted", data=None
+            status="success", message="All demo users deleted", data=None
         )
     except Exception as e:
         return ErrorResponseModel(
