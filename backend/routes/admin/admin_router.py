@@ -396,6 +396,13 @@ async def get_all_demo_users_endpoint(
 async def delete_all_demo_teams_and_submissions(
     session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
 ):
+    """
+    Deletes all demo teams and submissions.
+    
+    This asynchronous endpoint attempts to remove all demo teams and their submissions from the
+    database using the provided session dependency. It returns a success response if the deletion
+    completes successfully, or an error response with details in case of failure.
+    """
     try:
         delete_all_demo_teams_and_subs(session)
         return ResponseModel(
