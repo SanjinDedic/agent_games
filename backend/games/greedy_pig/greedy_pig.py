@@ -90,27 +90,69 @@ def make_decision(self, game_state):
         self.roll_no = 0
         self.game_over = False
         self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
-        # Initialize feedback as string for markdown
-        self.game_feedback = ""
-        self.player_feedback = []
+        # Initialize feedback as structured dictionary instead of string
+        self.game_feedback = {
+            "game": "greedy_pig",
+            "rounds": [],
+            "game_info": {"players": [player.name for player in self.players]},
+        }
+        self.player_feedback = {}
 
     def add_feedback(self, message):
         """Add a feedback message if verbose mode is on"""
-        if self.verbose:
-            if isinstance(message, str):
-                self.game_feedback += message + "\n"
-            else:
-                self.game_feedback += str(message) + "\n"
-                self.game_feedback.append(message)
+        if not self.verbose:
+            return
+
+        if isinstance(message, dict):
+            # Handle structured feedback data
+            if message.get("type") == "round_start":
+                # Start a new round
+                self.game_feedback["current_round"] = {
+                    "number": message.get("round_number", self.round_no),
+                    "rolls": [],
+                }
+            elif message.get("type") == "roll":
+                # Add roll data to current round
+                if "current_round" in self.game_feedback:
+                    self.game_feedback["current_round"]["rolls"].append(message)
+            elif message.get("type") == "round_end":
+                # Finalize the current round and add to rounds list
+                if "current_round" in self.game_feedback:
+                    if "final_scores" not in self.game_feedback["current_round"]:
+                        self.game_feedback["current_round"]["final_scores"] = {
+                            player.name: player.banked_money for player in self.players
+                        }
+                    self.game_feedback["rounds"].append(
+                        self.game_feedback["current_round"]
+                    )
+                    del self.game_feedback["current_round"]
+        else:
+            # For backward compatibility or general messages
+            if "messages" not in self.game_feedback:
+                self.game_feedback["messages"] = []
+            self.game_feedback["messages"].append(str(message))
 
     def add_player_feedback(self, player):
-        if player.feedback:
-            feedback = f"\n<b>{player.name}'s feedback:</b>"
-            self.player_feedback.append(feedback)
-            for message in player.feedback:
-                colored_message = f"<span style='color: blue;'>{message}</span>"
-                self.player_feedback.append(colored_message)
-            player.feedback = []  # Clear the feedback after adding it
+        """Add a player's feedback to the collection"""
+        if not player.feedback:
+            return
+
+        player_name = str(player.name)
+        if player_name not in self.player_feedback:
+            self.player_feedback[player_name] = []
+
+        # Add feedback with game state context
+        feedback_entry = {
+            "round": self.round_no,
+            "roll": self.roll_no,
+            "messages": list(player.feedback),
+            "state": {
+                "banked_money": player.banked_money,
+                "unbanked_money": player.unbanked_money,
+            },
+        }
+        self.player_feedback[player_name].append(feedback_entry)
+        player.feedback = []  # Clear after processing
 
     def roll_dice(self):
         return random.randint(1, 6)
@@ -133,69 +175,74 @@ def make_decision(self, game_state):
         self.round_no += 1
         self.roll_no = 0
 
-        self.add_feedback(f"\n## Round {self.round_no}")
+        # Start new round in feedback
+        self.add_feedback({"type": "round_start", "round_number": self.round_no})
 
         while True:
             self.roll_no += 1
             random.seed()  # Reset random seed each roll to prevent manipulation
             roll = self.roll_dice()
-            self.add_feedback(f"\n### Roll {self.roll_no}")
-            self.add_feedback(f"\n<table>")
-            feedback_row = ""
-            feedback_row += f'<tr style="border:0px"><th style="border: 0px"></th>'
-            for player in self.active_players:
-                feedback_row += f"<th>&#128100;{player.name}</th>"
-            feedback_row += f"</tr>"
-            self.add_feedback(feedback_row)
 
-            feedback_row = f'<tr style="border: 0px">'
-            if roll == 1:
-                feedback_row += f'<td style="border:0px;white-space:nowrap;">&#127922; = <span style="color:red"><b>{roll}</b></span></td>'
-                for player in self.active_players:
-                    if player.unbanked_money > 0:
-                        feedback_row += f'<td style="color:red">$0</td>'
-                    else:
-                        feedback_row += f"<td>$0</td>"
+            # Prepare roll data structure
+            roll_data = {
+                "type": "roll",
+                "roll_number": self.roll_no,
+                "value": roll,
+                "players_active": len(self.active_players),
+                "player_states": {},
+            }
+
+            # Handle roll outcome for each player
+            for player in self.active_players.copy():
+                # Store initial player state
+                roll_data["player_states"][player.name] = {
+                    "unbanked_money": player.unbanked_money,
+                    "banked_money": player.banked_money,
+                }
+
+                if roll == 1:
+                    # Bust - all players lose unbanked money
                     player.reset_unbanked_money()
-                feedback_row += f"</tr>"
-                self.add_feedback(feedback_row)
-                self.add_feedback(f"</table>")
+                    roll_data["player_states"][player.name]["action"] = "lost_all"
+                    roll_data["player_states"][player.name]["new_unbanked_money"] = 0
+                else:
+                    # Add roll value to unbanked money
+                    if not player.has_banked_this_turn:
+                        player.unbanked_money += roll
+                        roll_data["player_states"][player.name][
+                            "new_unbanked_money"
+                        ] = player.unbanked_money
+
+                        try:
+                            # Create a fresh game state for each player
+                            player_state = self.get_game_state()
+                            decision = player.make_decision(player_state)
+                        except Exception as e:
+                            print(f"Error in player {player.name}'s decision: {e}")
+                            decision = "bank"
+
+                        if decision == "bank":
+                            player.bank_money()
+                            player.has_banked_this_turn = True
+                            self.players_banked_this_round.append(player.name)
+                            self.active_players.remove(player)
+                            roll_data["player_states"][player.name]["action"] = "bank"
+                            roll_data["player_states"][player.name][
+                                "new_banked_money"
+                            ] = player.banked_money
+                        else:
+                            roll_data["player_states"][player.name][
+                                "action"
+                            ] = "continue"
+
+                        self.add_player_feedback(player)
+
+            # Add the roll data to feedback
+            self.add_feedback(roll_data)
+
+            # Check for game end conditions
+            if roll == 1:
                 break
-
-            feedback_row += f'<td style="border:0px;white-space:nowrap;">&#127922; = <b>{roll}</b></td>'
-            for player in self.active_players.copy():
-                feedback_row += f"<td>${player.unbanked_money + roll}</td>"
-            feedback_row += f"</tr>"
-            self.add_feedback(feedback_row)
-
-            feedback_row = (
-                f'<tr style="border:0px"><td style="border: 0px"><b>Action</b></td>'
-            )
-            for player in self.active_players.copy():
-                if not player.has_banked_this_turn:
-                    player.unbanked_money += roll
-                    try:
-                        # Create a fresh game state for each player
-                        player_state = self.get_game_state()
-                        decision = player.make_decision(player_state)
-                    except Exception as e:
-                        print(f"Error in player {player.name}'s decision: {e}")
-                        decision = "bank"
-
-                    if decision == "bank":
-                        feedback_row += f"<td>&#128181; bank</td>"
-                        player.bank_money()
-                        player.has_banked_this_turn = True
-                        self.players_banked_this_round.append(player.name)
-                        self.active_players.remove(player)
-                    else:
-                        feedback_row += f"<td></td>"
-
-                    self.add_player_feedback(player)
-
-            feedback_row += f"</tr>"
-            self.add_feedback(feedback_row)
-            self.add_feedback(f"</table>")
 
             for player in self.active_players:
                 if player.banked_money + player.unbanked_money >= 100:
@@ -205,28 +252,41 @@ def make_decision(self, game_state):
             if len(self.active_players) == 0:
                 break
 
+        # End of round
+        self.add_feedback(
+            {
+                "type": "round_end",
+                "round_number": self.round_no,
+                "final_scores": {
+                    player.name: player.banked_money for player in self.players
+                },
+            }
+        )
+
         for player in self.players:
             player.reset_turn()
 
     def play_game(self, custom_rewards=None):
-        self.add_feedback("# Greedy Pig Game")
+        # Record game configuration in feedback
+        self.game_feedback["game_info"]["reward_structure"] = (
+            custom_rewards or self.custom_rewards
+        )
+        self.game_feedback["game_info"]["player_count"] = len(self.players)
+
         random.shuffle(self.players)
 
         while not self.game_over:
             self.active_players = list(self.players)
             self.play_round()
-            self.add_feedback("\n### End of Round")
-            for player in self.players:
-                self.add_feedback(
-                    f"  - &#128100;<b>{player.name}</b>: ${player.banked_money}"
-                )
 
         game_state = self.get_game_state()
         results = self.assign_points(game_state, custom_rewards)
 
-        self.add_feedback("\n## Final Results")
-        for player, points in results["points"].items():
-            self.add_feedback(f"- {player}: {points} points")
+        # Record final results
+        self.game_feedback["final_scores"] = {
+            player.name: player.banked_money for player in self.players
+        }
+        self.game_feedback["final_points"] = results["points"]
 
         return results
 
@@ -263,8 +323,13 @@ def make_decision(self, game_state):
         """Reset game state"""
         super().reset()  # Calls BaseGame.reset()
         self.histories = {str(player.name): {} for player in self.players}
-        self.game_feedback = ""  # Reset to empty string
-        self.player_feedback = []
+        # Reset to structured dictionary
+        self.game_feedback = {
+            "game": "greedy_pig",
+            "rounds": [],
+            "game_info": {"players": [player.name for player in self.players]},
+        }
+        self.player_feedback = {}
         self.scores = {str(player.name): 0 for player in self.players}
         # Reset GreedyPigGame specific state
         self.round_no = 0
@@ -289,7 +354,7 @@ def make_decision(self, game_state):
 
         return {
             "results": results,
-            "feedback": self.game_feedback,  # Already a string
+            "feedback": self.game_feedback,  # Now a structured dictionary
             "player_feedback": self.player_feedback,
         }
 
