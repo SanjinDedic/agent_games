@@ -14,7 +14,7 @@ from backend.routes.user.user_router import user_router
 
 logger = logging.getLogger(__name__)
 
-
+# TODO: Add checking if I need to revive the validator
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for the FastAPI application"""
