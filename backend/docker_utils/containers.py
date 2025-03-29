@@ -109,9 +109,13 @@ def ensure_containers_running():
                     "--name",
                     container_name,
                     "--network=host",
+                    # Add memory limits (500MB)
+                    "--memory=500m",
+                    "--memory-swap=500m",
                     "-v",
                     # Updated mount path
                     f"{ROOT_DIR}:/agent_games/backend:ro",
+                    "--pids-limit=50",
                     "-e",
                     f"SERVICE_TOKEN={os.getenv('SERVICE_TOKEN')}",
                     "-e",

@@ -1,7 +1,9 @@
-import sys
 import argparse
+import sys
 from datetime import datetime
+
 import docker
+
 
 def clean_docker(simulator=True, validator=True):
     """
@@ -14,8 +16,12 @@ def clean_docker(simulator=True, validator=True):
     try:
         client = docker.from_env()
 
-        # Get initial disk usage
-        initial_space = client.df()
+        # Try to get initial disk usage, but handle missing keys
+        try:
+            initial_space = client.df()
+        except Exception as e:
+            print(f"Note: Couldn't get initial disk usage stats: {str(e)}")
+            initial_space = None
 
         print("Starting Docker cleanup...")
 
@@ -82,26 +88,44 @@ def clean_docker(simulator=True, validator=True):
                 except Exception as e:
                     print(f"   Error removing network {network.name}: {str(e)}")
 
-        # Get final disk usage
-        final_space = client.df()
+        # Try to calculate space saved, but handle missing keys
+        if initial_space is not None:
+            try:
+                final_space = client.df()
 
-        # Calculate space saved
-        initial_total = (
-            sum(space["Size"] for space in initial_space["Images"])
-            + sum(space["Size"] for space in initial_space["Containers"])
-            + sum(space["Size"] for space in initial_space["Volumes"])
-        )
+                # Safely calculate space using get() with default values
+                initial_images = sum(
+                    space.get("Size", 0) for space in initial_space.get("Images", [])
+                )
+                initial_containers = sum(
+                    space.get("Size", 0)
+                    for space in initial_space.get("Containers", [])
+                )
+                initial_volumes = sum(
+                    space.get("Size", 0) for space in initial_space.get("Volumes", [])
+                )
 
-        final_total = (
-            sum(space["Size"] for space in final_space["Images"])
-            + sum(space["Size"] for space in final_space["Containers"])
-            + sum(space["Size"] for space in final_space["Volumes"])
-        )
+                final_images = sum(
+                    space.get("Size", 0) for space in final_space.get("Images", [])
+                )
+                final_containers = sum(
+                    space.get("Size", 0) for space in final_space.get("Containers", [])
+                )
+                final_volumes = sum(
+                    space.get("Size", 0) for space in final_space.get("Volumes", [])
+                )
 
-        space_saved = (initial_total - final_total) / (1024 * 1024 * 1024)  # Convert to GB
+                initial_total = initial_images + initial_containers + initial_volumes
+                final_total = final_images + final_containers + final_volumes
 
-        print(f"\nCleanup completed successfully!")
-        print(f"Approximately {space_saved:.2f} GB of space freed")
+                space_saved = (initial_total - final_total) / (
+                    1024 * 1024 * 1024
+                )  # Convert to GB
+                print(f"\nApproximately {space_saved:.2f} GB of space freed")
+            except Exception as e:
+                print(f"\nCouldn't calculate space saved: {str(e)}")
+
+        print("\nCleanup completed successfully!")
 
     except docker.errors.DockerException as e:
         print(f"Error connecting to Docker daemon: {str(e)}")
