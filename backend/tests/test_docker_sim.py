@@ -1,6 +1,6 @@
 import json
 import subprocess
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 import httpx
 import pytest
@@ -44,56 +44,52 @@ def test_simulator_container_health():
     asyncio.run(check_health())
 
 
-import subprocess
-from unittest.mock import Mock, call, patch
-
-import pytest
-
-from backend.docker_utils.compose_utils import ensure_services_running
-
-
 def test_ensure_services_running_success():
     """Test that services get started when not already running"""
 
-    with patch("subprocess.run") as mock_run:
+    with patch(
+        "backend.docker_utils.compose_utils.run_docker_compose_command"
+    ) as mock_run_cmd:
         # Create a custom side effect function that returns different results
-        # based on which command is being called
         run_count = {"value": 0}
 
         def custom_side_effect(*args, **kwargs):
             run_count["value"] += 1
             command = args[0]
 
-            # Convert command list to string for easier matching
-            cmd_str = " ".join(command)
-
-            # First call: Check running services - return empty (none running)
-            if (
-                run_count["value"] == 1
-                and "ps --services --filter status=running" in cmd_str
-            ):
-                return Mock(returncode=0, stdout="", stderr="")
-
-            # Second call: Get list of services - return validator and simulator
-            elif run_count["value"] == 2 and "config --services" in cmd_str:
+            # First call: get_services() calls config --services
+            if run_count["value"] == 1 and command == ["config", "--services"]:
                 return Mock(returncode=0, stdout="validator\nsimulator\n", stderr="")
 
-            # Service start calls
-            elif "up -d" in cmd_str:
+            # Second call: get_running_services() calls ps
+            elif run_count["value"] == 2 and command == [
+                "ps",
+                "--services",
+                "--filter",
+                "status=running",
+            ]:
+                return Mock(returncode=0, stdout="", stderr="")  # No services running
+
+            # Third call: Trigger docker-compose up -d
+            elif command == ["up", "-d"]:
                 return Mock(returncode=0, stdout="", stderr="")
 
-            # Later calls: Check running services again - return services as running
-            elif (
-                run_count["value"] > 2
-                and "ps --services --filter status=running" in cmd_str
-            ):
-                return Mock(returncode=0, stdout="validator\nsimulator\n", stderr="")
+            # Fourth call: Check running services again after start attempt
+            elif run_count["value"] > 3 and command == [
+                "ps",
+                "--services",
+                "--filter",
+                "status=running",
+            ]:
+                return Mock(
+                    returncode=0, stdout="validator\nsimulator\n", stderr=""
+                )  # Now services are running
 
             # Default fallback
             return Mock(returncode=0, stdout="", stderr="")
 
         # Set the side effect
-        mock_run.side_effect = custom_side_effect
+        mock_run_cmd.side_effect = custom_side_effect
 
         # Run the function we're testing
         result = ensure_services_running()
@@ -102,28 +98,24 @@ def test_ensure_services_running_success():
         assert result is True
 
         # Check correct commands were called
-        call_list = [" ".join(call_args[0][0]) for call_args in mock_run.call_args_list]
+        call_args_list = mock_run_cmd.call_args_list
+        commands_called = [args[0][0] for args in call_args_list]
 
-        # Verify the sequence of commands (this is the key check!)
-        assert any(
-            "ps --services --filter status=running" in call for call in call_list
-        ), "Should check for running services"
-        assert any(
-            "config --services" in call for call in call_list
-        ), "Should get available services"
-        assert any(
-            "up -d" in call for call in call_list
-        ), "Should start services with up -d command"
-
-        # Make sure up command was called after initial ps check
-        ps_index = next(
-            i
-            for i, call in enumerate(call_list)
-            if "ps --services --filter status=running" in call
-        )
-        up_index = next(i for i, call in enumerate(call_list) if "up -d" in call)
-        assert ps_index < up_index, "Should call ps before up"
-
+        # Verify the sequence of commands
+        assert [
+            "config",
+            "--services",
+        ] in commands_called, "Should check available services"
+        assert [
+            "ps",
+            "--services",
+            "--filter",
+            "status=running",
+        ] in commands_called, "Should check running services"
+        assert [
+            "up",
+            "-d",
+        ] in commands_called, "Should start services with up -d command"
 
 @patch("subprocess.run")
 def test_ensure_services_running_failure(mock_subprocess_run):

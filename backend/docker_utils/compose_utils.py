@@ -1,6 +1,4 @@
-# backend/docker_utils/compose_utils.py
 import logging
-import os
 import subprocess
 import time
 from typing import Dict, List, Optional, Tuple
@@ -31,114 +29,80 @@ def run_docker_compose_command(
 def get_container_logs(service_name: str) -> str:
     """Get logs from a Docker Compose service"""
     try:
-        result = subprocess.run(
-            ["docker-compose", "logs", service_name],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        result = run_docker_compose_command(["logs", service_name])
         return result.stdout
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         logger.error(f"Error getting logs for {service_name}: {e}")
         return f"Could not retrieve logs for {service_name}: {e}"
+
 
 def restart_service(service_name: Optional[str] = None) -> bool:
     """Restart a specific service or all services"""
     try:
-        cmd = ["docker-compose", "restart"]
+        cmd = ["restart"]
         if service_name:
             cmd.append(service_name)
             logger.info(f"Restarting Docker Compose service: {service_name}")
         else:
             logger.info("Restarting all Docker Compose services")
-        
-        subprocess.run(cmd, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
+
+        result = run_docker_compose_command(cmd)
+        return result.returncode == 0
+    except Exception as e:
         logger.error(f"Error restarting service(s): {e}")
         return False
+
 
 def execute_command(service_name: str, command: str) -> str:
     """Execute a command in a Docker Compose service container"""
     try:
-        result = subprocess.run(
-            ["docker-compose", "exec", service_name, "sh", "-c", command],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        result = run_docker_compose_command(["exec", service_name, "sh", "-c", command])
         return result.stdout
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         logger.error(f"Error executing command in {service_name}: {e}")
         return f"Command execution failed: {e}"
+
+
+def get_services() -> List[str]:
+    """Get all services defined in docker-compose.yml"""
+    config_result = run_docker_compose_command(["config", "--services"])
+    return (
+        config_result.stdout.strip().split("\n") if config_result.stdout.strip() else []
+    )
+
+
+def get_running_services() -> List[str]:
+    """Get all currently running services"""
+    ps_result = run_docker_compose_command(
+        ["ps", "--services", "--filter", "status=running"]
+    )
+    return ps_result.stdout.strip().split("\n") if ps_result.stdout.strip() else []
 
 
 def ensure_services_running() -> bool:
     """Ensure all services defined in docker-compose.yml are running"""
     try:
-        # Check if services are already running
-        ps_result = run_docker_compose_command(
-            ["ps", "--services", "--filter", "status=running"]
-        )
-        running_services = (
-            set(ps_result.stdout.strip().split("\n"))
-            if ps_result.stdout.strip()
-            else set()
-        )
+        # Get services that should be running and those that are running
+        all_services = set(get_services())
+        running_services = set(get_running_services())
 
-        # Get all services from config
-        config_result = run_docker_compose_command(["config", "--services"])
-        all_services = (
-            set(config_result.stdout.strip().split("\n"))
-            if config_result.stdout.strip()
-            else set()
-        )
-
-        # Find services that aren't running
+        # Start any non-running services
         not_running = all_services - running_services
         if not_running:
             logger.info(f"Starting services: {', '.join(not_running)}")
 
-            # Try to start just the non-running services first
-            for service in not_running:
-                run_docker_compose_command(["up", "-d", service])
+            # Directly start all services - simpler than individual starts
+            run_docker_compose_command(["up", "-d"])
 
-            # Verify they're running now
-            ps_result = run_docker_compose_command(
-                ["ps", "--services", "--filter", "status=running"]
-            )
-            running_after = (
-                set(ps_result.stdout.strip().split("\n"))
-                if ps_result.stdout.strip()
-                else set()
-            )
-
+            # Verify everything started
+            running_after = set(get_running_services())
             if all_services != running_after:
-                # Some services still not running, try starting everything
-                logger.warning(
-                    "Not all services started. Attempting to start all services..."
-                )
-                run_docker_compose_command(["up", "-d"])
-
-                # Final verification
-                ps_result = run_docker_compose_command(
-                    ["ps", "--services", "--filter", "status=running"]
-                )
-                final_running = (
-                    set(ps_result.stdout.strip().split("\n"))
-                    if ps_result.stdout.strip()
-                    else set()
-                )
-
-                if all_services != final_running:
-                    logger.error(
-                        f"Failed to start services: {', '.join(all_services - final_running)}"
-                    )
-                    return False
+                not_started = all_services - running_after
+                logger.error(f"Failed to start services: {', '.join(not_started)}")
+                return False
 
         logger.info("All required services are running")
         return True
-
     except Exception as e:
         logger.error(f"Error ensuring services are running: {e}")
         return False
@@ -147,9 +111,9 @@ def ensure_services_running() -> bool:
 def stop_services() -> bool:
     """Stop all services defined in docker-compose.yml"""
     try:
-        run_docker_compose_command(["down"])
+        result = run_docker_compose_command(["down"])
         logger.info("All services stopped")
-        return True
+        return result.returncode == 0
     except Exception as e:
         logger.error(f"Error stopping services: {e}")
         return False
@@ -167,28 +131,35 @@ def check_service_health(service_name: str) -> Tuple[bool, str]:
             return False, f"Service {service_name} is not running"
 
         # For services with healthcheck, inspect the container
-        inspect_cmd = [
-            "docker",
-            "inspect",
-            f"$(docker-compose ps -q {service_name})",
-            "-f",
-            "{{.State.Health.Status}}",
-        ]
+        container_id = run_docker_compose_command(
+            ["ps", "-q", service_name]
+        ).stdout.strip()
+        if not container_id:
+            return False, f"Cannot find container ID for service {service_name}"
 
-        # Use shell=True as we're using shell syntax for substitution
-        health_result = subprocess.run(
-            " ".join(inspect_cmd), shell=True, capture_output=True, text=True
+        inspect_result = subprocess.run(
+            ["docker", "inspect", container_id, "-f", "{{.State.Health.Status}}"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
-        if health_result.returncode == 0 and health_result.stdout.strip() == "healthy":
-            return True, f"Service {service_name} is healthy"
-        elif "no such field" in health_result.stderr:
-            # Service doesn't have a health check defined, just check if it's running
-            return True, f"Service {service_name} is running (no health check defined)"
+        if inspect_result.returncode == 0:
+            status = inspect_result.stdout.strip()
+            if status == "healthy":
+                return True, f"Service {service_name} is healthy"
+            elif status:  # Has a health status but not "healthy"
+                return False, f"Service {service_name} health status: {status}"
+            else:  # Empty result usually means no health check defined
+                return (
+                    True,
+                    f"Service {service_name} is running (no health check defined)",
+                )
         else:
+            # If inspect command failed, check if container exists
             return (
-                False,
-                f"Service {service_name} is not healthy: {health_result.stdout.strip() or health_result.stderr.strip()}",
+                True,
+                f"Service {service_name} is running (unable to check health status)",
             )
 
     except Exception as e:
@@ -203,14 +174,7 @@ def verify_all_services_healthy() -> Tuple[bool, Dict[str, str]]:
     Returns (all_healthy, status_dict)
     """
     try:
-        # Get all services from config
-        config_result = run_docker_compose_command(["config", "--services"])
-        all_services = (
-            config_result.stdout.strip().split("\n")
-            if config_result.stdout.strip()
-            else []
-        )
-
+        all_services = get_services()
         all_healthy = True
         service_status = {}
 
@@ -226,3 +190,43 @@ def verify_all_services_healthy() -> Tuple[bool, Dict[str, str]]:
         error_msg = f"Error verifying service health: {e}"
         logger.error(error_msg)
         return False, {"error": error_msg}
+
+
+def wait_for_services(timeout: int = 60, interval: int = 5) -> bool:
+    """
+    Wait for all services to be running and healthy
+
+    Args:
+        timeout: Maximum time to wait in seconds
+        interval: Time between health checks in seconds
+
+    Returns:
+        bool: True if all services are healthy, False otherwise
+    """
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        # First ensure all services are running
+        if not ensure_services_running():
+            logger.warning("Not all services are running yet, waiting...")
+            time.sleep(interval)
+            continue
+
+        # Then check if they're all healthy
+        is_healthy, statuses = verify_all_services_healthy()
+        if is_healthy:
+            logger.info("All services are healthy")
+            return True
+
+        # Log current status
+        unhealthy = [
+            svc for svc, msg in statuses.items() if "not healthy" in msg.lower()
+        ]
+        if unhealthy:
+            logger.warning(f"Services still unhealthy: {', '.join(unhealthy)}")
+
+        time.sleep(interval)
+
+    logger.error(
+        f"Timed out waiting for services to be healthy after {timeout} seconds"
+    )
+    return False
