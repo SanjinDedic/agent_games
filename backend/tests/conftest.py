@@ -1,8 +1,10 @@
+import asyncio
 import logging
 import os
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Generator
+from typing import Dict, Tuple
 
 import httpx
 import pytest
@@ -22,7 +24,10 @@ from backend.database.db_models import (
     get_password_hash,
 )
 from backend.database.db_session import get_db
-from backend.docker_utils.containers import ensure_containers_running
+from backend.docker_utils.compose_utils import (
+    ensure_services_running,
+    verify_all_services_healthy,
+)
 from backend.routes.auth.auth_core import create_access_token
 
 os.environ["TESTING"] = "1"
@@ -32,45 +37,128 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def verify_containers() -> tuple[bool, str]:
+def run_docker_compose_build() -> bool:
+    """Build Docker Compose services from scratch if images don't exist"""
+    try:
+        # Check if images exist
+        result = subprocess.run(
+            ["docker-compose", "images", "-q"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if not result.stdout.strip():
+            logger.info("Docker images not found, building from scratch...")
+            build_result = subprocess.run(
+                ["docker-compose", "build"], capture_output=True, text=True, check=False
+            )
+
+            if build_result.returncode != 0:
+                logger.error(f"Failed to build Docker images: {build_result.stderr}")
+                return False
+
+            logger.info("Docker images built successfully")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Error checking or building Docker images: {e}")
+        return False
+
+
+def verify_containers() -> Tuple[bool, str]:
     """
-    Verify both containers are running and healthy.
-    Returns (True, "") if both containers are healthy,
-    (False, error_message) otherwise
+    Verify validator and simulator services are running and healthy.
+    Returns (True, "") if services are healthy, (False, error_message) otherwise
     """
     try:
+        # First check if the services exist in docker-compose.yml
+        config_result = subprocess.run(
+            ["docker-compose", "config", "--services"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-        async def check_containers():
+        if config_result.returncode != 0:
+            return False, f"Failed to get docker-compose config: {config_result.stderr}"
+
+        all_services = config_result.stdout.strip().split("\n")
+        if "validator" not in all_services or "simulator" not in all_services:
+            return (
+                False,
+                f"Required services not found in docker-compose.yml: {all_services}",
+            )
+
+        # Check if services are running
+        ps_result = subprocess.run(
+            ["docker-compose", "ps", "--services", "--filter", "status=running"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if ps_result.returncode != 0:
+            return False, f"Failed to get running services: {ps_result.stderr}"
+
+        running_services = (
+            ps_result.stdout.strip().split("\n") if ps_result.stdout.strip() else []
+        )
+
+        not_running = []
+        if "validator" not in running_services:
+            not_running.append("validator")
+        if "simulator" not in running_services:
+            not_running.append("simulator")
+
+        if not_running:
+            return False, f"Services not running: {', '.join(not_running)}"
+
+        # Additional health check via HTTP endpoints
+        async def check_services():
             async with httpx.AsyncClient() as client:
-                validator = await client.get(
-                    "http://localhost:8001/health", timeout=2.0
-                )
-                simulator = await client.get(
-                    "http://localhost:8002/health", timeout=2.0
-                )
-                both_running = (
-                    validator.status_code == 200
-                    and simulator.status_code == 200
-                    and validator.json()["status"] == "healthy"
-                    and simulator.json()["status"] == "healthy"
-                )
-                if not both_running:
-                    validator_status = f"Validator: {validator.status_code}"
-                    simulator_status = f"Simulator: {simulator.status_code}"
-                    return (
-                        False,
-                        f"Unhealthy containers - {validator_status}, {simulator_status}",
+                try:
+                    validator = await client.get(
+                        "http://localhost:8001/health", timeout=2.0
                     )
-                return True, ""
+                    simulator = await client.get(
+                        "http://localhost:8002/health", timeout=2.0
+                    )
 
-        import asyncio
+                    validator_healthy = (
+                        validator.status_code == 200
+                        and validator.json().get("status") == "healthy"
+                    )
 
-        healthy, msg = asyncio.run(check_containers())
-        if healthy:
-            logger.info("Container health check passed")
-        else:
-            logger.error(f"Container health check failed: {msg}")
-        return healthy, msg
+                    simulator_healthy = (
+                        simulator.status_code == 200
+                        and simulator.json().get("status") == "healthy"
+                    )
+
+                    if not validator_healthy or not simulator_healthy:
+                        validator_status = (
+                            f"Validator: OK"
+                            if validator_healthy
+                            else f"Validator: Error ({validator.status_code})"
+                        )
+                        simulator_status = (
+                            f"Simulator: OK"
+                            if simulator_healthy
+                            else f"Simulator: Error ({simulator.status_code})"
+                        )
+                        return (
+                            False,
+                            f"Services not healthy - {validator_status}, {simulator_status}",
+                        )
+
+                    return True, ""
+
+                except Exception as e:
+                    return False, f"Error connecting to service endpoints: {str(e)}"
+
+        health_check_result = asyncio.run(check_services())
+        return health_check_result
 
     except Exception as e:
         error_msg = f"Container verification failed: {str(e)}"
@@ -78,33 +166,106 @@ def verify_containers() -> tuple[bool, str]:
         return False, error_msg
 
 
+def start_containers_with_polling(max_attempts=10, poll_interval=5) -> Tuple[bool, str]:
+    """
+    Start containers and poll until they're healthy or max attempts is reached
+    Returns (True, "") on success, (False, error_message) on failure
+    """
+    try:
+        # First, make sure we have the necessary Docker images
+        if not run_docker_compose_build():
+            return False, "Failed to build Docker images"
+
+        # Start services
+        start_result = subprocess.run(
+            ["docker-compose", "up", "-d"], capture_output=True, text=True, check=False
+        )
+
+        if start_result.returncode != 0:
+            return False, f"Failed to start services: {start_result.stderr}"
+
+        logger.info("Services started, verifying health...")
+
+        # Poll until services are healthy or max attempts is reached
+        for attempt in range(1, max_attempts + 1):
+            is_healthy, message = verify_containers()
+
+            if is_healthy:
+                logger.info(f"All services healthy after {attempt} attempts")
+                return True, ""
+
+            logger.info(
+                f"Services not ready (attempt {attempt}/{max_attempts}): {message}"
+            )
+
+            if attempt < max_attempts:
+                logger.info(f"Waiting {poll_interval} seconds before next check...")
+                time.sleep(poll_interval)
+
+        # If we get here, we've exceeded max attempts
+        return False, f"Services failed to become healthy after {max_attempts} attempts"
+
+    except Exception as e:
+        error_msg = f"Error starting or polling containers: {str(e)}"
+        logger.error(error_msg)
+        return False, error_msg
+
+
 @pytest.fixture(scope="session", autouse=True)
 def docker_environment():
-    """Primary fixture for Docker container management"""
-    logger.info("Starting Docker containers for test session")
-    ensure_containers_running()
+    """
+    Primary fixture for Docker container management
+    Ensures containers are built (if needed) and running for the test session
+    """
+    logger.info("Setting up Docker environment for test session")
 
-    # Initial health check
-    is_healthy, msg = verify_containers()
-    if not is_healthy:
-        logger.error(f"Initial container health check failed: {msg}")
-        pytest.fail(f"Container setup failed: {msg}")
+    # Start containers with polling for health
+    is_ready, message = start_containers_with_polling(max_attempts=12, poll_interval=5)
+
+    if not is_ready:
+        logger.error(f"Failed to start Docker services: {message}")
+        pytest.fail(f"Docker environment setup failed: {message}")
+
+    logger.info("Docker environment ready for testing")
 
     yield
 
     logger.info("Test session complete - containers will remain running")
 
-
 @pytest.fixture
 def ensure_containers(request):
     """
     Fixture for tests that require containers.
-    Verifies containers are healthy before each test.
+    Verifies containers are healthy before each test,
+    and attempts to restart them if needed.
     """
-    logger.info(f"Verifying containers for test: {request.node.name}")
-    is_healthy, msg = verify_containers()
+    test_name = request.node.name
+    logger.info(f"Verifying containers for test: {test_name}")
+
+    is_healthy, message = verify_containers()
+
     if not is_healthy:
-        pytest.fail(f"Containers not healthy before test {request.node.name}: {msg}")
+        logger.warning(f"Containers not healthy for test {test_name}: {message}")
+        logger.info("Attempting to restart containers...")
+
+        # Try restarting the services
+        restart_result = subprocess.run(
+            ["docker-compose", "restart"], capture_output=True, text=True, check=False
+        )
+
+        if restart_result.returncode != 0:
+            logger.error(f"Failed to restart services: {restart_result.stderr}")
+            pytest.fail(f"Could not restart services: {restart_result.stderr}")
+
+        # Give services time to restart and check again
+        time.sleep(10)
+        is_healthy, message = verify_containers()
+
+        if not is_healthy:
+            logger.error(f"Services still not healthy after restart: {message}")
+            pytest.fail(f"Services not healthy for test {test_name}: {message}")
+
+    logger.info(f"Services healthy for test: {test_name}")
     return True
 
 
