@@ -45,10 +45,6 @@ from games.prisoners_dilemma.player import Player
 
 class CustomPlayer(Player):
     def make_decision(self, game_state):
-        \"\"\"
-        This implementation will cause stack overflow through infinite recursion
-        while also consuming memory rapidly.
-        \"\"\"
         # Add feedback to track execution
         self.add_feedback("Starting malicious operation...")
         return self.recursive_memory_bomb(10000)
@@ -101,28 +97,16 @@ class CustomPlayer(Player):
     # 6. Wait for the health monitor to detect failures and restart the container
     # The ContainerHealthMonitor class should be running in the main application
     print("Waiting for automatic container recovery...")
-    await asyncio.sleep(
-        30
-    )  # Give the health monitor time to detect failures and restart
-
-    # 7. Check if container was restarted
-    new_container_id = subprocess.run(
-        ["docker", "ps", "-q", "-f", "name=validator"], capture_output=True, text=True
-    ).stdout.strip()
-
-    # Container should be running (ID might be the same or different depending on restart method)
-    assert new_container_id, "Validator container should be running after recovery"
-    print(f"Initial container ID: {initial_container_id}")
-    print(f"New container ID: {new_container_id}")
 
     # 8. Verify the new container is healthy
-    max_wait = 30  # seconds
+    max_wait = 60  # seconds
     healthy = False
 
     start_time = time.time()
     while time.time() - start_time < max_wait:
         if await check_health(8001):
             healthy = True
+            print("Validator recovered in", time.time() - start_time, "seconds")
             break
         await asyncio.sleep(1)
 

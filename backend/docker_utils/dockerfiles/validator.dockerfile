@@ -10,12 +10,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Stage 2: Runtime stage
 FROM python:3.13
 
-# Set working directory to agent_games (parent of backend)
-WORKDIR /agent_games
+# Set working directory directly to backend
+WORKDIR /agent_games/backend
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/agent_games
+
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and group
 RUN groupadd -r validatorgroup && useradd -r -g validatorgroup validatoruser
@@ -24,10 +27,10 @@ RUN groupadd -r validatorgroup && useradd -r -g validatorgroup validatoruser
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application files
-COPY . /agent_games/backend/
+# Copy application files (will be overridden by volume mount in docker-compose)
+# COPY . /agent_games/backend/
 
-# Set ownership of the working directory and all files
+# Set ownership of the working directory
 RUN chown -R validatoruser:validatorgroup /agent_games
 
 # Switch to non-root user
@@ -35,4 +38,5 @@ USER validatoruser
 
 EXPOSE 8001
 
-CMD ["python", "backend/docker_utils/services/validation_server.py"]
+# Use the correct path relative to WORKDIR
+CMD ["python", "docker_utils/services/validation_server.py"]
