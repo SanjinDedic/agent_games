@@ -47,7 +47,7 @@ def docker_environment():
 
     # Run docker compose build if needed (this happens automatically in docker compose up)
     # Then start and wait for services to be healthy
-    is_ready = wait_for_services(timeout=60, interval=5)
+    is_ready = wait_for_services(timeout=360, interval=5)
 
     if not is_ready:
         is_healthy, statuses = verify_all_services_healthy()
@@ -95,7 +95,7 @@ def ensure_containers(request):
             pytest.fail("Could not restart services")
 
         # Wait for services to become healthy
-        is_ready = wait_for_services(timeout=30, interval=5)
+        is_ready = wait_for_services(timeout=360, interval=5)
         if not is_ready:
             is_healthy, statuses = verify_all_services_healthy()
             status_details = "\n".join(
