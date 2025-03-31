@@ -9,10 +9,13 @@ logger = logging.getLogger(__name__)
 def run_docker_compose_command(
     command: List[str], capture_output: bool = True
 ) -> subprocess.CompletedProcess:
-    """Run a docker-compose command and return the result"""
+    """Run a docker compose command and return the result"""
     try:
-        full_command = ["docker-compose"] + command
-        logger.debug(f"Running docker-compose command: {' '.join(full_command)}")
+        full_command = [
+            "docker",
+            "compose",
+        ] + command  # Changed from ["docker-compose"]
+        logger.debug(f"Running docker compose command: {' '.join(full_command)}")
 
         result = subprocess.run(
             full_command,
@@ -22,7 +25,7 @@ def run_docker_compose_command(
         )
         return result
     except Exception as e:
-        logger.error(f"Error running docker-compose command: {e}")
+        logger.error(f"Error running docker compose command: {e}")
         raise
 
 
@@ -119,6 +122,49 @@ def stop_services() -> bool:
         return False
 
 
+# 1. Update compose_utils.py functions
+
+
+# backend/docker_utils/compose_utils.py
+def run_docker_compose_command(
+    command: List[str], capture_output: bool = True
+) -> subprocess.CompletedProcess:
+    """Run a docker compose command and return the result"""
+    try:
+        full_command = [
+            "docker",
+            "compose",
+        ] + command  # Changed from ["docker-compose"]
+        logger.debug(f"Running docker compose command: {' '.join(full_command)}")
+
+        result = subprocess.run(
+            full_command,
+            check=False,  # Don't raise exception for non-zero exit code
+            capture_output=capture_output,
+            text=True,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error running docker compose command: {e}")
+        raise
+
+
+def get_services() -> List[str]:
+    """Get all services defined in docker-compose.yml"""
+    config_result = run_docker_compose_command(["config", "--services"])
+    return (
+        config_result.stdout.strip().split("\n") if config_result.stdout.strip() else []
+    )
+
+
+def get_running_services() -> List[str]:
+    """Get all currently running services"""
+    ps_result = run_docker_compose_command(
+        ["ps", "--services", "--filter", "status=running"]
+    )
+    return ps_result.stdout.strip().split("\n") if ps_result.stdout.strip() else []
+
+
 def check_service_health(service_name: str) -> Tuple[bool, str]:
     """
     Check if a service is healthy using docker-compose
@@ -137,6 +183,7 @@ def check_service_health(service_name: str) -> Tuple[bool, str]:
         if not container_id:
             return False, f"Cannot find container ID for service {service_name}"
 
+        # Use docker inspect with the new command structure
         inspect_result = subprocess.run(
             ["docker", "inspect", container_id, "-f", "{{.State.Health.Status}}"],
             capture_output=True,

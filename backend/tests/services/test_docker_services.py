@@ -66,7 +66,7 @@ def test_container_logs_retrieval_failure(mock_docker_run):
     """Test behavior when log retrieval fails"""
     mock_docker_run.side_effect = subprocess.CalledProcessError(
         returncode=1,
-        cmd=["docker-compose", "logs", "validator"],
+        cmd=["docker", "compose", "logs", "validator"],
         output=b"No such service: validator",
     )
 

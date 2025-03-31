@@ -1,5 +1,5 @@
 import subprocess
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -51,11 +51,6 @@ async def test_lifespan_startup_exception(mock_logger, test_app):
             )
 
 
-from unittest.mock import Mock, patch
-
-import pytest
-from fastapi import FastAPI
-
 from backend.api import lifespan
 
 
@@ -71,7 +66,8 @@ async def test_get_service_logs(mock_containers_logger):
 
         # Verify docker-compose logs command was called
         cmd_args = mock_run.call_args[0][0]
-        assert "docker-compose" in cmd_args
+        assert "docker" in cmd_args
+        assert "compose" in cmd_args
         assert "logs" in cmd_args
         assert "validator" in cmd_args
 
@@ -81,7 +77,7 @@ async def test_get_service_logs_error():
     """Test error handling for service log retrieval"""
     command_error = subprocess.CalledProcessError(
         returncode=1,
-        cmd=["docker-compose", "logs", "validator"],
+        cmd=["docker", "compose", "logs", "validator"],
         output=b"No such service: validator",
     )
 

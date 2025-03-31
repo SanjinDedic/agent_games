@@ -144,7 +144,7 @@ def test_stop_services(mock_subprocess_run):
 
     # Check that docker-compose down was called
     mock_subprocess_run.assert_called_with(
-        ["docker-compose", "down"], check=False, capture_output=True, text=True
+        ["docker", "compose", "down"], check=False, capture_output=True, text=True
     )
 
 

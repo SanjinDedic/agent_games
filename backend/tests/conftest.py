@@ -41,7 +41,7 @@ def docker_environment():
     """
     logger.info("Setting up Docker environment for test session")
 
-    # Run docker-compose build if needed (this happens automatically in docker-compose up)
+    # Run docker compose build if needed (this happens automatically in docker compose up)
     # Then start and wait for services to be healthy
     is_ready = wait_for_services(timeout=60, interval=5)
 

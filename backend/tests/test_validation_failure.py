@@ -14,7 +14,7 @@ async def test_malicious_agent_recovery():
     # 1. Start with a clean state - ensure containers are running properly
     try:
         # Use docker-compose to restart the services instead of removing them
-        subprocess.run(["docker-compose", "restart", "validator"], check=False)
+        subprocess.run(["docker", "compose", "restart", "validator"], check=False)
 
         # Ensure services are running
         ensure_services_running()
@@ -24,7 +24,9 @@ async def test_malicious_agent_recovery():
 
         # 2. Get initial container ID (using docker-compose)
         initial_container_id = subprocess.run(
-            ["docker-compose", "ps", "-q", "validator"], capture_output=True, text=True
+            ["docker", "compose", "ps", "-q", "validator"],
+            capture_output=True,
+            text=True,
         ).stdout.strip()
 
         assert initial_container_id, "Validator service should be running initially"
@@ -102,7 +104,7 @@ class CustomPlayer(Player):
         # 6. Docker Compose should restart the container automatically if healthcheck is configured
         # Otherwise, we can manually restart it
         print("Restarting the validator service manually...")
-        subprocess.run(["docker-compose", "restart", "validator"], check=False)
+        subprocess.run(["docker", "compose", "restart", "validator"], check=False)
 
         # 8. Verify the service is healthy again
         max_wait = 60  # seconds

@@ -24,14 +24,27 @@ if [ -z "$SECRET_KEY" ]; then
     echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
 fi
 
+# Check for prerequisites
+if ! command -v docker >/dev/null 2>&1; then
+    echo "Error: Docker is not installed or not in the PATH"
+    exit 1
+fi
+
+if ! command -v docker-compose >/dev/null 2>&1; then
+    echo "Error: Docker Compose is not installed or not in the PATH"
+    exit 1
+fi
+
 # Start the services
 echo "Starting services with Docker Compose..."
-docker-compose up -d
+if ! docker-compose up -d; then
+    echo "Error: Failed to start services"
+    exit 1
+fi
 
 # Check if services started successfully
 echo "Checking service status..."
 docker-compose ps
-
 echo "Services started. API will be accessible at http://localhost:8000"
 echo "Validator service at http://localhost:8001"
 echo "Simulator service at http://localhost:8002"
