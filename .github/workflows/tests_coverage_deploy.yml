@@ -58,12 +58,34 @@ jobs:
         pip install pytest pytest-asyncio httpx pytest-cov
         pip install -r backend/requirements.txt
 
+    - name: Set up Docker Compose
+      uses: docker/setup-buildx-action@v2
+
+    - name: Start Docker Compose services
+      run: |
+        # Build and start the services defined in docker-compose.yml
+        docker compose build
+        docker compose up -d
+        
+        # Wait for services to become healthy
+        echo "Waiting for services to start..."
+        timeout 60s bash -c 'until docker compose ps | grep validator | grep -q "Up"; do sleep 2; echo "Waiting for validator..."; done'
+        timeout 60s bash -c 'until docker compose ps | grep simulator | grep -q "Up"; do sleep 2; echo "Waiting for simulator..."; done'
+        
+        # Print status of containers
+        docker compose ps
+        
+        # Print logs of services
+        docker compose logs validator
+        docker compose logs simulator
+
     - name: Run tests with coverage
       run: |
         # Set environment variables for the tests
         export SECRET_KEY="${SECRET_KEY}"
         export SERVICE_TOKEN="${SERVICE_TOKEN}"
         export TESTING=1
+        # Run tests with pytest
         pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
@@ -75,6 +97,10 @@ jobs:
         flags: backend
         fail_ci_if_error: true
         verbose: true
+
+    - name: Docker Compose down
+      if: always()
+      run: docker compose down
 
   deploy:
     needs: test_and_coverage
