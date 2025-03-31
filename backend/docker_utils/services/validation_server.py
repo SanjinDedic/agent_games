@@ -10,10 +10,11 @@ from pydantic import BaseModel
 from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 
+# Configure logging to use console only
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("validation_server.log"), logging.StreamHandler()],
+    handlers=[logging.StreamHandler()],  # Only use StreamHandler for console output
 )
 
 logger = logging.getLogger(__name__)
@@ -121,13 +122,8 @@ async def health_check():
 
 @app.get("/logs")
 async def get_logs():
-    """Get recent log entries"""
-    try:
-        with open("validation_server.log", "r") as f:
-            logs = f.read()
-        return {"logs": logs}
-    except FileNotFoundError:
-        return {"logs": "No logs found"}
+    """Return stub for logs since we're only using console logging"""
+    return {"logs": "Logs are being streamed to console only. Check Docker logs."}
 
 
 @app.post("/validate", response_model=ValidationResponse)

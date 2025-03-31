@@ -1,0 +1,44 @@
+services:
+  validator:
+    build:
+      context: ./backend
+      dockerfile: docker_utils/dockerfiles/validator.dockerfile
+    network_mode: "host"
+    volumes:
+      - ./:/agent_games:ro  # Mount the entire project directory
+    environment:
+      - PYTHONPATH=/agent_games  # Set Python path to include the parent directory
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    env_file:
+      - ./backend/.env
+    mem_limit: 500m
+    mem_reservation: 200m
+    pids_limit: 50
+
+  simulator:
+    build:
+      context: ./backend
+      dockerfile: docker_utils/dockerfiles/simulator.dockerfile
+    network_mode: "host"
+    volumes:
+      - ./:/agent_games:ro  # Mount the entire project directory
+    environment:
+      - PYTHONPATH=/agent_games  # Set Python path to include the parent directory
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    env_file:
+      - ./backend/.env
+    mem_limit: 500m
+    mem_reservation: 200m
+    pids_limit: 50

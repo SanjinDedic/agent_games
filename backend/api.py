@@ -4,8 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.docker_utils.containers import ensure_containers_running, stop_containers
-from backend.docker_utils.health_monitor import ServiceMonitor
 from backend.models_api import ResponseModel
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
@@ -15,41 +13,24 @@ from backend.routes.user.user_router import user_router
 
 logger = logging.getLogger(__name__)
 
-# TODO: Add checking if I need to revive the validator
-# Update api.py to use the health monitor
-
-# Import the monitor
-from backend.docker_utils.health_monitor import ServiceMonitor
-
-
-# Add this to your lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for the FastAPI application"""
     try:
-        logger.info("Starting application containers...")
-        ensure_containers_running()
-        logger.info("All containers started successfully")
-
-        # Create and start the service monitor
-        monitor = ServiceMonitor(check_interval=1, max_failures=3)
-        monitor.start()
-        logger.info("Service health monitoring started")
+        logger.info("Starting application...")
+        # Container management now handled by Docker Compose
 
     except Exception as e:
-        logger.error(f"Failed to start containers: {e}")
+        logger.error(f"Failed to start application: {e}")
 
     yield
 
     try:
-        logger.info("Shutting down application, stopping containers...")
-        # Stop the monitor if we stored a reference
-        if "monitor" in locals():
-            monitor.stop()
-        stop_containers()
-        logger.info("Application shutdown complete")
+        logger.info("Shutting down application...")
+        # Container shutdown now handled by Docker Compose
+
     except Exception as e:
-        logger.error(f"Error during container shutdown: {e}")
+        logger.error(f"Error during application shutdown: {e}")
 
 
 app = FastAPI(lifespan=lifespan)

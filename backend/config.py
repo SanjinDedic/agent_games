@@ -46,7 +46,13 @@ GAMES = ["greedy_pig", "prisoners_dilemma"]
 DOCKER_API_URL = os.getenv("DOCKER_API_URL", "http://localhost:8002")
 DEMO_TOKEN_EXPIRY = 60  # minutes - Add this line
 
+# Set a default SECRET_KEY for tests if not available in environment
+# In production, this should always be overridden by the actual secret key
+# from environment variables
+SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_development_only")
+
 # Import after defining constants to avoid circular import
 from backend.routes.auth.auth_config import create_service_token
 
+# Generate a service token with the SECRET_KEY (which may be the fallback for tests)
 SERVICE_TOKEN = create_service_token()

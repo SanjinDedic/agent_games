@@ -1,10 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Generator
 
-import httpx
 import pytest
 import pytz
 from fastapi.testclient import TestClient
@@ -22,8 +19,16 @@ from backend.database.db_models import (
     get_password_hash,
 )
 from backend.database.db_session import get_db
-from backend.docker_utils.containers import ensure_containers_running
+from backend.docker_utils.compose_utils import (
+    restart_service,
+    verify_all_services_healthy,
+    wait_for_services,
+)
 from backend.routes.auth.auth_core import create_access_token
+
+# Set environment variables for testing before any imports
+os.environ.setdefault("SECRET_KEY", "test_secret_key_for_tests")
+os.environ.setdefault("TESTING", "1")
 
 os.environ["TESTING"] = "1"
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -32,63 +37,27 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def verify_containers() -> tuple[bool, str]:
-    """
-    Verify both containers are running and healthy.
-    Returns (True, "") if both containers are healthy,
-    (False, error_message) otherwise
-    """
-    try:
-
-        async def check_containers():
-            async with httpx.AsyncClient() as client:
-                validator = await client.get(
-                    "http://localhost:8001/health", timeout=2.0
-                )
-                simulator = await client.get(
-                    "http://localhost:8002/health", timeout=2.0
-                )
-                both_running = (
-                    validator.status_code == 200
-                    and simulator.status_code == 200
-                    and validator.json()["status"] == "healthy"
-                    and simulator.json()["status"] == "healthy"
-                )
-                if not both_running:
-                    validator_status = f"Validator: {validator.status_code}"
-                    simulator_status = f"Simulator: {simulator.status_code}"
-                    return (
-                        False,
-                        f"Unhealthy containers - {validator_status}, {simulator_status}",
-                    )
-                return True, ""
-
-        import asyncio
-
-        healthy, msg = asyncio.run(check_containers())
-        if healthy:
-            logger.info("Container health check passed")
-        else:
-            logger.error(f"Container health check failed: {msg}")
-        return healthy, msg
-
-    except Exception as e:
-        error_msg = f"Container verification failed: {str(e)}"
-        logger.error(error_msg)
-        return False, error_msg
-
-
 @pytest.fixture(scope="session", autouse=True)
 def docker_environment():
-    """Primary fixture for Docker container management"""
-    logger.info("Starting Docker containers for test session")
-    ensure_containers_running()
+    """
+    Primary fixture for Docker container management.
+    Ensures containers are built (if needed) and running for the test session.
+    """
+    logger.info("Setting up Docker environment for test session")
 
-    # Initial health check
-    is_healthy, msg = verify_containers()
-    if not is_healthy:
-        logger.error(f"Initial container health check failed: {msg}")
-        pytest.fail(f"Container setup failed: {msg}")
+    # Run docker compose build if needed (this happens automatically in docker compose up)
+    # Then start and wait for services to be healthy
+    is_ready = wait_for_services(timeout=360, interval=5)
+
+    if not is_ready:
+        is_healthy, statuses = verify_all_services_healthy()
+        status_details = "\n".join(
+            [f"- {svc}: {status}" for svc, status in statuses.items()]
+        )
+        logger.error(f"Services health check failed:\n{status_details}")
+        pytest.fail("Docker environment setup failed - services not healthy")
+
+    logger.info("Docker environment ready for testing")
 
     yield
 
@@ -99,12 +68,43 @@ def docker_environment():
 def ensure_containers(request):
     """
     Fixture for tests that require containers.
-    Verifies containers are healthy before each test.
+    Verifies containers are healthy before each test,
+    and attempts to restart them if needed.
     """
-    logger.info(f"Verifying containers for test: {request.node.name}")
-    is_healthy, msg = verify_containers()
+    test_name = request.node.name
+    logger.info(f"Verifying containers for test: {test_name}")
+
+    is_healthy, statuses = verify_all_services_healthy()
+
     if not is_healthy:
-        pytest.fail(f"Containers not healthy before test {request.node.name}: {msg}")
+        # Log which services are unhealthy
+        unhealthy = [
+            f"{svc}: {status}"
+            for svc, status in statuses.items()
+            if "not healthy" in status.lower()
+        ]
+        logger.warning(
+            f"Containers not healthy for test {test_name}: {', '.join(unhealthy)}"
+        )
+        logger.info("Attempting to restart containers...")
+
+        # Restart services
+        restart_success = restart_service()
+        if not restart_success:
+            logger.error("Failed to restart services")
+            pytest.fail("Could not restart services")
+
+        # Wait for services to become healthy
+        is_ready = wait_for_services(timeout=360, interval=5)
+        if not is_ready:
+            is_healthy, statuses = verify_all_services_healthy()
+            status_details = "\n".join(
+                [f"- {svc}: {status}" for svc, status in statuses.items()]
+            )
+            logger.error(f"Services still not healthy after restart:\n{status_details}")
+            pytest.fail(f"Services not healthy for test {test_name}")
+
+    logger.info(f"Services healthy for test: {test_name}")
     return True
 
 
@@ -121,7 +121,7 @@ def db_engine():
 def db_session(db_engine):
     with Session(db_engine) as session:
         try:
-            print(f"Test session using database: {db_engine.url}")
+            logger.debug(f"Test session using database: {db_engine.url}")
             yield session
             session.rollback()  # Roll back any uncommitted changes
         finally:
@@ -140,7 +140,7 @@ def client(db_session) -> TestClient:
 
 
 @pytest.fixture
-def admin_token(db_session) -> str:
+def admin_token(db_session: Session) -> str:
     """Create an admin user and return an admin token"""
     admin = Admin(
         username="test_admin", password_hash=get_password_hash("test_password")
@@ -183,27 +183,13 @@ def team_token(db_session):
 
 
 @pytest.fixture
-def test_league(db_session) -> League:
-    """Create a test league"""
-    league = League(
-        name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=1),
-        game="greedy_pig",
-    )
-    db_session.add(league)
-    db_session.commit()
-    return league
-
-
-@pytest.fixture
-def auth_headers(admin_token) -> Dict[str, str]:
+def auth_headers(admin_token) -> dict:
     """Return headers with admin authentication"""
     return {"Authorization": f"Bearer {admin_token}"}
 
 
 @pytest.fixture
-def team_auth_headers(team_token) -> Dict[str, str]:
+def team_auth_headers(team_token) -> dict:
     """Return headers with team authentication"""
     return {"Authorization": f"Bearer {team_token}"}
 
@@ -226,6 +212,20 @@ def setup_unassigned_league(db_session):
         db_session.commit()
 
     return unassigned
+
+
+@pytest.fixture
+def test_league(db_session: Session) -> League:
+    """Create a test league"""
+    league = League(
+        name="test_league",
+        created_date=datetime.now(),
+        expiry_date=datetime.now() + timedelta(days=1),
+        game="greedy_pig",
+    )
+    db_session.add(league)
+    db_session.commit()
+    return league
 
 
 @pytest.fixture

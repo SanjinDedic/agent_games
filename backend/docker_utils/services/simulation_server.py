@@ -2,19 +2,17 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-import pytz
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
-
+# Configure logging to use console only
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("validation_server.log"), logging.StreamHandler()],
+    handlers=[logging.StreamHandler()],  # Only use StreamHandler for console output
 )
 
 logger = logging.getLogger(__name__)
@@ -32,7 +30,6 @@ class SimulationRequest(BaseModel):
 
 class SimulationError(Exception):
     """Base exception for simulation errors"""
-
     pass
 
 
@@ -79,13 +76,8 @@ def health_check():
 
 @app.get("/logs")
 async def get_logs():
-    """Get recent log entries"""
-    try:
-        with open("validation_server.log", "r") as f:
-            logs = f.read()
-        return {"logs": logs}
-    except FileNotFoundError:
-        return {"logs": "No logs found"}
+    """Return stub for logs since we're only using console logging"""
+    return {"logs": "Logs are being streamed to console only. Check Docker logs."}
 
 
 @app.post("/simulate")
@@ -96,8 +88,8 @@ async def run_simulation(request: SimulationRequest):
         league = League(
             id=request.league_id,
             name="simulation_league",
-            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-            expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=1),
+            created_date=datetime.now(),
+            expiry_date=datetime.now() + timedelta(days=1),
             game=request.game_name,
         )
         if not league:
