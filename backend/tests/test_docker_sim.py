@@ -122,7 +122,7 @@ def test_ensure_services_running_failure(mock_subprocess_run):
     """Test handling service startup failure"""
     # Mock command execution error
     mock_subprocess_run.side_effect = subprocess.CalledProcessError(
-        1, "docker-compose up -d", output=b"Failed to start services"
+        1, "docker compose up -d", output=b"Failed to start services"
     )
 
     # Should return False on failure
@@ -153,7 +153,7 @@ def test_stop_services_failure(mock_subprocess_run):
     """Test handling service shutdown failure"""
     # Mock command execution error
     mock_subprocess_run.side_effect = subprocess.CalledProcessError(
-        1, "docker-compose down", output=b"Failed to stop services"
+        1, "docker compose down", output=b"Failed to stop services"
     )
 
     # Should return False on failure

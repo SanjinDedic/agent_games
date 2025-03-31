@@ -1,15 +1,8 @@
 import ast
 import asyncio
 import logging
-import os
-import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
-
-# Add parent directory to Python path
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-)
 
 from fastapi import FastAPI
 from pydantic import BaseModel

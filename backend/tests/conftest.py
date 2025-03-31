@@ -26,6 +26,10 @@ from backend.docker_utils.compose_utils import (
 )
 from backend.routes.auth.auth_core import create_access_token
 
+# Set environment variables for testing before any imports
+os.environ.setdefault("SECRET_KEY", "test_secret_key_for_tests")
+os.environ.setdefault("TESTING", "1")
+
 os.environ["TESTING"] = "1"
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 

@@ -1,15 +1,7 @@
 import logging
-import os
-import sys
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-# Add parent directory to Python path
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-)
-
-import pytz
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 

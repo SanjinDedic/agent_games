@@ -8,6 +8,7 @@ on:
       - 'backend/**'
       - 'pyproject.toml'
       - 'requirements.txt'
+      - 'docker-compose.yml'
   pull_request:
     branches:
       - main
@@ -15,10 +16,17 @@ on:
       - 'backend/**'
       - 'pyproject.toml'
       - 'requirements.txt'
+      - 'docker-compose.yml'
 
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
+    env:
+      # Add test environment variables 
+      SECRET_KEY: "github_actions_test_secret_key"
+      SERVICE_TOKEN: "github_actions_test_service_token"
+      TESTING: "1"
+      
     steps:
     - uses: actions/checkout@v3
     
@@ -52,6 +60,10 @@ jobs:
 
     - name: Run tests with coverage
       run: |
+        # Set environment variables for the tests
+        export SECRET_KEY="${SECRET_KEY}"
+        export SERVICE_TOKEN="${SERVICE_TOKEN}"
+        export TESTING=1
         pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
@@ -136,7 +148,7 @@ jobs:
             git clone --depth 1 --no-checkout https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
             cd "$tmp_dir"
             git sparse-checkout init
-            git sparse-checkout set 'backend' '__init__.py' 'pyproject.toml' 'backend/requirements.txt'
+            git sparse-checkout set 'backend' '__init__.py' 'pyproject.toml' 'backend/requirements.txt' 'docker-compose.yml' 'start_services.sh'
             git checkout
             
             # Save database file before overwriting
@@ -151,6 +163,8 @@ jobs:
               rm -rf /home/ubuntu/main_application/agent_games/backend
               rm -f /home/ubuntu/main_application/agent_games/__init__.py
               rm -f /home/ubuntu/main_application/agent_games/pyproject.toml
+              rm -f /home/ubuntu/main_application/agent_games/docker-compose.yml
+              rm -f /home/ubuntu/main_application/agent_games/start_services.sh
             else
               mkdir -p /home/ubuntu/main_application/agent_games
             fi
@@ -160,6 +174,9 @@ jobs:
             cp -r backend /home/ubuntu/main_application/agent_games/
             cp __init__.py /home/ubuntu/main_application/agent_games/
             cp pyproject.toml /home/ubuntu/main_application/agent_games/
+            cp docker-compose.yml /home/ubuntu/main_application/agent_games/
+            cp start_services.sh /home/ubuntu/main_application/agent_games/
+            chmod +x /home/ubuntu/main_application/agent_games/start_services.sh
             
             # If requirements.txt is in the backend subdirectory
             if [ -f "backend/requirements.txt" ]; then
@@ -176,22 +193,29 @@ jobs:
             # Clean up temporary directory
             rm -rf "$tmp_dir"
             
-            # Move to backend directory
-            cd /home/ubuntu/main_application/agent_games/backend
+            # Move to agent_games directory
+            cd /home/ubuntu/main_application/agent_games
             
             # Create validation_players.py file for lineup4
-            cp ~/validation_players.py ~/main_application/agent_games/backend/games/lineup4/validation_players.py
+            mkdir -p backend/games/lineup4
+            echo "$LINEUP4_VALIDATION_PLAYERS" > backend/games/lineup4/validation_players.py
+            
+            # Setup environment variables for Docker Compose
+            echo "Setting up environment variables..."
+            echo "SERVICE_TOKEN=$SERVICE_TOKEN" > backend/.env
+            echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
             
             # Check for existing virtual environment
-            if [ -d "venv" ] && [ -f "venv/bin/python" ]; then
+            if [ -d "backend/venv" ] && [ -f "backend/venv/bin/python" ]; then
               echo "Updating existing virtual environment..."
-              source venv/bin/activate
+              source backend/venv/bin/activate
               python -m pip install --upgrade pip
-              if [ -f "requirements.txt" ]; then
-                python -m pip install -r requirements.txt
+              if [ -f "backend/requirements.txt" ]; then
+                python -m pip install -r backend/requirements.txt
               fi
             else
               echo "Creating new virtual environment..."
+              cd backend
               rm -rf venv
               /usr/bin/python3.13 -m venv venv
               source venv/bin/activate
@@ -199,54 +223,44 @@ jobs:
               if [ -f "requirements.txt" ]; then
                 python -m pip install -r requirements.txt
               fi
+              cd ..
             fi
             
             # Show disk space after installation
             echo "Disk space after dependency installation:"
             df -h /
             
-            # Set up Python path
-            export PYTHONPATH=/home/ubuntu/main_application/agent_games
+            # Stop any existing services
+            echo "Stopping existing Docker containers..."
+            sudo docker compose down || true
             
-            # Build Docker containers with caching
-            echo "Building simulator container..."
-            sudo docker build --pull --cache-from simulator -t simulator -f docker_utils/dockerfiles/simulator.dockerfile .
+            # Start services using Docker Compose
+            echo "Starting services with Docker Compose..."
+            export SERVICE_TOKEN="$SERVICE_TOKEN"
+            export SECRET_KEY="$SECRET_KEY"
             
-            echo "Building validator container..."
-            sudo docker build --pull --cache-from validator -t validator -f docker_utils/dockerfiles/validator.dockerfile .
+            sudo -E docker compose up -d
             
-            # Stop any existing containers
-            sudo docker stop validator simulator || true
-            sudo docker rm validator simulator || true
+            # Check if services are running
+            echo "Checking if services are running..."
+            sudo docker compose ps
             
-            # Start new containers with environment variables and pythonpath
-            sudo docker run -d --name validator \
-              --network=host \
-              -v $(pwd):/agent_games/backend:ro \
-              -e SERVICE_TOKEN="$SERVICE_TOKEN" \
-              -e SECRET_KEY="$SECRET_KEY" \
-              -e PYTHONPATH=/agent_games \
-              validator
-    
-            sudo docker run -d --name simulator \
-              --network=host \
-              -v $(pwd):/agent_games/backend:ro \
-              -e SERVICE_TOKEN="$SERVICE_TOKEN" \
-              -e SECRET_KEY="$SECRET_KEY" \
-              -e PYTHONPATH=/agent_games \
-              simulator
-             
+            # Wait for services to be healthy
+            echo "Waiting for services to be healthy..."
+            timeout 60s bash -c 'until curl -s http://localhost:8001/health | grep -q "healthy"; do sleep 2; done'
+            timeout 60s bash -c 'until curl -s http://localhost:8002/health | grep -q "healthy"; do sleep 2; done'
+            
             # Clean up unnecessary files
-            find . -name "*.pyc" -delete
-            find . -name "__pycache__" -type d -exec rm -rf {} +
+            find backend -name "*.pyc" -delete
+            find backend -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
             
-            # Start the service with PM2
+            # Start the main service with PM2
             cd ~/main_application
             pm2 restart ecosystem.config.js
             
             # Log container status
             echo "Docker container status:"
-            sudo docker ps | grep -E 'validator|simulator'
+            sudo docker compose ps
             
             # Log disk usage after deployment
             echo "Disk usage after deployment:"
