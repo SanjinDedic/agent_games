@@ -6,7 +6,6 @@ from sqlmodel import Session
 
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.admin.admin_models import LeagueName
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_student,
@@ -14,6 +13,7 @@ from backend.routes.auth.auth_core import (
     verify_any_role,
 )
 from backend.routes.auth.auth_db import get_db
+from backend.routes.institution.institution_models import LeagueName
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,

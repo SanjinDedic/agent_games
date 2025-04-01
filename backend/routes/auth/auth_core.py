@@ -104,6 +104,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         team_name: str = payload.get("sub")
         user_role: str = payload.get("role")
         exp_timestamp = payload.get("exp")
+        institution_id: int = payload.get("institution_id")
 
         # Check expiration using timestamp comparison
         current_timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ).timestamp()
@@ -117,7 +118,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             )
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return {"team_name": team_name, "role": user_role}
+        user_data = {"team_name": team_name, "role": user_role}
+
+        # Add institution_id if present
+        if institution_id is not None:
+            user_data["institution_id"] = institution_id
+
+        return user_data
+
     except JWTError as e:
         logger.error(f"JWT Error: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid token")

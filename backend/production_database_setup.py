@@ -9,6 +9,7 @@ from backend.config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
 from backend.database.db_models import (
     Admin,
     AgentAPIKey,
+    Institution,
     League,
     LeagueType,
     Team,
@@ -30,6 +31,20 @@ def create_and_populate_database():
         admin = Admin(username="admin", password_hash=get_password_hash("admin"))
         session.add(admin)
 
+        # Create default institution
+        default_institution = Institution(
+            name="Default Institution",
+            contact_person="Admin",
+            contact_email="admin@example.com",
+            created_date=datetime.now(),
+            subscription_active=True,
+            subscription_expiry=(datetime.now() + timedelta(days=365)),
+            docker_access=True,
+            password_hash=get_password_hash("institution"),
+        )
+        session.add(default_institution)
+        session.commit()
+
         # Create unnasigned league
         unassigned_league = League(
             name="unassigned",
@@ -37,6 +52,7 @@ def create_and_populate_database():
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
+            institution_id=default_institution.id,
         )
         session.add(unassigned_league)
 
@@ -47,6 +63,7 @@ def create_and_populate_database():
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
+            institution_id=default_institution.id,
         )
         session.add(greedy_pig_league)
 
@@ -57,6 +74,7 @@ def create_and_populate_database():
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="prisoners_dilemma",
             league_type=LeagueType.STUDENT,
+            institution_id=default_institution.id,
         )
         session.add(prisoners_dilemma_league)
 
@@ -67,6 +85,7 @@ def create_and_populate_database():
             expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
             game="lineup4",
             league_type=LeagueType.AGENT,
+            institution_id=default_institution.id,
         )
         session.add(agent_league)
 
@@ -89,6 +108,7 @@ def create_and_populate_database():
                 password_hash=get_password_hash(team_data["password"]),
                 league_id=unassigned_league.id,
                 team_type=TeamType.STUDENT,
+                institution_id=default_institution.id,
             )
             session.add(team)
 
@@ -145,6 +165,7 @@ class CustomPlayer(Player):
                 school_name=team_data["school_name"],
                 league_id=agent_league.id,
                 team_type=TeamType.AGENT,
+                institution_id=default_institution.id,
             )
             session.add(agent_team)
             session.flush()  # To get the team ID
@@ -163,6 +184,10 @@ class CustomPlayer(Player):
         session.commit()
 
         print("\nDatabase created and populated successfully")
+        print("\n=== Default Institution ===")
+        print(f"Name: {default_institution.name}")
+        print(f"Login: {default_institution.name} / institution")
+        print("-----------------------------")
         print("\n=== Agent Test Credentials ===")
         for team_name, api_key in api_keys:
             print(f"Team Name: {team_name}")

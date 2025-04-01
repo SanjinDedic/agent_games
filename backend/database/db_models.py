@@ -24,11 +24,32 @@ class TeamType(str, PyEnum):
 class LeagueType(str, PyEnum):
     STUDENT = "student"
     AGENT = "agent"
+    INSTITUTION = "institution"  # Added new type
+
+
+class Institution(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    name: str = Field(unique=True, index=True)
+    contact_person: str
+    contact_email: str
+    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    subscription_active: bool = Field(default=True)
+    subscription_expiry: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    docker_access: bool = Field(default=False)
+    password_hash: str
+    teams: List["Team"] = Relationship(back_populates="institution")
+    leagues: List["League"] = Relationship(back_populates="institution")
+
+    def set_password(self, password: str):
+        self.password_hash = get_password_hash(password)
+
+    def verify_password(self, password: str):
+        return verify_password(password, self.password_hash)
 
 
 class League(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    name: str = Field(unique=True, index=True)
+    name: str = Field(index=True)  # Remove unique=True from here
     created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     deleted_date: datetime | None = None
@@ -36,8 +57,14 @@ class League(SQLModel, table=True):
     teams: List["Team"] = Relationship(back_populates="league")
     game: str
     league_type: LeagueType = Field(default=LeagueType.STUDENT)
-    is_demo: bool = Field(default=False)  # Add this field
+    is_demo: bool = Field(default=False)
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
+    # New field for institution relationship
+    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
+    institution: Optional["Institution"] = Relationship(back_populates="leagues")
+
+    # Add a table-level unique constraint for name + institution_id
+    __table_args__ = (UniqueConstraint("name", "institution_id"),)
 
 
 class Admin(SQLModel, table=True):
@@ -61,13 +88,16 @@ class Team(SQLModel, table=True):
     color: str = "rgb(171,239,177)"
     league_id: int = Field(foreign_key="league.id")
     team_type: TeamType = Field(default=TeamType.STUDENT)
-    is_demo: bool = Field(default=False)  # Add this field
+    is_demo: bool = Field(default=False)
     league: League = Relationship(back_populates="teams")
     submissions: List["Submission"] = Relationship(back_populates="team")
     api_key: Optional["AgentAPIKey"] = Relationship(
         back_populates="team",
         sa_relationship_kwargs={"uselist": False},
     )
+    # New field for institution relationship
+    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
+    institution: Optional["Institution"] = Relationship(back_populates="teams")
     __table_args__ = (UniqueConstraint("name", "league_id"),)
 
     def set_password(self, password: str):
