@@ -1,13 +1,13 @@
 services:
   validator:
     build:
-      context: ./backend
-      dockerfile: docker_utils/dockerfiles/validator.dockerfile
+      context: .
+      dockerfile: ./backend/docker_utils/dockerfiles/validator.dockerfile
     network_mode: "host"
-    volumes:
-      - ./:/agent_games:ro  # Mount the entire project directory
     environment:
-      - PYTHONPATH=/agent_games  # Set Python path to include the parent directory
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/agent_games
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -23,13 +23,13 @@ services:
 
   simulator:
     build:
-      context: ./backend
-      dockerfile: docker_utils/dockerfiles/simulator.dockerfile
+      context: .
+      dockerfile: ./backend/docker_utils/dockerfiles/simulator.dockerfile
     network_mode: "host"
-    volumes:
-      - ./:/agent_games:ro  # Mount the entire project directory
     environment:
-      - PYTHONPATH=/agent_games  # Set Python path to include the parent directory
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/agent_games
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]

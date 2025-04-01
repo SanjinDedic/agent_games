@@ -4,14 +4,14 @@ FROM python:3.13 AS builder
 WORKDIR /build
 
 # Copy requirements and install dependencies
-COPY requirements.txt .
+COPY ./backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime stage
 FROM python:3.13
 
-# Set working directory directly to backend
-WORKDIR /agent_games/backend
+# Set working directory
+WORKDIR /agent_games
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -27,9 +27,14 @@ RUN groupadd -r simgroup && useradd -r -g simgroup simuser
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Create directories and set permissions - THIS IS THE NEW CODE
+# Copy application code (from project root)
+COPY . /agent_games/
+
+# Create directories and set permissions
 RUN mkdir -p /agent_games/backend/docker_utils/services && \
-    chmod -R 755 /agent_games
+    chmod -R 755 /agent_games && \
+    # Explicitly set permissions for the service scripts
+    chmod 755 /agent_games/backend/docker_utils/services/validation_server.py /agent_games/backend/docker_utils/services/simulation_server.py
 
 # Switch to non-root user
 USER simuser
@@ -37,4 +42,4 @@ USER simuser
 EXPOSE 8002
 
 # Use the correct path relative to WORKDIR
-CMD ["python", "docker_utils/services/simulation_server.py"]
+CMD ["python", "/agent_games/backend/docker_utils/services/simulation_server.py"]
