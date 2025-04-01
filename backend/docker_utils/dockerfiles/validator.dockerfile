@@ -27,11 +27,9 @@ RUN groupadd -r validatorgroup && useradd -r -g validatorgroup validatoruser
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application files (will be overridden by volume mount in docker-compose)
-# COPY . /agent_games/backend/
-
-# Set ownership of the working directory
-RUN chown -R validatoruser:validatorgroup /agent_games
+# Create directories and set permissions - THIS IS THE NEW CODE
+RUN mkdir -p /agent_games/backend/docker_utils/services && \
+    chmod -R 755 /agent_games
 
 # Switch to non-root user
 USER validatoruser
