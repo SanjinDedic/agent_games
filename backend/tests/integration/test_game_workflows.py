@@ -21,6 +21,7 @@ def setup_integration_team(db_session: Session, test_league: League) -> Team:
         school_name="Integration Test School",
         password_hash="test_hash",
         league_id=test_league.id,
+        institution_id=test_league.institution_id,
     )
     db_session.add(team)
     db_session.commit()
@@ -59,9 +60,17 @@ def test_complete_game_lifecycle(
     5. Publishing results
     6. Viewing results
     """
+
     # 1. Create a new league
+    # The headers need to be institution headers
+    inst_token = create_access_token(
+        data={"sub": "integration_team", "role": "institution"},
+        expires_delta=timedelta(minutes=30),
+    )
+    auth_headers = {"Authorization": f"Bearer {inst_token}"}
+
     league_response = client.post(
-        "/admin/league-create",
+        "/institution/league-create",
         headers=auth_headers,
         json={"name": "integration_league", "game": "prisoners_dilemma"},
     )
