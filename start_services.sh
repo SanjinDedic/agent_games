@@ -12,10 +12,16 @@ fi
 # Load environment variables
 export $(grep -v '^#' backend/.env | xargs)
 
+
+# Set PYTHONPATH correctly - this script should be run from the agent_games directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH=$SCRIPT_DIR:$PYTHONPATH
+echo "Set PYTHONPATH to: $PYTHONPATH"
+
 # Start services
 echo "Starting services..."
 docker compose up -d
 
 # Start the API
-echo "Starting API..."
-cd backend && uvicorn api:app --host 0.0.0.0 --port 8000
+cd ..
+pm2 restart ecosystem.config.js
