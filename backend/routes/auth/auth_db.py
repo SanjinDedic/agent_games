@@ -72,6 +72,7 @@ def get_admin_token(session: Session, username: str, password: str):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+# Update this part in get_institution_token in auth_db.py
 def get_institution_token(session: Session, institution_name: str, password: str):
     """Get authentication token for institution login"""
     institution = session.exec(
@@ -88,8 +89,13 @@ def get_institution_token(session: Session, institution_name: str, password: str
     if not institution.subscription_active:
         raise InvalidCredentialsError("Institution subscription is not active")
 
-    # Check if subscription has expired
-    if institution.subscription_expiry < datetime.now(AUSTRALIA_SYDNEY_TZ):
+    # Check if subscription has expired - get current time with same timezone awareness
+    now = datetime.now()
+    if institution.subscription_expiry.tzinfo:
+        # If expiry has timezone info, localize current time
+        now = AUSTRALIA_SYDNEY_TZ.localize(now)
+
+    if institution.subscription_expiry < now:
         # Update subscription_active to False
         institution.subscription_active = False
         session.add(institution)

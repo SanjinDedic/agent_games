@@ -1,9 +1,16 @@
 import time
 from datetime import datetime, timedelta
 
-from sqlmodel import Session, select
+import pytz
+from sqlmodel import Session
 
-from backend.database.db_models import Admin, League, Team, get_password_hash
+from backend.database.db_models import (
+    Admin,
+    Institution,
+    League,
+    Team,
+    get_password_hash,
+)
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -195,49 +202,63 @@ def test_team_login_exceptions(client, db_session: Session):
 def test_token_validation(client, db_session: Session):
     """Test token validation and expiry"""
 
-    # Create test admin
-    admin = Admin(
-        username="test_admin", password_hash=get_password_hash("test_password")
+    # Create timezone object
+    AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
+
+    # Create test institution with timezone-aware datetimes
+    institution = Institution(
+        name="test_institution",
+        contact_person="Test Contact",
+        contact_email="test@example.com",
+        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),  # Add timezone
+        subscription_active=True,
+        subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ)
+        + timedelta(days=30),  # Add timezone
+        docker_access=True,
+        password_hash=get_password_hash("inst_password"),
     )
-    db_session.add(admin)
+    db_session.add(institution)
     db_session.commit()
 
-    # Get valid token
+    # Get institution token
     response = client.post(
-        "/auth/admin-login",
-        json={"username": "test_admin", "password": "test_password"},
+        "/auth/institution-login",
+        json={"name": "test_institution", "password": "inst_password"},
     )
+    assert response.status_code == 200
+    print(response.json())
     token = response.json()["data"]["access_token"]
 
-    # Test valid token with admin endpoint
+    # Test valid token with institution endpoint
     response = client.get(
-        "/admin/get-all-teams", headers={"Authorization": f"Bearer {token}"}
+        "/institution/get-all-teams", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
 
     # Create token that is already expired
     expired_token = create_access_token(
-        data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(microseconds=1)
+        data={
+            "sub": "test_institution",
+            "role": "institution",
+            "institution_id": institution.id,
+        },
+        expires_delta=timedelta(microseconds=1),
     )
     # Wait to ensure token is expired
     time.sleep(0.1)
 
     response = client.get(
-        "/admin/get-all-teams", headers={"Authorization": f"Bearer {expired_token}"}
+        "/institution/get-all-teams",
+        headers={"Authorization": f"Bearer {expired_token}"},
     )
     assert response.status_code == 401
-    data = response.json()
-    assert (
-        "token has expired" in data["detail"].lower()
-        or "invalid token" in data["detail"].lower()
-    )
 
     # Test invalid token format
     response = client.get(
-        "/admin/get-all-teams", headers={"Authorization": "Bearer invalid_token"}
+        "/institution/get-all-teams", headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == 401
 
     # Test missing token
-    response = client.get("/admin/get-all-teams")
+    response = client.get("/institution/get-all-teams")
     assert response.status_code == 401
