@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { addSimulationResult } from '../../slices/leaguesSlice';
 
-const AdminLeagueSimulation = ({ league }) => {
+const InstitutionLeagueSimulation = ({ league }) => {
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector((state) => state.auth.token);
@@ -15,15 +15,14 @@ const AdminLeagueSimulation = ({ league }) => {
   // Input validation
   const handleNumberChange = (event) => {
     const value = parseInt(event.target.value, 10);
-    if (value > 0 && value <= 10000) {
-      // Added upper limit
+    if (value > 0 && value <= 10000) { // Added upper limit
       setSimulationNumber(value);
     }
   };
 
   const handleSimulation = async () => {
     if (!league?.id) {
-      toast.error("Please select a valid league first");
+      toast.error('Please select a valid league first');
       return;
     }
 
@@ -31,17 +30,16 @@ const AdminLeagueSimulation = ({ league }) => {
     const toastId = toast.loading("Running simulation...");
 
     try {
-      // Important: Now using the institution endpoint instead of admin
       const response = await fetch(`${apiUrl}/institution/run-simulation`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
           num_simulations: simulationNumber,
           league_id: league.id,
-          league_name: league.name, // Keep for backwards compatibility
+          league_name: league.name, // Keep for backwards compatibility if needed
           game: league.game,
           custom_rewards: rewards,
         }),
@@ -55,23 +53,23 @@ const AdminLeagueSimulation = ({ league }) => {
           render: data.message,
           type: "success",
           isLoading: false,
-          autoClose: 2000,
+          autoClose: 2000
         });
       } else {
         toast.update(toastId, {
-          render: data.message || "Failed to run simulation",
+          render: data.message || 'Failed to run simulation',
           type: "error",
           isLoading: false,
-          autoClose: 2000,
+          autoClose: 2000
         });
       }
     } catch (error) {
-      console.error("Simulation error:", error);
+      console.error('Simulation error:', error);
       toast.update(toastId, {
         render: "Error running simulation",
         type: "error",
         isLoading: false,
-        autoClose: 2000,
+        autoClose: 2000
       });
     } finally {
       setIsLoading(false);
@@ -88,14 +86,12 @@ const AdminLeagueSimulation = ({ league }) => {
             className={`
               flex-grow px-6 py-3 rounded-lg font-semibold text-lg transition-colors
               focus:ring-2 focus:ring-offset-2 outline-none
-              ${
-                isLoading
-                  ? "bg-ui-light text-ui cursor-not-allowed"
-                  : "bg-notice-orange hover:bg-notice-orange/90 text-white"
-              }
+              ${isLoading
+                ? 'bg-ui-light text-ui cursor-not-allowed'
+                : 'bg-notice-orange hover:bg-notice-orange/90 text-white'}
             `}
           >
-            {isLoading ? "RUNNING..." : "RUN SIMULATION"}
+            {isLoading ? 'RUNNING...' : 'RUN SIMULATION'}
           </button>
 
           <input
@@ -121,4 +117,4 @@ const AdminLeagueSimulation = ({ league }) => {
   );
 };
 
-export default AdminLeagueSimulation;
+export default InstitutionLeagueSimulation;

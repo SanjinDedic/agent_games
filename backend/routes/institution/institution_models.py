@@ -50,7 +50,6 @@ class SimulationConfig(BaseModel):
     league_name: Optional[str] = None  # For backwards compatibility
     game: Optional[str] = None
     custom_rewards: Optional[List[int]] = None
-    use_docker: bool = True
 
     @field_validator("num_simulations")
     def validate_num_simulations(cls, v):

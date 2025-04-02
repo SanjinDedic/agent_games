@@ -3,6 +3,7 @@ import os
 import secrets
 from datetime import datetime, timedelta
 
+import pytz
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
@@ -18,6 +19,7 @@ from backend.database.db_models import (
 )
 from backend.routes.user.user_db import save_submission
 
+AUSTRALIA_TZ = pytz.timezone("Australia/Sydney")
 
 def create_and_populate_database():
     os.environ["TESTING"] = "0"  # Set the TESTING environment variable to "0"
@@ -33,12 +35,12 @@ def create_and_populate_database():
 
         # Create default institution
         default_institution = Institution(
-            name="Default Institution",
+            name="Admin Institution",
             contact_person="Admin",
-            contact_email="admin@example.com",
-            created_date=datetime.now(),
+            contact_email="admin@admin.com",
+            created_date=datetime.now(AUSTRALIA_TZ),
             subscription_active=True,
-            subscription_expiry=(datetime.now() + timedelta(days=365)),
+            subscription_expiry=(datetime.now(AUSTRALIA_TZ) + timedelta(days=365)),
             docker_access=True,
             password_hash=get_password_hash("institution"),
         )
@@ -48,8 +50,10 @@ def create_and_populate_database():
         # Create unnasigned league
         unassigned_league = League(
             name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
             institution_id=default_institution.id,
@@ -59,8 +63,10 @@ def create_and_populate_database():
         # create greedy pig league
         greedy_pig_league = League(
             name="greedy_pig_league",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
             institution_id=default_institution.id,
@@ -70,8 +76,10 @@ def create_and_populate_database():
         # create prisoners dilemma league
         prisoners_dilemma_league = League(
             name="prisoners_dilemma_league",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="prisoners_dilemma",
             league_type=LeagueType.STUDENT,
             institution_id=default_institution.id,
@@ -81,8 +89,10 @@ def create_and_populate_database():
         # Create an agent league for testing
         agent_league = League(
             name="agent_test_league",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="lineup4",
             league_type=LeagueType.AGENT,
             institution_id=default_institution.id,

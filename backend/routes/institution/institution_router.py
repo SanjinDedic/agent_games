@@ -8,8 +8,11 @@ from sqlmodel import Session
 from backend.config import DOCKER_API_URL
 from backend.database.db_models import Institution
 from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.auth.auth_core import (get_current_user,
-                                           verify_institution_role)
+from backend.routes.auth.auth_core import (
+    get_current_user,
+    verify_admin_or_institution,
+    verify_institution_role,
+)
 from backend.routes.auth.auth_db import get_db
 from backend.routes.institution.institution_db import (assign_team_to_league,
                                                        create_league,
@@ -31,7 +34,7 @@ institution_router = APIRouter()
 
 
 @institution_router.post("/league-create", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def create_league_endpoint(
     league: LeagueSignUp,
     current_user: dict = Depends(get_current_user),
@@ -101,7 +104,7 @@ async def delete_team_endpoint(
 
 
 @institution_router.get("/get-all-teams", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def get_teams_endpoint(
     session: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -124,7 +127,7 @@ async def get_teams_endpoint(
 
 
 @institution_router.post("/run-simulation", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def run_simulation_endpoint(
     simulation_config: SimulationConfig,
     current_user: dict = Depends(get_current_user),
@@ -132,7 +135,10 @@ async def run_simulation_endpoint(
 ):
     """Run a simulation for a league owned by the institution"""
     try:
-        institution_id = current_user.get("institution_id")
+        if current_user["role"] == "admin":
+            institution_id = 1
+        else:
+            institution_id = current_user.get("institution_id")
         if not institution_id:
             return ErrorResponseModel(status="error", message="Institution ID not found in token")
 
@@ -233,7 +239,7 @@ async def run_simulation_endpoint(
 
 
 @institution_router.post("/get-all-league-results", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def get_league_results_endpoint(
     league: LeagueName,  # Change from LeagueSignUp to LeagueName
     current_user: dict = Depends(get_current_user),
@@ -259,7 +265,7 @@ async def get_league_results_endpoint(
 
 
 @institution_router.post("/publish-results", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def publish_results_endpoint(
     results: LeagueResults,
     current_user: dict = Depends(get_current_user),
@@ -283,7 +289,7 @@ async def publish_results_endpoint(
 
 
 @institution_router.post("/update-expiry-date", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def update_expiry_endpoint(
     expiry: ExpiryDate,
     current_user: dict = Depends(get_current_user),
@@ -305,7 +311,7 @@ async def update_expiry_endpoint(
 
 
 @institution_router.post("/assign-team-to-league", response_model=ResponseModel)
-@verify_institution_role
+@verify_admin_or_institution
 async def assign_team_endpoint(
     assignment: TeamLeagueAssignment,
     current_user: dict = Depends(get_current_user),

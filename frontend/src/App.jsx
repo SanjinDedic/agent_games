@@ -6,10 +6,13 @@ import AgentSubmission from './AgentGames/User/AgentSubmission';
 import AgentLeagueSignUp from './AgentGames/User/LeagueSignup';
 import Demo from './AgentGames/Demo';
 import Institutions from './AgentGames/Institutions';
+import Institution from "./AgentGames/Institution/Institution";
+import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
+import InstitutionLeague from "./AgentGames/Institution/InstitutionLeague";
 import Leaderboards from './AgentGames/Leaderboards';
 import Admin from './AgentGames/Admin/Admin';
 import AdminLeague from './AgentGames/Admin/AdminLeague';
-import AdminTeam from './AgentGames/Admin/AdminTeam';
+import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import StyleGuide from './StyleGuide';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
@@ -40,12 +43,18 @@ function App() {
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />
           <Route path="Leaderboards" element={<Leaderboards />} />
+          {/* Admin Routes */}
           <Route path="Admin" element={<Admin />} />
           <Route path="AdminLeague" element={<AdminLeague />} />
-          <Route path="AdminTeam" element={<AdminTeam />} />
+          <Route path="AdminInstitutions" element={<AdminInstitutions />} />
           <Route path="AdminDemoUsers" element={<AdminDemoUsers />} />
-          <Route path="StyleGuide" element={<StyleGuide />} />
           <Route path="AdminDockerStatus" element={<DockerStatus />} />
+          {/* Institution Routes */}
+          <Route path="Institution" element={<Institution />} />
+          <Route path="InstitutionLeague" element={<InstitutionLeague />} />
+          <Route path="InstitutionTeam" element={<InstitutionTeam />} />
+          {/* Other Routes */}
+          <Route path="StyleGuide" element={<StyleGuide />} />
         </Routes>
 
         <ToastContainer

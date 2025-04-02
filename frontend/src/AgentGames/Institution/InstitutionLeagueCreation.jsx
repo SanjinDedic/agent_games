@@ -4,7 +4,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useSelector } from 'react-redux';
 
-function AdminLeagueCreation() {
+function InstitutionLeagueCreation() {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector((state) => state.auth.token);
   const [games, setGames] = useState([]);
@@ -34,7 +34,7 @@ function AdminLeagueCreation() {
         }
       })
       .catch(error => {
-        toast.error('Failed to add League');
+        toast.error('Failed to fetch available games');
       });
   }, [apiUrl]);
 
@@ -61,33 +61,30 @@ function AdminLeagueCreation() {
 
   const handleAddLeague = () => {
     if (!leagueInfo.leagueName.trim()) {
-      toast.error("Please Enter the name of the league");
+      toast.error('Please enter the name of the league');
       return;
     }
 
-    // Using institution endpoint instead of admin
     fetch(`${apiUrl}/institution/league-create`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
       },
-      body: JSON.stringify({
-        name: leagueInfo.leagueName,
-        game: leagueInfo.gameName,
-      }),
+      body: JSON.stringify({ name: leagueInfo.leagueName, game: leagueInfo.gameName }),
     })
-      .then((response) => response.json())
-      .then((data) => {
+      .then(response => response.json())
+      .then(data => {
         if (data.status === "success") {
-          setLeagueInfo({ leagueName: "", gameName: "", selectedDate: null });
+          setLeagueInfo({ leagueName: '', gameName: games[0] || '', selectedDate: null });
           toast.success(data.message);
+          // You might want to dispatch an action here to add the new league to your Redux store
         } else if (data.status === "failed") {
           toast.error(data.message);
         }
       })
-      .catch((error) => {
-        toast.error("Failed to add League");
+      .catch(error => {
+        toast.error('Failed to add league');
       });
   };
 
@@ -104,7 +101,7 @@ function AdminLeagueCreation() {
           className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
         />
 
-        {games && (
+        {games && games.length > 0 && (
           <select
             onChange={handleGameDropdownChange}
             value={leagueInfo.gameName}
@@ -122,7 +119,7 @@ function AdminLeagueCreation() {
           selected={leagueInfo.selectedDate}
           onChange={handleDateChange}
           dateFormat="dd/MM/yyyy"
-          placeholderText="Select expiry date"
+          placeholderText="Select expiry date (optional)"
           className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
         />
 
@@ -137,4 +134,4 @@ function AdminLeagueCreation() {
   );
 }
 
-export default AdminLeagueCreation;
+export default InstitutionLeagueCreation;

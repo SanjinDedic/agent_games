@@ -8,36 +8,37 @@ const AdminLeaguePublish = ({ simulation_id, selected_league_name }) => {
     const currentSimulation = useSelector((state) => state.leagues.currentLeagueResultSelected);
 
     const handlePublish = () => {
-        if (simulation_id === "" || !selected_league_name) {
-            toast.error(`Please select a league`);
-            return;
-        }
+      if (simulation_id === "" || !selected_league_name) {
+        toast.error(`Please select a league`);
+        return;
+      }
 
-        const publishData = {
-            league_name: selected_league_name,
-            id: simulation_id,
-            feedback: currentSimulation?.feedback || null
-        };
+      const publishData = {
+        league_name: selected_league_name,
+        id: simulation_id,
+        feedback: currentSimulation?.feedback || null,
+      };
 
-        fetch(`${apiUrl}/admin/publish-results`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
-            },
-            body: JSON.stringify(publishData),
+      // Important: Now using the institution endpoint instead of admin
+      fetch(`${apiUrl}/institution/publish-results`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(publishData),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.status === "success") {
+            toast.success(data.message);
+          } else if (data.status === "failed" || data.status === "error") {
+            toast.error(data.message);
+          }
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    toast.success(data.message);
-                } else if (data.status === "failed" || data.status === "error") {
-                    toast.error(data.message);
-                }
-            })
-            .catch(error => {
-                toast.error(`Failed to publish results`);
-            });
+        .catch((error) => {
+          toast.error(`Failed to publish results`);
+        });
     };
 
     return (

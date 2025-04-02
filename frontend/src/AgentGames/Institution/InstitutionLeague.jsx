@@ -6,16 +6,16 @@ import FeedbackSelector from '../Feedback/FeedbackSelector';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
-import AdminLeagueCreation from './AdminLeagueCreation';
-import AdminLeagueTeams from './AdminLeagueTeams';
-import AdminLeagueSimulation from './AdminLeagueSimulation';
-import AdminLeaguePublish from './AdminLeaguePublish';
+import InstitutionLeagueCreation from './InstitutionLeagueCreation';
+import InstitutionLeagueTeams from './InstitutionLeagueTeams';
+import InstitutionLeagueSimulation from './InstitutionLeagueSimulation';
+import InstitutionLeaguePublish from './InstitutionLeaguePublish';
 import CustomRewards from './CustomRewards';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCurrentLeague, setLeagues, updateExpiryDate, setCurrentSimulation, setResults, clearResults } from '../../slices/leaguesSlice';
 import { checkTokenExpiry } from '../../slices/authSlice';
 
-function AdminLeague() {
+function InstitutionLeague() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -31,16 +31,16 @@ function AdminLeague() {
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-      navigate('/Admin');
+    if (!isAuthenticated || currentUser.role !== "institution" || tokenExpired) {
+      navigate('/Institution');
     }
-  }, [navigate]);
+  }, [navigate, dispatch, isAuthenticated, currentUser]);
 
   useEffect(() => {
-    fetchAdminLeagues();
+    fetchInstitutionLeagues();
   }, []);
 
-  const fetchAdminLeagues = () => {
+  const fetchInstitutionLeagues = () => {
     fetch(`${apiUrl}/user/get-all-leagues`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
@@ -53,29 +53,28 @@ function AdminLeague() {
         } else if (data.status === "failed") {
           toast.error(data.message)
         } else if (data.detail === "Invalid token") {
-          navigate('/Admin');
+          navigate('/Institution');
         }
       })
-      .catch(error => console.error('Error fetching options:', error));
+      .catch(error => console.error('Error fetching leagues:', error));
   }
 
   useEffect(() => {
     if (currentLeague?.name) {
-      // Using institution endpoint instead of admin
       fetch(`${apiUrl}/institution/get-all-league-results`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ name: currentLeague.name }),
+        body: JSON.stringify({ name: currentLeague.name })
       })
-        .then((response) => response.json())
-        .then((data) => {
+        .then(response => response.json())
+        .then(data => {
           if (data.status === "success") {
-            if (data.data.results.length == 0) {
+            if (data.data.results.length === 0) {
               dispatch(clearResults());
-              toast.error("No results in the selected League");
+              toast.info("No results in the selected League")
             } else {
               dispatch(setResults(data.data.results));
             }
@@ -83,50 +82,43 @@ function AdminLeague() {
             toast.error(data.message);
             dispatch(clearResults());
           } else if (data.detail === "Invalid token") {
-            navigate("/Admin");
+            navigate('/Institution');
           }
         })
-        .catch((error) =>
-          console.error("Error fetching league results:", error)
-        );
+        .catch(error => console.error('Error fetching league results:', error));
     }
-  }, [currentLeague]);
+  }, [currentLeague, accessToken, apiUrl, dispatch, navigate]);
 
   const handleDropdownChange = (event) => {
     dispatch(setCurrentLeague(event.target.value));
   };
 
-  const handletableDropdownChange = (event) => {
+  const handleTableDropdownChange = (event) => {
     dispatch(setCurrentSimulation(event.target.value));
   };
 
   const handleExpiryDateChange = (date) => {
     const formattedDate = date.toISOString();
-    // Using institution endpoint instead of admin
     fetch(`${apiUrl}/institution/update-expiry-date`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify({ date: formattedDate, league: currentLeague.name }),
     })
-      .then((response) => response.json())
-      .then((data) => {
+      .then(response => response.json())
+      .then(data => {
         if (data.status === "success") {
-          dispatch(
-            updateExpiryDate({
-              name: currentLeague.name,
-              expiry_date: formattedDate,
-            })
-          );
+          dispatch(updateExpiryDate({ name: currentLeague.name, expiry_date: formattedDate }));
           toast.success(data.message);
         } else if (data.status === "failed") {
-          toast.error(data.message);
+          toast.error(data.message)
         }
       })
-      .catch((error) => {
-        console.error("Error updating date:", error);
+      .catch(error => {
+        console.error('Error updating date:', error);
+        toast.error('Failed to update expiry date');
       });
   };
 
@@ -135,7 +127,7 @@ function AdminLeague() {
       <div className="max-w-[1800px] mx-auto px-6 pt-20 pb-8">
         {/* Header and League Selection */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-ui-dark mb-4">League Section</h1>
+          <h1 className="text-2xl font-bold text-ui-dark mb-4">League Management</h1>
           {currentLeague && (
             <select
               onChange={handleDropdownChange}
@@ -161,9 +153,9 @@ function AdminLeague() {
           <div className="lg:col-span-3 space-y-6">
             {/* Results Selection */}
             <div className="bg-white rounded-lg shadow-lg p-6">
-              {allSimulations && (
+              {allSimulations && allSimulations.length > 0 && (
                 <select
-                  onChange={handletableDropdownChange}
+                  onChange={handleTableDropdownChange}
                   className="w-full p-3 mb-4 border border-ui-light rounded-lg bg-white text-ui-dark text-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                 >
                   {allSimulations.map((option, index) => (
@@ -195,7 +187,7 @@ function AdminLeague() {
             {/* Teams Grid */}
             {currentLeague && (
               <div className="w-full bg-white rounded-lg shadow-lg p-6">
-                <AdminLeagueTeams selected_league_name={currentLeague.name} />
+                <InstitutionLeagueTeams selected_league_name={currentLeague.name} />
               </div>
             )}
           </div>
@@ -203,7 +195,7 @@ function AdminLeague() {
           {/* Right Column - Controls (1/4 width) */}
           <div className="space-y-4">
             {/* Simulation Controls */}
-            <AdminLeagueSimulation league={currentLeague} />
+            <InstitutionLeagueSimulation league={currentLeague} />
 
             {/* Custom Rewards */}
             <CustomRewards />
@@ -222,12 +214,12 @@ function AdminLeague() {
             </div>
 
             {/* League Creation */}
-            <AdminLeagueCreation />
+            <InstitutionLeagueCreation />
 
             {/* Publish Button */}
             {currentLeague && currentSimulation && (
               <div className="bg-white rounded-lg shadow-lg p-4">
-                <AdminLeaguePublish
+                <InstitutionLeaguePublish
                   simulation_id={currentSimulation.id}
                   selected_league_name={currentLeague.name}
                 />
@@ -240,4 +232,4 @@ function AdminLeague() {
   );
 }
 
-export default AdminLeague;
+export default InstitutionLeague;

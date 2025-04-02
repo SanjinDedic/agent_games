@@ -4,123 +4,107 @@ import { useDispatch, useSelector } from 'react-redux';
 import { login, checkTokenExpiry } from '../../slices/authSlice';
 import { jwtDecode } from 'jwt-decode';
 
-function Admin() {
+function Institution() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const [admin, setAdmin] = useState({ name: '', password: '' });
+  
+  const [institution, setInstitution] = useState({ name: '', password: '' });
   const [errorMessage, setErrorMessage] = useState('');
   const [shake, setShake] = useState(false);
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    if (isAuthenticated && !tokenExpired && currentUser.role === "admin") {
-      navigate("/AdminInstitutions");
+    if (isAuthenticated && !tokenExpired) {
+      if (currentUser.role === "institution") {
+        navigate('/InstitutionTeam');
+      } else if (currentUser.role === "admin") {
+        navigate('/AdminTeam');
+      }
     }
   }, [navigate, isAuthenticated, currentUser, dispatch]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setAdmin((prev) => ({
+    setInstitution(prev => ({
       ...prev,
       [name]: value,
     }));
-    setErrorMessage("");
+    setErrorMessage('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!admin.name.trim() || !admin.password.trim()) {
+    if (!institution.name.trim() || !institution.password.trim()) {
       setShake(true);
       setTimeout(() => setShake(false), 1000);
-      setErrorMessage("Please enter all the fields");
+      setErrorMessage('Please enter all fields');
       return;
     }
 
     try {
-      const response = await fetch(`${apiUrl}/auth/admin-login`, {
-        method: "POST",
+      const response = await fetch(`${apiUrl}/auth/institution-login`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          username: admin.name,
-          password: admin.password,
+          name: institution.name,
+          password: institution.password
         }),
       });
 
       const data = await response.json();
       if (data.status === "success") {
         const decoded = jwtDecode(data.data.access_token);
-        dispatch(
-          login({
-            token: data.data.access_token,
-            name: decoded.sub,
-            role: decoded.role,
-          })
-        );
-        navigate("/AdminTeam");
+        dispatch(login({
+          token: data.data.access_token,
+          name: decoded.sub,
+          role: decoded.role,
+          institution_id: decoded.institution_id
+        }));
+        navigate("/InstitutionTeam");
       } else if (data.status === "failed") {
         setErrorMessage(data.message);
       }
     } catch (error) {
-      console.error("Error:", error);
-      setErrorMessage("An error occurred. Please try again.");
+      console.error('Error:', error);
+      setErrorMessage('An error occurred. Please try again.');
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen pt-16 px-4 bg-ui-lighter">
       <div className="w-full max-w-lg bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-ui-dark mb-8 text-center">
-          Admin Login
-        </h1>
-
+        <h1 className="text-3xl font-bold text-ui-dark mb-8 text-center">Institution Login</h1>
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label
-              htmlFor="admin_name"
-              className="text-xl font-bold text-ui-dark"
-            >
-              Username:
-            </label>
+            <label htmlFor="institution_name" className="text-xl font-bold text-ui-dark">Institution Name:</label>
             <input
               type="text"
-              id="admin_name"
+              id="institution_name"
               name="name"
-              value={admin.name}
+              value={institution.name}
               onChange={handleChange}
               className={`w-full px-4 py-2 text-lg border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 
-                ${
-                  shake
-                    ? "animate-shake border-danger"
-                    : "border-ui-light focus:border-primary"
-                }`}
+                ${shake ? 'animate-shake border-danger' : 'border-ui-light focus:border-primary'}`}
             />
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="admin_password"
-              className="text-xl font-bold text-ui-dark"
-            >
-              Password:
-            </label>
+            <label htmlFor="institution_password" className="text-xl font-bold text-ui-dark">Password:</label>
             <input
               type="password"
-              id="admin_password"
+              id="institution_password"
               name="password"
-              value={admin.password}
+              value={institution.password}
               onChange={handleChange}
               className={`w-full px-4 py-2 text-lg border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200
-                ${
-                  shake
-                    ? "animate-shake border-danger"
-                    : "border-ui-light focus:border-primary"
-                }`}
+                ${shake ? 'animate-shake border-danger' : 'border-ui-light focus:border-primary'}`}
             />
           </div>
 
@@ -135,9 +119,13 @@ function Admin() {
             <p className="text-lg text-danger text-center">{errorMessage}</p>
           )}
         </form>
+        
+        <div className="mt-6 text-center text-ui">
+          <p>Contact your administrator if you don't have login credentials.</p>
+        </div>
       </div>
     </div>
   );
 }
 
-export default Admin;
+export default Institution;
