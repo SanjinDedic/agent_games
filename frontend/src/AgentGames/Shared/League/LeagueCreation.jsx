@@ -1,20 +1,31 @@
+// src/AgentGames/Shared/League/LeagueCreation.jsx
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useSelector } from 'react-redux';
+import useLeagueAPI from '../hooks/useLeagueAPI';
 
-function InstitutionLeagueCreation() {
+/**
+ * Shared component for creating a new league
+ * 
+ * @param {Object} props - Component props
+ * @param {string} props.userRole - User role ('admin' or 'institution')
+ */
+const LeagueCreation = ({ userRole }) => {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
   const [games, setGames] = useState([]);
   const [leagueInfo, setLeagueInfo] = useState({
     leagueName: '',
     gameName: '',
     selectedDate: null,
   });
+  
+  // Use the shared API hook
+  const { createLeague, isLoading } = useLeagueAPI(userRole);
 
   useEffect(() => {
+    // Fetch available games
     fetch(`${apiUrl}/user/get-available-games`, {
       method: 'POST',
       headers: {
@@ -34,6 +45,7 @@ function InstitutionLeagueCreation() {
         }
       })
       .catch(error => {
+        console.error('Error fetching games:', error);
         toast.error('Failed to fetch available games');
       });
   }, [apiUrl]);
@@ -59,33 +71,32 @@ function InstitutionLeagueCreation() {
     }));
   };
 
-  const handleAddLeague = () => {
+  const handleAddLeague = async () => {
     if (!leagueInfo.leagueName.trim()) {
       toast.error('Please enter the name of the league');
       return;
     }
 
-    fetch(`${apiUrl}/institution/league-create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({ name: leagueInfo.leagueName, game: leagueInfo.gameName }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          setLeagueInfo({ leagueName: '', gameName: games[0] || '', selectedDate: null });
-          toast.success(data.message);
-          // You might want to dispatch an action here to add the new league to your Redux store
-        } else if (data.status === "failed") {
-          toast.error(data.message);
-        }
-      })
-      .catch(error => {
-        toast.error('Failed to add league');
+    const leagueData = {
+      name: leagueInfo.leagueName,
+      game: leagueInfo.gameName
+    };
+    
+    // If expiry date is provided, add it to the request
+    if (leagueInfo.selectedDate) {
+      leagueData.expiry_date = leagueInfo.selectedDate.toISOString();
+    }
+    
+    const result = await createLeague(leagueData);
+    
+    if (result.success) {
+      // Reset form after successful creation
+      setLeagueInfo({
+        leagueName: '',
+        gameName: games[0] || '',
+        selectedDate: null
       });
+    }
   };
 
   return (
@@ -125,13 +136,14 @@ function InstitutionLeagueCreation() {
 
         <button
           onClick={handleAddLeague}
-          className="w-full bg-success hover:bg-success-hover text-white py-3 rounded-lg text-base font-medium transition-colors shadow-sm focus:ring-2 focus:ring-success focus:ring-offset-2"
+          disabled={isLoading}
+          className="w-full bg-success hover:bg-success-hover text-white py-3 rounded-lg text-base font-medium transition-colors shadow-sm focus:ring-2 focus:ring-success focus:ring-offset-2 disabled:bg-ui-light disabled:cursor-not-allowed"
         >
-          ADD LEAGUE
+          {isLoading ? 'CREATING...' : 'ADD LEAGUE'}
         </button>
       </div>
     </div>
   );
-}
+};
 
-export default InstitutionLeagueCreation;
+export default LeagueCreation;

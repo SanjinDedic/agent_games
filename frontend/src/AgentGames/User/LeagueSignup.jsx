@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment-timezone';
-import UserTooltip from '../Utilities/UserTooltips';
+import UserTooltip from "../Shared/Utilities/UserTooltips";
 import { setCurrentLeague, setLeagues } from '../../slices/leaguesSlice';
 import { checkTokenExpiry } from '../../slices/authSlice';
 

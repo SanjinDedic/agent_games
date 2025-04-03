@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, checkTokenExpiry } from '../../slices/authSlice';
 import { setCurrentTeam } from '../../slices/teamsSlice';
-import UserTooltip from '../Utilities/UserTooltips';
-import InstructionPopup from '../Utilities/InstructionPopup';
+import UserTooltip from "../Shared/Utilities/UserTooltips";
+import InstructionPopup from "../Shared/Utilities/InstructionPopup";
 import { jwtDecode } from 'jwt-decode';
 
 function AgentLogin() {

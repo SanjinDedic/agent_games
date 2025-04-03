@@ -111,7 +111,10 @@ async def get_teams_endpoint(
 ):
     """Get all teams for the institution"""
     try:
-        institution_id = current_user.get("institution_id")
+        if current_user["role"] == "admin":
+            institution_id = 1
+        else:
+            institution_id = current_user.get("institution_id")
         if not institution_id:
             return ErrorResponseModel(status="error", message="Institution ID not found in token")
 
@@ -247,7 +250,10 @@ async def get_league_results_endpoint(
 ):
     """Get all results for a specific league owned by the institution"""
     try:
-        institution_id = current_user.get("institution_id")
+        if current_user["role"] == "admin":
+            institution_id = 1
+        else:
+            institution_id = current_user.get("institution_id")
         if not institution_id:
             return ErrorResponseModel(status="error", message="Institution ID not found in token")
 

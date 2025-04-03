@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import ResultsDisplay from './ResultsDisplay';
-import FeedbackSelector from '../Feedback/FeedbackSelector';
+import FeedbackSelector from '../../Feedback/FeedbackSelector';
 import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 import { useDispatch, useSelector } from 'react-redux';
-import { setAllRankings, setRanking } from '../../slices/rankingsSlice';
+import { setAllRankings, setRanking } from '../../../slices/rankingsSlice';
 
 function AgentRankings() {
   const dispatch = useDispatch();

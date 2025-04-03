@@ -1,9 +1,9 @@
 // src/AgentGames/Admin/AdminLeague.jsx (New Version)
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { checkTokenExpiry } from "../../slices/authSlice";
-import LeagueManagement from "../Shared/League/LeagueManagement";
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { checkTokenExpiry } from '../../slices/authSlice';
+import LeagueManagement from '../Shared/League/LeagueManagement';
 
 /**
  * Admin-specific wrapper around the shared LeagueManagement component
@@ -18,17 +18,17 @@ function AdminLeague() {
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-      navigate("/Admin");
+      navigate('/Admin');
     }
   }, [navigate, dispatch, isAuthenticated, currentUser]);
 
   // Handle unauthorized access
   const handleUnauthorized = () => {
-    navigate("/Admin");
+    navigate('/Admin');
   };
 
   return (
-    <LeagueManagement
+    <LeagueManagement 
       userRole="admin"
       redirectPath="/Admin"
       onUnauthorized={handleUnauthorized}

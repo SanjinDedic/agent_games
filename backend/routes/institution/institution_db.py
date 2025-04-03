@@ -179,7 +179,6 @@ def get_all_teams(session: Session, institution_id: int) -> Dict:
         teams = session.exec(
             select(Team).where(Team.institution_id == institution_id)
         ).all()
-        
         return {
             "teams": [
                 {

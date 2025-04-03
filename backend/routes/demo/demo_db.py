@@ -72,6 +72,7 @@ def create_demo_user(
         league_id=unassigned_league.id,
         created_at=datetime.now(AUSTRALIA_SYDNEY_TZ),
         password_hash=get_password_hash(demo_password),
+        institution_id=1,
     )
 
     session.add(demo_user)
@@ -126,6 +127,7 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
         game=game_name,
         league_type=LeagueType.STUDENT,
         is_demo=True,
+        institution_id=1,
     )
 
     session.add(demo_league)

@@ -1,42 +1,40 @@
-import React, { useState } from "react";
-import { toast } from "react-toastify";
-import { useDispatch } from "react-redux";
-import { setRewards } from "../../slices/leaguesSlice";
+// src/AgentGames/Shared/Common/CustomRewards.jsx
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
+import { useDispatch } from 'react-redux';
+import { setRewards } from '../../../slices/leaguesSlice';
 
+/**
+ * Shared component for setting custom rewards
+ * Can be used by both Admin and Institution roles
+ */
 const CustomRewards = () => {
   const dispatch = useDispatch();
-  const [inputValue, setInputValue] = useState("");
-  const [error, setError] = useState("");
+  const [inputValue, setInputValue] = useState('');
+  const [error, setError] = useState('');
 
   const handleInputChange = (event) => {
     const value = event.target.value;
     setInputValue(value);
-
-    if (value.trim().endsWith("]")) {
+    
+    if (value.trim().endsWith(']')) {
       try {
         const parsed = JSON.parse(value);
 
-        if (
-          Array.isArray(parsed) &&
-          parsed.every((item) => typeof item === "number")
-        ) {
+        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'number')) {
           dispatch(setRewards(parsed));
-          setError("");
+          setError('');
         } else {
           throw new Error();
         }
       } catch (e) {
         dispatch(setRewards(null));
-        setError(
-          "Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3]."
-        );
-        toast.error(
-          "Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3]."
-        );
+        setError('Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3].');
+        toast.error('Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3].');
       }
     } else {
       dispatch(setRewards(null));
-      setError("Please type the correct format. Example: [10, 8, 5, 3]");
+      setError('Please type the correct format. Example: [10, 8, 5, 3]');
     }
   };
 
@@ -54,7 +52,9 @@ const CustomRewards = () => {
             className="w-full mt-1 p-2 border border-ui-light rounded-lg text-base"
           />
         </label>
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error && (
+          <p className="text-sm text-danger">{error}</p>
+        )}
         <div className="text-xs text-ui">
           <p>Default: [10, 8, 6, 4, 3, 2, 1]</p>
           <p>For Prisoner's Dilemma: [4, 0, 6, 0]</p>
