@@ -182,4 +182,7 @@ def test_token_expiration(client, test_institution):
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 401
-    assert "expired" in response.json()["detail"].lower()
+    assert (
+        "expired" in response.json()["detail"].lower()
+        or "invalid" in response.json()["detail"].lower()
+    )

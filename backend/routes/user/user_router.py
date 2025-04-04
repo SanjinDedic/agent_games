@@ -19,15 +19,18 @@ from backend.routes.user.user_db import (
     TeamNotFoundError,
     allow_submission,
     assign_team_to_league,
+    create_team_and_assign,
     get_all_leagues,
     get_all_published_results,
     get_latest_submissions_for_league,
+    get_league_by_signup_token,
     get_published_result,
     get_team,
     get_team_submission,
     save_submission,
 )
 from backend.routes.user.user_models import (
+    DirectLeagueSignup,
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
@@ -298,4 +301,35 @@ async def get_team_submission_endpoint(
             status="error",
             message=f"Failed to retrieve submission: {str(e)}",
             data={"code": None},
+        )
+
+
+@user_router.post("/direct-league-signup", response_model=ResponseModel)
+async def direct_league_signup(
+    signup: DirectLeagueSignup,
+    session: Session = Depends(get_db),
+):
+    """Create a team and directly assign it to a league using the signup token"""
+    try:
+        # Get the league by signup token
+        league = get_league_by_signup_token(session, signup.signup_token)
+
+        # Create team and assign to league
+        team = create_team_and_assign(
+            session, signup.team_name, signup.password, league.id
+        )
+
+        return ResponseModel(
+            status="success",
+            message=f"Team '{team.name}' successfully created and assigned to league '{league.name}'",
+            data={
+                "team_id": team.id,
+                "league_id": league.id,
+                "league_name": league.name,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error during direct league signup: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to sign up: {str(e)}"
         )

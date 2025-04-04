@@ -1,0 +1,54 @@
+# Python cache files
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.so
+**/.Python
+
+# Virtual environments
+**/venv/
+**/env/
+**/ENV/
+**/.env
+**/env.bak/
+**/venv.bak/
+
+# Development tools
+**/.git/
+**/.github/
+**/.vscode/
+**/.idea/
+**/.DS_Store
+**/.coverage
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Logs and databases
+**/logs/
+**/*.log
+**/*.sqlite
+**/*.db
+**/*.sql
+**/teams.db
+
+# Build and dist directories
+**/build/
+**/dist/
+**/*.egg-info/
+**/.eggs/
+
+# Testing artifacts
+**/.tox/
+**/htmlcov/
+**/coverage.xml
+**/.coverage.*
+
+# Documentation
+**/*.md
+**/docs/
+**/README*
+
+# Node/NPM (if any frontend code)
+**/node_modules/
+**/package-lock.json
+**/yarn.lock

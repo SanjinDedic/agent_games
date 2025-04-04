@@ -6,7 +6,7 @@ from typing import Dict, Optional
 import pytz
 from sqlmodel import Session, select
 
-from backend.database.db_models import League, Submission, Team
+from backend.database.db_models import League, Submission, Team, TeamType
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -284,3 +284,39 @@ def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[
     except Exception as e:
         logger.error(f"Error getting team submission: {str(e)}")
         raise
+
+
+def get_league_by_signup_token(session: Session, signup_token: str) -> League:
+    """Get a league by its signup token"""
+    league = session.exec(
+        select(League).where(League.signup_link == signup_token)
+    ).first()
+    if not league:
+        raise LeagueNotFoundError(
+            f"League with signup token '{signup_token}' not found"
+        )
+    return league
+
+
+def create_team_and_assign(
+    session: Session, team_name: str, password: str, league_id: int
+) -> Team:
+    """Create a team and assign it to a league in one operation"""
+    # Get the league first to retrieve the institution_id
+    league = session.get(League, league_id)
+    if not league:
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
+
+    # Create the team
+    team = Team(
+        name=team_name,
+        league_id=league_id,
+        institution_id=league.institution_id,
+        team_type=TeamType.STUDENT,
+    )
+    team.set_password(password)
+
+    session.add(team)
+    session.commit()
+    session.refresh(team)
+    return team

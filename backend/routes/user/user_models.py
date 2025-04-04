@@ -31,3 +31,17 @@ class GameName(BaseModel):
         if not v.strip():
             raise ValueError("Game name must not be empty")
         return v.strip()
+
+
+class DirectLeagueSignup(BaseModel):
+    """Model for direct team signup with league token"""
+
+    team_name: str
+    password: str
+    signup_token: str
+
+    @field_validator("team_name", "password")
+    def validate_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Field cannot be empty")
+        return v.strip()
