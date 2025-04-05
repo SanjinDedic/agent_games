@@ -19,18 +19,17 @@ function AgentLogin() {
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-      navigate('/AgentLogin');
-    } else if (isAuthenticated || currentUser.role === "student") {
-      navigate('/AgentLeagueSignUp');
+    if (isAuthenticated && !tokenExpired && currentUser.role === "student") {
+      navigate("/AgentLeagueSignUp");
     }
-  }, [navigate]);
+  }, [navigate, dispatch, isAuthenticated, currentUser]);
 
   const handleChange = (e) => {
     setTeam(prev => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    setErrorMessage("");
   };
 
   const handleLogin = async () => {
@@ -53,14 +52,29 @@ function AgentLogin() {
 
       if (data.status === "success") {
         const decoded = jwtDecode(data.data.access_token);
-        dispatch(login({ token: data.data.access_token, name: decoded.sub, role: decoded.role, exp: decoded.exp }));
+
+        // 1. Update auth state with login action
+        dispatch(
+          login({
+            token: data.data.access_token,
+            name: decoded.sub,
+            role: decoded.role,
+            exp: decoded.exp,
+            is_demo: false,
+          })
+        );
+
+        // 2. Set current team
         dispatch(setCurrentTeam(Team.name));
+
+        // Navigate to league signup
         navigate("/AgentLeagueSignUp");
       } else if (data.status === "failed") {
         setErrorMessage(data.message);
       }
     } catch (error) {
       console.error('Error:', error);
+      setErrorMessage("Network error occurred. Please try again.");
     }
   };
 

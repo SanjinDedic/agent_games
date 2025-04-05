@@ -16,57 +16,67 @@ function AgentLeagueSignUp() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
-  const isDemo = useSelector((state) => state.auth.currentUser?.is_demo || false);
+  const isDemo = useSelector(
+    (state) => state.auth.currentUser?.is_demo || false
+  );
 
   moment.tz.setDefault("Australia/Sydney");
 
+  // Check authentication
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-      navigate('/AgentLogin');
+      navigate("/AgentLogin");
     }
   }, [navigate, dispatch, isAuthenticated, currentUser]);
 
+  // Fetch leagues
   useEffect(() => {
     const fetchLeagues = async () => {
       try {
         const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
         const data = await response.json();
         if (data.status === "success") {
+          // This stores the FULL league objects in the Redux store
           dispatch(setLeagues(data.data.leagues));
         } else if (data.status === "failed") {
           toast.error(data.message);
         }
       } catch (error) {
-        console.error('Error fetching leagues:', error);
+        console.error("Error fetching leagues:", error);
+        toast.error("Network error while fetching leagues");
       }
     };
 
-    fetchLeagues();
-  }, [apiUrl, dispatch, accessToken]);
+    if (isAuthenticated && accessToken) {
+      fetchLeagues();
+    }
+  }, [apiUrl, dispatch, accessToken, isAuthenticated]);
 
   const handleCheckboxChange = (event) => {
+    // This sets the current league by name
+    // The reducer will find the full league object from the leagues list
     dispatch(setCurrentLeague(event.target.name));
   };
 
   const handleSignUp = async () => {
     if (!currentLeague) {
-      toast.error('League not selected', {
-        position: "top-center"
+      toast.error("League not selected", {
+        position: "top-center",
       });
       return;
     }
 
     try {
       const response = await fetch(`${apiUrl}/user/league-assign`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ name: currentLeague.name }),
       });
@@ -75,27 +85,29 @@ function AgentLeagueSignUp() {
 
       if (data.status === "success") {
         toast.success(data.message, {
-          position: "top-center"
+          position: "top-center",
         });
-        navigate('/AgentSubmission');
+        // The currentLeague in Redux already has the full object with game property
+        navigate("/AgentSubmission");
       } else if (data.status === "failed") {
         toast.error(data.message, {
-          position: "top-center"
+          position: "top-center",
         });
       } else if (data.detail === "Invalid token") {
-        navigate('/AgentLogin');
+        navigate("/AgentLogin");
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
+      toast.error("Network error occurred. Please try again.");
     }
   };
 
-
+  // Filter leagues for demo users if needed
   const displayLeagues = isDemo
-    ? allLeagues.filter(league => league.name.toLowerCase().includes('_demo'))
-    : allLeagues.filter(league => !league.name.toLowerCase().includes('_demo'));
-
-
+    ? allLeagues.filter((league) => league.name.toLowerCase().includes("_demo"))
+    : allLeagues.filter(
+        (league) => !league.name.toLowerCase().includes("_demo")
+      );
 
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center bg-ui-lighter">
@@ -114,7 +126,8 @@ function AgentLeagueSignUp() {
                 </p>
               </div>
               <p className="text-ui-dark mt-2">
-                Only demo leagues are displayed. Your progress will be available for the duration of your demo session.
+                Only demo leagues are displayed. Your progress will be available
+                for the duration of your demo session.
               </p>
             </div>
           )}
@@ -126,7 +139,11 @@ function AgentLeagueSignUp() {
                   key={league.id}
                   className={`
                     flex items-center p-4 rounded-lg cursor-pointer
-                    ${isDemo ? 'bg-notice-orange hover:bg-notice-orange/90' : 'bg-league-blue hover:bg-league-hover'}
+                    ${
+                      isDemo
+                        ? "bg-notice-orange hover:bg-notice-orange/90"
+                        : "bg-league-blue hover:bg-league-hover"
+                    }
                     transform transition-all duration-200 hover:scale-105
                     shadow-md
                   `}
@@ -150,7 +167,9 @@ function AgentLeagueSignUp() {
               ))
             ) : (
               <div className="col-span-3 text-center p-4">
-                <p className="text-ui-dark">No leagues available at this time.</p>
+                <p className="text-ui-dark">
+                  No leagues available at this time.
+                </p>
               </div>
             )}
           </div>
@@ -165,7 +184,11 @@ function AgentLeagueSignUp() {
               <button
                 onClick={handleSignUp}
                 className={`w-full py-3 px-4 text-lg font-medium text-white 
-                         ${isDemo ? 'bg-notice-orange hover:bg-notice-orange/90' : 'bg-primary hover:bg-primary-hover'}
+                         ${
+                           isDemo
+                             ? "bg-notice-orange hover:bg-notice-orange/90"
+                             : "bg-primary hover:bg-primary-hover"
+                         }
                          rounded-lg transition-colors duration-200
                          shadow-md hover:shadow-lg`}
               >
