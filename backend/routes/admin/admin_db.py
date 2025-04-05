@@ -61,6 +61,22 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
         institution.set_password(institution_data.password)
 
         session.add(institution)
+        session.flush()  # Get the ID for the new institution
+
+        # Create unassigned league for this institution
+        unassigned_league = League(
+            name="unassigned",
+            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_SYDNEY_TZ)
+                + timedelta(days=365)  # Long expiry for unassigned league
+            ),
+            game="greedy_pig",  # Default game
+            league_type=LeagueType.INSTITUTION,
+            institution_id=institution.id,
+        )
+        session.add(unassigned_league)
+
         session.commit()
         session.refresh(institution)
 

@@ -468,3 +468,88 @@ def generate_signup_link(session: Session, league_id: int, institution_id: int) 
         session.rollback()
         logger.error(f"Error generating signup link: {e}")
         raise
+
+
+def delete_league(session: Session, league_name: str, institution_id: int) -> str:
+    """Delete a league and move its teams to the unassigned league"""
+    # Find the league to delete
+    league = session.exec(
+        select(League)
+        .where(League.name == league_name)
+        .where(League.institution_id == institution_id)
+    ).first()
+
+    if not league:
+        raise LeagueNotFoundError(
+            f"League '{league_name}' not found in your institution"
+        )
+
+    # Can't delete the unassigned league
+    if league.name.lower() == "unassigned":
+        raise ValueError("Cannot delete the 'unassigned' league")
+
+    # Find the unassigned league for this institution
+    unassigned_league = session.exec(
+        select(League)
+        .where(League.name == "unassigned")
+        .where(League.institution_id == institution_id)
+    ).first()
+
+    if not unassigned_league:
+        # Create an unassigned league if it doesn't exist
+        unassigned_league = League(
+            name="unassigned",
+            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365)  # Long expiry
+            ),
+            game="greedy_pig",  # Default game
+            institution_id=institution_id,
+            league_type=LeagueType.INSTITUTION,
+        )
+        session.add(unassigned_league)
+        session.flush()  # Get the ID for the new league
+
+    try:
+        # Get all teams in the league
+        teams = session.exec(select(Team).where(Team.league_id == league.id)).all()
+
+        team_count = len(teams)
+
+        # Get simulation results for this league
+        sim_results = session.exec(
+            select(SimulationResult).where(SimulationResult.league_id == league.id)
+        ).all()
+
+        # Delete all simulation result items for simulation results in this league
+        for sim_result in sim_results:
+            session.exec(
+                delete(SimulationResultItem).where(
+                    SimulationResultItem.simulation_result_id == sim_result.id
+                )
+            )
+
+        # Delete all simulation results for this league
+        session.exec(
+            delete(SimulationResult).where(SimulationResult.league_id == league.id)
+        )
+
+        # Delete all submissions from teams in this league and move teams to unassigned league
+        for team in teams:
+            # Delete team's submissions
+            session.exec(delete(Submission).where(Submission.team_id == team.id))
+
+            # Move team to unassigned league
+            team.league_id = unassigned_league.id
+            session.add(team)
+
+        # Delete the league
+        session.delete(league)
+        session.commit()
+
+        return f"League '{league_name}' deleted and {team_count} teams moved to the unassigned league"
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error deleting league: {e}")
+        raise

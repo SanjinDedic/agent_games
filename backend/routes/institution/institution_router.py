@@ -19,6 +19,7 @@ from backend.routes.institution.institution_db import (
     assign_team_to_league,
     create_league,
     create_team,
+    delete_league,
     delete_team,
     generate_signup_link,
     get_all_league_results,
@@ -29,8 +30,16 @@ from backend.routes.institution.institution_db import (
     update_expiry_date,
 )
 from backend.routes.institution.institution_models import (
-    ExpiryDate, LeagueName, LeagueResults, LeagueSignUp, SimulationConfig,
-    TeamDelete, TeamLeagueAssignment, TeamSignup)
+    ExpiryDate,
+    LeagueDelete,
+    LeagueName,
+    LeagueResults,
+    LeagueSignUp,
+    SimulationConfig,
+    TeamDelete,
+    TeamLeagueAssignment,
+    TeamSignup,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -385,4 +394,28 @@ async def generate_signup_link_endpoint(
         return ErrorResponseModel(
             status="error",
             message=f"Server error while generating signup link: {str(e)}",
+        )
+
+
+@institution_router.post("/delete-league", response_model=ResponseModel)
+@verify_admin_or_institution
+async def delete_league_endpoint(
+    league: LeagueDelete,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Delete a league and move all teams to the unassigned league"""
+    try:
+        institution_id = current_user.get("institution_id")
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        msg = delete_league(session, league.name, institution_id)
+        return ResponseModel(status="success", message=msg)
+    except Exception as e:
+        logger.error(f"Error deleting league: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to delete league: {str(e)}"
         )
