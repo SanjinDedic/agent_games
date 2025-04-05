@@ -1,5 +1,6 @@
 import json
 import logging
+import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, Union
 
@@ -41,33 +42,43 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
     # Check if the institution has a league with this name already
     existing_league = session.exec(
         select(League)
-        .where(League.name == league_data.name)
+        .where(League.name == league_data["name"])
         .where(League.institution_id == institution_id)
     ).first()
 
     if existing_league:
-        raise LeagueExistsError(f"League with name '{league_data.name}' already exists for this institution")
+        raise LeagueExistsError(
+            f"League with name '{league_data['name']}' already exists for this institution"
+        )
 
     try:
         # Validate game name
-        GameFactory.get_game_class(league_data.game)
-        
+        GameFactory.get_game_class(league_data["game"])
+
+        # Generate unique signup token
+        signup_token = secrets.token_urlsafe(16)
+
         # Create the league
         league = League(
-            name=league_data.name,
+            name=league_data["name"],
             created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
             expiry_date=(
                 datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24)
             ),  # Default 24 hour expiry
-            game=league_data.game,
+            game=league_data["game"],
             institution_id=institution_id,
             league_type=LeagueType.INSTITUTION,
+            signup_link=signup_token,
         )
 
         session.add(league)
         session.flush()
         session.commit()
-        return {"league_id": league.id, "name": league.name}
+        return {
+            "league_id": league.id,
+            "name": league.name,
+            "signup_token": signup_token,
+        }
 
     except Exception as e:
         session.rollback()

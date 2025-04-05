@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import httpx
 from fastapi import APIRouter, Depends
@@ -46,7 +47,8 @@ async def create_league_endpoint(
         if not institution_id:
             return ErrorResponseModel(status="error", message="Institution ID not found in token")
 
-        data = create_league(session, league, institution_id)
+        data = create_league(session, league.model_dump(), institution_id)
+
         return ResponseModel(
             status="success", message="League created successfully", data=data
         )

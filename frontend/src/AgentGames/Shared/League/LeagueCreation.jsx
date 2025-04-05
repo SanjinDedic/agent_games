@@ -1,147 +1,265 @@
-// src/AgentGames/Shared/League/LeagueCreation.jsx
-import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { useSelector } from 'react-redux';
-import useLeagueAPI from '../hooks/useLeagueAPI';
+import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { toast } from "react-toastify";
 
-/**
- * Shared component for creating a new league
- * 
- * @param {Object} props - Component props
- * @param {string} props.userRole - User role ('admin' or 'institution')
- */
-const LeagueCreation = ({ userRole }) => {
+const LeagueCreation = () => {
+  const token = useSelector((state) => state.auth.token);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
+
   const [games, setGames] = useState([]);
   const [leagueInfo, setLeagueInfo] = useState({
-    leagueName: '',
-    gameName: '',
+    leagueName: "",
+    gameName: "",
     selectedDate: null,
   });
-  
-  // Use the shared API hook
-  const { createLeague, isLoading } = useLeagueAPI(userRole);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [signupUrl, setSignupUrl] = useState("");
 
-  useEffect(() => {
-    // Fetch available games
-    fetch(`${apiUrl}/user/get-available-games`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          setGames(data.data.games);
-          setLeagueInfo(prev => ({
-            ...prev,
-            gameName: data.data.games[0]
-          }));
-        } else if (data.status === "failed") {
-          toast.error(data.message);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching games:', error);
-        toast.error('Failed to fetch available games');
+  const fetchGames = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/user/get-available-games`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
       });
-  }, [apiUrl]);
 
-  const handleGameDropdownChange = (event) => {
-    setLeagueInfo(prev => ({
-      ...prev,
-      gameName: event.target.value
-    }));
+      const data = await response.json();
+
+      if (data.status === "success") {
+        const gamesList = data.data.games || [];
+        setGames(gamesList);
+
+        // Set default game to first in list if available
+        if (gamesList.length > 0 && !leagueInfo.gameName) {
+          setLeagueInfo((prev) => ({
+            ...prev,
+            gameName: gamesList[0],
+          }));
+        }
+      } else {
+        setError("Failed to fetch games list");
+      }
+    } catch (err) {
+      console.error("Error fetching games:", err);
+      setError("Error connecting to server");
+    }
   };
 
-  const handleChange = (event) => {
-    setLeagueInfo(prev => ({
+  // Fetch available games on component mount
+  useEffect(() => {
+    fetchGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setLeagueInfo((prev) => ({
       ...prev,
-      [event.target.name]: event.target.value,
+      [name]: value,
     }));
+    setError("");
+    setSignupUrl(""); // Clear previous signup URL when form changes
   };
 
   const handleDateChange = (date) => {
-    setLeagueInfo(prev => ({
+    setLeagueInfo((prev) => ({
       ...prev,
-      selectedDate: date
+      selectedDate: date,
     }));
+    setError("");
+    setSignupUrl(""); // Clear previous signup URL when form changes
+  };
+
+  const validateForm = () => {
+    if (!leagueInfo.leagueName.trim()) {
+      setError("League name is required");
+      return false;
+    }
+
+    if (!leagueInfo.gameName) {
+      setError("Game selection is required");
+      return false;
+    }
+
+    return true;
   };
 
   const handleAddLeague = async () => {
-    if (!leagueInfo.leagueName.trim()) {
-      toast.error('Please enter the name of the league');
-      return;
-    }
+    if (!validateForm()) return;
 
-    const leagueData = {
-      name: leagueInfo.leagueName,
-      game: leagueInfo.gameName
-    };
-    
-    // If expiry date is provided, add it to the request
-    if (leagueInfo.selectedDate) {
-      leagueData.expiry_date = leagueInfo.selectedDate.toISOString();
-    }
-    
-    const result = await createLeague(leagueData);
-    
-    if (result.success) {
-      // Reset form after successful creation
-      setLeagueInfo({
-        leagueName: '',
-        gameName: games[0] || '',
-        selectedDate: null
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/institution/league-create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: leagueInfo.leagueName,
+          game: leagueInfo.gameName,
+          expiry_date: leagueInfo.selectedDate
+            ? leagueInfo.selectedDate.toISOString()
+            : undefined,
+        }),
       });
+
+      const data = await response.json();
+
+      if (data.status === "success") {
+        toast.success("League created successfully!");
+
+        // Create the signup URL from the signup token
+        if (data.data && data.data.signup_token) {
+          // Using window.location to dynamically build the URL based on current domain
+          const baseUrl = `${window.location.protocol}//${window.location.host}`;
+          const signupPath = `/TeamSignup/${data.data.signup_token}`;
+          setSignupUrl(`${baseUrl}${signupPath}`);
+        }
+
+        // Reset form after successful creation
+        setLeagueInfo({
+          leagueName: "",
+          gameName: games[0] || "",
+          selectedDate: null,
+        });
+      } else {
+        setError(data.message || "Failed to create league");
+      }
+    } catch (err) {
+      console.error("Error creating league:", err);
+      setError("Error connecting to server");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4">
-      <h3 className="font-medium text-lg text-ui-dark mb-4">Create New League</h3>
-      <div className="space-y-3">
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <h2 className="text-xl font-bold text-ui-dark mb-4">Create New League</h2>
+
+      <div className="mb-4">
+        <label htmlFor="leagueName" className="block text-ui-dark mb-1">
+          League Name
+        </label>
         <input
           type="text"
+          id="leagueName"
           name="leagueName"
           value={leagueInfo.leagueName}
           onChange={handleChange}
-          placeholder="Enter League name"
-          className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+          className="w-full p-2 border border-ui-light rounded"
+          placeholder="Enter league name"
         />
+      </div>
 
-        {games && games.length > 0 && (
-          <select
-            onChange={handleGameDropdownChange}
-            value={leagueInfo.gameName}
-            className="w-full p-3 border border-ui-light rounded-lg text-base bg-white shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
-          >
-            {games.map((name, index) => (
-              <option key={index} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        )}
+      <div className="mb-4">
+        <label htmlFor="gameName" className="block text-ui-dark mb-1">
+          Game
+        </label>
+        <select
+          id="gameName"
+          name="gameName"
+          value={leagueInfo.gameName}
+          onChange={handleChange}
+          className="w-full p-2 border border-ui-light rounded"
+        >
+          <option value="" disabled>
+            Select a game
+          </option>
+          {games.map((game, index) => (
+            <option key={index} value={game}>
+              {game}
+            </option>
+          ))}
+        </select>
+      </div>
 
+      <div className="mb-4">
+        <label htmlFor="expiryDate" className="block text-ui-dark mb-1">
+          Expiry Date (Optional)
+        </label>
         <DatePicker
+          id="expiryDate"
           selected={leagueInfo.selectedDate}
           onChange={handleDateChange}
-          dateFormat="dd/MM/yyyy"
-          placeholderText="Select expiry date (optional)"
-          className="w-full p-3 border border-ui-light rounded-lg text-base shadow-sm focus:ring-2 focus:ring-primary focus:border-primary"
+          showTimeSelect
+          dateFormat="MMMM d, yyyy h:mm aa"
+          className="w-full p-2 border border-ui-light rounded"
+          placeholderText="Select an expiry date and time"
+          minDate={new Date()}
         />
-
-        <button
-          onClick={handleAddLeague}
-          disabled={isLoading}
-          className="w-full bg-success hover:bg-success-hover text-white py-3 rounded-lg text-base font-medium transition-colors shadow-sm focus:ring-2 focus:ring-success focus:ring-offset-2 disabled:bg-ui-light disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'CREATING...' : 'ADD LEAGUE'}
-        </button>
+        <p className="text-sm text-ui mt-1">
+          If not specified, the league will expire in 24 hours.
+        </p>
       </div>
+
+      {error && (
+        <div className="mb-4 p-2 bg-danger-light text-danger rounded">
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleAddLeague}
+        disabled={isLoading}
+        className="py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors disabled:bg-ui-light"
+      >
+        {isLoading ? "Creating..." : "Create League"}
+      </button>
+
+      {signupUrl && (
+        <div className="mt-4 p-4 bg-success-light rounded-lg">
+          <h4 className="font-medium text-success mb-2">
+            League Created Successfully
+          </h4>
+          <p className="text-sm text-ui-dark mb-2">
+            Share this link for teams to sign up directly:
+          </p>
+          <div className="flex items-center">
+            <input
+              type="text"
+              value={signupUrl}
+              readOnly
+              className="flex-1 p-2 border border-ui-light rounded-lg text-sm bg-white"
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(signupUrl);
+                toast.success("Signup URL copied to clipboard!");
+              }}
+              className="ml-2 p-2 bg-primary hover:bg-primary-hover text-white rounded-lg"
+              title="Copy to clipboard"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+            </button>
+          </div>
+          <p className="mt-2 text-sm text-ui-dark">
+            Teams who use this link will be directly assigned to this league
+            upon signup.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

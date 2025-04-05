@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 import httpx
 from fastapi import APIRouter, Depends
@@ -6,20 +7,21 @@ from sqlmodel import Session
 
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_student,
     verify_ai_agent_service_or_student,
     verify_any_role,
 )
-from backend.routes.auth.auth_db import get_db
+from backend.routes.auth.auth_db import create_access_token, get_db
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
     allow_submission,
     assign_team_to_league,
-    create_team_and_assign,
+    create_team_and_assign_to_league,
     get_all_leagues,
     get_all_published_results,
     get_latest_submissions_for_league,
@@ -304,6 +306,7 @@ async def get_team_submission_endpoint(
         )
 
 
+# Update in user_router.py
 @user_router.post("/direct-league-signup", response_model=ResponseModel)
 async def direct_league_signup(
     signup: DirectLeagueSignup,
@@ -311,25 +314,88 @@ async def direct_league_signup(
 ):
     """Create a team and directly assign it to a league using the signup token"""
     try:
-        # Get the league by signup token
+        # Find the league by token
         league = get_league_by_signup_token(session, signup.signup_token)
 
-        # Create team and assign to league
-        team = create_team_and_assign(
+        if not league:
+            return ErrorResponseModel(
+                status="error", message="Invalid signup link or league not found"
+            )
+
+        # Fix the datetime comparison by ensuring both datetimes have timezone info
+        now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+
+        # If league.expiry_date doesn't have timezone info, add it
+        expiry_date = league.expiry_date
+        if expiry_date.tzinfo is None:
+            expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
+
+        # Now compare with both dates having timezone info
+        if expiry_date < now:
+            return ErrorResponseModel(
+                status="error",
+                message="This league has expired and is no longer accepting new teams",
+            )
+
+        # Create the team and assign to league
+        team = create_team_and_assign_to_league(
             session, signup.team_name, signup.password, league.id
+        )
+
+        # Generate authentication token for the new team
+        # This allows automatic login after signup
+        access_token_expires = timedelta(minutes=60)
+        access_token = create_access_token(
+            data={"sub": team.name, "role": "student"},
+            expires_delta=access_token_expires,
         )
 
         return ResponseModel(
             status="success",
-            message=f"Team '{team.name}' successfully created and assigned to league '{league.name}'",
+            message=f"Team '{team.name}' created and assigned to league '{league.name}' successfully!",
             data={
                 "team_id": team.id,
+                "team_name": team.name,
                 "league_id": league.id,
                 "league_name": league.name,
+                "access_token": access_token,
+                "token_type": "bearer",
             },
         )
     except Exception as e:
-        logger.error(f"Error during direct league signup: {e}")
+        logger.error(f"Error in direct league signup: {e}")
         return ErrorResponseModel(
-            status="error", message=f"Failed to sign up: {str(e)}"
+            status="error", message=f"Failed to complete signup: {str(e)}"
+        )
+
+
+@user_router.get("/league-info/{signup_token}", response_model=ResponseModel)
+async def get_league_by_token(
+    signup_token: str,
+    session: Session = Depends(get_db),
+):
+    """Get league information by its signup token"""
+    try:
+        league = get_league_by_signup_token(session, signup_token)
+
+        if not league:
+            return ErrorResponseModel(
+                status="error", message="Invalid signup link or league not found"
+            )
+
+        return ResponseModel(
+            status="success",
+            message="League information retrieved successfully",
+            data={
+                "id": league.id,
+                "name": league.name,
+                "game": league.game,
+                "created_date": league.created_date,
+                "expiry_date": league.expiry_date,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving league by token: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve league information: {str(e)}"
         )

@@ -8,6 +8,13 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import League, Submission, Team, TeamType
 
+
+class TeamError(Exception):
+    """Base exception for all team-related errors"""
+
+    pass
+
+
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
@@ -298,18 +305,25 @@ def get_league_by_signup_token(session: Session, signup_token: str) -> League:
     return league
 
 
-def create_team_and_assign(
+def create_team_and_assign_to_league(
     session: Session, team_name: str, password: str, league_id: int
 ) -> Team:
-    """Create a team and assign it to a league in one operation"""
-    # Get the league first to retrieve the institution_id
+    """Create a new team and directly assign it to a specific league"""
+    # First get the league to retrieve institution_id
     league = session.get(League, league_id)
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-    # Create the team
+    # Check if team name already exists
+    existing_team = session.exec(select(Team).where(Team.name == team_name)).first()
+
+    if existing_team:
+        raise TeamError(f"Team with name '{team_name}' already exists")
+
+    # Create the team with connection to both league and institution
     team = Team(
         name=team_name,
+        school_name=team_name,  # Using team name as school name by default
         league_id=league_id,
         institution_id=league.institution_id,
         team_type=TeamType.STUDENT,
@@ -319,4 +333,5 @@ def create_team_and_assign(
     session.add(team)
     session.commit()
     session.refresh(team)
+
     return team
