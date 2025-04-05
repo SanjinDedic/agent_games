@@ -9,9 +9,11 @@ import Institutions from './AgentGames/Institutions';
 import Institution from "./AgentGames/Institution/Institution";
 import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
 import InstitutionLeague from "./AgentGames/Institution/InstitutionLeague";
+import InstitutionLeagueSimulation from "./AgentGames/Institution/InstitutionLeagueSimulation";
 import Leaderboards from './AgentGames/Leaderboards';
 import Admin from './AgentGames/Admin/Admin';
 import AdminLeague from './AgentGames/Admin/AdminLeague';
+import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import StyleGuide from './StyleGuide';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -51,12 +53,20 @@ function App() {
           {/* Admin Routes */}
           <Route path="Admin" element={<Admin />} />
           <Route path="AdminLeague" element={<AdminLeague />} />
+          <Route
+            path="AdminLeagueSimulation"
+            element={<AdminLeagueSimulation />}
+          />
           <Route path="AdminInstitutions" element={<AdminInstitutions />} />
           <Route path="AdminDemoUsers" element={<AdminDemoUsers />} />
           <Route path="AdminDockerStatus" element={<DockerStatus />} />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
           <Route path="InstitutionLeague" element={<InstitutionLeague />} />
+          <Route
+            path="InstitutionLeagueSimulation"
+            element={<InstitutionLeagueSimulation />}
+          />
           <Route path="InstitutionTeam" element={<InstitutionTeam />} />
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />

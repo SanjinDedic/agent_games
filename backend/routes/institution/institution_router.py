@@ -15,16 +15,19 @@ from backend.routes.auth.auth_core import (
     verify_institution_role,
 )
 from backend.routes.auth.auth_db import get_db
-from backend.routes.institution.institution_db import (assign_team_to_league,
-                                                       create_league,
-                                                       create_team,
-                                                       delete_team,
-                                                       get_all_league_results,
-                                                       get_all_teams,
-                                                       get_league_by_id,
-                                                       publish_sim_results,
-                                                       save_simulation_results,
-                                                       update_expiry_date)
+from backend.routes.institution.institution_db import (
+    assign_team_to_league,
+    create_league,
+    create_team,
+    delete_team,
+    generate_signup_link,
+    get_all_league_results,
+    get_all_teams,
+    get_league_by_id,
+    publish_sim_results,
+    save_simulation_results,
+    update_expiry_date,
+)
 from backend.routes.institution.institution_models import (
     ExpiryDate, LeagueName, LeagueResults, LeagueSignUp, SimulationConfig,
     TeamDelete, TeamLeagueAssignment, TeamSignup)
@@ -337,4 +340,49 @@ async def assign_team_endpoint(
         logger.error(f"Error assigning team to league: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to assign team to league: {str(e)}"
+        )
+
+
+@institution_router.post("/generate-signup-link", response_model=ResponseModel)
+@verify_admin_or_institution
+async def generate_signup_link_endpoint(
+    request: dict,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Generate a signup link for a league"""
+    try:
+        # Handle both admin and institution roles
+        if current_user["role"] == "admin":
+            institution_id = 1
+        else:
+            institution_id = current_user.get("institution_id")
+
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        # Get the league ID from the request
+        league_id = request.get("league_id")
+        if not league_id:
+            return ErrorResponseModel(status="error", message="League ID is required")
+
+        try:
+            result = generate_signup_link(session, league_id, institution_id)
+            return ResponseModel(
+                status="success",
+                message=f"Signup link generated for league {result['league_name']}",
+                data={"signup_token": result["signup_token"]},
+            )
+        except Exception as e:
+            return ErrorResponseModel(
+                status="error", message=f"Failed to generate signup link: {str(e)}"
+            )
+
+    except Exception as e:
+        logger.error(f"Error in signup link endpoint: {e}")
+        return ErrorResponseModel(
+            status="error",
+            message=f"Server error while generating signup link: {str(e)}",
         )

@@ -421,19 +421,19 @@ def assign_team_to_league(session: Session, team_id: int, league_id: int, instit
     team = session.get(Team, team_id)
     if not team:
         raise TeamError(f"Team with ID {team_id} not found")
-    
+
     # Verify the team belongs to this institution
     if team.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to modify this team")
-    
+
     league = session.get(League, league_id)
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
-    
+
     # Verify the league belongs to this institution
     if league.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to assign teams to this league")
-    
+
     try:
         team.league_id = league.id
         session.add(team)
@@ -442,4 +442,29 @@ def assign_team_to_league(session: Session, team_id: int, league_id: int, instit
     except Exception as e:
         session.rollback()
         logger.error(f"Error assigning team to league: {e}")
+        raise
+
+
+def generate_signup_link(session: Session, league_id: int, institution_id: int) -> Dict:
+    """Generate a new signup link for a league"""
+    # Get the league
+    league = session.get(League, league_id)
+    if not league:
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
+
+    # Check if the league belongs to this institution
+    if league.institution_id != institution_id:
+        raise InstitutionAccessError("You don't have permission to access this league")
+
+    try:
+        # Generate a new signup token
+        signup_token = secrets.token_urlsafe(16)
+        league.signup_link = signup_token
+        session.add(league)
+        session.commit()
+
+        return {"signup_token": signup_token, "league_name": league.name}
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error generating signup link: {e}")
         raise

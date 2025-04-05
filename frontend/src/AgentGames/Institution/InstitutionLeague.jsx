@@ -1,12 +1,12 @@
-// src/AgentGames/Institution/InstitutionLeague.jsx (New Version)
+// src/AgentGames/Institution/InstitutionLeague.jsx (Updated)
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { checkTokenExpiry } from "../../slices/authSlice";
-import LeagueManagement from "../Shared/League/LeagueManagement";
+import LeagueAttributes from "../Shared/League/LeagueAttributes";
 
 /**
- * Institution-specific wrapper around the shared LeagueManagement component
+ * Institution-specific wrapper around the league attributes management component
  */
 function InstitutionLeague() {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ function InstitutionLeague() {
   };
 
   return (
-    <LeagueManagement
+    <LeagueAttributes
       userRole="institution"
       redirectPath="/Institution"
       onUnauthorized={handleUnauthorized}

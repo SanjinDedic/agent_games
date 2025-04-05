@@ -13,11 +13,16 @@ function AgentGamesNavbar() {
 
   const adminRoutes = [
     "/AdminLeague",
+    "/AdminLeagueSimulation",
     "/AdminDockerStatus",
     "/AdminDemoUsers",
     "/AdminInstitutions",
   ];
-  const institutionRoutes = ["/InstitutionTeam", "/InstitutionLeague"];
+  const institutionRoutes = [
+    "/InstitutionTeam",
+    "/InstitutionLeague",
+    "/InstitutionLeagueSimulation",
+  ];
   
   const isAdminRoute = adminRoutes.includes(location.pathname);
   const isInstitutionRoute = institutionRoutes.includes(location.pathname);
@@ -55,7 +60,10 @@ function AgentGamesNavbar() {
                   Institutions
                 </Link>
                 <Link to="/AdminLeague" className={navLinkClasses}>
-                  League Section
+                  League Management
+                </Link>
+                <Link to="/AdminLeagueSimulation" className={navLinkClasses}>
+                  League Simulation
                 </Link>
                 <Link to="/AdminDockerStatus" className={navLinkClasses}>
                   Docker Status
@@ -71,7 +79,13 @@ function AgentGamesNavbar() {
                   Team Section
                 </Link>
                 <Link to="/InstitutionLeague" className={navLinkClasses}>
-                  League Section
+                  League Management
+                </Link>
+                <Link
+                  to="/InstitutionLeagueSimulation"
+                  className={navLinkClasses}
+                >
+                  League Simulation
                 </Link>
               </>
             ) : (

@@ -1,14 +1,14 @@
-// src/AgentGames/Admin/AdminLeague.jsx (Updated)
+// src/AgentGames/Institution/InstitutionLeagueSimulation.jsx
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { checkTokenExpiry } from "../../slices/authSlice";
-import LeagueAttributes from "../Shared/League/LeagueAttributes";
+import LeagueSimulationPage from "../Shared/League/LeagueSimulationPage";
 
 /**
- * Admin-specific wrapper around the league attributes management component
+ * Institution-specific wrapper around the league simulation page component
  */
-function AdminLeague() {
+function InstitutionLeagueSimulation() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.currentUser);
@@ -17,23 +17,27 @@ function AdminLeague() {
   // Check authentication and authorization on component mount
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-      navigate("/Admin");
+    if (
+      !isAuthenticated ||
+      currentUser.role !== "institution" ||
+      tokenExpired
+    ) {
+      navigate("/Institution");
     }
   }, [navigate, dispatch, isAuthenticated, currentUser]);
 
   // Handle unauthorized access
   const handleUnauthorized = () => {
-    navigate("/Admin");
+    navigate("/Institution");
   };
 
   return (
-    <LeagueAttributes
-      userRole="admin"
-      redirectPath="/Admin"
+    <LeagueSimulationPage
+      userRole="institution"
+      redirectPath="/Institution"
       onUnauthorized={handleUnauthorized}
     />
   );
 }
 
-export default AdminLeague;
+export default InstitutionLeagueSimulation;

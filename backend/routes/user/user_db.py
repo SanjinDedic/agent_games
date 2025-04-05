@@ -207,28 +207,23 @@ def process_simulation_results(sim, league_name: str, active: bool = None) -> di
     return result_data
 
 
-# routes/user/user_db.py
+def get_all_leagues(session: Session):
+    """Get all leagues"""
+    leagues = session.exec(select(League).where(League.deleted_date == None)).all()
 
-
-def get_all_leagues(session: Session) -> Dict:
-    """Get all leagues - reusing existing query logic"""
-    try:
-        leagues = session.exec(select(League)).all()
-        return {
-            "leagues": [
-                {
-                    "id": league.id,
-                    "name": league.name,
-                    "game": league.game,
-                    "created_date": league.created_date,
-                    "expiry_date": league.expiry_date,
-                }
-                for league in leagues
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Error retrieving leagues: {e}")
-        raise
+    return {
+        "leagues": [
+            {
+                "id": league.id,
+                "name": league.name,
+                "game": league.game,
+                "created_date": league.created_date,
+                "expiry_date": league.expiry_date,
+                "signup_link": league.signup_link,  # Make sure to include this
+            }
+            for league in leagues
+        ]
+    }
 
 
 def get_team(session, team_name):
