@@ -296,6 +296,41 @@ export const useLeagueAPI = (userRole) => {
       setIsLoading(false);
     }
   }, [apiUrl, accessToken]);
+
+  /**
+   * Delete a league
+   */
+  const deleteLeague = useCallback(async (leagueName) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`${apiUrl}/institution/delete-league`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ name: leagueName }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        // Refresh leagues after deletion
+        await fetchUserLeagues();
+        return { success: true, message: data.message };
+      } else {
+        toast.error(data.message || 'Failed to delete league');
+        return { success: false, error: data.message };
+      }
+    } catch (error) {
+      console.error('Error deleting league:', error);
+      toast.error('Network error while deleting league');
+      return { success: false, error: "Network error" };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken, fetchUserLeagues]);
   
   return {
     isLoading,
@@ -306,7 +341,8 @@ export const useLeagueAPI = (userRole) => {
     createLeague,
     publishResults,
     updateExpiryDate,
-    assignTeamToLeague
+    assignTeamToLeague,
+    deleteLeague
   };
 };
 

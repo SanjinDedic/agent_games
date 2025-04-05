@@ -1,17 +1,17 @@
-// src/AgentGames/Shared/League/LeagueSimulation.jsx
+// src/AgentGames/Shared/League/SimulationRunner.jsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addSimulationResult } from '../../../slices/leaguesSlice';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 
 /**
- * Shared component for running league simulations
+ * Component for running league simulations
  * 
  * @param {Object} props - Component props
  * @param {Object} props.league - The current league object
  * @param {string} props.userRole - User role ('admin' or 'institution')
  */
-const LeagueSimulation = ({ league, userRole }) => {
+const SimulationRunner = ({ league, userRole }) => {
   const dispatch = useDispatch();
   const rewards = useSelector((state) => state.leagues.currentRewards);
   const [simulationNumber, setSimulationNumber] = useState(1);
@@ -47,6 +47,7 @@ const LeagueSimulation = ({ league, userRole }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4">
+      <h2 className="text-xl font-semibold text-ui-dark mb-4">Run Simulation</h2>
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <button
@@ -86,4 +87,4 @@ const LeagueSimulation = ({ league, userRole }) => {
   );
 };
 
-export default LeagueSimulation;
+export default SimulationRunner;

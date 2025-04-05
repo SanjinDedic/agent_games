@@ -8,15 +8,12 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { useNavigate } from 'react-router-dom';
 
 // Import Redux actions 
-import { 
-  setLeagues, 
-  setCurrentLeague, 
-  updateExpiryDate 
-} from '../../../slices/leaguesSlice';
+import { setLeagues, updateExpiryDate } from "../../../slices/leaguesSlice";
 
 // Import shared components
 import LeagueTeams from './LeagueTeams';
 import LeagueCreation from './LeagueCreation';
+import LeagueCardList from "./LeagueCardList";
 import useLeagueAPI from '../hooks/useLeagueAPI';
 
 const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
@@ -25,14 +22,18 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector((state) => state.auth.token);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
-  const allLeagues = useSelector((state) => state.leagues.list);
   
   const [signupLink, setSignupLink] = useState("");
   const [showSignupLink, setShowSignupLink] = useState(false);
   const [isLoadingSignupLink, setIsLoadingSignupLink] = useState(false);
   
   // Use the shared API hook
-  const { fetchUserLeagues, updateExpiryDate: updateLeagueExpiry, isLoading } = useLeagueAPI(userRole);
+  const {
+    fetchUserLeagues,
+    updateExpiryDate: updateLeagueExpiry,
+    deleteLeague,
+    isLoading,
+  } = useLeagueAPI(userRole);
 
   moment.tz.setDefault("Australia/Sydney");
 
@@ -58,12 +59,12 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
     try {
       const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === "success") {
         dispatch(setLeagues(data.data.leagues));
       } else if (data.status === "failed") {
@@ -72,51 +73,68 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
         onUnauthorized();
       }
     } catch (error) {
-      console.error('Error fetching leagues:', error);
+      console.error("Error fetching leagues:", error);
     }
   };
 
   // Generate signup link for a league
   const generateSignupLink = async (leagueId, leagueName) => {
     if (!leagueId) return;
-    
+
     setIsLoadingSignupLink(true);
     try {
-      const response = await fetch(`${apiUrl}/institution/generate-signup-link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ league_id: leagueId }),
-      });
-      
+      const response = await fetch(
+        `${apiUrl}/institution/generate-signup-link`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ league_id: leagueId }),
+        }
+      );
+
       const data = await response.json();
-      
+
       if (data.status === "success" && data.data?.signup_token) {
         const baseUrl = `${window.location.protocol}//${window.location.host}`;
         const signupPath = `/TeamSignup/${data.data.signup_token}`;
         const fullUrl = `${baseUrl}${signupPath}`;
-        
+
         setSignupLink(fullUrl);
         setShowSignupLink(true);
-        
+
         toast.success(`Signup link generated for ${leagueName}`);
       } else {
-        toast.error(data.message || 'Failed to generate signup link');
+        toast.error(data.message || "Failed to generate signup link");
       }
     } catch (error) {
-      console.error('Error generating signup link:', error);
-      toast.error('Network error while generating signup link');
+      console.error("Error generating signup link:", error);
+      toast.error("Network error while generating signup link");
     } finally {
       setIsLoadingSignupLink(false);
     }
   };
 
-  // Handle league selection change
-  const handleDropdownChange = (event) => {
-    dispatch(setCurrentLeague(event.target.value));
-    setShowSignupLink(false);
+  // Handle league deletion
+  const handleDeleteLeague = async () => {
+    if (!currentLeague) return;
+
+    if (currentLeague.name.toLowerCase() === "unassigned") {
+      toast.error("Cannot delete the 'unassigned' league");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete league "${currentLeague.name}"? All teams will be moved to the unassigned league.`
+      )
+    ) {
+      return;
+    }
+
+    await deleteLeague(currentLeague.name);
   };
 
   // Handle expiry date update
@@ -152,79 +170,104 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   return (
     <div className="min-h-screen bg-ui-lighter">
       <div className="max-w-[1800px] mx-auto px-6 pt-20 pb-8">
-        {/* Header and League Selection */}
+        {/* Header section */}
         <div className="mb-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-ui-dark mb-4">League Management</h1>
-            <button 
+            <h1 className="text-2xl font-bold text-ui-dark mb-4">
+              League Management
+            </h1>
+            <button
               onClick={handleGoToSimulation}
               className="px-4 py-2 bg-notice-orange hover:bg-notice-orange/90 text-white rounded-lg transition-colors"
             >
               Go to Simulation & Results
             </button>
           </div>
-          
-          {currentLeague && (
-            <select
-              onChange={handleDropdownChange}
-              value={currentLeague.name}
-              className="w-full p-3 border border-ui-light rounded-lg bg-white text-ui-dark text-lg shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-            >
-              {allLeagues.map((league, index) => (
-                <option
-                  key={index}
-                  value={league.name}
-                  className={moment().isBefore(moment(league.expiry_date)) ? 'text-success' : 'text-danger'}
-                >
-                  {moment().isBefore(moment(league.expiry_date)) ? '🟢' : '🔴'} {league.name} ({league.game})
-                </option>
-              ))}
-            </select>
-          )}
         </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Column - League Data (3/4 width) */}
+          {/* Left Column - League List (1/4 width) */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <h2 className="text-xl font-semibold text-ui-dark mb-4">
+                Leagues
+              </h2>
+              <LeagueCardList userRole={userRole} />
+            </div>
+
+            {/* League Creation */}
+            <LeagueCreation userRole={userRole} />
+          </div>
+
+          {/* Right Column - League Details (3/4 width) */}
           <div className="lg:col-span-3 space-y-6">
             {/* League Attributes Card */}
-            {currentLeague && (
+            {currentLeague ? (
               <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-ui-dark mb-4">League Details</h2>
-                
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold text-ui-dark">
+                    League Details
+                  </h2>
+                  <button
+                    onClick={handleDeleteLeague}
+                    className="px-4 py-2 bg-danger hover:bg-danger-hover text-white rounded-lg transition-colors"
+                    disabled={currentLeague.name.toLowerCase() === "unassigned"}
+                    title={
+                      currentLeague.name.toLowerCase() === "unassigned"
+                        ? "Cannot delete the unassigned league"
+                        : "Delete this league"
+                    }
+                  >
+                    Delete League
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div>
                     <span className="block text-ui">League Name:</span>
-                    <span className="block text-lg font-medium text-ui-dark">{currentLeague.name}</span>
+                    <span className="block text-lg font-medium text-ui-dark">
+                      {currentLeague.name}
+                    </span>
                   </div>
-                  
+
                   <div>
                     <span className="block text-ui">Game Type:</span>
-                    <span className="block text-lg font-medium text-ui-dark">{currentLeague.game}</span>
+                    <span className="block text-lg font-medium text-ui-dark">
+                      {currentLeague.game}
+                    </span>
                   </div>
-                  
+
                   <div>
                     <span className="block text-ui">Created Date:</span>
                     <span className="block text-lg font-medium text-ui-dark">
-                      {moment(currentLeague.created_date).format('MMMM D, YYYY')}
+                      {moment(currentLeague.created_date).format(
+                        "MMMM D, YYYY"
+                      )}
                     </span>
                   </div>
-                  
+
                   <div>
                     <span className="block text-ui">Status:</span>
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                      moment().isBefore(moment(currentLeague.expiry_date)) 
-                        ? 'bg-success-light text-success' 
-                        : 'bg-danger-light text-danger'
-                    }`}>
-                      {moment().isBefore(moment(currentLeague.expiry_date)) ? 'Active' : 'Expired'}
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                        moment().isBefore(moment(currentLeague.expiry_date))
+                          ? "bg-success-light text-success"
+                          : "bg-danger-light text-danger"
+                      }`}
+                    >
+                      {moment().isBefore(moment(currentLeague.expiry_date))
+                        ? "Active"
+                        : "Expired"}
                     </span>
                   </div>
                 </div>
-                
+
                 {/* League Expiry Date Editor */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-ui-dark mb-2">League Expiry</h3>
+                  <h3 className="text-lg font-medium text-ui-dark mb-2">
+                    League Expiry
+                  </h3>
                   <div className="flex items-center gap-2">
                     <DatePicker
                       selected={new Date(currentLeague.expiry_date)}
@@ -238,11 +281,13 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                     </span>
                   </div>
                 </div>
-                
+
                 {/* League Signup Link */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-ui-dark mb-2">Signup Link</h3>
-                  
+                  <h3 className="text-lg font-medium text-ui-dark mb-2">
+                    Signup Link
+                  </h3>
+
                   {showSignupLink ? (
                     <div className="p-4 bg-success-light rounded-lg">
                       <div className="flex items-center">
@@ -274,33 +319,39 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                         </button>
                       </div>
                       <p className="mt-2 text-sm text-ui-dark">
-                        Share this link for teams to sign up directly to this league.
+                        Share this link for teams to sign up directly to this
+                        league.
                       </p>
                     </div>
                   ) : (
                     <button
-                      onClick={() => generateSignupLink(currentLeague.id, currentLeague.name)}
+                      onClick={() =>
+                        generateSignupLink(currentLeague.id, currentLeague.name)
+                      }
                       disabled={isLoadingSignupLink}
                       className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:bg-ui-light disabled:cursor-not-allowed"
                     >
-                      {isLoadingSignupLink ? 'Generating...' : 'Generate Signup Link'}
+                      {isLoadingSignupLink
+                        ? "Generating..."
+                        : "Generate Signup Link"}
                     </button>
                   )}
                 </div>
-                
+
                 {/* Teams Grid */}
-                <LeagueTeams 
+                <LeagueTeams
                   selected_league_name={currentLeague.name}
-                  userRole={userRole} 
+                  userRole={userRole}
                 />
               </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-lg p-6 flex items-center justify-center">
+                <p className="text-ui-dark text-lg">
+                  Select a league from the list or create a new one to get
+                  started.
+                </p>
+              </div>
             )}
-          </div>
-
-          {/* Right Column - Controls (1/4 width) */}
-          <div className="space-y-4">
-            {/* League Creation */}
-            <LeagueCreation userRole={userRole} />
           </div>
         </div>
       </div>
