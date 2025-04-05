@@ -478,7 +478,6 @@ def delete_league(session: Session, league_name: str, institution_id: int) -> st
         .where(League.name == league_name)
         .where(League.institution_id == institution_id)
     ).first()
-
     if not league:
         raise LeagueNotFoundError(
             f"League '{league_name}' not found in your institution"
@@ -513,14 +512,12 @@ def delete_league(session: Session, league_name: str, institution_id: int) -> st
     try:
         # Get all teams in the league
         teams = session.exec(select(Team).where(Team.league_id == league.id)).all()
-
         team_count = len(teams)
 
         # Get simulation results for this league
         sim_results = session.exec(
             select(SimulationResult).where(SimulationResult.league_id == league.id)
         ).all()
-
         # Delete all simulation result items for simulation results in this league
         for sim_result in sim_results:
             session.exec(
@@ -529,11 +526,9 @@ def delete_league(session: Session, league_name: str, institution_id: int) -> st
                 )
             )
 
-        # Delete all simulation results for this league
         session.exec(
             delete(SimulationResult).where(SimulationResult.league_id == league.id)
         )
-
         # Delete all submissions from teams in this league and move teams to unassigned league
         for team in teams:
             # Delete team's submissions
@@ -543,6 +538,7 @@ def delete_league(session: Session, league_name: str, institution_id: int) -> st
             team.league_id = unassigned_league.id
             session.add(team)
 
+        session.commit()
         # Delete the league
         session.delete(league)
         session.commit()
