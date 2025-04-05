@@ -1,126 +1,52 @@
 from datetime import datetime
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from backend.utils import get_games_names
 
 
-class LeagueSignUp(BaseModel):
-    """Model for creating a new league"""
+class CreateInstitution(BaseModel):
+    """Model for creating a new institution"""
 
     name: str
-    game: str
-
-    @field_validator("name")
-    def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError("League name cannot be empty")
-        return v.strip()
-
-    @field_validator("game")
-    def validate_game(cls, v):
-
-        valid_games = get_games_names()
-        if v not in valid_games:
-            raise ValueError(f"Game must be one of: {', '.join(valid_games)}")
-        return v
-
-
-class TeamSignup(BaseModel):
-    """Model for creating a new team"""
-
-    name: str
+    contact_person: str
+    contact_email: EmailStr
     password: str
-    school_name: Optional[str] = "Not Available"
-    color: Optional[str] = "rgb(0,0,0)"
-    score: Optional[int] = 0
+    subscription_expiry: datetime
+    docker_access: bool = False
 
     @field_validator("name")
     def validate_name(cls, v):
         if not v.strip():
-            raise ValueError("Team name cannot be empty")
+            raise ValueError("Institution name cannot be empty")
         return v.strip()
 
 
-class SimulationConfig(BaseModel):
-    """Model for simulation configuration"""
+class InstitutionUpdate(BaseModel):
+    """Model for updating an institution"""
 
-    num_simulations: int = Field(gt=0, le=10000)
-    league_id: int
-    league_name: Optional[str] = None  # For backwards compatibility
-    game: Optional[str] = None
-    custom_rewards: Optional[List[int]] = None
-    use_docker: bool = True
-
-    @field_validator("num_simulations")
-    def validate_num_simulations(cls, v):
-        if v < 1 or v > 20000:
-            raise ValueError("Simulations must be between 1 and 20000")
-        return v
+    id: int
+    name: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    subscription_active: Optional[bool] = None
+    subscription_expiry: Optional[datetime] = None
+    docker_access: Optional[bool] = None
+    password: Optional[str] = None
 
 
-class LeagueName(BaseModel):
-    """Model for specifying a league name"""
-
-    name: str
-
-    @field_validator("name")
-    def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError("League name cannot be empty")
-        return v.strip()
-
-
-class TeamDelete(BaseModel):
-    """Model for team deletion request"""
+class DeleteInstitution(BaseModel):
+    """Model for deleting an institution"""
 
     id: int
 
 
-class LeagueResults(BaseModel):
-    """Model for league results"""
+class ToggleDockerAccess(BaseModel):
+    """Model for toggling Docker access for an institution"""
 
-    league_name: str
-    id: int
-    feedback: Union[str, dict, None] = None
-
-
-class ExpiryDate(BaseModel):
-    """Model for updating league expiry date"""
-
-    date: datetime
-    league: str
-
-    @field_validator("league")
-    def validate_league(cls, v):
-        if not v.strip():
-            raise ValueError("League name cannot be empty")
-        return v.strip()
-
-    @field_validator("date")
-    def validate_date(cls, v):
-        if v < datetime.now():
-            raise ValueError("Expiry date cannot be in the past")
-        return v
-
-
-class SimulationResult(BaseModel):
-    """Model for simulation results"""
-
-    total_points: dict
-    table: dict
-    num_simulations: int
-    timestamp: datetime
-    feedback: Optional[Union[str, dict]] = None
-
-
-class PublishRequest(BaseModel):
-    """Model for publishing simulation results"""
-
-    league_name: str
-    simulation_id: int
-    feedback: Optional[Union[str, dict]] = None
+    institution_id: int
+    enable: bool
 
 
 class CreateAgentTeam(BaseModel):

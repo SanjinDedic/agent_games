@@ -1,212 +1,216 @@
-// Updated AgentSubmission.jsx with CombinedFooter
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { toast } from 'react-toastify';
-import { checkTokenExpiry } from '../../slices/authSlice';
-import CodeEditor from './CodeEditor';
-import CombinedFooter from './CombinedFooter';
-import FeedbackDisplay from './FeedbackDisplay';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { checkTokenExpiry } from "../../slices/authSlice";
+import { setCurrentLeague } from "../../slices/leaguesSlice";
+import CodeEditor from "./CodeEditor";
+import CombinedFooter from "./CombinedFooter";
+import FeedbackDisplay from "./FeedbackDisplay";
+import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
+import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
 function AgentSubmission() {
-    // State management
-    const [code, setCode] = useState('');
-    const [starterCode, setStarterCode] = useState('');
-    const [lastSubmission, setLastSubmission] = useState('');
-    const [output, setOutput] = useState('');
-    const [feedback, setFeedback] = useState('');
-    const [instructionData, setInstructionData] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [hasLastSubmission, setHasLastSubmission] = useState(false);
-    const [shouldCollapseInstructions, setShouldCollapseInstructions] = useState(false);
-    const editorRef = useRef(null);
+  // State management
+  const [code, setCode] = useState("");
+  const [starterCode, setStarterCode] = useState("");
+  const [lastSubmission, setLastSubmission] = useState("");
+  const [output, setOutput] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [instructionData, setInstructionData] = useState("");
+  const [hasLastSubmission, setHasLastSubmission] = useState(false);
+  const [shouldCollapseInstructions, setShouldCollapseInstructions] =
+    useState(false);
+  const [isLoadingLeagueInfo, setIsLoadingLeagueInfo] = useState(false);
+  const editorRef = useRef(null);
 
-    // Redux hooks
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-    const currentLeague = useSelector((state) => state.leagues.currentLeague);
-    const accessToken = useSelector((state) => state.auth.token);
-    const currentUser = useSelector((state) => state.auth.currentUser);
-    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  // Redux hooks
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const currentLeague = useSelector((state) => state.leagues.currentLeague);
+  const currentUser = useSelector((state) => state.auth.currentUser);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
-    // Check authentication on component mount
-    useEffect(() => {
-        const tokenExpired = dispatch(checkTokenExpiry());
-        if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-            navigate('/AgentLogin');
+  // Custom API hooks
+  const {
+    getLatestSubmission,
+    getGameInstructions,
+    submitCode,
+    isLoading: isSubmitting,
+  } = useSubmissionAPI();
+
+  const { fetchUserLeagues, isLoading: isLeagueLoading } = useLeagueAPI();
+
+  // Combined loading state
+  const isLoading = isSubmitting || isLeagueLoading || isLoadingLeagueInfo;
+
+  // Check authentication and load necessary data
+  useEffect(() => {
+    const tokenExpired = dispatch(checkTokenExpiry());
+    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
+      navigate("/AgentLogin");
+      return;
+    }
+
+    const loadInitialData = async () => {
+      // Load the latest submission
+      const submissionResult = await getLatestSubmission();
+      if (submissionResult.success) {
+        if (submissionResult.hasSubmission) {
+          setLastSubmission(submissionResult.code);
+          setCode(submissionResult.code);
+          setHasLastSubmission(true);
         } else {
-            loadLatestSubmission();
-            if (currentLeague && currentLeague.game) {
-                loadInstructions();
-            }
+          setHasLastSubmission(false);
         }
-    }, [navigate, currentLeague]);
+      }
 
-    // Load the latest code submission
-    const loadLatestSubmission = async () => {
-        try {
-            const response = await fetch(`${apiUrl}/user/get-team-submission`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            const data = await response.json();
+      // If currentLeague exists but is missing the game property, fetch league details
+      if (currentLeague && !currentLeague.game) {
+        setIsLoadingLeagueInfo(true);
+        const leaguesResult = await fetchUserLeagues();
+        setIsLoadingLeagueInfo(false);
 
-            if (data.status === "success" && data.data && data.data.code) {
-                setLastSubmission(data.data.code);
-                setCode(data.data.code);
-                setHasLastSubmission(true);
-            } else {
-                setHasLastSubmission(false);
-            }
-        } catch (error) {
-            console.error('Error loading submission:', error);
-            setHasLastSubmission(false);
+        if (leaguesResult.success && leaguesResult.leagues?.length > 0) {
+          // Find our league and update current league in Redux if needed
+          const league = leaguesResult.leagues.find(
+            (l) => l.id === currentLeague.id || l.name === currentLeague.name
+          );
+
+          if (league && league.game) {
+            dispatch(setCurrentLeague(league.name));
+            await loadInstructions(league.game);
+          }
         }
+      }
+      // If we already have the game info, load instructions directly
+      else if (currentLeague && currentLeague.game) {
+        await loadInstructions(currentLeague.game);
+      }
     };
 
-    // Load game instructions and starter code
-    const loadInstructions = async () => {
-        if (!currentLeague || !currentLeague.game) return;
+    loadInitialData();
+  }, [navigate, dispatch, isAuthenticated, currentUser, currentLeague]); // Removed API functions from deps
 
-        try {
-            const response = await fetch(`${apiUrl}/user/get-game-instructions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ game_name: currentLeague.game }),
-            });
+  // Load game instructions and starter code
+  const loadInstructions = async (gameOverride = null) => {
+    const gameToUse = gameOverride || (currentLeague && currentLeague.game);
+    if (!gameToUse) return;
 
-            const data = await response.json();
+    const result = await getGameInstructions(gameToUse);
 
-            if (data.status === "success" && data.data) {
-                if (data.data.starter_code) {
-                    let code_sample = data.data.starter_code;
-                    if (code_sample.startsWith('\n')) {
-                        code_sample = code_sample.slice(1);
-                    }
-                    setStarterCode(code_sample);
-                    if (!hasLastSubmission) {
-                        setCode(code_sample);
-                    }
-                }
+    if (result.success) {
+      setInstructionData(result.instructions || "");
 
-                if (data.data.game_instructions) {
-                    setInstructionData(data.data.game_instructions);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching game instructions:', error);
+      if (result.starterCode) {
+        setStarterCode(result.starterCode);
+        if (!hasLastSubmission) {
+          setCode(result.starterCode);
         }
-    };
+      }
+    }
+  };
 
-    // Submit code to the API
-    const handleSubmit = async () => {
-        if (!code || code.trim() === '') {
-            toast.error('Please enter some code before submitting');
-            return;
-        }
+  // Submit code to the API
+  const handleSubmit = async () => {
+    if (!code || code.trim() === "") {
+      toast.error("Please enter some code before submitting");
+      return;
+    }
 
-        setOutput('');
-        setFeedback('');
-        setIsLoading(true);
-        setShouldCollapseInstructions(true);
+    setOutput("");
+    setFeedback("");
+    setShouldCollapseInstructions(true);
 
-        try {
-            const response = await fetch(`${apiUrl}/user/submit-agent`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify({ code: code }),
-            });
+    const result = await submitCode(code);
 
-            const data = await response.json();
+    if (result.success) {
+      setOutput(result.output);
+      setFeedback(result.feedback);
 
-            if (data.status === "success") {
-                setOutput(data.data.results);
-                setFeedback(data.data.feedback);
-                loadLatestSubmission();
-            } else if (data.status === "error") {
-                toast.error(data.message);
-            }
-        } catch (error) {
-            console.error('Error during submission:', error);
-            toast.error('Network error during submission. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+      // Refresh the latest submission info
+      const refreshResult = await getLatestSubmission();
+      if (refreshResult.success && refreshResult.hasSubmission) {
+        setLastSubmission(refreshResult.code);
+        setHasLastSubmission(true);
+      }
+    }
+  };
 
-    // Load last submitted code
-    const handleLoadLastSubmission = () => {
-        if (hasLastSubmission && editorRef.current) {
-            editorRef.current.setValue(lastSubmission);
-            setCode(lastSubmission);
-            toast.success('Loaded last submission');
-        } else {
-            toast.error('No previous submission found');
-        }
-    };
+  // Load last submitted code
+  const handleLoadLastSubmission = () => {
+    if (hasLastSubmission && editorRef.current) {
+      editorRef.current.setValue(lastSubmission);
+      setCode(lastSubmission);
+      toast.success("Loaded last submission");
+    } else {
+      toast.error("No previous submission found");
+    }
+  };
 
-    // Reset code to starter template
-    const handleReset = () => {
-        if (starterCode && editorRef.current) {
-            editorRef.current.setValue(starterCode);
-            setCode(starterCode);
-            toast.success('Code reset to starter template');
-        } else {
-            toast.error('Starter code template not available');
-            loadInstructions();
-        }
-    };
+  // Reset code to starter template
+  const handleReset = () => {
+    if (starterCode && editorRef.current) {
+      editorRef.current.setValue(starterCode);
+      setCode(starterCode);
+      toast.success("Code reset to starter template");
+    } else {
+      toast.error("Starter code template not available");
+      // Try to load instructions again
+      const gameToUse = currentLeague && currentLeague.game;
+      if (gameToUse) {
+        loadInstructions(gameToUse);
+      }
+    }
+  };
 
-    // Update editor reference when mounted
-    const handleEditorDidMount = (editor) => {
-        editorRef.current = editor;
-    };
+  // Update editor reference when mounted
+  const handleEditorDidMount = (editor) => {
+    editorRef.current = editor;
+  };
 
-    return (
-        <div className="min-h-screen pt-12 flex flex-col bg-white">
-            <div className="flex flex-1 overflow-hidden pb-14">
-                {/* Left side - Code Editor */}
-                <div className="w-1/2 h-[calc(100vh-112px)] border-r border-[#1e1e1e] border-t-0 bg-[#1e1e1e]">
-                    <CodeEditor
-                        code={code}
-                        onCodeChange={setCode}
-                        onMount={handleEditorDidMount}
-                    />
-                </div>
-
-                {/* Right side - Feedback */}
-                <div className="w-1/2 flex flex-col h-[calc(100vh-112px)]">
-                    {/* Feedback Display */}
-                    <div className="flex-1 overflow-auto">
-                        <FeedbackDisplay
-                            instructions={instructionData}
-                            output={output}
-                            feedback={feedback}
-                            isLoading={isLoading}
-                            collapseInstructions={shouldCollapseInstructions}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Combined Footer */}
-            <CombinedFooter
-                team={currentUser.name}
-                game={currentLeague?.game}
-                league={currentLeague?.name}
-                isDemo={currentUser.is_demo}
-                onSubmit={handleSubmit}
-                onLoadLast={handleLoadLastSubmission}
-                onReset={handleReset}
-                isLoading={isLoading}
-                hasLastSubmission={hasLastSubmission}
-                hasStarterCode={!!starterCode}
-            />
+  return (
+    <div className="min-h-screen pt-12 flex flex-col bg-white">
+      <div className="flex flex-1 overflow-hidden pb-14">
+        {/* Left side - Code Editor */}
+        <div className="w-1/2 h-[calc(100vh-112px)] border-r border-[#1e1e1e] border-t-0 bg-[#1e1e1e]">
+          <CodeEditor
+            code={code}
+            onCodeChange={setCode}
+            onMount={handleEditorDidMount}
+          />
         </div>
-    );
+
+        {/* Right side - Feedback */}
+        <div className="w-1/2 flex flex-col h-[calc(100vh-112px)]">
+          {/* Feedback Display */}
+          <div className="flex-1 overflow-auto">
+            <FeedbackDisplay
+              instructions={instructionData}
+              output={output}
+              feedback={feedback}
+              isLoading={isLoading}
+              collapseInstructions={shouldCollapseInstructions}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Combined Footer */}
+      <CombinedFooter
+        team={currentUser.name}
+        game={currentLeague?.game}
+        league={currentLeague?.name}
+        isDemo={currentUser.is_demo}
+        onSubmit={handleSubmit}
+        onLoadLast={handleLoadLastSubmission}
+        onReset={handleReset}
+        isLoading={isLoading}
+        hasLastSubmission={hasLastSubmission}
+        hasStarterCode={!!starterCode}
+      />
+    </div>
+  );
 }
 
 export default AgentSubmission;

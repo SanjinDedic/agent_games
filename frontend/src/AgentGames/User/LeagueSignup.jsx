@@ -1,101 +1,66 @@
-import React, { useEffect } from 'react';
-import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import moment from 'moment-timezone';
-import UserTooltip from '../Utilities/UserTooltips';
-import { setCurrentLeague, setLeagues } from '../../slices/leaguesSlice';
-import { checkTokenExpiry } from '../../slices/authSlice';
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import moment from "moment-timezone";
+import UserTooltip from "../Shared/Utilities/UserTooltips";
+import { setCurrentLeague } from "../../slices/leaguesSlice";
+import { checkTokenExpiry } from "../../slices/authSlice";
+import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
 function AgentLeagueSignUp() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const accessToken = useSelector((state) => state.auth.token);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
-  const isDemo = useSelector((state) => state.auth.currentUser?.is_demo || false);
+  const isDemo = useSelector(
+    (state) => state.auth.currentUser?.is_demo || false
+  );
+
+  // Use the league API hook
+  const { fetchUserLeagues, assignToLeague, isLoading } = useLeagueAPI();
 
   moment.tz.setDefault("Australia/Sydney");
 
+  // Check authentication and load leagues
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-      navigate('/AgentLogin');
+      navigate("/AgentLogin");
+      return;
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser]);
 
-  useEffect(() => {
-    const fetchLeagues = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
-        const data = await response.json();
-        if (data.status === "success") {
-          dispatch(setLeagues(data.data.leagues));
-        } else if (data.status === "failed") {
-          toast.error(data.message);
-        }
-      } catch (error) {
-        console.error('Error fetching leagues:', error);
-      }
-    };
-
-    fetchLeagues();
-  }, [apiUrl, dispatch, accessToken]);
+    // Only load leagues once when component mounts
+    // Don't include fetchUserLeagues in dependency array
+    fetchUserLeagues();
+  }, [navigate, dispatch, isAuthenticated, currentUser]); // Removed fetchUserLeagues from deps
 
   const handleCheckboxChange = (event) => {
+    // Set the current league by name
     dispatch(setCurrentLeague(event.target.name));
   };
 
   const handleSignUp = async () => {
     if (!currentLeague) {
-      toast.error('League not selected', {
-        position: "top-center"
-      });
-      return;
+      return; // Toast is shown by the assignToLeague function
     }
 
-    try {
-      const response = await fetch(`${apiUrl}/user/league-assign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ name: currentLeague.name }),
-      });
+    // Use the hook to handle league assignment
+    const result = await assignToLeague(currentLeague.name);
 
-      const data = await response.json();
-
-      if (data.status === "success") {
-        toast.success(data.message, {
-          position: "top-center"
-        });
-        navigate('/AgentSubmission');
-      } else if (data.status === "failed") {
-        toast.error(data.message, {
-          position: "top-center"
-        });
-      } else if (data.detail === "Invalid token") {
-        navigate('/AgentLogin');
-      }
-    } catch (error) {
-      console.error('Error:', error);
+    if (result.success) {
+      navigate("/AgentSubmission");
     }
   };
 
-
+  // Filter leagues for demo users if needed
   const displayLeagues = isDemo
-    ? allLeagues.filter(league => league.name.toLowerCase().includes('_demo'))
-    : allLeagues.filter(league => !league.name.toLowerCase().includes('_demo'));
-
-
+    ? allLeagues.filter((league) => league.name.toLowerCase().includes("_demo"))
+    : allLeagues.filter(
+        (league) => !league.name.toLowerCase().includes("_demo")
+      );
 
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center bg-ui-lighter">
@@ -114,7 +79,8 @@ function AgentLeagueSignUp() {
                 </p>
               </div>
               <p className="text-ui-dark mt-2">
-                Only demo leagues are displayed. Your progress will be available for the duration of your demo session.
+                Only demo leagues are displayed. Your progress will be available
+                for the duration of your demo session.
               </p>
             </div>
           )}
@@ -126,7 +92,11 @@ function AgentLeagueSignUp() {
                   key={league.id}
                   className={`
                     flex items-center p-4 rounded-lg cursor-pointer
-                    ${isDemo ? 'bg-notice-orange hover:bg-notice-orange/90' : 'bg-league-blue hover:bg-league-hover'}
+                    ${
+                      isDemo
+                        ? "bg-notice-orange hover:bg-notice-orange/90"
+                        : "bg-league-blue hover:bg-league-hover"
+                    }
                     transform transition-all duration-200 hover:scale-105
                     shadow-md
                   `}
@@ -150,7 +120,9 @@ function AgentLeagueSignUp() {
               ))
             ) : (
               <div className="col-span-3 text-center p-4">
-                <p className="text-ui-dark">No leagues available at this time.</p>
+                <p className="text-ui-dark">
+                  No leagues available at this time.
+                </p>
               </div>
             )}
           </div>
@@ -164,12 +136,18 @@ function AgentLeagueSignUp() {
             >
               <button
                 onClick={handleSignUp}
+                disabled={isLoading || !currentLeague}
                 className={`w-full py-3 px-4 text-lg font-medium text-white 
-                         ${isDemo ? 'bg-notice-orange hover:bg-notice-orange/90' : 'bg-primary hover:bg-primary-hover'}
+                         ${
+                           isDemo
+                             ? "bg-notice-orange hover:bg-notice-orange/90"
+                             : "bg-primary hover:bg-primary-hover"
+                         }
                          rounded-lg transition-colors duration-200
-                         shadow-md hover:shadow-lg`}
+                         shadow-md hover:shadow-lg
+                         disabled:bg-ui-light disabled:cursor-not-allowed`}
               >
-                Join League
+                {isLoading ? "Joining..." : "Join League"}
               </button>
             </UserTooltip>
           </div>

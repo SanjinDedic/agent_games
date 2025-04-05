@@ -6,7 +6,14 @@ from typing import Dict, Optional
 import pytz
 from sqlmodel import Session, select
 
-from backend.database.db_models import League, Submission, Team
+from backend.database.db_models import League, Submission, Team, TeamType
+
+
+class TeamError(Exception):
+    """Base exception for all team-related errors"""
+
+    pass
+
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -200,28 +207,23 @@ def process_simulation_results(sim, league_name: str, active: bool = None) -> di
     return result_data
 
 
-# routes/user/user_db.py
+def get_all_leagues(session: Session):
+    """Get all leagues"""
+    leagues = session.exec(select(League).where(League.deleted_date == None)).all()
 
-
-def get_all_leagues(session: Session) -> Dict:
-    """Get all leagues - reusing existing query logic"""
-    try:
-        leagues = session.exec(select(League)).all()
-        return {
-            "leagues": [
-                {
-                    "id": league.id,
-                    "name": league.name,
-                    "game": league.game,
-                    "created_date": league.created_date,
-                    "expiry_date": league.expiry_date,
-                }
-                for league in leagues
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Error retrieving leagues: {e}")
-        raise
+    return {
+        "leagues": [
+            {
+                "id": league.id,
+                "name": league.name,
+                "game": league.game,
+                "created_date": league.created_date,
+                "expiry_date": league.expiry_date,
+                "signup_link": league.signup_link,  # Make sure to include this
+            }
+            for league in leagues
+        ]
+    }
 
 
 def get_team(session, team_name):
@@ -284,3 +286,47 @@ def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[
     except Exception as e:
         logger.error(f"Error getting team submission: {str(e)}")
         raise
+
+
+def get_league_by_signup_token(session: Session, signup_token: str) -> League:
+    """Get a league by its signup token"""
+    league = session.exec(
+        select(League).where(League.signup_link == signup_token)
+    ).first()
+    if not league:
+        raise LeagueNotFoundError(
+            f"League with signup token '{signup_token}' not found"
+        )
+    return league
+
+
+def create_team_and_assign_to_league(
+    session: Session, team_name: str, password: str, league_id: int
+) -> Team:
+    """Create a new team and directly assign it to a specific league"""
+    # First get the league to retrieve institution_id
+    league = session.get(League, league_id)
+    if not league:
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
+
+    # Check if team name already exists
+    existing_team = session.exec(select(Team).where(Team.name == team_name)).first()
+
+    if existing_team:
+        raise TeamError(f"Team with name '{team_name}' already exists")
+
+    # Create the team with connection to both league and institution
+    team = Team(
+        name=team_name,
+        school_name=team_name,  # Using team name as school name by default
+        league_id=league_id,
+        institution_id=league.institution_id,
+        team_type=TeamType.STUDENT,
+    )
+    team.set_password(password)
+
+    session.add(team)
+    session.commit()
+    session.refresh(team)
+
+    return team

@@ -16,18 +16,18 @@ function Admin() {
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-      navigate('/Admin');
+    if (isAuthenticated && !tokenExpired && currentUser.role === "admin") {
+      navigate("/AdminInstitutions");
     }
-  }, [navigate, isAuthenticated, currentUser]);
+  }, [navigate, isAuthenticated, currentUser, dispatch]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setAdmin(prev => ({
+    setAdmin((prev) => ({
       ...prev,
       [name]: value,
     }));
-    setErrorMessage('');
+    setErrorMessage("");
   };
 
   const handleSubmit = async (e) => {
@@ -36,39 +36,57 @@ function Admin() {
     if (!admin.name.trim() || !admin.password.trim()) {
       setShake(true);
       setTimeout(() => setShake(false), 1000);
-      setErrorMessage('Please enter all the fields');
+      setErrorMessage("Please enter all the fields");
       return;
     }
 
     try {
       const response = await fetch(`${apiUrl}/auth/admin-login`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username: admin.name, password: admin.password }),
+        body: JSON.stringify({
+          username: admin.name,
+          password: admin.password,
+        }),
       });
 
       const data = await response.json();
       if (data.status === "success") {
         const decoded = jwtDecode(data.data.access_token);
-        dispatch(login({ token: data.data.access_token, name: decoded.sub, role: decoded.role }));
+        dispatch(
+          login({
+            token: data.data.access_token,
+            name: decoded.sub,
+            role: decoded.role,
+          })
+        );
         navigate("/AdminTeam");
       } else if (data.status === "failed") {
         setErrorMessage(data.message);
       }
     } catch (error) {
-      console.error('Error:', error);
-      setErrorMessage('An error occurred. Please try again.');
+      console.error("Error:", error);
+      setErrorMessage("An error occurred. Please try again.");
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen pt-16 px-4 bg-ui-lighter">
       <div className="w-full max-w-lg bg-white rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-ui-dark mb-8 text-center">
+          Admin Login
+        </h1>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-ui-dark">Username:</h1>
+            <label
+              htmlFor="admin_name"
+              className="text-xl font-bold text-ui-dark"
+            >
+              Username:
+            </label>
             <input
               type="text"
               id="admin_name"
@@ -76,12 +94,21 @@ function Admin() {
               value={admin.name}
               onChange={handleChange}
               className={`w-full px-4 py-2 text-lg border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 
-                ${shake ? 'animate-shake border-danger' : 'border-ui-light focus:border-primary'}`}
+                ${
+                  shake
+                    ? "animate-shake border-danger"
+                    : "border-ui-light focus:border-primary"
+                }`}
             />
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-ui-dark">Password:</h1>
+            <label
+              htmlFor="admin_password"
+              className="text-xl font-bold text-ui-dark"
+            >
+              Password:
+            </label>
             <input
               type="password"
               id="admin_password"
@@ -89,7 +116,11 @@ function Admin() {
               value={admin.password}
               onChange={handleChange}
               className={`w-full px-4 py-2 text-lg border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200
-                ${shake ? 'animate-shake border-danger' : 'border-ui-light focus:border-primary'}`}
+                ${
+                  shake
+                    ? "animate-shake border-danger"
+                    : "border-ui-light focus:border-primary"
+                }`}
             />
           </div>
 

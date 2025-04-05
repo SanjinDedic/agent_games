@@ -1,66 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, checkTokenExpiry } from '../../slices/authSlice';
-import { setCurrentTeam } from '../../slices/teamsSlice';
-import UserTooltip from '../Utilities/UserTooltips';
-import InstructionPopup from '../Utilities/InstructionPopup';
-import { jwtDecode } from 'jwt-decode';
+import { checkTokenExpiry } from "../../slices/authSlice";
+import UserTooltip from "../Shared/Utilities/UserTooltips";
+import InstructionPopup from "../Shared/Utilities/InstructionPopup";
+import useAuthAPI from "../Shared/hooks/useAuthAPI";
 
 function AgentLogin() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const [Team, setTeam] = useState({ name: '', password: '' });
-  const [errorMessage, setErrorMessage] = useState('');
+
+  const [team, setTeam] = useState({ name: "", password: "" });
+  const [errorMessage, setErrorMessage] = useState("");
   const [shake, setShake] = useState(false);
+
+  // Use the authentication hook
+  const { teamLogin, isLoading } = useAuthAPI();
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-      navigate('/AgentLogin');
-    } else if (isAuthenticated || currentUser.role === "student") {
-      navigate('/AgentLeagueSignUp');
+    if (isAuthenticated && !tokenExpired && currentUser.role === "student") {
+      navigate("/AgentLeagueSignUp");
     }
-  }, [navigate]);
+  }, [navigate, dispatch, isAuthenticated, currentUser]);
 
   const handleChange = (e) => {
-    setTeam(prev => ({
+    setTeam((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    setErrorMessage("");
   };
 
   const handleLogin = async () => {
-    if (!Team.name.trim() || !Team.password.trim()) {
+    // Basic validation
+    if (!team.name.trim() || !team.password.trim()) {
       setShake(true);
       setTimeout(() => setShake(false), 1000);
-      setErrorMessage('Please Enter all the fields');
+      setErrorMessage("Please Enter all the fields");
       return;
     }
 
-    try {
-      const response = await fetch(`${apiUrl}/auth/team-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name: Team.name, password: Team.password }),
-      });
-      const data = await response.json();
+    // Call the login API using our hook
+    const result = await teamLogin(team.name, team.password);
 
-      if (data.status === "success") {
-        const decoded = jwtDecode(data.data.access_token);
-        dispatch(login({ token: data.data.access_token, name: decoded.sub, role: decoded.role, exp: decoded.exp }));
-        dispatch(setCurrentTeam(Team.name));
-        navigate("/AgentLeagueSignUp");
-      } else if (data.status === "failed") {
-        setErrorMessage(data.message);
-      }
-    } catch (error) {
-      console.error('Error:', error);
+    if (result.success) {
+      navigate("/AgentLeagueSignUp");
+    } else {
+      setErrorMessage(result.error || "Login failed");
     }
   };
 
@@ -76,7 +65,9 @@ function AgentLogin() {
         <div className="bg-white rounded-lg shadow-lg p-8 border border-ui-light/10">
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-xl font-medium text-ui-dark">Username:</label>
+              <label className="block text-xl font-medium text-ui-dark">
+                Username:
+              </label>
               <input
                 type="text"
                 id="team_name"
@@ -88,7 +79,9 @@ function AgentLogin() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-xl font-medium text-ui-dark">Password:</label>
+              <label className="block text-xl font-medium text-ui-dark">
+                Password:
+              </label>
               <input
                 type="password"
                 id="team_password"
@@ -107,9 +100,10 @@ function AgentLogin() {
             >
               <button
                 onClick={handleLogin}
-                className="w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200"
+                disabled={isLoading}
+                className="w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200 disabled:bg-ui-light disabled:cursor-not-allowed"
               >
-                Login
+                {isLoading ? "Logging in..." : "Login"}
               </button>
             </UserTooltip>
 

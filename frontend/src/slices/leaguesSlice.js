@@ -19,6 +19,7 @@ const leaguesSlice = createSlice({
         game: league.game,
         id: league.id,
         name: league.name,
+        signup_link: league.signup_link,  // Add this line to store the signup_link
       }));
       if (action.payload.length > 0) {
         state.currentLeague = state.list[0];

@@ -3,12 +3,14 @@ import os
 import secrets
 from datetime import datetime, timedelta
 
+import pytz
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.config import ADMIN_LEAGUE_EXPIRY, CURRENT_DB, ROOT_DIR
 from backend.database.db_models import (
     Admin,
     AgentAPIKey,
+    Institution,
     League,
     LeagueType,
     Team,
@@ -17,6 +19,7 @@ from backend.database.db_models import (
 )
 from backend.routes.user.user_db import save_submission
 
+AUSTRALIA_TZ = pytz.timezone("Australia/Sydney")
 
 def create_and_populate_database():
     os.environ["TESTING"] = "0"  # Set the TESTING environment variable to "0"
@@ -30,43 +33,69 @@ def create_and_populate_database():
         admin = Admin(username="admin", password_hash=get_password_hash("admin"))
         session.add(admin)
 
+        # Create default institution
+        default_institution = Institution(
+            name="Admin Institution",
+            contact_person="Admin",
+            contact_email="admin@admin.com",
+            created_date=datetime.now(AUSTRALIA_TZ),
+            subscription_active=True,
+            subscription_expiry=(datetime.now(AUSTRALIA_TZ) + timedelta(days=365)),
+            docker_access=True,
+            password_hash=get_password_hash("institution"),
+        )
+        session.add(default_institution)
+        session.commit()
+
         # Create unnasigned league
         unassigned_league = League(
             name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
+            institution_id=default_institution.id,
         )
         session.add(unassigned_league)
 
         # create greedy pig league
         greedy_pig_league = League(
             name="greedy_pig_league",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
+            institution_id=default_institution.id,
         )
         session.add(greedy_pig_league)
 
         # create prisoners dilemma league
         prisoners_dilemma_league = League(
             name="prisoners_dilemma_league",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="prisoners_dilemma",
             league_type=LeagueType.STUDENT,
+            institution_id=default_institution.id,
         )
         session.add(prisoners_dilemma_league)
 
         # Create an agent league for testing
         agent_league = League(
             name="agent_test_league",
-            created_date=datetime.now(),
-            expiry_date=(datetime.now() + timedelta(hours=ADMIN_LEAGUE_EXPIRY)),
+            created_date=datetime.now(AUSTRALIA_TZ),
+            expiry_date=(
+                datetime.now(AUSTRALIA_TZ) + timedelta(hours=ADMIN_LEAGUE_EXPIRY)
+            ),
             game="lineup4",
             league_type=LeagueType.AGENT,
+            institution_id=default_institution.id,
         )
         session.add(agent_league)
 
@@ -89,6 +118,7 @@ def create_and_populate_database():
                 password_hash=get_password_hash(team_data["password"]),
                 league_id=unassigned_league.id,
                 team_type=TeamType.STUDENT,
+                institution_id=default_institution.id,
             )
             session.add(team)
 
@@ -145,6 +175,7 @@ class CustomPlayer(Player):
                 school_name=team_data["school_name"],
                 league_id=agent_league.id,
                 team_type=TeamType.AGENT,
+                institution_id=default_institution.id,
             )
             session.add(agent_team)
             session.flush()  # To get the team ID
@@ -163,6 +194,10 @@ class CustomPlayer(Player):
         session.commit()
 
         print("\nDatabase created and populated successfully")
+        print("\n=== Default Institution ===")
+        print(f"Name: {default_institution.name}")
+        print(f"Login: {default_institution.name} / institution")
+        print("-----------------------------")
         print("\n=== Agent Test Credentials ===")
         for team_name, api_key in api_keys:
             print(f"Team Name: {team_name}")
