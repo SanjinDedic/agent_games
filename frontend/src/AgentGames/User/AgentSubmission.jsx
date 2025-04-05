@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { checkTokenExpiry } from "../../slices/authSlice";
-import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
+import { setCurrentLeague } from "../../slices/leaguesSlice";
 import CodeEditor from "./CodeEditor";
 import CombinedFooter from "./CombinedFooter";
 import FeedbackDisplay from "./FeedbackDisplay";
+import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
+import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
 function AgentSubmission() {
   // State management
@@ -16,7 +18,6 @@ function AgentSubmission() {
   const [output, setOutput] = useState("");
   const [feedback, setFeedback] = useState("");
   const [instructionData, setInstructionData] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [hasLastSubmission, setHasLastSubmission] = useState(false);
   const [shouldCollapseInstructions, setShouldCollapseInstructions] =
     useState(false);
@@ -26,125 +27,87 @@ function AgentSubmission() {
   // Redux hooks
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
-  const accessToken = useSelector((state) => state.auth.token);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+
+  // Custom API hooks
+  const {
+    getLatestSubmission,
+    getGameInstructions,
+    submitCode,
+    isLoading: isSubmitting,
+  } = useSubmissionAPI();
+
+  const { fetchUserLeagues, isLoading: isLeagueLoading } = useLeagueAPI();
+
+  // Combined loading state
+  const isLoading = isSubmitting || isLeagueLoading || isLoadingLeagueInfo;
 
   // Check authentication and load necessary data
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
       navigate("/AgentLogin");
-    } else {
-      loadLatestSubmission();
-
-      // If currentLeague exists but is missing the game property, try to fetch the full league info
-      if (currentLeague && !currentLeague.game) {
-        fetchLeagueDetails(currentLeague.id || currentLeague.name);
-      }
-      // If we have all required info, load instructions
-      else if (currentLeague && currentLeague.game) {
-        loadInstructions(currentLeague.game);
-      }
+      return;
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser, currentLeague]);
 
-  // Fetch complete league details if needed
-  const fetchLeagueDetails = async (leagueIdentifier) => {
-    if (isLoadingLeagueInfo) return;
-
-    setIsLoadingLeagueInfo(true);
-    try {
-      const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.status === "success" && data.data.leagues) {
-        // Find our league by id or name
-        const ourLeague = data.data.leagues.find(
-          (l) => l.id === leagueIdentifier || l.name === leagueIdentifier
-        );
-
-        if (ourLeague && ourLeague.game) {
-          // Store all leagues in redux
-          dispatch(setLeagues(data.data.leagues));
-          // Set the current league by name
-          dispatch(setCurrentLeague(ourLeague.name));
-          // Load instructions with the game property
-          loadInstructions(ourLeague.game);
+    const loadInitialData = async () => {
+      // Load the latest submission
+      const submissionResult = await getLatestSubmission();
+      if (submissionResult.success) {
+        if (submissionResult.hasSubmission) {
+          setLastSubmission(submissionResult.code);
+          setCode(submissionResult.code);
+          setHasLastSubmission(true);
         } else {
-          toast.error("League information is incomplete");
+          setHasLastSubmission(false);
         }
-      } else {
-        toast.error("Failed to fetch league details");
       }
-    } catch (error) {
-      console.error("Error fetching league details:", error);
-      toast.error("Network error while fetching league details");
-    } finally {
-      setIsLoadingLeagueInfo(false);
-    }
-  };
 
-  // Load the latest code submission
-  const loadLatestSubmission = async () => {
-    try {
-      const response = await fetch(`${apiUrl}/user/get-team-submission`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const data = await response.json();
+      // If currentLeague exists but is missing the game property, fetch league details
+      if (currentLeague && !currentLeague.game) {
+        setIsLoadingLeagueInfo(true);
+        const leaguesResult = await fetchUserLeagues();
+        setIsLoadingLeagueInfo(false);
 
-      if (data.status === "success" && data.data && data.data.code) {
-        setLastSubmission(data.data.code);
-        setCode(data.data.code);
-        setHasLastSubmission(true);
-      } else {
-        setHasLastSubmission(false);
+        if (leaguesResult.success && leaguesResult.leagues?.length > 0) {
+          // Find our league and update current league in Redux if needed
+          const league = leaguesResult.leagues.find(
+            (l) => l.id === currentLeague.id || l.name === currentLeague.name
+          );
+
+          if (league && league.game) {
+            dispatch(setCurrentLeague(league.name));
+            await loadInstructions(league.game);
+          }
+        }
       }
-    } catch (error) {
-      console.error("Error loading submission:", error);
-      setHasLastSubmission(false);
-    }
-  };
+      // If we already have the game info, load instructions directly
+      else if (currentLeague && currentLeague.game) {
+        await loadInstructions(currentLeague.game);
+      }
+    };
+
+    loadInitialData();
+  }, [navigate, dispatch, isAuthenticated, currentUser, currentLeague]); // Removed API functions from deps
 
   // Load game instructions and starter code
   const loadInstructions = async (gameOverride = null) => {
     const gameToUse = gameOverride || (currentLeague && currentLeague.game);
     if (!gameToUse) return;
 
-    try {
-      const response = await fetch(`${apiUrl}/user/get-game-instructions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ game_name: gameToUse }),
-      });
+    const result = await getGameInstructions(gameToUse);
 
-      const data = await response.json();
+    if (result.success) {
+      setInstructionData(result.instructions || "");
 
-      if (data.status === "success" && data.data) {
-        if (data.data.starter_code) {
-          let code_sample = data.data.starter_code;
-          if (code_sample.startsWith("\n")) {
-            code_sample = code_sample.slice(1);
-          }
-          setStarterCode(code_sample);
-          if (!hasLastSubmission) {
-            setCode(code_sample);
-          }
-        }
-
-        if (data.data.game_instructions) {
-          setInstructionData(data.data.game_instructions);
+      if (result.starterCode) {
+        setStarterCode(result.starterCode);
+        if (!hasLastSubmission) {
+          setCode(result.starterCode);
         }
       }
-    } catch (error) {
-      console.error("Error fetching game instructions:", error);
     }
   };
 
@@ -157,33 +120,20 @@ function AgentSubmission() {
 
     setOutput("");
     setFeedback("");
-    setIsLoading(true);
     setShouldCollapseInstructions(true);
 
-    try {
-      const response = await fetch(`${apiUrl}/user/submit-agent`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ code: code }),
-      });
+    const result = await submitCode(code);
 
-      const data = await response.json();
+    if (result.success) {
+      setOutput(result.output);
+      setFeedback(result.feedback);
 
-      if (data.status === "success") {
-        setOutput(data.data.results);
-        setFeedback(data.data.feedback);
-        loadLatestSubmission();
-      } else if (data.status === "error") {
-        toast.error(data.message);
+      // Refresh the latest submission info
+      const refreshResult = await getLatestSubmission();
+      if (refreshResult.success && refreshResult.hasSubmission) {
+        setLastSubmission(refreshResult.code);
+        setHasLastSubmission(true);
       }
-    } catch (error) {
-      console.error("Error during submission:", error);
-      toast.error("Network error during submission. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -210,8 +160,6 @@ function AgentSubmission() {
       const gameToUse = currentLeague && currentLeague.game;
       if (gameToUse) {
         loadInstructions(gameToUse);
-      } else if (currentLeague) {
-        fetchLeagueDetails(currentLeague.id || currentLeague.name);
       }
     }
   };
@@ -241,7 +189,7 @@ function AgentSubmission() {
               instructions={instructionData}
               output={output}
               feedback={feedback}
-              isLoading={isLoading || isLoadingLeagueInfo}
+              isLoading={isLoading}
               collapseInstructions={shouldCollapseInstructions}
             />
           </div>
@@ -257,7 +205,7 @@ function AgentSubmission() {
         onSubmit={handleSubmit}
         onLoadLast={handleLoadLastSubmission}
         onReset={handleReset}
-        isLoading={isLoading || isLoadingLeagueInfo}
+        isLoading={isLoading}
         hasLastSubmission={hasLastSubmission}
         hasStarterCode={!!starterCode}
       />
