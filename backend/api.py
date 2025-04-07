@@ -57,3 +57,10 @@ app.include_router(demo_router, prefix="/demo", tags=["Demo Operations"])
 async def root():
     """Root endpoint to check if server is running"""
     return ResponseModel(status="success", message="Server is up and running")
+
+
+# Add health check endpoint for Docker health checks
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration"""
+    return {"status": "healthy"}

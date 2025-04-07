@@ -182,7 +182,9 @@ async def get_validator_logs_endpoint(
     """Get logs from validator service"""
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get("http://localhost:8001/logs")
+            response = await client.get(
+                "http://validator:8001/logs"
+            )  # Changed from localhost to validator
             if response.status_code == 200:
                 return ResponseModel(
                     status="success",
@@ -207,7 +209,9 @@ async def get_simulator_logs_endpoint(
     """Get logs from simulator service"""
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get("http://localhost:8002/logs")
+            response = await client.get(
+                "http://simulator:8002/logs"
+            )  # Changed from localhost to simulator
             if response.status_code == 200:
                 return ResponseModel(
                     status="success",

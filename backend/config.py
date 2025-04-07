@@ -41,10 +41,18 @@ load_dotenv()
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
-GAMES = ["greedy_pig", "prisoners_dilemma"]
-# Update Docker API URL to use localhost instead of Docker's internal IP
-DOCKER_API_URL = os.getenv("DOCKER_API_URL", "http://localhost:8002")
-DEMO_TOKEN_EXPIRY = 60  # minutes - Add this line
+GAMES = ["greedy_pig", "prisoners_dilemma", "lineup4"]
+
+# Service URLs configured for Docker Compose services by default
+# These work the same in both local and server environments
+VALIDATOR_URL = os.getenv("VALIDATOR_URL", "http://validator:8001")
+SIMULATOR_URL = os.getenv("SIMULATOR_URL", "http://simulator:8002")
+API_URL = os.getenv("API_URL", "http://api:8000")
+
+# This is kept for backwards compatibility
+DOCKER_API_URL = API_URL
+
+DEMO_TOKEN_EXPIRY = 60  # minutes
 
 # Set a default SECRET_KEY for tests if not available in environment
 # In production, this should always be overridden by the actual secret key

@@ -4,7 +4,7 @@ from abc import ABC
 
 import httpx
 
-from backend.config import DOCKER_API_URL, SERVICE_TOKEN
+from backend.config import API_URL, SERVICE_TOKEN, SIMULATOR_URL, VALIDATOR_URL
 
 logger = logging.getLogger(__name__)
 
@@ -86,14 +86,14 @@ class BaseGame(ABC):
                 self.scores = {}
 
     async def get_all_player_classes_via_api(
-        self, api_url: str = "http://localhost:8000", auth_token: str = None
+        self, api_url: str = None, auth_token: str = None
     ):
         """Fetch player code from API and create player instances"""
         try:
             token = auth_token or SERVICE_TOKEN
             headers = {"Authorization": f"Bearer {token}"}
 
-            base_url = api_url or DOCKER_API_URL
+            base_url = api_url or API_URL
             logger.info(f"Using API URL: {base_url}")
             url = f"{base_url}/user/get-league-submissions/{self.league.id}"
             logger.info(f"Attempting to fetch submissions from: {url}")

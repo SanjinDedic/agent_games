@@ -50,7 +50,7 @@ async def run_simulation(
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"http://localhost:8002/simulate",
+                f"http://simulator:8002/simulate",
                 json={
                     "league_id": request.league_id,
                     "game_name": request.game_name,

@@ -5,16 +5,36 @@ from datetime import datetime
 import docker
 
 
-def clean_docker(simulator=True, validator=True):
+def clean_docker(
+    api=False, simulator=False, validator=False, postgres=False, all_services=False
+):
     """
     Clean Docker resources based on specified parameters.
-    
+
     Args:
+        api (bool): Clean API-related resources if True
         simulator (bool): Clean simulator-related resources if True
         validator (bool): Clean validator-related resources if True
+        postgres (bool): Clean PostgreSQL-related resources if True
+        all_services (bool): Clean all resources if True
     """
     try:
         client = docker.from_env()
+
+        # If all_services is True, set all options to True
+        if all_services:
+            api = True
+            simulator = True
+            validator = True
+            postgres = True
+
+        # If no service is specified, inform the user and exit
+        if not any([api, simulator, validator, postgres]):
+            print(
+                "No services specified for cleanup. Use options to select services to clean."
+            )
+            print("Use --all to clean all services.")
+            return
 
         # Try to get initial disk usage, but handle missing keys
         try:
@@ -24,12 +44,25 @@ def clean_docker(simulator=True, validator=True):
             initial_space = None
 
         print("Starting Docker cleanup...")
+        print(
+            f"Selected services: {' '.join(s for s, enabled in zip(['api', 'simulator', 'validator', 'postgres'], [api, simulator, validator, postgres]) if enabled)}"
+        )
 
-        # Helper function to check if resource is related to simulator/validator
+        # Helper function to check if resource is related to selected services
         def is_target_resource(name):
-            if simulator and 'simulator' in name.lower():
+            if api and ("api" in name.lower() or "agent_games-api" in name.lower()):
                 return True
-            if validator and 'validator' in name.lower():
+            if simulator and (
+                "simulator" in name.lower() or "agent_games-simulator" in name.lower()
+            ):
+                return True
+            if validator and (
+                "validator" in name.lower() or "agent_games-validator" in name.lower()
+            ):
+                return True
+            if postgres and (
+                "postgres" in name.lower() or "agent_games-postgres" in name.lower()
+            ):
                 return True
             return False
 
@@ -50,7 +83,7 @@ def clean_docker(simulator=True, validator=True):
         for image in images:
             tags = image.tags
             image_id = image.id
-            # Check if any tag contains simulator/validator
+            # Check if any tag contains target service names
             if any(is_target_resource(tag) for tag in tags):
                 try:
                     if tags:
@@ -71,7 +104,9 @@ def clean_docker(simulator=True, validator=True):
         print("\n4. Removing volumes...")
         volumes = client.volumes.list()
         for volume in volumes:
-            if is_target_resource(volume.name):
+            if is_target_resource(volume.name) or (
+                postgres and volume.name == "postgres_data"
+            ):
                 try:
                     volume.remove(force=True)
                     print(f"   Removed volume: {volume.name}")
@@ -81,7 +116,10 @@ def clean_docker(simulator=True, validator=True):
         print("\n5. Removing networks...")
         networks = client.networks.list()
         for network in networks:
-            if is_target_resource(network.name):
+            if (
+                is_target_resource(network.name)
+                or network.name == "agent_games_default"
+            ):
                 try:
                     network.remove()
                     print(f"   Removed network: {network.name}")
@@ -135,21 +173,48 @@ def clean_docker(simulator=True, validator=True):
         print(f"An unexpected error occurred: {str(e)}")
         sys.exit(1)
 
+
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Clean Docker resources for simulator and/or validator')
-    parser.add_argument('-s', '--simulator', action='store_true', 
-                        help='Clean only simulator-related resources')
-    parser.add_argument('-v', '--validator', action='store_true',
-                        help='Clean only validator-related resources')
+    parser = argparse.ArgumentParser(
+        description="Clean Docker resources for agent_games services"
+    )
+    parser.add_argument(
+        "-a", "--api", action="store_true", help="Clean API-related resources"
+    )
+    parser.add_argument(
+        "-s",
+        "--simulator",
+        action="store_true",
+        help="Clean simulator-related resources",
+    )
+    parser.add_argument(
+        "-v",
+        "--validator",
+        action="store_true",
+        help="Clean validator-related resources",
+    )
+    parser.add_argument(
+        "-p",
+        "--postgres",
+        action="store_true",
+        help="Clean PostgreSQL-related resources",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Clean all resources (API, simulator, validator, PostgreSQL)",
+    )
     return parser.parse_args()
 
 if __name__ == "__main__":
     print(f"Docker cleanup started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
     args = parse_arguments()
-    
-    # If no specific flags are provided, clean both
-    if not args.simulator and not args.validator:
-        clean_docker(simulator=True, validator=True)
-    else:
-        clean_docker(simulator=args.simulator, validator=args.validator)
+
+    clean_docker(
+        api=args.api,
+        simulator=args.simulator,
+        validator=args.validator,
+        postgres=args.postgres,
+        all_services=args.all,
+    )

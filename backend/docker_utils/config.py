@@ -23,9 +23,9 @@ DOCKER_BUILD_TIMEOUT = 300  # 5 minutes for building images
 DOCKER_START_TIMEOUT = 30  # 30 seconds for starting containers
 CONTAINER_READY_DELAY = 2  # 2 seconds wait after container start
 
-# Service URLs
-VALIDATOR_URL = "http://localhost:8001/validate"
-SIMULATOR_URL = "http://localhost:8002/simulate"
+# Service URLs - Updated to use service names instead of localhost
+VALIDATOR_URL = "http://validator:8001/validate"
+SIMULATOR_URL = "http://simulator:8002/simulate"
 
 # Default simulation parameters
 DEFAULT_NUM_SIMULATIONS = 100
