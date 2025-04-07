@@ -20,6 +20,7 @@ function DirectLeagueSignup() {
     teamName: "",
     password: "",
     confirmPassword: "",
+    schoolName: "",
   });
   const [error, setError] = useState("");
   const isLoading = isAuthLoading || isLeagueLoading;
@@ -159,6 +160,24 @@ function DirectLeagueSignup() {
                     onChange={handleChange}
                     className="w-full p-2 border border-ui-light rounded"
                     placeholder="Confirm your password"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="schoolName"
+                    className="block text-ui-dark mb-1"
+                  >
+                    School Name
+                  </label>
+                  <input
+                    type="text"
+                    id="schoolName"
+                    name="schoolName"
+                    value={formData.schoolName}
+                    onChange={handleChange}
+                    className="w-full p-2 border border-ui-light rounded"
+                    placeholder="Enter your school name in full"
                   />
                 </div>
 
