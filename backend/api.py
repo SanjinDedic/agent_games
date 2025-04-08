@@ -59,7 +59,6 @@ async def root():
     return ResponseModel(status="success", message="Server is up and running")
 
 
-# Add health check endpoint for Docker health checks
 @app.get("/health")
 async def health_check():
     """Health check endpoint for container orchestration"""
