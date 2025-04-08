@@ -7,7 +7,6 @@ on:
     paths:
       - 'backend/**'
       - 'pyproject.toml'
-      - 'requirements.txt'
       - 'docker-compose.yml'
   pull_request:
     branches:
@@ -15,14 +14,12 @@ on:
     paths:
       - 'backend/**'
       - 'pyproject.toml'
-      - 'requirements.txt'
       - 'docker-compose.yml'
 
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
     env:
-      # Add test environment variables 
       SECRET_KEY: "github_actions_test_secret_key"
       SERVICE_TOKEN: "github_actions_test_service_token"
       TESTING: "1"
@@ -34,15 +31,6 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: 3.12
-
-    - name: Debug directory contents
-      run: |
-        echo "Current directory:"
-        pwd
-        echo "Contents:"
-        ls -la
-        echo "Backend directory contents:"
-        ls -la backend/
 
     - name: Ensure validation files exist for tests
       env:
@@ -63,38 +51,28 @@ jobs:
 
     - name: Create .env file for Docker Compose
       run: |
-        # Create required .env file with environment variables
         echo "Creating .env file for Docker Compose"
         mkdir -p backend
         echo "SECRET_KEY=${SECRET_KEY}" > backend/.env
         echo "SERVICE_TOKEN=${SERVICE_TOKEN}" >> backend/.env
-        cat backend/.env
         
     - name: Start Docker Compose services
       run: |
-        # Build and start the services defined in docker-compose.yml
         docker compose build
         docker compose up -d
         
-        # Wait for services to become healthy
         echo "Waiting for services to start..."
-        timeout 60s bash -c 'until docker compose ps | grep validator | grep -q "Up"; do sleep 2; echo "Waiting for validator..."; done'
-        timeout 60s bash -c 'until docker compose ps | grep simulator | grep -q "Up"; do sleep 2; echo "Waiting for simulator..."; done'
+        timeout 60s bash -c 'until docker compose ps | grep postgres_test | grep -q "healthy"; do sleep 2; echo "Waiting for postgres_test..."; done'
+        timeout 60s bash -c 'until docker compose ps | grep validator | grep -q "healthy"; do sleep 2; echo "Waiting for validator..."; done'
+        timeout 60s bash -c 'until docker compose ps | grep simulator | grep -q "healthy"; do sleep 2; echo "Waiting for simulator..."; done'
         
-        # Print status of containers
         docker compose ps
-        
-        # Print logs of services
-        docker compose logs validator
-        docker compose logs simulator
 
     - name: Run tests with coverage
       run: |
-        # Set environment variables for the tests
         export SECRET_KEY="${SECRET_KEY}"
         export SERVICE_TOKEN="${SERVICE_TOKEN}"
         export TESTING=1
-        # Run tests with pytest
         pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
@@ -137,172 +115,93 @@ jobs:
             SECRET_KEY=$2
             LINEUP4_VALIDATION_PLAYERS=$3
             
-            echo "Starting deployment..."
-            
-            # Print initial disk space
-            echo "Disk space before cleanup:"
-            df -h /
-            
-            # Aggressive cleanup
-            echo "Running cleanup operations..."
-            sudo find /var/log -type f -name "*.gz" -delete
-            sudo find /var/log -type f -name "*.old" -delete
-            sudo find /var/log -type f -name "*.1" -delete
+            echo "Starting containerized deployment..."
             
             # Ensure Docker is running
             if ! sudo systemctl is-active --quiet docker; then
-              echo "Starting Docker service..."
               sudo systemctl start docker
             fi
             
-            # Clean Docker resources but preserve critical containers
-            echo "Cleaning Docker resources..."
-            sudo docker container prune -f
-            sudo docker image prune -af
-            sudo docker volume prune -f
-            sudo docker system prune -f
-    
-            # Show disk space after cleanup
-            echo "Disk space after cleanup:"
-            df -h /
+            # Create deployment directory if it doesn't exist
+            mkdir -p ~/agent_games
+            cd ~/agent_games
             
-            # Setup directories
-            mkdir -p ~/main_application
-            cd ~/main_application
+            # Create database backup before deployment
+            echo "Creating database backup..."
+            timestamp=$(date +%Y%m%d_%H%M%S)
+            backup_dir=~/db_backups
+            mkdir -p $backup_dir
             
-            # Backup existing database (keep only 3 latest backups)
-            if [ -f "agent_games/backend/teams.db" ]; then
-              echo "Backing up existing database..."
-              cp agent_games/backend/teams.db ~/teams.db.backup.$(date +%Y%m%d_%H%M%S)
-              find ~/ -name "teams.db.backup*" -type f -printf '%T@ %p\n' | sort -n | head -n -3 | cut -d' ' -f2- | xargs rm -f 2>/dev/null || true
-            fi
-            
-            # Clone repository with proper sparse checkout
-            echo "Cloning repository..."
-            tmp_dir=$(mktemp -d)
-            git clone --depth 1 --no-checkout https://github.com/SanjinDedic/agent_games.git "$tmp_dir"
-            cd "$tmp_dir"
-            git sparse-checkout init
-            git sparse-checkout set 'backend' '__init__.py' 'pyproject.toml' 'backend/requirements.txt' 'docker-compose.yml' 'start_services.sh'
-            git checkout
-            
-            # Save database file before overwriting
-            if [ -f "/home/ubuntu/main_application/agent_games/backend/teams.db" ]; then
-              echo "Saving current database..."
-              mv /home/ubuntu/main_application/agent_games/backend/teams.db ~/teams.db.temp
-            fi
-            
-            # Prepare target directory
-            if [ -d "/home/ubuntu/main_application/agent_games" ]; then
-              echo "Removing old backend code..."
-              rm -rf /home/ubuntu/main_application/agent_games/backend
-              rm -f /home/ubuntu/main_application/agent_games/__init__.py
-              rm -f /home/ubuntu/main_application/agent_games/pyproject.toml
-              rm -f /home/ubuntu/main_application/agent_games/docker-compose.yml
-              rm -f /home/ubuntu/main_application/agent_games/start_services.sh
+            # Check if we have existing postgres container running
+            if sudo docker ps -q -f name=agent_games-postgres-1; then
+              # Create PostgreSQL database dump
+              sudo docker exec agent_games-postgres-1 \
+                pg_dump -U postgres -d agent_games > $backup_dir/agent_games_backup_$timestamp.sql
+              echo "Database backup created at $backup_dir/agent_games_backup_$timestamp.sql"
+              
+              # Keep only the 5 most recent backups
+              ls -t $backup_dir/agent_games_backup_*.sql | tail -n +6 | xargs -r rm
             else
-              mkdir -p /home/ubuntu/main_application/agent_games
+              echo "Postgres container not running, skipping database backup"
             fi
             
-            # Copy new files
-            echo "Copying new code..."
-            cp -r backend /home/ubuntu/main_application/agent_games/
-            cp __init__.py /home/ubuntu/main_application/agent_games/
-            cp pyproject.toml /home/ubuntu/main_application/agent_games/
-            cp docker-compose.yml /home/ubuntu/main_application/agent_games/
-            cp start_services.sh /home/ubuntu/main_application/agent_games/
-            chmod +x /home/ubuntu/main_application/agent_games/start_services.sh
-            
-            # If requirements.txt is in the backend subdirectory
-            if [ -f "backend/requirements.txt" ]; then
-              cp backend/requirements.txt /home/ubuntu/main_application/agent_games/
+            # Pull latest code - preserve .env file if it exists
+            echo "Fetching latest code..."
+            if [ -f "backend/.env" ]; then
+              cp backend/.env backend/.env.bak
             fi
             
-            # Restore database
-            if [ -f "$HOME/teams.db.temp" ]; then
-              echo "Restoring database..."
-              cp ~/teams.db.temp /home/ubuntu/main_application/agent_games/backend/teams.db
-              rm ~/teams.db.temp
+            # Clone new code or update existing repository
+            if [ -d ".git" ]; then
+              git fetch --all
+              git reset --hard origin/main
+            else
+              rm -rf .git
+              git init
+              git remote add origin https://github.com/SanjinDedic/agent_games.git
+              git fetch --depth 1 origin main
+              git checkout origin/main
             fi
             
-            # Clean up temporary directory
-            rm -rf "$tmp_dir"
+            # Restore .env file if it existed
+            if [ -f "backend/.env.bak" ]; then
+              cp backend/.env.bak backend/.env
+              rm backend/.env.bak
+            else
+              # Setup environment variables
+              echo "SERVICE_TOKEN=$SERVICE_TOKEN" > backend/.env
+              echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
+            fi
             
-            # Move to agent_games directory
-            cd /home/ubuntu/main_application/agent_games
-            
-            # Create validation_players.py file for lineup4
+            # Create lineup4 validation_players file
             mkdir -p backend/games/lineup4
             echo "$LINEUP4_VALIDATION_PLAYERS" > backend/games/lineup4/validation_players.py
             
-            # Setup environment variables for Docker Compose
-            echo "Setting up environment variables..."
-            echo "SERVICE_TOKEN=$SERVICE_TOKEN" > backend/.env
-            echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
+            # Gracefully update containers to preserve volumes
+            echo "Updating containers..."
+            sudo docker compose pull || true
             
-            # Check for existing virtual environment
-            if [ -d "backend/venv" ] && [ -f "backend/venv/bin/python" ]; then
-              echo "Updating existing virtual environment..."
-              source backend/venv/bin/activate
-              python -m pip install --upgrade pip
-              if [ -f "backend/requirements.txt" ]; then
-                python -m pip install -r backend/requirements.txt
-              fi
-            else
-              echo "Creating new virtual environment..."
-              cd backend
-              rm -rf venv
-              /usr/bin/python3.13 -m venv venv
-              source venv/bin/activate
-              python -m pip install --upgrade pip
-              if [ -f "requirements.txt" ]; then
-                python -m pip install -r requirements.txt
-              fi
-              cd ..
-            fi
+            # Stop containers that don't have persistent data first
+            sudo docker compose stop api validator simulator
             
-            # Show disk space after installation
-            echo "Disk space after dependency installation:"
-            df -h /
-            
-            # Stop any existing services
-            echo "Stopping existing Docker containers..."
-            sudo docker compose down || true
-            
-            # Start services using Docker Compose
+            # Build and restart services
             echo "Starting services with Docker Compose..."
-            export SERVICE_TOKEN="$SERVICE_TOKEN"
-            export SECRET_KEY="$SECRET_KEY"
+            sudo docker compose build api validator simulator
+            sudo docker compose up -d
             
-            sudo -E docker compose up -d
-            
-            # Check if services are running
-            echo "Checking if services are running..."
-            sudo docker compose ps
-            
-            # Wait for services to be healthy
+            # Verify services are running
             echo "Waiting for services to be healthy..."
-            timeout 60s bash -c 'until curl -s http://localhost:8001/health | grep -q "healthy"; do sleep 2; done'
-            timeout 60s bash -c 'until curl -s http://localhost:8002/health | grep -q "healthy"; do sleep 2; done'
+            timeout 120s bash -c 'until curl -fs http://localhost:8001/health >/dev/null 2>&1; do sleep 5; echo "Waiting for validator..."; done'
+            timeout 120s bash -c 'until curl -fs http://localhost:8002/health >/dev/null 2>&1; do sleep 5; echo "Waiting for simulator..."; done'
+            timeout 120s bash -c 'until curl -fs http://localhost:8000/health >/dev/null 2>&1; do sleep 5; echo "Waiting for API..."; done'
             
-            # Clean up unnecessary files
-            find backend -name "*.pyc" -delete
-            find backend -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-            
-            # Start the main service with PM2
-            cd ~/main_application
-            pm2 restart ecosystem.config.js
+            # Clean up unused Docker resources
+            echo "Cleaning up unused Docker resources..."
+            sudo docker image prune -af --filter "until=24h" --filter "label!=persist=true"
             
             # Log container status
             echo "Docker container status:"
             sudo docker compose ps
             
-            # Log disk usage after deployment
-            echo "Disk usage after deployment:"
-            df -h /
-            
-            # Log PM2 status
-            pm2 list
-            
-            echo "Deployment completed"
+            echo "Deployment completed successfully"
           ENDSSH
