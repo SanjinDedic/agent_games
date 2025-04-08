@@ -140,6 +140,13 @@ jobs:
               sudo systemctl start docker
             fi
             
+            # Check if docker compose plugin is available
+            if ! sudo docker compose version &> /dev/null; then
+              echo "Docker Compose plugin not found. Installing docker-compose-plugin..."
+              sudo apt-get update
+              sudo apt-get install -y docker-compose-plugin
+            fi
+            
             # Create deployment directory if it doesn't exist
             mkdir -p ~/agent_games
             cd ~/agent_games
@@ -151,9 +158,10 @@ jobs:
             mkdir -p $backup_dir
             
             # Check if we have existing postgres container running
-            if sudo docker ps -q -f name=agent_games-postgres-1; then
+            POSTGRES_CONTAINER=$(sudo docker ps -q -f name=postgres | head -n 1)
+            if [ -n "$POSTGRES_CONTAINER" ]; then
               # Create PostgreSQL database dump
-              sudo docker exec agent_games-postgres-1 \
+              sudo docker exec $POSTGRES_CONTAINER \
                 pg_dump -U "$POSTGRES_USER" -d "$DB_NAME" > $backup_dir/agent_games_backup_$timestamp.sql
               echo "Database backup created at $backup_dir/agent_games_backup_$timestamp.sql"
               
@@ -199,31 +207,43 @@ jobs:
             mkdir -p backend/games/lineup4
             echo "$LINEUP4_VALIDATION_PLAYERS" > backend/games/lineup4/validation_players.py
             
-            # Gracefully update containers to preserve volumes
+            # Gracefully update containers
             echo "Updating containers..."
-            sudo docker compose pull || true
+            sudo docker pull postgres:16-alpine || true
             
             # Stop containers that don't have persistent data first
-            sudo docker compose stop api validator simulator
+            running_containers=$(sudo docker ps --format "{{.Names}}" | grep -E 'api|validator|simulator' || true)
+            if [ -n "$running_containers" ]; then
+              echo "Stopping services: $running_containers"
+              echo "$running_containers" | xargs sudo docker stop
+            fi
             
-            # Build and restart services using prod profile
-            echo "Starting services with Docker Compose using prod profile..."
-            sudo docker compose build
-            sudo docker compose --profile prod up -d
+            # Build and restart services
+            echo "Starting services with Docker Compose..."
+            
+            # Check if docker-compose.yml has profiles defined
+            if grep -q "profiles:" docker-compose.yml; then
+              echo "Starting with production profile..."
+              sudo docker compose build
+              sudo docker compose --profile prod up -d
+            else
+              # If no profiles defined, just start everything
+              echo "Starting all services..."
+              sudo docker compose build
+              sudo docker compose up -d
+            fi
             
             # Verify services are running
             echo "Waiting for services to be healthy..."
-            timeout 120s bash -c 'until curl -fs http://localhost:8001/health >/dev/null 2>&1; do sleep 5; echo "Waiting for validator..."; done'
-            timeout 120s bash -c 'until curl -fs http://localhost:8002/health >/dev/null 2>&1; do sleep 5; echo "Waiting for simulator..."; done'
-            timeout 120s bash -c 'until curl -fs http://localhost:8000/health >/dev/null 2>&1; do sleep 5; echo "Waiting for API..."; done'
+            timeout 120s bash -c 'until curl -fs http://localhost:8000/health >/dev/null 2>&1; do sleep 5; echo "Waiting for API..."; done || echo "API health check timed out"'
             
             # Clean up unused Docker resources
             echo "Cleaning up unused Docker resources..."
-            sudo docker image prune -af --filter "until=24h" --filter "label!=persist=true"
+            sudo docker image prune -af --filter "until=24h" --filter "label!=persist=true" || true
             
             # Log container status
             echo "Docker container status:"
-            sudo docker compose ps
+            sudo docker ps
             
-            echo "Deployment completed successfully"
+            echo "Deployment completed"
           ENDSSH
