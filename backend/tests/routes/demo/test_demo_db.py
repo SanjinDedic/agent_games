@@ -12,8 +12,10 @@ from backend.routes.demo.demo_db import (
     get_or_create_demo_league,
     save_demo_user_info,
 )
+from backend.tests.conftest import inspect_db_state
 
 
+@inspect_db_state(all_tables=True)
 def test_create_demo_user(db_session: Session):
     """Test creation of demo user"""
     team = create_demo_user(db_session, "TestUser")

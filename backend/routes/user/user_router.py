@@ -5,6 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
+from backend.config import get_service_url
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
@@ -78,10 +79,14 @@ async def submit_agent(
         return ResponseModel(status="error", message=str(e))
 
     try:
+        # Get environment-aware URL for validator
+        validator_url = get_service_url("validator", "validate")
         logger.info(f"Sending submission to validation server for team {team_name}")
+        logger.info(f"Using validator URL: {validator_url}")
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "http://localhost:8001/validate",
+                validator_url,
                 json={
                     "code": submission.code,
                     "game_name": team.league.game,

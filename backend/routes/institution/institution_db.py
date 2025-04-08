@@ -447,16 +447,18 @@ def assign_team_to_league(session: Session, team_id: int, league_id: int, instit
 
 def generate_signup_link(session: Session, league_id: int, institution_id: int) -> Dict:
     """Generate a new signup link for a league"""
-    # Get the league
-    league = session.get(League, league_id)
-    if not league:
-        raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Check if the league belongs to this institution
-    if league.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to access this league")
-
     try:
+        # Get the league
+        league = session.get(League, league_id)
+        if not league:
+            raise LeagueNotFoundError(f"League with ID {league_id} not found")
+
+        # Check if the league belongs to this institution
+        if league.institution_id != institution_id:
+            raise InstitutionAccessError(
+                "You don't have permission to access this league"
+            )
+
         # Generate a new signup token
         signup_token = secrets.token_urlsafe(16)
         league.signup_link = signup_token
@@ -464,6 +466,9 @@ def generate_signup_link(session: Session, league_id: int, institution_id: int) 
         session.commit()
 
         return {"signup_token": signup_token, "league_name": league.name}
+    except (LeagueNotFoundError, InstitutionAccessError) as e:
+        # Re-raise these specific exceptions to be caught by the router
+        raise
     except Exception as e:
         session.rollback()
         logger.error(f"Error generating signup link: {e}")

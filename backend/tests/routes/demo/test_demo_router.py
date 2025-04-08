@@ -6,9 +6,11 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from backend.config import DEMO_TOKEN_EXPIRY
+from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
 from backend.database.db_models import DemoUser, League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
+from backend.tests.conftest import inspect_db_state
 
 
 @pytest.fixture
@@ -152,7 +154,7 @@ def test_demo_leagues_creation(client: TestClient, db_session: Session):
     for league in demo_leagues:
         assert league.name.endswith("_demo")
         assert league.is_demo is True
-        assert league.expiry_date > datetime.now()
+        assert league.expiry_date > datetime.now(AUSTRALIA_SYDNEY_TZ)
 
 
 def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):

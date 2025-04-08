@@ -1,6 +1,7 @@
 """
 Configuration settings for Docker containers and services
 """
+import os
 
 # Container configurations
 CONTAINERS = {
@@ -23,9 +24,15 @@ DOCKER_BUILD_TIMEOUT = 300  # 5 minutes for building images
 DOCKER_START_TIMEOUT = 30  # 30 seconds for starting containers
 CONTAINER_READY_DELAY = 2  # 2 seconds wait after container start
 
-# Service URLs
-VALIDATOR_URL = "http://localhost:8001/validate"
-SIMULATOR_URL = "http://localhost:8002/simulate"
+# Service URLs - environment aware
+if os.environ.get("TESTING") == "1":
+    # For tests, use localhost
+    VALIDATOR_URL = "http://localhost:8001/validate"
+    SIMULATOR_URL = "http://localhost:8002/simulate"
+else:
+    # For Docker environment
+    VALIDATOR_URL = "http://validator:8001/validate"
+    SIMULATOR_URL = "http://simulator:8002/simulate"
 
 # Default simulation parameters
 DEFAULT_NUM_SIMULATIONS = 100

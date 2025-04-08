@@ -1,9 +1,45 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      validator:
+        condition: service_healthy
+      simulator:
+        condition: service_healthy
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/agent_games
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME}
+      - VALIDATOR_URL=http://validator:8001
+      - SIMULATOR_URL=http://simulator:8002
+      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    env_file:
+      - ./.env
+    mem_limit: 400m
+    mem_reservation: 200m
+    pids_limit: 50
+    profiles: ["prod", "dev", "test"]
+
   validator:
     build:
       context: .
       dockerfile: ./backend/docker_utils/dockerfiles/validator.dockerfile
-    network_mode: "host"
+    ports:
+      - "8001:8001"
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -16,16 +52,18 @@ services:
       retries: 3
       start_period: 10s
     env_file:
-      - ./backend/.env
+      - ./.env
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
+    profiles: ["prod", "dev", "test"]
 
   simulator:
     build:
       context: .
       dockerfile: ./backend/docker_utils/dockerfiles/simulator.dockerfile
-    network_mode: "host"
+    ports:
+      - "8002:8002"
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -38,7 +76,58 @@ services:
       retries: 3
       start_period: 10s
     env_file:
-      - ./backend/.env
+      - ./.env
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
+    profiles: ["prod", "dev", "test"]
+
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    mem_limit: 700m
+    mem_reservation: 300m
+    profiles: ["prod", "dev", "test"]
+
+  postgres_test:
+    image: postgres:14
+    ports:
+      - "5433:5432"
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TEST_DB_NAME}
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    mem_limit: 700m
+    mem_reservation: 300m
+    profiles: ["dev", "test"]
+
+volumes:
+  postgres_data:
+  postgres_test_data:

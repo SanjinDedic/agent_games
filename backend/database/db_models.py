@@ -3,7 +3,8 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 from passlib.context import CryptContext
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, UniqueConstraint
+from sqlalchemy import Column, DateTime, String, Text
+from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -84,8 +85,8 @@ class Team(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     school_name: str
     password_hash: str | None = None  # Optional for agent teams
-    score: int = 0
-    color: str = "rgb(171,239,177)"
+    score: int = Field(default=0)
+    color: str = Field(default="rgb(171,239,177)")
     league_id: int = Field(foreign_key="league.id")
     team_type: TeamType = Field(default=TeamType.STUDENT)
     is_demo: bool = Field(default=False)
@@ -98,6 +99,10 @@ class Team(SQLModel, table=True):
     # New field for institution relationship
     institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
     institution: Optional["Institution"] = Relationship(back_populates="teams")
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
+
     __table_args__ = (UniqueConstraint("name", "league_id"),)
 
     def set_password(self, password: str):
@@ -111,8 +116,8 @@ class Team(SQLModel, table=True):
 
 class Submission(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    code: str
-    timestamp: datetime
+    code: str = Field(sa_column=Column(Text()))  # Use Text for potentially long code
+    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     team_id: int = Field(default=None, foreign_key="team.id", nullable=True)
     team: Team = Relationship(back_populates="submissions")
 
@@ -121,15 +126,15 @@ class SimulationResult(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     league_id: int = Field(foreign_key="league.id")
     league: League = Relationship(back_populates="simulation_results")
-    timestamp: datetime
+    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     simulation_results: List["SimulationResultItem"] = Relationship(
         back_populates="simulation_result"
     )
-    published: bool = False
-    num_simulations: int = 0
-    custom_rewards: str = "[10, 8, 6, 4, 3, 2, 1]"
-    feedback_str: str | None = None
-    feedback_json: str | None = None
+    published: bool = Field(default=False)
+    num_simulations: int = Field(default=0)
+    custom_rewards: str = Field(default="[10, 8, 6, 4, 3, 2, 1]")
+    feedback_str: str | None = Field(default=None, sa_column=Column(Text()))
+    feedback_json: str | None = Field(default=None, sa_column=Column(Text()))
 
 
 class SimulationResultItem(SQLModel, table=True):
@@ -140,7 +145,7 @@ class SimulationResultItem(SQLModel, table=True):
     )
     team_id: int = Field(foreign_key="team.id")
     team: Team = Relationship()
-    score: float = 0
+    score: float = Field(default=0)
     custom_value1: float | None = None
     custom_value2: float | None = None
     custom_value3: float | None = None
@@ -158,7 +163,9 @@ class AgentAPIKey(SQLModel, table=True):
         foreign_key="team.id", unique=True
     )  # Ensures one API key per team
     team: Team = Relationship(back_populates="api_key")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
     last_used: datetime | None = None
     is_active: bool = Field(default=True)
 

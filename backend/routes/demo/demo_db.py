@@ -15,12 +15,37 @@ from backend.database.db_models import (
     Submission,
     Team,
     TeamType,
+    Institution,
     get_password_hash,
 )
 from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
+
+
+def get_or_create_demo_institution(session: Session) -> Institution:
+    """Get or create the demo institution"""
+    demo_institution = session.exec(
+        select(Institution).where(Institution.name == "Demo Institution")
+    ).first()
+
+    if not demo_institution:
+        # Create a default institution for demo entities
+        demo_institution = Institution(
+            name="Demo Institution",
+            contact_person="Demo Admin",
+            contact_email="demo@example.com",
+            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+            subscription_active=True,
+            subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365),
+            docker_access=True,
+            password_hash=get_password_hash("demo_password"),
+        )
+        session.add(demo_institution)
+        session.flush()  # Get the ID without committing the transaction
+
+    return demo_institution
 
 
 def generate_demo_password(length=12):
@@ -63,6 +88,9 @@ def create_demo_user(
         logger.error("Unassigned league not found")
         raise ValueError("Unassigned league not found")
 
+    # Find or create a demo institution
+    demo_institution = get_or_create_demo_institution(session)
+
     # Create new demo user - using get_password_hash instead of set_password
     demo_user = Team(
         name=demo_username,
@@ -72,7 +100,7 @@ def create_demo_user(
         league_id=unassigned_league.id,
         created_at=datetime.now(AUSTRALIA_SYDNEY_TZ),
         password_hash=get_password_hash(demo_password),
-        institution_id=1,
+        institution_id=demo_institution.id,  # Use the real institution ID
     )
 
     session.add(demo_user)
@@ -118,16 +146,18 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
     if existing_league:
         return existing_league
 
+    # Find or create a demo institution
+    demo_institution = get_or_create_demo_institution(session)
+
     # Create new demo league
     demo_league = League(
         name=league_name,
         created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ)
-        + timedelta(days=7),  # Longer than user expiry
+        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
         game=game_name,
         league_type=LeagueType.STUDENT,
         is_demo=True,
-        institution_id=1,
+        institution_id=demo_institution.id,
     )
 
     session.add(demo_league)

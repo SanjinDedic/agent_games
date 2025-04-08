@@ -4,6 +4,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from backend.config import get_service_url
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.agent.agent_db import (
     allow_simulation,
@@ -48,9 +49,18 @@ async def run_simulation(
                 message="Simulation is rate limited.",
             )
 
+        # Get environment-aware URL for simulator
+        simulator_url = get_service_url("simulator", "simulate")
+        logger.info(f"Using simulator URL: {simulator_url}")
+        if not simulator_url:
+            logger.error("Failed to get simulator URL from configuration")
+            return ErrorResponseModel(
+                status="error", message="Simulator service URL not configured"
+            )
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"http://localhost:8002/simulate",
+                simulator_url,
                 json={
                     "league_id": request.league_id,
                     "game_name": request.game_name,

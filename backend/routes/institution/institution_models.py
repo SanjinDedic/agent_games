@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.utils import get_games_names
 
+import pytz
+
 
 class LeagueSignUp(BaseModel):
     """Model for creating a new league"""
@@ -86,7 +88,15 @@ class ExpiryDate(BaseModel):
 
     @field_validator("date")
     def validate_date(cls, v):
-        if v < datetime.now():
+        # Create a timezone-aware now with Australia/Sydney timezone
+        AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
+        now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+
+        # If v doesn't have timezone info, assign Sydney timezone
+        if v.tzinfo is None:
+            v = AUSTRALIA_SYDNEY_TZ.localize(v)
+
+        if v < now:
             raise ValueError("Expiry date cannot be in the past")
         return v
 

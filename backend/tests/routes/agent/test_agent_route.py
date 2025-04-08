@@ -8,7 +8,10 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import AgentAPIKey, League, Team, TeamType
 from backend.routes.auth.auth_core import create_access_token
+from backend.tests.conftest import inspect_db_state
 
+# import patch
+from unittest.mock import patch
 
 @pytest.fixture
 def setup_agent_league(db_session: Session) -> League:
@@ -66,6 +69,7 @@ def agent_token(setup_agent_team: Team) -> str:
     )
 
 
+@inspect_db_state(all_tables=True)
 def test_agent_simulation_success(
     client: TestClient,
     db_session: Session,
