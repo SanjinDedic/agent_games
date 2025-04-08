@@ -23,8 +23,11 @@ AUSTRALIA_TZ = pytz.timezone("Australia/Sydney")
 def wait_for_postgres(max_retries=30, retry_interval=2):
     """Wait for PostgreSQL to be available"""
     database_url = get_database_url()
-    logger.info(f"Connecting to database: {database_url}")
-    
+    sanitized_url = (
+        database_url.rsplit("@", 1)[-1] if "@" in database_url else database_url
+    )
+    logger.info(f"Connecting to database (host info only): {sanitized_url}")
+
     retries = 0
     while retries < max_retries:
         try:
@@ -34,13 +37,13 @@ def wait_for_postgres(max_retries=30, retry_interval=2):
             user_pass = parts[0].split(":")
             host_db = parts[1].split("/")
             host_port = host_db[0].split(":")
-            
+
             username = user_pass[0]
             password = user_pass[1]
             host = host_port[0]
             port = int(host_port[1]) if len(host_port) > 1 else 5432
             dbname = host_db[1]
-            
+
             # Try to connect
             conn = psycopg.connect(
                 dbname=dbname,
@@ -56,7 +59,7 @@ def wait_for_postgres(max_retries=30, retry_interval=2):
             logger.warning(f"Database connection attempt {retries+1} failed: {e}")
             retries += 1
             time.sleep(retry_interval)
-    
+
     logger.error(f"Failed to connect to database after {max_retries} attempts")
     return False
 

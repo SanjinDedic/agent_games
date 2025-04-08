@@ -52,6 +52,11 @@ async def run_simulation(
         # Get environment-aware URL for simulator
         simulator_url = get_service_url("simulator", "simulate")
         logger.info(f"Using simulator URL: {simulator_url}")
+        if not simulator_url:
+            logger.error("Failed to get simulator URL from configuration")
+            return ErrorResponseModel(
+                status="error", message="Simulator service URL not configured"
+            )
 
         async with httpx.AsyncClient() as client:
             response = await client.post(

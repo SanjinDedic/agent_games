@@ -24,6 +24,30 @@ logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
+def get_or_create_demo_institution(session: Session) -> Institution:
+    """Get or create the demo institution"""
+    demo_institution = session.exec(
+        select(Institution).where(Institution.name == "Demo Institution")
+    ).first()
+
+    if not demo_institution:
+        # Create a default institution for demo entities
+        demo_institution = Institution(
+            name="Demo Institution",
+            contact_person="Demo Admin",
+            contact_email="demo@example.com",
+            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+            subscription_active=True,
+            subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365),
+            docker_access=True,
+            password_hash=get_password_hash("demo_password"),
+        )
+        session.add(demo_institution)
+        session.flush()  # Get the ID without committing the transaction
+
+    return demo_institution
+
+
 def generate_demo_password(length=12):
     """Generate a strong random password for demo users"""
     alphabet = string.ascii_letters + string.digits
@@ -65,24 +89,7 @@ def create_demo_user(
         raise ValueError("Unassigned league not found")
 
     # Find or create a demo institution
-    demo_institution = session.exec(
-        select(Institution).where(Institution.name == "Demo Institution")
-    ).first()
-
-    if not demo_institution:
-        # Create a default institution for demo users
-        demo_institution = Institution(
-            name="Demo Institution",
-            contact_person="Demo Admin",
-            contact_email="demo@example.com",
-            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-            subscription_active=True,
-            subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365),
-            docker_access=True,
-            password_hash=get_password_hash("demo_password"),
-        )
-        session.add(demo_institution)
-        session.flush()  # Get the ID without committing the transaction
+    demo_institution = get_or_create_demo_institution(session)
 
     # Create new demo user - using get_password_hash instead of set_password
     demo_user = Team(
@@ -140,26 +147,7 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
         return existing_league
 
     # Find or create a demo institution
-    demo_institution = session.exec(
-        select(Institution).where(Institution.name == "Demo Institution")
-    ).first()
-
-    if not demo_institution:
-        # Create a default institution for demo leagues
-        demo_institution = Institution(
-            name="Demo Institution",
-            contact_person="Demo Admin",
-            contact_email="demo@example.com",
-            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-            subscription_active=True,
-            subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365),
-            docker_access=True,
-            password_hash=get_password_hash(
-                "demo_password"
-            ),  # Make sure to import get_password_hash
-        )
-        session.add(demo_institution)
-        session.flush()  # Get the ID without committing the transaction
+    demo_institution = get_or_create_demo_institution(session)
 
     # Create new demo league
     demo_league = League(

@@ -16,7 +16,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/agent_games
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME}
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
@@ -84,13 +84,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
-      - POSTGRES_DB=agent_games
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -98,19 +98,21 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
+    env_file:
+      - ./backend/.env
 
   postgres_test:
     image: postgres:14
     ports:
       - "5433:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
-      - POSTGRES_DB=agent_games_test
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${TEST_DB_NAME}
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${TEST_DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -118,6 +120,8 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
+    env_file:
+      - ./backend/.env
 
 volumes:
   postgres_data:
