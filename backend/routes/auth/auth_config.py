@@ -5,7 +5,11 @@ import pytz
 from dotenv import load_dotenv
 from jose import jwt
 
-load_dotenv()
+# Load environment variables from root .env file
+project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+load_dotenv(os.path.join(project_root, ".env"))
 
 # Constants
 ALGORITHM = "HS256"

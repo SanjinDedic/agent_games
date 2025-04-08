@@ -57,13 +57,12 @@ jobs:
     - name: Create .env file for Docker Compose
       run: |
         echo "Creating .env file for Docker Compose"
-        mkdir -p backend
-        echo "SECRET_KEY=${SECRET_KEY}" > backend/.env
-        echo "SERVICE_TOKEN=${SERVICE_TOKEN}" >> backend/.env
-        echo "POSTGRES_USER=${POSTGRES_USER}" >> backend/.env
-        echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> backend/.env
-        echo "DB_NAME=${DB_NAME}" >> backend/.env
-        echo "TEST_DB_NAME=${TEST_DB_NAME}" >> backend/.env
+        echo "SECRET_KEY=${SECRET_KEY}" > .env
+        echo "SERVICE_TOKEN=${SERVICE_TOKEN}" >> .env
+        echo "POSTGRES_USER=${POSTGRES_USER}" >> .env
+        echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> .env
+        echo "DB_NAME=${DB_NAME}" >> .env
+        echo "TEST_DB_NAME=${TEST_DB_NAME}" >> .env
         
     - name: Start Docker Compose services with test profile
       run: |
@@ -166,8 +165,8 @@ jobs:
             
             # Pull latest code - preserve .env file if it exists
             echo "Fetching latest code..."
-            if [ -f "backend/.env" ]; then
-              cp backend/.env backend/.env.bak
+            if [ -f ".env" ]; then
+              cp .env .env.bak
             fi
             
             # Clone new code or update existing repository
@@ -183,17 +182,17 @@ jobs:
             fi
             
             # Restore .env file if it existed
-            if [ -f "backend/.env.bak" ]; then
-              cp backend/.env.bak backend/.env
-              rm backend/.env.bak
+            if [ -f ".env.bak" ]; then
+              cp .env.bak .env
+              rm .env.bak
             else
               # Setup environment variables - using the exact same names as local .env
-              echo "SERVICE_TOKEN=$SERVICE_TOKEN" > backend/.env
-              echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
-              echo "POSTGRES_USER=$POSTGRES_USER" >> backend/.env
-              echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> backend/.env
-              echo "DB_NAME=$DB_NAME" >> backend/.env
-              echo "TEST_DB_NAME=$TEST_DB_NAME" >> backend/.env
+              echo "SERVICE_TOKEN=$SERVICE_TOKEN" > .env
+              echo "SECRET_KEY=$SECRET_KEY" >> .env
+              echo "POSTGRES_USER=$POSTGRES_USER" >> .env
+              echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+              echo "DB_NAME=$DB_NAME" >> .env
+              echo "TEST_DB_NAME=$TEST_DB_NAME" >> .env
             fi
             
             # Create lineup4 validation_players file

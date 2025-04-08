@@ -31,11 +31,13 @@ def find_project_root(current_dir=os.path.dirname(os.path.abspath(__file__))):
 
 # Set the root directory
 ROOT_DIR = find_project_root()
+PROJECT_ROOT = os.path.dirname(ROOT_DIR)  # Get the parent directory of backend folder
 
 # Load environment variables
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from project root
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
