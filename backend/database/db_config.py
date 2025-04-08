@@ -24,6 +24,9 @@ def get_database_url():
 
     # Check if we're running tests and outside Docker
     if os.environ.get("TESTING") == "1" and not os.path.exists("/.dockerenv"):
+        # For tests, use the dedicated test database
+        if os.environ.get("USE_TEST_DB") == "1":
+            return get_test_database_url()
         # Use localhost instead of service name for tests running outside Docker
         return (
             "postgresql+psycopg://postgres:postgrespassword@localhost:5432/agent_games"
@@ -33,7 +36,15 @@ def get_database_url():
     return "postgresql+psycopg://postgres:postgrespassword@postgres:5432/agent_games"
 
 
-# For testing only, use in-memory SQLite
 def get_test_database_url():
-    """Get a SQLite database URL for testing purposes"""
-    return "sqlite:///test.db"
+    """
+    Get the database URL for the test database.
+    This is a dedicated PostgreSQL instance running on port 5433.
+    """
+    # Check if we're running inside Docker
+    if os.path.exists("/.dockerenv"):
+        # When running inside Docker, use the service name
+        return "postgresql+psycopg://postgres:postgrespassword@postgres_test:5432/agent_games_test"
+    else:
+        # When running outside Docker, access via localhost
+        return "postgresql+psycopg://postgres:postgrespassword@localhost:5433/agent_games_test"

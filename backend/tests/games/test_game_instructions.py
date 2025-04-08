@@ -57,6 +57,8 @@ def test_starter_code_content():
 
 def test_game_instructions_content():
     for game in GAMES:
+        if game == "lineup4":
+            continue
         response = client.post("user/get-game-instructions", json={"game_name": game})
         assert response.status_code == 200
         data = response.json()

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build:
@@ -39,9 +37,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/docker_utils/dockerfiles/validator.dockerfile
-    # REMOVED: network_mode: "host"
     ports:
-      - "8001:8001"  # Added port mapping
+      - "8001:8001"
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -63,9 +60,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/docker_utils/dockerfiles/simulator.dockerfile
-    # REMOVED: network_mode: "host"
     ports:
-      - "8002:8002"  # Added port mapping
+      - "8002:8002"
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -103,5 +99,26 @@ services:
     mem_limit: 700m
     mem_reservation: 300m
 
+  postgres_test:
+    image: postgres:14
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_DB=agent_games_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    mem_limit: 700m
+    mem_reservation: 300m
+
 volumes:
   postgres_data:
+  postgres_test_data:

@@ -5,8 +5,7 @@ import os
 import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
-
-from backend.config import DOCKER_API_URL
+from backend.config import get_service_url
 from backend.database.db_models import Institution
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import (
@@ -44,6 +43,18 @@ from backend.routes.institution.institution_models import (
 logger = logging.getLogger(__name__)
 
 institution_router = APIRouter()
+
+
+class LeagueNotFoundError(Exception):
+    """Raised when a league is not found"""
+
+    pass
+
+
+class InstitutionAccessError(Exception):
+    """Raised when an institution tries to access data it doesn't own"""
+
+    pass
 
 
 @institution_router.post("/league-create", response_model=ResponseModel)
@@ -170,11 +181,15 @@ async def run_simulation_endpoint(
                 message="Your institution does not have Docker access. Please contact the administrator."
             )
 
+        # Get environment-aware URL for simulator
+        simulator_url = get_service_url("simulator", "simulate")
+        logger.info(f"Using simulator URL: {simulator_url}")
+
         # Make direct API call to simulation server
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{DOCKER_API_URL}/simulate",
+                    simulator_url,
                     json={
                         "league_id": simulation_config.league_id,
                         "game_name": league.game,
@@ -377,12 +392,30 @@ async def generate_signup_link_endpoint(
         if not league_id:
             return ErrorResponseModel(status="error", message="League ID is required")
 
+        # Validate league_id is an integer
+        try:
+            league_id = int(league_id)
+        except (ValueError, TypeError):
+            return ErrorResponseModel(
+                status="error",
+                message=f"League ID must be an integer, got '{league_id}'",
+            )
+
         try:
             result = generate_signup_link(session, league_id, institution_id)
             return ResponseModel(
                 status="success",
                 message=f"Signup link generated for league {result['league_name']}",
                 data={"signup_token": result["signup_token"]},
+            )
+        except LeagueNotFoundError as e:
+            return ErrorResponseModel(
+                status="error", message=f"League with ID {league_id} not found"
+            )
+        except InstitutionAccessError as e:
+            return ErrorResponseModel(
+                status="error",
+                message="You don't have permission to access this league",
             )
         except Exception as e:
             return ErrorResponseModel(

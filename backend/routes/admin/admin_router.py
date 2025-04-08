@@ -4,6 +4,7 @@ import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
+from backend.config import get_service_url
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.admin.admin_db import (
     create_agent_team,
@@ -181,10 +182,12 @@ async def get_validator_logs_endpoint(
 ):
     """Get logs from validator service"""
     try:
+        validator_url = get_service_url("validator", "logs")
+        logger.info(f"Using validator URL: {validator_url}")
+
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "http://validator:8001/logs"
-            )  # Changed from localhost to validator
+            response = await client.get(validator_url)
+
             if response.status_code == 200:
                 return ResponseModel(
                     status="success",
@@ -208,10 +211,12 @@ async def get_simulator_logs_endpoint(
 ):
     """Get logs from simulator service"""
     try:
+        simulator_url = get_service_url("simulator", "logs")
+        logger.info(f"Using simulator URL: {simulator_url}")
+
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "http://simulator:8002/logs"
-            )  # Changed from localhost to simulator
+            response = await client.get(simulator_url)
+
             if response.status_code == 200:
                 return ResponseModel(
                     status="success",

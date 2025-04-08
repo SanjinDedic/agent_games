@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.api import app
-from backend.database.db_config import get_database_url
+from backend.database.db_config import get_test_database_url
 from backend.database.db_models import (
     Admin,
     DemoUser,
@@ -29,6 +29,7 @@ from backend.routes.auth.auth_core import create_access_token
 # Set environment variables for testing before any imports
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_tests")
 os.environ.setdefault("TESTING", "1")
+os.environ.setdefault("USE_TEST_DB", "1")  # Signal to use the test database
 
 os.environ["TESTING"] = "1"
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -110,8 +111,8 @@ def ensure_containers(request):
 
 @pytest.fixture
 def db_engine():
-    """Create a new database engine for testing"""
-    engine = create_engine(get_database_url())
+    """Create a new database engine for testing using the dedicated test database"""
+    engine = create_engine(get_test_database_url())
     SQLModel.metadata.create_all(engine)
     yield engine
     SQLModel.metadata.drop_all(engine)
@@ -275,3 +276,143 @@ def setup_demo_data(db_session: Session) -> None:
                 db_session.add(submission)
 
     db_session.commit()
+
+
+# Add the inspect_db_state decorator function
+import functools
+from sqlalchemy import inspect as sa_inspect, text
+from typing import List, Optional, Union
+
+
+def inspect_db_state(tables: Union[List[str], str] = None, all_tables: bool = False):
+    """
+    Decorator to inspect and print database state before and after a test.
+
+    Args:
+        tables: List of table names to inspect, or a single table name
+        all_tables: If True, inspect all tables regardless of tables parameter
+    """
+
+    def decorator(test_func):
+        @functools.wraps(test_func)
+        def wrapper(*args, **kwargs):
+            # Get db_session from kwargs or pytest fixture
+            session = None
+            for arg in list(kwargs.values()) + list(args):
+                if hasattr(arg, "execute") and hasattr(arg, "commit"):
+                    session = arg
+                    break
+
+            if not session:
+                print("WARNING: No database session found, cannot inspect db state")
+                return test_func(*args, **kwargs)
+
+            engine = session.get_bind()
+            inspector = sa_inspect(engine)
+
+            # Determine which tables to inspect
+            table_names = []
+            if all_tables:
+                table_names = inspector.get_table_names()
+            elif tables:
+                if isinstance(tables, str):
+                    table_names = [tables]
+                else:
+                    table_names = tables
+
+            print(f"\n=== DATABASE STATE BEFORE TEST: {test_func.__name__} ===")
+            for table_name in table_names:
+                print(f"\n--- TABLE: {table_name} ---")
+                try:
+                    result = session.execute(
+                        text(f"SELECT * FROM {table_name}")
+                    ).fetchall()
+                    if result:
+                        # Get column names
+                        columns = [
+                            col["name"] for col in inspector.get_columns(table_name)
+                        ]
+                        print(f"Columns: {columns}")
+                        print(f"Row count: {len(result)}")
+                        # Print first 5 rows for preview
+                        for i, row in enumerate(result[:5]):
+                            print(f"Row {i+1}: {row}")
+                        if len(result) > 5:
+                            print(f"... and {len(result) - 5} more rows")
+                    else:
+                        print("Table is empty")
+                except Exception as e:
+                    print(f"Error inspecting table {table_name}: {e}")
+
+            # Run the test
+            result = test_func(*args, **kwargs)
+
+            print(f"\n=== DATABASE STATE AFTER TEST: {test_func.__name__} ===")
+            for table_name in table_names:
+                print(f"\n--- TABLE: {table_name} ---")
+                try:
+                    result_after = session.execute(
+                        text(f"SELECT * FROM {table_name}")
+                    ).fetchall()
+                    if result_after:
+                        columns = [
+                            col["name"] for col in inspector.get_columns(table_name)
+                        ]
+                        print(f"Columns: {columns}")
+                        print(f"Row count: {len(result_after)}")
+                        for i, row in enumerate(result_after[:5]):
+                            print(f"Row {i+1}: {row}")
+                        if len(result_after) > 5:
+                            print(f"... and {len(result_after) - 5} more rows")
+                    else:
+                        print("Table is empty")
+                except Exception as e:
+                    print(f"Error inspecting table {table_name}: {e}")
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def print_db_state(session, tables=None, all_tables=False, label=""):
+    """
+    Function to inspect and print database state at any point in the code.
+
+    Args:
+        session: SQLAlchemy session
+        tables: List of table names to inspect, or a single table name
+        all_tables: If True, inspect all tables regardless of tables parameter
+        label: Optional label to include in the output
+    """
+    engine = session.get_bind()
+    inspector = sa_inspect(engine)
+
+    # Determine which tables to inspect
+    table_names = []
+    if all_tables:
+        table_names = inspector.get_table_names()
+    elif tables:
+        if isinstance(tables, str):
+            table_names = [tables]
+        else:
+            table_names = tables
+
+    print(f"\n=== DATABASE STATE {label} ===")
+    for table_name in table_names:
+        print(f"\n--- TABLE: {table_name} ---")
+        try:
+            result = session.execute(text(f"SELECT * FROM {table_name}")).fetchall()
+            if result:
+                columns = [col["name"] for col in inspector.get_columns(table_name)]
+                print(f"Columns: {columns}")
+                print(f"Row count: {len(result)}")
+                for i, row in enumerate(result[:5]):
+                    print(f"Row {i+1}: {row}")
+                if len(result) > 5:
+                    print(f"... and {len(result) - 5} more rows")
+            else:
+                print("Table is empty")
+        except Exception as e:
+            print(f"Error inspecting table {table_name}: {e}")
