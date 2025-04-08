@@ -32,6 +32,7 @@ services:
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
+    profiles: ["prod", "dev", "test"]
 
   validator:
     build:
@@ -55,6 +56,7 @@ services:
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
+    profiles: ["prod", "dev", "test"]
 
   simulator:
     build:
@@ -68,7 +70,7 @@ services:
       - PYTHONPATH=/agent_games
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -78,6 +80,7 @@ services:
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
+    profiles: ["prod", "dev", "test"]
 
   postgres:
     image: postgres:14
@@ -100,6 +103,7 @@ services:
     mem_reservation: 300m
     env_file:
       - ./backend/.env
+    profiles: ["prod", "dev", "test"]
 
   postgres_test:
     image: postgres:14
@@ -122,6 +126,7 @@ services:
     mem_reservation: 300m
     env_file:
       - ./backend/.env
+    profiles: ["dev", "test"]  # Note: not included in "prod" profile
 
 volumes:
   postgres_data:

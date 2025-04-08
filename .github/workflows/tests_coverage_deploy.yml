@@ -23,6 +23,11 @@ jobs:
       SECRET_KEY: "github_actions_test_secret_key"
       SERVICE_TOKEN: "github_actions_test_service_token"
       TESTING: "1"
+      # For testing, we use placeholder credentials
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "test_db_password"
+      DB_NAME: "agent_games"
+      TEST_DB_NAME: "agent_games_test"
       
     steps:
     - uses: actions/checkout@v3
@@ -55,11 +60,16 @@ jobs:
         mkdir -p backend
         echo "SECRET_KEY=${SECRET_KEY}" > backend/.env
         echo "SERVICE_TOKEN=${SERVICE_TOKEN}" >> backend/.env
+        echo "POSTGRES_USER=${POSTGRES_USER}" >> backend/.env
+        echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> backend/.env
+        echo "DB_NAME=${DB_NAME}" >> backend/.env
+        echo "TEST_DB_NAME=${TEST_DB_NAME}" >> backend/.env
         
-    - name: Start Docker Compose services
+    - name: Start Docker Compose services with test profile
       run: |
         docker compose build
-        docker compose up -d
+        # Use the test profile to make sure postgres_test is included
+        docker compose --profile test up -d
         
         echo "Waiting for services to start..."
         timeout 60s bash -c 'until docker compose ps | grep postgres_test | grep -q "healthy"; do sleep 2; echo "Waiting for postgres_test..."; done'
@@ -106,14 +116,23 @@ jobs:
           SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
+          # Using the same variable names as local .env
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
         run: |
           mkdir -p ~/.ssh
           echo "$KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY" "$LINEUP4_VALIDATION_PLAYERS"
+          ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY" "$LINEUP4_VALIDATION_PLAYERS" "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$DB_NAME" "$TEST_DB_NAME"
             SERVICE_TOKEN=$1
             SECRET_KEY=$2
             LINEUP4_VALIDATION_PLAYERS=$3
+            POSTGRES_USER=$4
+            POSTGRES_PASSWORD=$5
+            DB_NAME=$6
+            TEST_DB_NAME=$7
             
             echo "Starting containerized deployment..."
             
@@ -136,7 +155,7 @@ jobs:
             if sudo docker ps -q -f name=agent_games-postgres-1; then
               # Create PostgreSQL database dump
               sudo docker exec agent_games-postgres-1 \
-                pg_dump -U postgres -d agent_games > $backup_dir/agent_games_backup_$timestamp.sql
+                pg_dump -U "$POSTGRES_USER" -d "$DB_NAME" > $backup_dir/agent_games_backup_$timestamp.sql
               echo "Database backup created at $backup_dir/agent_games_backup_$timestamp.sql"
               
               # Keep only the 5 most recent backups
@@ -168,9 +187,13 @@ jobs:
               cp backend/.env.bak backend/.env
               rm backend/.env.bak
             else
-              # Setup environment variables
+              # Setup environment variables - using the exact same names as local .env
               echo "SERVICE_TOKEN=$SERVICE_TOKEN" > backend/.env
               echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
+              echo "POSTGRES_USER=$POSTGRES_USER" >> backend/.env
+              echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> backend/.env
+              echo "DB_NAME=$DB_NAME" >> backend/.env
+              echo "TEST_DB_NAME=$TEST_DB_NAME" >> backend/.env
             fi
             
             # Create lineup4 validation_players file
@@ -184,10 +207,10 @@ jobs:
             # Stop containers that don't have persistent data first
             sudo docker compose stop api validator simulator
             
-            # Build and restart services
-            echo "Starting services with Docker Compose..."
-            sudo docker compose build api validator simulator
-            sudo docker compose up -d
+            # Build and restart services using prod profile
+            echo "Starting services with Docker Compose using prod profile..."
+            sudo docker compose build
+            sudo docker compose --profile prod up -d
             
             # Verify services are running
             echo "Waiting for services to be healthy..."

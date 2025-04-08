@@ -1,5 +1,7 @@
 import logging
 import os
+import time
+import subprocess
 from datetime import datetime, timedelta
 
 import pytest
@@ -23,6 +25,7 @@ from backend.docker_utils.compose_utils import (
     restart_service,
     verify_all_services_healthy,
     wait_for_services,
+    run_docker_compose_command,
 )
 from backend.routes.auth.auth_core import create_access_token
 
@@ -38,6 +41,40 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+def ensure_postgres_test_running():
+    """Ensure postgres_test container is running specifically"""
+    try:
+        # Check if postgres_test is already running and healthy
+        result = run_docker_compose_command(["ps", "postgres_test", "--format", "json"])
+        if "healthy" in result.stdout:
+            logger.info("postgres_test is already running and healthy")
+            return True
+
+        # If not running or not healthy, ensure it's started with the test profile
+        logger.info("Starting postgres_test container...")
+        run_docker_compose_command(["--profile", "test", "up", "-d", "postgres_test"])
+
+        # Wait for postgres_test to be healthy
+        max_retries = 30
+        for i in range(max_retries):
+            result = run_docker_compose_command(
+                ["ps", "postgres_test", "--format", "json"]
+            )
+            if "healthy" in result.stdout:
+                logger.info("postgres_test is now healthy")
+                return True
+            logger.info(
+                f"Waiting for postgres_test to be healthy... ({i+1}/{max_retries})"
+            )
+            time.sleep(2)
+
+        logger.error("postgres_test failed to become healthy")
+        return False
+    except Exception as e:
+        logger.error(f"Error ensuring postgres_test is running: {str(e)}")
+        return False
+
+
 @pytest.fixture(scope="session", autouse=True)
 def docker_environment():
     """
@@ -46,7 +83,15 @@ def docker_environment():
     """
     logger.info("Setting up Docker environment for test session")
 
+    # Ensure postgres_test is running first
+    if not ensure_postgres_test_running():
+        pytest.fail("Failed to start postgres_test container")
+
+    # Then ensure all test services are running (validator, simulator)
     # Run docker compose build if needed (this happens automatically in docker compose up)
+    # Start services with the test profile
+    run_docker_compose_command(["--profile", "test", "up", "-d"])
+
     # Then start and wait for services to be healthy
     is_ready = wait_for_services(timeout=360, interval=5)
 
