@@ -216,6 +216,15 @@ jobs:
             mkdir -p backend/games/lineup4
             echo "$LINEUP4_VALIDATION_PLAYERS" > backend/games/lineup4/validation_players.py
             
+            # Simply copy the prisoners_dilemma validation_players file from home directory
+            mkdir -p backend/games/prisoners_dilemma
+            if [ -f ~/validation_players.py ]; then
+              cp ~/validation_players.py backend/games/prisoners_dilemma/validation_players.py
+              echo "Copied prisoners_dilemma validation players from existing file"
+            else
+              echo "Warning: ~/validation_players.py not found"
+            fi
+            
             # Gracefully update containers
             echo "Updating containers..."
             sudo docker pull postgres:16-alpine || true
