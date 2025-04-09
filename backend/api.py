@@ -52,7 +52,6 @@ app.include_router(user_router, prefix="/user", tags=["User Operations"])
 app.include_router(agent_router, prefix="/agent", tags=["Agent Operations"])
 app.include_router(demo_router, prefix="/demo", tags=["Demo Operations"])
 
-
 @app.get("/", response_model=ResponseModel)
 async def root():
     """Root endpoint to check if server is running"""
