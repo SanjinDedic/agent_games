@@ -127,13 +127,26 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY" "$LINEUP4_VALIDATION_PLAYERS" "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$DB_NAME" "$TEST_DB_NAME"
             SERVICE_TOKEN=$1
             SECRET_KEY=$2
-            LINEUP4_VALIDATION_PLAYERS=$3
             POSTGRES_USER=$4
             POSTGRES_PASSWORD=$5
             DB_NAME=$6
             TEST_DB_NAME=$7
             
             echo "Starting containerized deployment..."
+            
+            # CRITICAL: Copy validation_players.py FIRST, before any Docker operations
+            echo "Copying validation_players.py from home directory..."
+            if [ -f ~/validation_players.py ]; then
+              # Create directories first
+              mkdir -p ~/agent_games/backend/games/lineup4
+              
+              # Copy to both directories
+              cp ~/validation_players.py ~/agent_games/backend/games/lineup4/validation_players.py
+              echo "Successfully copied validation_players.py to lineup4 directory."
+            else
+              echo "ERROR: ~/validation_players.py not found!"
+              exit 1
+            fi
             
             # Ensure Docker is running
             if ! sudo systemctl is-active --quiet docker; then
@@ -212,18 +225,6 @@ jobs:
               echo "TEST_DB_NAME=$TEST_DB_NAME" >> .env
             fi
             
-            # Create lineup4 validation_players file
-            mkdir -p backend/games/lineup4
-            echo "$LINEUP4_VALIDATION_PLAYERS" > backend/games/lineup4/validation_players.py
-            
-            # Simply copy the prisoners_dilemma validation_players file from home directory
-            mkdir -p backend/games/prisoners_dilemma
-            if [ -f ~/validation_players.py ]; then
-              cp ~/validation_players.py backend/games/prisoners_dilemma/validation_players.py
-              echo "Copied prisoners_dilemma validation players from existing file"
-            else
-              echo "Warning: ~/validation_players.py not found"
-            fi
             
             # Gracefully update containers
             echo "Updating containers..."
