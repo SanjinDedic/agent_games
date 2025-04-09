@@ -140,19 +140,21 @@ jobs:
               sudo systemctl start docker
             fi
             
-            # Ensure Docker Compose is installed
-            if ! docker compose version &> /dev/null; then
-              echo "Installing Docker Compose plugin..."
-              DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-              mkdir -p $DOCKER_CONFIG/cli-plugins
-              sudo curl -SL https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-              sudo chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-              docker compose version
-            fi
-            
             # Create deployment directory if it doesn't exist
             mkdir -p ~/agent_games
             cd ~/agent_games
+            
+            # Define Docker Compose path and ensure it's available
+            DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+            COMPOSE_BIN="$DOCKER_CONFIG/cli-plugins/docker-compose"
+            
+            # Check and install Docker Compose if needed
+            if [ ! -x "$COMPOSE_BIN" ]; then
+              echo "Installing Docker Compose plugin..."
+              mkdir -p $DOCKER_CONFIG/cli-plugins
+              sudo curl -SL https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 -o "$COMPOSE_BIN"
+              sudo chmod +x "$COMPOSE_BIN"
+            fi
             
             # Create database backup before deployment
             echo "Creating database backup..."
@@ -192,12 +194,16 @@ jobs:
               git checkout origin/main
             fi
             
-            # Restore .env file if it existed
+            # Handle .env file with proper permissions
             if [ -f ".env.bak" ]; then
+              echo "Restoring existing .env file..."
               cp .env.bak .env
               rm .env.bak
             else
-              # Setup environment variables - using the exact same names as local .env
+              echo "Creating new .env file with proper permissions..."
+              # Create file first with proper permissions
+              touch .env && chmod 644 .env
+              # Then write to it
               echo "SERVICE_TOKEN=$SERVICE_TOKEN" > .env
               echo "SECRET_KEY=$SECRET_KEY" >> .env
               echo "POSTGRES_USER=$POSTGRES_USER" >> .env
@@ -221,10 +227,10 @@ jobs:
               echo "$running_containers" | xargs sudo docker stop
             fi
             
-            # Build and start the API service and its dependencies
+            # Build and start the API service and its dependencies using absolute path
             echo "Starting API service with Docker Compose..."
-            sudo docker compose build
-            sudo docker compose up -d api
+            sudo "$COMPOSE_BIN" build
+            sudo "$COMPOSE_BIN" up -d api
             
             # Verify services are running
             echo "Waiting for services to be healthy..."
