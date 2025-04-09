@@ -9,7 +9,9 @@ load_dotenv(os.path.join(project_root, ".env"))
 
 # Get database configuration from environment variables with fallbacks
 POSTGRES_USER = os.environ.get("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgrespassword")
+POSTGRES_PASSWORD = os.environ.get(
+    "POSTGRES_PASSWORD", ""
+)  # Password should be in .env file
 DB_NAME = os.environ.get("DB_NAME", "agent_games")
 TEST_DB_NAME = os.environ.get("TEST_DB_NAME", "agent_games_test")
 

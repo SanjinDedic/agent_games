@@ -7,6 +7,10 @@ from datetime import datetime, timedelta
 import psycopg
 import pytz
 from sqlmodel import Session, SQLModel, create_engine, select
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directory to path so we can import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -96,10 +100,16 @@ def populate_database(engine):
             return
 
         # Create administrator
-        admin = Admin(username="admin", password_hash=get_password_hash("admin"))
+        admin_password = os.getenv(
+            "ADMIN_PASSWORD", "admin"
+        )  # Default for backward compatibility
+        admin = Admin(username="admin", password_hash=get_password_hash(admin_password))
         session.add(admin)
 
         # Create default institution
+        institution_password = os.getenv(
+            "INSTITUTION_PASSWORD", "institution"
+        )  # Default for backward compatibility
         default_institution = Institution(
             name="Admin Institution",
             contact_person="Admin",
@@ -108,7 +118,7 @@ def populate_database(engine):
             subscription_active=True,
             subscription_expiry=(datetime.now(AUSTRALIA_TZ) + timedelta(days=365)),
             docker_access=True,
-            password_hash=get_password_hash("institution"),
+            password_hash=get_password_hash(institution_password),
         )
         session.add(default_institution)
         session.commit()
@@ -151,9 +161,9 @@ def populate_database(engine):
             institution_id=default_institution.id,
         )
         session.add(prisoners_dilemma_league)
-        
+
         session.commit()
-        
+
         # Create initial teams from teams.json
         try:
             # Define initial teams if teams.json isn't available
@@ -161,29 +171,35 @@ def populate_database(engine):
                 "teams": [
                     {
                         "name": "TeamA",
-                        "password": "AA",
-                        "school": "Sirius College"
+                        "password": os.getenv(
+                            "TEAM_A_PASSWORD", "AA"
+                        ),  # Default for backward compatibility
+                        "school": "Sirius College",
                     },
                     {
                         "name": "TeamB",
-                        "password": "BB",
-                        "school": "Sirius College"
+                        "password": os.getenv(
+                            "TEAM_B_PASSWORD", "BB"
+                        ),  # Default for backward compatibility
+                        "school": "Sirius College",
                     },
                     {
                         "name": "TeamC",
-                        "password": "CC",
-                        "school": "Glen Waverley Secondary College"
-                    }
+                        "password": os.getenv(
+                            "TEAM_C_PASSWORD", "CC"
+                        ),  # Default for backward compatibility
+                        "school": "Glen Waverley Secondary College",
+                    },
                 ]
             }
-            
+
             # Try to open teams.json if available
             teams_json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "teams.json")
             if os.path.exists(teams_json_path):
                 import json
                 with open(teams_json_path, "r") as f:
                     teams_data = json.load(f)
-            
+
             # Create teams
             for team_data in teams_data["teams"]:
                 team = Team(
@@ -195,7 +211,7 @@ def populate_database(engine):
                     institution_id=default_institution.id,
                 )
                 session.add(team)
-            
+
             session.commit()
             logger.info(f"Created {len(teams_data['teams'])} initial teams")
         except Exception as e:
