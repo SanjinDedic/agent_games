@@ -75,5 +75,5 @@ watchfiles==1.0.4
 websockets==14.1
 wrapt==1.17.2
 zipp==3.21.0
-psycopg==3.2.6  # PostgreSQL adapter
+psycopg==3.2.6
 psutil==7.0.0

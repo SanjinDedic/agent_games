@@ -1,19 +1,39 @@
 services:
+  # New Docker Socket Proxy service
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only mount
+    environment:
+      # Block write operations (only allow GET requests)
+      - POST=0
+      - PUT=0
+      - DELETE=0
+      # Allow access to needed API sections
+      - CONTAINERS=1
+      - SERVICES=1
+      - NETWORKS=1
+      - IMAGES=1
+      - EVENTS=1
+      - INFO=1
+      - PING=1
+      - VERSION=1
+      - SYSTEM=1
+      - VOLUMES=1
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2375"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   api:
     build:
       context: .
       dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      postgres:
-        condition: service_healthy
-      validator:
-        condition: service_healthy
-      simulator:
-        condition: service_healthy
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -22,6 +42,16 @@ services:
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - DOCKER_HOST=tcp://docker-proxy:2375  # Connect to the proxy instead
+    depends_on:
+      postgres:
+        condition: service_healthy
+      validator:
+        condition: service_healthy
+      simulator:
+        condition: service_healthy
+      docker-proxy:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
