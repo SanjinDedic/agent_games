@@ -13,16 +13,19 @@ function DockerStatus() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
   // State for the different types of data
-  const [overview, setOverview] = useState(null);
+  const [basicOverview, setBasicOverview] = useState(null);
+  const [resourceStats, setResourceStats] = useState(null);
   const [selectedService, setSelectedService] = useState("all");
   const [logs, setLogs] = useState({});
   const [isLoading, setIsLoading] = useState({
-    overview: false,
+    basicOverview: false,
+    resourceStats: false,
     logs: false,
   });
   const [logLines, setLogLines] = useState(100);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showResourceStats, setShowResourceStats] = useState(false);
 
   // List of available services
   const services = ["all", "api", "validator", "simulator", "postgres"];
@@ -38,8 +41,8 @@ function DockerStatus() {
       navigate("/Admin");
     }
 
-    // Initial data fetch
-    fetchOverview();
+    // Initial data fetch (fast overview only)
+    fetchBasicOverview();
     if (selectedService) {
       fetchLogs(selectedService);
     }
@@ -48,7 +51,10 @@ function DockerStatus() {
     let intervalId;
     if (autoRefresh) {
       intervalId = setInterval(() => {
-        fetchOverview();
+        fetchBasicOverview();
+        if (showResourceStats) {
+          fetchResourceStats();
+        }
         if (selectedService) {
           fetchLogs(selectedService);
         }
@@ -60,12 +66,12 @@ function DockerStatus() {
         clearInterval(intervalId);
       }
     };
-  }, [navigate, autoRefresh, selectedService]);
+  }, [navigate, autoRefresh, selectedService, showResourceStats]);
 
-  const fetchOverview = async () => {
-    setIsLoading((prev) => ({ ...prev, overview: true }));
+  const fetchBasicOverview = async () => {
+    setIsLoading((prev) => ({ ...prev, basicOverview: true }));
     try {
-      const response = await fetch(`${apiUrl}/diagnostics/overview`, {
+      const response = await fetch(`${apiUrl}/diagnostics/basic-overview`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -75,7 +81,7 @@ function DockerStatus() {
 
       const data = await response.json();
       if (data.status === "success") {
-        setOverview(data.data);
+        setBasicOverview(data.data);
       } else {
         toast.error("Failed to fetch system overview");
       }
@@ -83,24 +89,44 @@ function DockerStatus() {
       console.error("Error fetching system overview:", error);
       toast.error(`Error: ${error.message}`);
     } finally {
-      setIsLoading((prev) => ({ ...prev, overview: false }));
+      setIsLoading((prev) => ({ ...prev, basicOverview: false }));
+    }
+  };
+
+  const fetchResourceStats = async () => {
+    setIsLoading((prev) => ({ ...prev, resourceStats: true }));
+    try {
+      const response = await fetch(`${apiUrl}/diagnostics/resource-stats`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === "success") {
+        setResourceStats(data.data.resources);
+      } else {
+        toast.error("Failed to fetch resource stats");
+      }
+    } catch (error) {
+      console.error("Error fetching resource stats:", error);
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setIsLoading((prev) => ({ ...prev, resourceStats: false }));
     }
   };
 
   const fetchLogs = async (service) => {
     setIsLoading((prev) => ({ ...prev, logs: true }));
     try {
-      const response = await fetch(`${apiUrl}/diagnostics/logs`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          service: service,
-          tail: logLines,
-        }),
-      });
+      const response = await fetch(
+        `${apiUrl}/diagnostics/logs?service=${service}&tail=${logLines}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -131,10 +157,21 @@ function DockerStatus() {
   };
 
   const handleRefresh = () => {
-    fetchOverview();
+    fetchBasicOverview();
+    if (showResourceStats) {
+      fetchResourceStats();
+    }
     if (selectedService) {
       fetchLogs(selectedService);
     }
+  };
+
+  const handleToggleResourceStats = () => {
+    // If showing stats for the first time, fetch them
+    if (!showResourceStats && !resourceStats) {
+      fetchResourceStats();
+    }
+    setShowResourceStats(!showResourceStats);
   };
 
   const formatPercentage = (value) => {
@@ -143,13 +180,13 @@ function DockerStatus() {
 
   // Render system overview
   const renderSystemOverview = () => {
-    if (!overview || !overview.system) {
+    if (!basicOverview || !basicOverview.system) {
       return (
         <div className="text-center p-4">Loading system information...</div>
       );
     }
 
-    const { system } = overview;
+    const { system } = basicOverview;
 
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -231,15 +268,28 @@ function DockerStatus() {
 
   // Render service metrics
   const renderServiceMetrics = () => {
-    if (!overview || !overview.resources) {
-      return <div className="text-center p-4">Loading service metrics...</div>;
+    if (!basicOverview || !basicOverview.statuses) {
+      return <div className="text-center p-4">Loading service status...</div>;
     }
 
-    const { resources, statuses } = overview;
+    const { statuses } = basicOverview;
 
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6 overflow-x-auto">
-        <h2 className="text-xl font-bold text-ui-dark mb-4">Services</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-ui-dark">Service Status</h2>
+          <button
+            onClick={handleToggleResourceStats}
+            className={`px-4 py-2 rounded-md transition-colors duration-200 text-white ${
+              showResourceStats
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-green-500 hover:bg-green-600"
+            }`}
+          >
+            {showResourceStats ? "Hide Resource Stats" : "Show Resource Stats"}
+          </button>
+        </div>
+
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-ui-lighter">
             <tr>
@@ -252,27 +302,37 @@ function DockerStatus() {
               <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
                 Health
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
-                CPU
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
-                Memory
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
-                Network I/O
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
-                Disk I/O
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
-                Uptime
-              </th>
+
+              {/* Conditional columns for resource stats */}
+              {showResourceStats && (
+                <>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
+                    CPU
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
+                    Memory
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
+                    Network I/O
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
+                    Disk I/O
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-ui-dark uppercase tracking-wider">
+                    Uptime
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {Object.keys(resources).map((service) => {
-              const resource = resources[service];
+            {Object.keys(statuses).map((service) => {
               const status = statuses[service];
+              // Get resource stats if available
+              const resource =
+                showResourceStats && resourceStats
+                  ? resourceStats[service]
+                  : null;
 
               return (
                 <tr key={service} className="hover:bg-ui-lightest">
@@ -282,23 +342,23 @@ function DockerStatus() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            ${
-                                              resource.status === "running"
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-red-100 text-red-800"
-                                            }`}
+                                        ${
+                                          status && status.status === "running"
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-red-100 text-red-800"
+                                        }`}
                     >
-                      {resource.status}
+                      {status ? status.status : "Unknown"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            ${
-                                              status && status.is_healthy
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-red-100 text-red-800"
-                                            }`}
+                                        ${
+                                          status && status.is_healthy
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-red-100 text-red-800"
+                                        }`}
                     >
                       {status
                         ? status.is_healthy
@@ -307,22 +367,37 @@ function DockerStatus() {
                         : "Unknown"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
-                    {formatPercentage(resource.cpu_percent)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
-                    {resource.memory_usage} (
-                    {formatPercentage(resource.memory_percent)})
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
-                    ↓ {resource.network_io.rx} / ↑ {resource.network_io.tx}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
-                    ↓ {resource.disk_io.read} / ↑ {resource.disk_io.write}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
-                    {resource.uptime}
-                  </td>
+
+                  {/* Conditional columns for resource stats */}
+                  {showResourceStats && (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
+                        {resource
+                          ? formatPercentage(resource.cpu_percent)
+                          : "Loading..."}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
+                        {resource
+                          ? `${resource.memory_usage} (${formatPercentage(
+                              resource.memory_percent
+                            )})`
+                          : "Loading..."}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
+                        {resource
+                          ? `↓ ${resource.network_io.rx} / ↑ ${resource.network_io.tx}`
+                          : "Loading..."}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
+                        {resource
+                          ? `↓ ${resource.disk_io.read} / ↑ ${resource.disk_io.write}`
+                          : "Loading..."}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ui">
+                        {resource ? resource.uptime : "Loading..."}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -332,7 +407,7 @@ function DockerStatus() {
     );
   };
 
-  // Render logs
+  // Render logs - FULLY RESTORED from original version
   const renderLogs = () => {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -409,7 +484,7 @@ function DockerStatus() {
           </div>
         ) : (
           // Render logs for selected service
-          <div className="bg-ui-dark rounded-lg p-4 overflow-x-auto h-96">
+          <div className="bg-ui-dark rounded-lg p-4 overflow-x-auto h-192">
             <pre className="text-white font-mono text-sm whitespace-pre-wrap">
               {logs[selectedService] || "No logs available"}
             </pre>
@@ -447,10 +522,12 @@ function DockerStatus() {
 
             <button
               onClick={handleRefresh}
-              disabled={isLoading.overview}
+              disabled={isLoading.basicOverview || isLoading.resourceStats}
               className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-md transition-colors duration-200 disabled:opacity-50"
             >
-              {isLoading.overview ? "Refreshing..." : "Refresh All"}
+              {isLoading.basicOverview || isLoading.resourceStats
+                ? "Refreshing..."
+                : "Refresh All"}
             </button>
           </div>
         </div>
@@ -459,22 +536,22 @@ function DockerStatus() {
         <div className="flex border-b border-gray-200 mb-6">
           <button
             className={`py-2 px-4 font-medium text-sm 
-                            ${
-                              activeTab === "overview"
-                                ? "border-b-2 border-primary text-primary"
-                                : "text-gray-500 hover:text-gray-700"
-                            }`}
+                        ${
+                          activeTab === "overview"
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-gray-500 hover:text-gray-700"
+                        }`}
             onClick={() => setActiveTab("overview")}
           >
             Overview
           </button>
           <button
             className={`py-2 px-4 font-medium text-sm 
-                            ${
-                              activeTab === "logs"
-                                ? "border-b-2 border-primary text-primary"
-                                : "text-gray-500 hover:text-gray-700"
-                            }`}
+                        ${
+                          activeTab === "logs"
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-gray-500 hover:text-gray-700"
+                        }`}
             onClick={() => setActiveTab("logs")}
           >
             Logs

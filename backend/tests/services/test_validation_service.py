@@ -124,14 +124,6 @@ def test_validate_endpoint_exceptions(validator_client: TestClient):
     assert "Unknown game" in data["message"]
 
 
-def test_get_logs_success(validator_client: TestClient):
-    """Test successful log retrieval"""
-    response = validator_client.get("/logs")
-    assert response.status_code == 200
-    data = response.json()
-    assert "logs" in data
-
-
 def test_code_validator_success():
     """Test successful code validation scenarios"""
     validator = CodeValidator()

@@ -269,22 +269,6 @@ class CustomPlayer(Player):
 
 
 @pytest.mark.asyncio
-async def test_service_logs():
-    """Test log retrieval from both services."""
-
-    async with httpx.AsyncClient() as client:
-        # Get validator logs
-        validator_response = await client.get("http://localhost:8001/logs")
-        assert validator_response.status_code == 200
-        assert "logs" in validator_response.json()
-
-        # Get simulator logs
-        simulator_response = await client.get("http://localhost:8002/logs")
-        assert simulator_response.status_code == 200
-        assert "logs" in simulator_response.json()
-
-
-@pytest.mark.asyncio
 async def test_concurrent_operations(db_session: Session, test_league: League):
     """Test handling of concurrent operations."""
 

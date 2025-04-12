@@ -98,14 +98,6 @@ def test_simulate_endpoint_success(simulator_client: TestClient, test_league: Le
     assert "player_feedback" in data
 
 
-def test_get_logs_success(simulator_client: TestClient):
-    """Test successful log retrieval"""
-    response = simulator_client.get("/logs")
-    assert response.status_code == 200
-    data = response.json()
-    assert "logs" in data
-
-
 def test_aggregate_simulation_results_success():
     """Test successful aggregation of simulation results"""
     simulation_results = [

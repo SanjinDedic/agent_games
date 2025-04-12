@@ -174,65 +174,6 @@ async def create_agent_api_key_endpoint(
         )
 
 
-# System monitoring endpoints
-@admin_router.get("/get-validator-logs", response_model=ResponseModel)
-@verify_admin_role
-async def get_validator_logs_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """Get logs from validator service"""
-    try:
-        validator_url = get_service_url("validator", "logs")
-        logger.info(f"Using validator URL: {validator_url}")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(validator_url)
-
-            if response.status_code == 200:
-                return ResponseModel(
-                    status="success",
-                    message="Validator logs retrieved successfully",
-                    data={"logs": response.json()["logs"]},
-                )
-            else:
-                return ErrorResponseModel(
-                    status="error",
-                    message=f"Failed to retrieve validator logs: {response.text}",
-                )
-    except Exception as e:
-        return ErrorResponseModel(
-            status="error", message=f"Failed to connect to validator service: {str(e)}"
-        )
-
-@admin_router.get("/get-simulator-logs", response_model=ResponseModel)
-@verify_admin_role
-async def get_simulator_logs_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """Get logs from simulator service"""
-    try:
-        simulator_url = get_service_url("simulator", "logs")
-        logger.info(f"Using simulator URL: {simulator_url}")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(simulator_url)
-
-            if response.status_code == 200:
-                return ResponseModel(
-                    status="success",
-                    message="Simulator logs retrieved successfully",
-                    data={"logs": response.json()["logs"]},
-                )
-            else:
-                return ErrorResponseModel(
-                    status="error",
-                    message=f"Failed to retrieve simulator logs: {response.text}",
-                )
-    except Exception as e:
-        return ErrorResponseModel(
-            status="error", message=f"Failed to connect to simulator service: {str(e)}"
-        )
-
 # Demo user management endpoints
 @admin_router.get("/get_all_demo_users", response_model=ResponseModel)
 @verify_admin_role
