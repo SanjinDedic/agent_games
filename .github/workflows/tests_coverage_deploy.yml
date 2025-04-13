@@ -257,9 +257,9 @@ jobs:
             
             # Build and start the API service and its dependencies using absolute path
             echo "Starting API service with Docker Compose..."
-            sudo "$COMPOSE_BIN" build
+            sudo "$COMPOSE_BIN" build --no-cache
             # Use the prod profile to ensure all necessary services are started
-            sudo "$COMPOSE_BIN" --profile prod up -d api
+            sudo "$COMPOSE_BIN" --profile prod up -d
             
             # Verify services are running
             echo "Waiting for services to be healthy..."
