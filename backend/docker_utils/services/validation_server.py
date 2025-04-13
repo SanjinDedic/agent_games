@@ -120,12 +120,6 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/logs")
-async def get_logs():
-    """Return stub for logs since we're only using console logging"""
-    return {"logs": "Logs are being streamed to console only. Check Docker logs."}
-
-
 @app.post("/validate", response_model=ValidationResponse)
 async def validate_submission(request: ValidationRequest) -> ValidationResponse:
     """Validate submitted code and run test simulation"""

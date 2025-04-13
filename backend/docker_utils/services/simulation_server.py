@@ -74,12 +74,6 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/logs")
-async def get_logs():
-    """Return stub for logs since we're only using console logging"""
-    return {"logs": "Logs are being streamed to console only. Check Docker logs."}
-
-
 @app.post("/simulate")
 async def run_simulation(request: SimulationRequest):
     """Run simulation with the provided parameters."""

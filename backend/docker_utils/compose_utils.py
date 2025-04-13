@@ -40,16 +40,28 @@ def get_container_logs(service_name: str) -> str:
 
 
 def restart_service(service_name: Optional[str] = None) -> bool:
-    """Restart a specific service or all services"""
+    """
+    Restart a specific service or all services
+
+    Note: This operation may be blocked by Docker Socket Proxy
+    if it's configured to block POST operations
+    """
     try:
         cmd = ["restart"]
         if service_name:
             cmd.append(service_name)
-            logger.info(f"Restarting Docker Compose service: {service_name}")
+            logger.info(f"Attempting to restart Docker Compose service: {service_name}")
         else:
-            logger.info("Restarting all Docker Compose services")
+            logger.info("Attempting to restart all Docker Compose services")
 
         result = run_docker_compose_command(cmd)
+
+        if result.returncode != 0 and "403 Forbidden" in result.stderr:
+            logger.warning(
+                "Restart operation blocked by Docker Socket Proxy (permission denied)"
+            )
+            return False
+
         return result.returncode == 0
     except Exception as e:
         logger.error(f"Error restarting service(s): {e}")
@@ -83,7 +95,12 @@ def get_running_services() -> List[str]:
 
 
 def ensure_services_running() -> bool:
-    """Ensure all services defined in docker-compose.yml are running"""
+    """
+    Ensure all services defined in docker-compose.yml are running
+
+    Note: This operation may be blocked by Docker Socket Proxy
+    if it's configured to block POST operations
+    """
     try:
         # Get services that should be running and those that are running
         all_services = set(get_services())
@@ -92,10 +109,19 @@ def ensure_services_running() -> bool:
         # Start any non-running services
         not_running = all_services - running_services
         if not_running:
-            logger.info(f"Starting services: {', '.join(not_running)}")
+            logger.info(f"Attempting to start services: {', '.join(not_running)}")
 
             # Directly start all services - simpler than individual starts
-            run_docker_compose_command(["up", "-d"])
+            result = run_docker_compose_command(["up", "-d"])
+
+            if result.returncode != 0 and "403 Forbidden" in result.stderr:
+                logger.warning(
+                    "Service start operation blocked by Docker Socket Proxy (permission denied)"
+                )
+                logger.warning(
+                    "Services may need to be started manually or by an administrator"
+                )
+                return False
 
             # Verify everything started
             running_after = set(get_running_services())
@@ -112,57 +138,29 @@ def ensure_services_running() -> bool:
 
 
 def stop_services() -> bool:
-    """Stop all services defined in docker-compose.yml"""
+    """
+    Stop all services defined in docker-compose.yml
+
+    Note: This operation may be blocked by Docker Socket Proxy
+    if it's configured to block POST operations
+    """
     try:
         result = run_docker_compose_command(["down"])
+
+        if result.returncode != 0 and "403 Forbidden" in result.stderr:
+            logger.warning(
+                "Service stop operation blocked by Docker Socket Proxy (permission denied)"
+            )
+            logger.warning(
+                "Services may need to be stopped manually or by an administrator"
+            )
+            return False
+
         logger.info("All services stopped")
         return result.returncode == 0
     except Exception as e:
         logger.error(f"Error stopping services: {e}")
         return False
-
-
-# 1. Update compose_utils.py functions
-
-
-# backend/docker_utils/compose_utils.py
-def run_docker_compose_command(
-    command: List[str], capture_output: bool = True
-) -> subprocess.CompletedProcess:
-    """Run a docker compose command and return the result"""
-    try:
-        full_command = [
-            "docker",
-            "compose",
-        ] + command  # Changed from ["docker-compose"]
-        logger.debug(f"Running docker compose command: {' '.join(full_command)}")
-
-        result = subprocess.run(
-            full_command,
-            check=False,  # Don't raise exception for non-zero exit code
-            capture_output=capture_output,
-            text=True,
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Error running docker compose command: {e}")
-        raise
-
-
-def get_services() -> List[str]:
-    """Get all services defined in docker-compose.yml"""
-    config_result = run_docker_compose_command(["config", "--services"])
-    return (
-        config_result.stdout.strip().split("\n") if config_result.stdout.strip() else []
-    )
-
-
-def get_running_services() -> List[str]:
-    """Get all currently running services"""
-    ps_result = run_docker_compose_command(
-        ["ps", "--services", "--filter", "status=running"]
-    )
-    return ps_result.stdout.strip().split("\n") if ps_result.stdout.strip() else []
 
 
 def check_service_health(service_name: str) -> Tuple[bool, str]:
