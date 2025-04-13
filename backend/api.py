@@ -45,6 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(admin_router, prefix="/admin", tags=["Administration"])
 app.include_router(institution_router, prefix="/institution", tags=["Institution"])
