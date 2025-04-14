@@ -34,7 +34,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error during application shutdown: {e}")
 
-
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(

@@ -237,6 +237,51 @@ jobs:
               echo "$running_containers" | xargs sudo docker stop
             fi
             
+            # ENHANCED CLEANUP: Save Postgres container ID if it exists
+            echo "Getting Postgres container ID for preservation..."
+            POSTGRES_CONTAINER_ID=$(sudo docker ps -q -f name=postgres | head -n 1)
+            
+            if [ -n "$POSTGRES_CONTAINER_ID" ]; then
+              echo "Found Postgres container: $POSTGRES_CONTAINER_ID (this will be preserved)"
+              # Stop Postgres container gracefully
+              sudo docker stop $POSTGRES_CONTAINER_ID
+            else
+              echo "No running Postgres container found"
+            fi
+            
+            # Remove all containers except Postgres
+            echo "Removing all containers except Postgres..."
+            ALL_CONTAINERS=$(sudo docker ps -aq)
+            for container in $ALL_CONTAINERS; do
+              if [ "$container" != "$POSTGRES_CONTAINER_ID" ]; then
+                sudo docker rm -f $container || true
+              fi
+            done
+            
+            # Remove all images except Postgres
+            echo "Removing all images except Postgres..."
+            POSTGRES_IMAGE_ID=$(sudo docker images postgres:14 -q)
+            ALL_IMAGES=$(sudo docker images -q)
+            for image in $ALL_IMAGES; do
+              if [ "$image" != "$POSTGRES_IMAGE_ID" ]; then
+                sudo docker rmi -f $image || true
+              fi
+            done
+            
+            # Clean all build caches
+            echo "Cleaning Docker build cache..."
+            sudo docker builder prune -af || true
+            
+            # Restart preserved Postgres container if it existed
+            if [ -n "$POSTGRES_CONTAINER_ID" ]; then
+              echo "Restarting Postgres container..."
+              sudo docker start $POSTGRES_CONTAINER_ID
+              
+              # Wait for Postgres to be ready
+              echo "Waiting for Postgres to be ready..."
+              sleep 10
+            fi
+            
             # Start docker-proxy first and wait for it to be ready
             echo "Starting docker-proxy service..."
             sudo "$COMPOSE_BIN" --profile prod up -d docker-proxy
@@ -257,7 +302,7 @@ jobs:
             
             # Build and start the API service and its dependencies using absolute path
             echo "Starting API service with Docker Compose..."
-            sudo "$COMPOSE_BIN" build --no-cache
+            sudo "$COMPOSE_BIN" build --no-cache --pull
             # Use the prod profile to ensure all necessary services are started
             sudo "$COMPOSE_BIN" --profile prod up -d
             
