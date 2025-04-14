@@ -69,7 +69,8 @@ function DirectLeagueSignup() {
       formData.teamName,
       formData.password,
       leagueToken,
-      leagueInfo
+      leagueInfo,
+      formData.schoolName // Add the school name parameter
     );
 
     if (result.success) {

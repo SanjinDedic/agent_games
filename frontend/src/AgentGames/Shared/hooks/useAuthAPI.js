@@ -54,7 +54,7 @@ export const useAuthAPI = () => {
   }, [apiUrl, dispatch]);
   
   // Direct signup - for token-based signup flow
-  const directSignup = useCallback(async (teamName, password, leagueToken, leagueInfo) => {
+  const directSignup = useCallback(async (teamName, password, leagueToken, leagueInfo, schoolName) => {
     setIsLoading(true);
     
     try {
@@ -66,7 +66,8 @@ export const useAuthAPI = () => {
         body: JSON.stringify({
           team_name: teamName,
           password: password,
-          signup_token: leagueToken
+          signup_token: leagueToken,
+          school_name: schoolName
         })
       });
       

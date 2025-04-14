@@ -301,7 +301,11 @@ def get_league_by_signup_token(session: Session, signup_token: str) -> League:
 
 
 def create_team_and_assign_to_league(
-    session: Session, team_name: str, password: str, league_id: int
+    session: Session,
+    team_name: str,
+    password: str,
+    league_id: int,
+    school_name: str = "",
 ) -> Team:
     """Create a new team and directly assign it to a specific league"""
     # First get the league to retrieve institution_id
@@ -318,7 +322,8 @@ def create_team_and_assign_to_league(
     # Create the team with connection to both league and institution
     team = Team(
         name=team_name,
-        school_name=team_name,  # Using team name as school name by default
+        school_name=school_name
+        or team_name,  # Use provided school name or team name as fallback
         league_id=league_id,
         institution_id=league.institution_id,
         team_type=TeamType.STUDENT,

@@ -344,7 +344,7 @@ async def direct_league_signup(
 
         # Create the team and assign to league
         team = create_team_and_assign_to_league(
-            session, signup.team_name, signup.password, league.id
+            session, signup.team_name, signup.password, league.id, signup.school_name
         )
 
         # Generate authentication token for the new team

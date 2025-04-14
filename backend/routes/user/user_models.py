@@ -39,6 +39,7 @@ class DirectLeagueSignup(BaseModel):
     team_name: str
     password: str
     signup_token: str
+    school_name: str = ""  # Add school_name field with default empty string
 
     @field_validator("team_name", "password")
     def validate_not_empty(cls, v):
