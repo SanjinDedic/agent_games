@@ -122,6 +122,8 @@ class Submission(SQLModel, table=True):
     team: Team = Relationship(back_populates="submissions")
 
 
+# In backend/database/db_models.py
+
 class SimulationResult(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     league_id: int = Field(foreign_key="league.id")
@@ -135,6 +137,7 @@ class SimulationResult(SQLModel, table=True):
     custom_rewards: str = Field(default="[10, 8, 6, 4, 3, 2, 1]")
     feedback_str: str | None = Field(default=None, sa_column=Column(Text()))
     feedback_json: str | None = Field(default=None, sa_column=Column(Text()))
+    publish_link: str | None = Field(default=None)  # New field for the publish link
 
 
 class SimulationResultItem(SQLModel, table=True):

@@ -1,4 +1,7 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAction } from '@reduxjs/toolkit';
+
+// Define a standalone action creator for setPublishLink to ensure it's properly created
+export const setPublishLink = createAction('leagues/setPublishLink');
 
 const initialState = {
   list: [],
@@ -6,6 +9,7 @@ const initialState = {
   currentLeagueResults: [],
   currentLeagueResultSelected: null,
   currentRewards: null,
+  currentPublishLink: null,
 };
 
 const leaguesSlice = createSlice({
@@ -19,7 +23,7 @@ const leaguesSlice = createSlice({
         game: league.game,
         id: league.id,
         name: league.name,
-        signup_link: league.signup_link,  // Add this line to store the signup_link
+        signup_link: league.signup_link,
       }));
       if (action.payload.length > 0) {
         state.currentLeague = state.list[0];
@@ -33,6 +37,7 @@ const leaguesSlice = createSlice({
         game: league.game,
         id: league.id,
         name: league.name,
+        signup_link: league.signup_link,
       });
     },
     updateExpiryDate: (state, action) => {
@@ -51,19 +56,29 @@ const leaguesSlice = createSlice({
         state.currentLeague = league;
       }
     },
-    clearLeagues: (state, action) => {
+    clearLeagues: (state) => {
       state.list = [];
       state.currentLeague = null;
+      state.currentLeagueResults = [];
+      state.currentLeagueResultSelected = null;
+      state.currentPublishLink = null;
     },
     setResults: (state, action) => {
-      state.currentLeagueResults = action.payload;
+      state.currentLeagueResults = action.payload.map(result => ({
+        ...result,
+        publish_link: result.publish_link || null
+      }));
       if (action.payload.length > 0) {
         state.currentLeagueResultSelected = action.payload[0];
       }
     },
     addSimulationResult: (state, action) => {
-      state.currentLeagueResults.unshift(action.payload);
-      state.currentLeagueResultSelected = action.payload;
+      const newResult = {
+        ...action.payload,
+        publish_link: action.payload.publish_link || null
+      };
+      state.currentLeagueResults.unshift(newResult);
+      state.currentLeagueResultSelected = newResult;
     },
     setCurrentSimulation: (state, action) => {
       const timestamp = state.currentLeagueResults.find(league => league.timestamp === action.payload);
@@ -77,9 +92,41 @@ const leaguesSlice = createSlice({
     clearResults: (state) => {
       state.currentLeagueResults = [];
       state.currentLeagueResultSelected = null;
+      state.currentPublishLink = null;
     },
   },
+  // Handle the standalone action creator
+  extraReducers: (builder) => {
+    builder.addCase(setPublishLink, (state, action) => {
+      state.currentPublishLink = action.payload;
+      
+      // Also update the publish_link in the current selected result
+      if (state.currentLeagueResultSelected) {
+        state.currentLeagueResultSelected.publish_link = action.payload;
+        
+        // Update the publish_link in the results array as well
+        const resultIndex = state.currentLeagueResults.findIndex(
+          result => result.id === state.currentLeagueResultSelected.id
+        );
+        if (resultIndex !== -1) {
+          state.currentLeagueResults[resultIndex].publish_link = action.payload;
+        }
+      }
+    });
+  }
 });
 
-export const { setLeagues, addLeague, setCurrentLeague, clearLeagues, updateExpiryDate, setResults, setCurrentSimulation, setRewards, clearResults, addSimulationResult } = leaguesSlice.actions;
+export const { 
+  setLeagues, 
+  addLeague, 
+  setCurrentLeague, 
+  clearLeagues, 
+  updateExpiryDate, 
+  setResults, 
+  setCurrentSimulation, 
+  setRewards, 
+  clearResults, 
+  addSimulationResult
+} = leaguesSlice.actions;
+
 export default leaguesSlice.reducer;

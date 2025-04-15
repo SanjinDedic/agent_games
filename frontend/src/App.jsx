@@ -16,14 +16,15 @@ import AdminLeague from './AgentGames/Admin/AdminLeague';
 import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import StyleGuide from './StyleGuide';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import React from 'react';
-import { useDispatch } from 'react-redux';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { toggleTooltips } from './slices/settingsSlice';
-import DockerStatus from './AgentGames/Admin/DockerStatus';
-import AdminDemoUsers from './AgentGames/Admin/AdminDemoUsers';
+import PublishedResults from "./AgentGames/PublishedResults";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React from "react";
+import { useDispatch } from "react-redux";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { toggleTooltips } from "./slices/settingsSlice";
+import DockerStatus from "./AgentGames/Admin/DockerStatus";
+import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
 
 function App() {
@@ -50,6 +51,8 @@ function App() {
             path="/TeamSignup/:leagueToken"
             element={<DirectLeagueSignup />}
           />
+          {/* New Route for Published Results */}
+          <Route path="/results/:publishLink" element={<PublishedResults />} />
           {/* Admin Routes */}
           <Route path="Admin" element={<Admin />} />
           <Route path="AdminLeague" element={<AdminLeague />} />

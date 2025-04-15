@@ -6,7 +6,14 @@ from typing import Dict, Optional
 import pytz
 from sqlmodel import Session, select
 
-from backend.database.db_models import League, Submission, Team, TeamType
+from backend.database.db_models import (
+    League,
+    Submission,
+    Team,
+    TeamType,
+    SimulationResult,
+)
+from backend.utils import process_simulation_results
 
 
 class TeamError(Exception):
@@ -166,47 +173,6 @@ def get_all_published_results(session: Session) -> dict:
     return {"all_results": all_results}
 
 
-def process_simulation_results(sim, league_name: str, active: bool = None) -> dict:
-    """Helper function to process simulation results"""
-    total_points = {}
-    table_data = {}
-
-    for result in sim.simulation_results:
-        team_name = result.team.name
-        total_points[team_name] = result.score
-
-        for i in range(1, 4):
-            custom_value = getattr(result, f"custom_value{i}")
-            custom_value_name = getattr(result, f"custom_value{i}_name")
-
-            if custom_value_name:
-                if custom_value_name not in table_data:
-                    table_data[custom_value_name] = {}
-                table_data[custom_value_name][team_name] = custom_value
-
-    feedback = None
-    if sim.feedback_str is not None:
-        feedback = sim.feedback_str
-    elif sim.feedback_json is not None:
-        feedback = json.loads(sim.feedback_json)
-
-    result_data = {
-        "league_name": league_name,
-        "id": sim.id,
-        "total_points": total_points,
-        "table": table_data,
-        "num_simulations": sim.num_simulations,
-        "timestamp": sim.timestamp,
-        "rewards": sim.custom_rewards,
-        "feedback": feedback,
-    }
-
-    if active is not None:
-        result_data["active"] = active
-
-    return result_data
-
-
 def get_all_leagues(session: Session):
     """Get all leagues"""
     leagues = session.exec(select(League).where(League.deleted_date == None)).all()
@@ -335,3 +301,23 @@ def create_team_and_assign_to_league(
     session.refresh(team)
 
     return team
+
+
+def get_result_by_publish_link(session: Session, publish_link: str) -> dict:
+    """Get a published result by its publish link"""
+    simulation = session.exec(
+        select(SimulationResult)
+        .where(SimulationResult.publish_link == publish_link)
+        .where(SimulationResult.published == True)
+    ).first()
+
+    if not simulation:
+        raise ValueError(f"Published result with link '{publish_link}' not found")
+
+    # Get league for this simulation
+    league = simulation.league
+
+    # Process the simulation results
+    result = process_simulation_results(simulation, league.name)
+
+    return result

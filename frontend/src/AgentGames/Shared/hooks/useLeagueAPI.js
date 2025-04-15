@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import { setLeagues, setCurrentLeague } from '../../../slices/leaguesSlice';
+import { setLeagues } from '../../../slices/leaguesSlice';
 
 /**
  * Hook for handling league-related API calls
@@ -209,7 +209,10 @@ export const useLeagueAPI = (userRole) => {
       
       if (data.status === "success") {
         toast.success(data.message);
-        return { success: true };
+        return { 
+          success: true, 
+          data: data.data  // Return the complete data including publish_link
+        };
       } else {
         toast.error(data.message || 'Failed to publish results');
         return { success: false, error: data.message };

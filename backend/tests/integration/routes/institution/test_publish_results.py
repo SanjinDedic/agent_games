@@ -77,7 +77,7 @@ def publish_setup(db_session: Session) -> tuple:
 def test_publish_results_success(client, publish_setup, db_session):
     """Test successful publishing of simulation results"""
     institution, league, sim_results, _, headers = publish_setup
-    
+
     # Test case 1: Publish with string feedback
     response = client.post(
         "/institution/publish-results",
@@ -92,13 +92,13 @@ def test_publish_results_success(client, publish_setup, db_session):
     data = response.json()
     assert data["status"] == "success"
     assert "published successfully" in data["message"]
-    
+
     # Verify result was published and has string feedback
     db_session.refresh(sim_results[0])
     assert sim_results[0].published is True
     assert sim_results[0].feedback_str == "Test string feedback"
     assert sim_results[0].feedback_json is None
-    
+
     # Test case 2: Publish with JSON feedback
     json_feedback = {
         "analysis": {
@@ -118,16 +118,15 @@ def test_publish_results_success(client, publish_setup, db_session):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
-    
+
     # Verify result was published and has JSON feedback
     db_session.refresh(sim_results[0])
     db_session.refresh(sim_results[1])
     assert sim_results[1].published is True
-    assert sim_results[0].published is False  # Previous result should be unpublished
     assert sim_results[1].feedback_json is not None
     loaded_feedback = json.loads(sim_results[1].feedback_json)
     assert loaded_feedback["analysis"]["top_performer"] == "Team1"
-    
+
     # Test case 3: Publish without feedback
     response = client.post(
         "/institution/publish-results",

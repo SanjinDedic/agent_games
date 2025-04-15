@@ -12,6 +12,7 @@ from backend.database.db_models import (Institution, League, LeagueType,
                                         SimulationResult, SimulationResultItem,
                                         Submission, Team, TeamType)
 from backend.games.game_factory import GameFactory
+from backend.utils import process_simulation_results
 
 logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
@@ -325,12 +326,11 @@ def publish_sim_results(
         raise InstitutionAccessError("You don't have permission to publish this simulation result")
 
     try:
-        # Unpublish all other results
-        for sim in league.simulation_results:
-            sim.published = False
-            session.add(sim)
+        # Generate a unique publish link if not already set
+        if not simulation.publish_link:
+            simulation.publish_link = secrets.token_urlsafe(16)
 
-        # Publish this result
+        # Set the simulation as published
         simulation.published = True
 
         if feedback is not None:
@@ -346,7 +346,12 @@ def publish_sim_results(
 
         return (
             f"Results published successfully for league '{league_name}'",
-            {"sim_id": simulation.id, "league_name": league_name, "published": True},
+            {
+                "sim_id": simulation.id,
+                "league_name": league_name,
+                "published": True,
+                "publish_link": simulation.publish_link,
+            },
         )
 
     except Exception as e:
@@ -378,42 +383,6 @@ def update_expiry_date(
         session.rollback()
         logger.error(f"Error updating expiry date: {e}")
         raise
-
-
-def process_simulation_results(sim: SimulationResult, league_name: str) -> Dict:
-    """Helper function to process simulation results"""
-    total_points = {}
-    table_data = {}
-
-    for result in sim.simulation_results:
-        team_name = result.team.name
-        total_points[team_name] = result.score
-
-        for i in range(1, 4):
-            custom_value = getattr(result, f"custom_value{i}")
-            custom_value_name = getattr(result, f"custom_value{i}_name")
-
-            if custom_value_name:
-                if custom_value_name not in table_data:
-                    table_data[custom_value_name] = {}
-                table_data[custom_value_name][team_name] = custom_value
-
-    feedback = None
-    if sim.feedback_str:
-        feedback = sim.feedback_str
-    elif sim.feedback_json:
-        feedback = json.loads(sim.feedback_json)
-
-    return {
-        "id": sim.id,
-        "league_name": league_name,
-        "timestamp": sim.timestamp,
-        "total_points": total_points,
-        "table": table_data,
-        "num_simulations": sim.num_simulations,
-        "rewards": json.loads(sim.custom_rewards),
-        "feedback": feedback,
-    }
 
 
 def assign_team_to_league(session: Session, team_id: int, league_id: int, institution_id: int) -> str:

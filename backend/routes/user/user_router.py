@@ -31,6 +31,7 @@ from backend.routes.user.user_db import (
     get_team,
     get_team_submission,
     save_submission,
+    get_result_by_publish_link,
 )
 from backend.routes.user.user_models import (
     DirectLeagueSignup,
@@ -403,4 +404,24 @@ async def get_league_by_token(
         logger.error(f"Error retrieving league by token: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to retrieve league information: {str(e)}"
+        )
+
+
+@user_router.get("/published-result/{publish_link}", response_model=ResponseModel)
+async def get_published_result_by_link(
+    publish_link: str,
+    session: Session = Depends(get_db),
+):
+    """Get a published result by its unique publish link"""
+    try:
+        result = get_result_by_publish_link(session, publish_link)
+        return ResponseModel(
+            status="success",
+            message="Published result retrieved successfully",
+            data=result,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving published result: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve published result: {str(e)}"
         )

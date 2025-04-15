@@ -121,6 +121,65 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
     navigate(path);
   };
 
+  // Render published results with links
+  const renderPublishedResults = () => {
+    const publishedResults = allSimulations.filter((sim) => sim.publish_link);
+
+    if (publishedResults.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-6 border-t pt-4 border-ui-light">
+        <h3 className="text-lg font-semibold text-ui-dark mb-2">
+          Published Results
+        </h3>
+        <div className="space-y-2">
+          {publishedResults.map((result, index) => {
+            const baseUrl = `${window.location.protocol}//${window.location.host}`;
+            const resultsUrl = `/results/${result.publish_link}`;
+            const fullUrl = `${baseUrl}${resultsUrl}`;
+
+            return (
+              <div
+                key={index}
+                className="flex items-center justify-between bg-ui-lighter p-3 rounded-lg"
+              >
+                <div className="text-sm">
+                  <span className="font-medium">
+                    {new Date(result.timestamp).toLocaleString()}
+                  </span>
+                  <span className="ml-2 text-ui">
+                    ({result.num_simulations} simulations)
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <a
+                    href={resultsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary-hover text-sm mr-2"
+                  >
+                    View
+                  </a>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(fullUrl);
+                      toast.success("Link copied to clipboard!");
+                    }}
+                    className="p-1.5 bg-primary hover:bg-primary-hover text-white rounded text-xs"
+                  >
+                    Copy Link
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-ui-lighter">
       <div className="max-w-[1800px] mx-auto px-6 pt-20 pb-8">
@@ -186,6 +245,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
                     {allSimulations.map((option, index) => (
                       <option key={index} value={option.timestamp}>
                         {new Date(option.timestamp).toLocaleString()}
+                        {option.publish_link ? " (Published)" : ""}
                       </option>
                     ))}
                   </select>
@@ -208,6 +268,9 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
                       )}
                     </>
                   )}
+
+                  {/* Published Results List */}
+                  {renderPublishedResults()}
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 bg-ui-lighter rounded-lg">
