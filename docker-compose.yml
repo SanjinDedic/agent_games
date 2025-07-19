@@ -1,33 +1,4 @@
 services:
-  # New Docker Socket Proxy service
-  docker-proxy:
-    image: tecnativa/docker-socket-proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only mount
-    environment:
-      # Block write operations (only allow GET requests)
-      - POST=0
-      - PUT=0
-      - DELETE=0
-      # Allow access to needed API sections
-      - CONTAINERS=1
-      - SERVICES=1
-      - NETWORKS=1
-      - IMAGES=1
-      - EVENTS=1
-      - INFO=1
-      - PING=1
-      - VERSION=1
-      - SYSTEM=1
-      - VOLUMES=1
-      - LOG_LEVEL=info
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2375"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   api:
     build:
       context: .
@@ -42,15 +13,12 @@ services:
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
-      - DOCKER_HOST=tcp://docker-proxy:2375  # Connect to the proxy instead
     depends_on:
       postgres:
         condition: service_healthy
       validator:
         condition: service_healthy
       simulator:
-        condition: service_healthy
-      docker-proxy:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -61,6 +29,9 @@ services:
       start_period: 40s
     env_file:
       - ./.env
+    volumes:
+      - ./backend:/agent_games/backend
+      - ./logs:/agent_games/logs:ro  # Changed to /agent_games/logs
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -85,6 +56,8 @@ services:
       start_period: 10s
     env_file:
       - ./.env
+    volumes:
+      - ./logs:/agent_games/logs  # Changed to /agent_games/logs
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -102,13 +75,15 @@ services:
       - PYTHONPATH=/agent_games
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
     env_file:
       - ./.env
+    volumes:
+      - ./logs:/agent_games/logs  # Changed to /agent_games/logs
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
