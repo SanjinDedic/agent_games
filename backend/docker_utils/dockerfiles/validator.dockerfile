@@ -1,16 +1,12 @@
-# Stage 1: Build stage
 FROM python:3.13 AS builder
 
 WORKDIR /build
-
-# Copy requirements and install dependencies
 COPY ./backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime stage
 FROM python:3.13
 
-# Set working directory
 WORKDIR /agent_games
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -27,19 +23,18 @@ RUN groupadd -r validatorgroup && useradd -r -g validatorgroup validatoruser
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code (from project root)
+# Copy application code
 COPY . /agent_games/
 
-# Create directories and set permissions
-RUN mkdir -p /agent_games/backend/docker_utils/services && \
+# Create logs directory (the file will be mounted from host)
+RUN mkdir -p /agent_games/logs && \
     chmod -R 755 /agent_games && \
-    # Explicitly set permissions for the service scripts
-    chmod 755 /agent_games/backend/docker_utils/services/validation_server.py /agent_games/backend/docker_utils/services/simulation_server.py
+    chmod 755 /agent_games/backend/docker_utils/services/validation_server.py
 
 # Switch to non-root user
 USER validatoruser
 
 EXPOSE 8001
 
-# Use the correct path relative to WORKDIR
-CMD ["python", "/agent_games/backend/docker_utils/services/validation_server.py"]
+# SECURE: Append to mounted log file (file already exists on host)
+CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/validation_server.py >> /agent_games/logs/validator.log 2>&1"]

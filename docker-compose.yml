@@ -31,7 +31,9 @@ services:
       - ./.env
     volumes:
       - ./backend:/agent_games/backend
-      - ./logs:/agent_games/logs:ro  # Changed to /agent_games/logs
+      # Mount individual log files read-only for API to read them
+      - ./logs/validator.log:/agent_games/logs/validator.log:ro
+      - ./logs/simulator.log:/agent_games/logs/simulator.log:ro
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -57,7 +59,8 @@ services:
     env_file:
       - ./.env
     volumes:
-      - ./logs:/agent_games/logs  # Changed to /agent_games/logs
+      # Mount specific file for append-only access
+      - ./logs/validator.log:/agent_games/logs/validator.log
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -75,7 +78,7 @@ services:
       - PYTHONPATH=/agent_games
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -83,7 +86,8 @@ services:
     env_file:
       - ./.env
     volumes:
-      - ./logs:/agent_games/logs  # Changed to /agent_games/logs
+      # Mount specific file for append-only access
+      - ./logs/simulator.log:/agent_games/logs/simulator.log
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
