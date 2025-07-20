@@ -12,14 +12,51 @@ from backend.routes.demo.demo_router import demo_router
 from backend.routes.diagnostics.diagnostics_router import diagnostics_router
 from backend.routes.institution.institution_router import institution_router
 from backend.routes.user.user_router import user_router
+from sqlmodel import Session, create_engine, text
+
+from backend.models_api import ResponseModel
+from backend.database.db_config import get_database_url
 
 logger = logging.getLogger(__name__)
+
+
+def check_database_status():
+    """Check if database is initialized and warn if not"""
+    try:
+        engine = create_engine(get_database_url())
+        with Session(engine) as session:
+            # Check if admin table exists and has data
+            admin_count = session.exec(text("SELECT COUNT(*) FROM admin")).first()
+            if admin_count[0] == 0:
+                logger.warning("=" * 60)
+                logger.warning("🚨 DATABASE APPEARS EMPTY")
+                logger.warning("=" * 60)
+                logger.warning(
+                    "No admin users found. Database may need initialization."
+                )
+                logger.warning("Run: python backend/docker_utils/init_db.py")
+                logger.warning("=" * 60)
+            else:
+                logger.warning("=" * 60)
+                logger.warning("✅ DATABASE PROPERLY INITIALIZED")
+                logger.warning("=" * 60)
+                logger.warning(f"Found {admin_count[0]} admin user(s) in database.")
+                logger.warning("=" * 60)
+    except Exception as e:
+        logger.warning("=" * 60)
+        logger.warning("🚨 DATABASE CHECK FAILED")
+        logger.warning("=" * 60)
+        logger.warning(f"Error: {e}")
+        logger.warning("Database may need initialization.")
+        logger.warning("=" * 60)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for the FastAPI application"""
     try:
         logger.info("Starting application...")
+        check_database_status()  # Add this line
         # Container management now handled by Docker Compose
 
     except Exception as e:

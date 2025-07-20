@@ -10,6 +10,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME}
+#      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/backup_test
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}

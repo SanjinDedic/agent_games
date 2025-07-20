@@ -33,11 +33,10 @@ COPY . /agent_games/
 # Create directories and set permissions
 RUN chmod -R 755 /agent_games
 
-# Make the entrypoint script executable
-COPY ./backend/docker_utils/api_entrypoint.sh /agent_games/entrypoint.sh
-RUN chmod +x /agent_games/entrypoint.sh
+# Switch to non-root user
+USER apiuser
 
 EXPOSE 8000
 
-# Use entrypoint script to initialize database and start API
-ENTRYPOINT ["/agent_games/entrypoint.sh"]
+# Start API server directly with logging (no su needed since we're already apiuser)
+CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload >> /agent_games/logs/api.log 2>&1"]
