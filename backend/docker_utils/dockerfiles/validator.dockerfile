@@ -26,15 +26,17 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY . /agent_games/
 
-# Create logs directory (the file will be mounted from host)
+# Create logs directory and log file, set permissions
 RUN mkdir -p /agent_games/logs && \
+    touch /agent_games/logs/validator.log && \
     chmod -R 755 /agent_games && \
-    chmod 755 /agent_games/backend/docker_utils/services/validation_server.py
+    chmod 755 /agent_games/backend/docker_utils/services/validation_server.py && \
+    chown -R validatoruser:validatorgroup /agent_games/logs
 
 # Switch to non-root user
 USER validatoruser
 
 EXPOSE 8001
 
-# SECURE: Append to mounted log file (file already exists on host)
+# Start server and redirect logs to file
 CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/validation_server.py >> /agent_games/logs/validator.log 2>&1"]

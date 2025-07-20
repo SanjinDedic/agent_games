@@ -27,15 +27,17 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY . /agent_games/
 
-# Create logs directory (the file will be mounted from host)
+# Create logs directory and log file, set permissions
 RUN mkdir -p /agent_games/logs && \
+    touch /agent_games/logs/simulator.log && \
     chmod -R 755 /agent_games && \
-    chmod 755 /agent_games/backend/docker_utils/services/simulation_server.py
+    chmod 755 /agent_games/backend/docker_utils/services/simulation_server.py && \
+    chown -R simuser:simgroup /agent_games/logs
 
 # Switch to non-root user
 USER simuser
 
 EXPOSE 8002
 
-# SECURE: Append to mounted log file (file already exists on host)
+# Start server and redirect logs to file
 CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/simulation_server.py >> /agent_games/logs/simulator.log 2>&1"]

@@ -32,9 +32,7 @@ services:
       - ./.env
     volumes:
       - ./backend:/agent_games/backend
-      - ./logs/api.log:/agent_games/logs/api.log
-      - ./logs/validator.log:/agent_games/logs/validator.log:ro
-      - ./logs/simulator.log:/agent_games/logs/simulator.log:ro
+      - ./logs:/agent_games/logs  # Mount entire logs directory
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -60,8 +58,7 @@ services:
     env_file:
       - ./.env
     volumes:
-      # Mount specific file for append-only access
-      - ./logs/validator.log:/agent_games/logs/validator.log
+      - ./logs:/agent_games/logs  # Mount entire logs directory
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -87,8 +84,7 @@ services:
     env_file:
       - ./.env
     volumes:
-      # Mount specific file for append-only access
-      - ./logs/simulator.log:/agent_games/logs/simulator.log
+      - ./logs:/agent_games/logs  # Mount entire logs directory
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
