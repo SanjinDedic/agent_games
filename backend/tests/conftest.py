@@ -221,6 +221,14 @@ def db_session(db_engine):
             session.close()  # Ensure session is closed
 
 
+@pytest.fixture(autouse=True)
+def init_test_db(db_session):
+    """Initialize test database with basic data"""
+    from backend.docker_utils.init_db import populate_database
+
+    populate_database(db_session.get_bind())
+
+
 @pytest.fixture
 def client(db_session) -> TestClient:
     """Create a test client with a test database session"""
