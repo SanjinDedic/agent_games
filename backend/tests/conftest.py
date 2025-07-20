@@ -1,12 +1,15 @@
+import functools
 import logging
 import os
-import time
 import subprocess
+import time
 from datetime import datetime, timedelta
+from typing import List, Optional, Union
 
 import pytest
 import pytz
 from fastapi.testclient import TestClient
+from sqlalchemy import inspect as sa_inspect, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.api import app
@@ -21,12 +24,6 @@ from backend.database.db_models import (
     get_password_hash,
 )
 from backend.database.db_session import get_db
-from backend.docker_utils.compose_utils import (
-    restart_service,
-    verify_all_services_healthy,
-    wait_for_services,
-    run_docker_compose_command,
-)
 from backend.routes.auth.auth_core import create_access_token
 
 # Set environment variables for testing before any imports
@@ -41,6 +38,26 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+def run_docker_compose_command(
+    command: List[str], timeout: int = 60
+) -> subprocess.CompletedProcess:
+    """Run a docker compose command with timeout"""
+    try:
+        full_command = ["docker", "compose"] + command
+        logger.debug(f"Running docker compose command: {' '.join(full_command)}")
+
+        result = subprocess.run(
+            full_command, check=False, capture_output=True, text=True, timeout=timeout
+        )
+        return result
+    except subprocess.TimeoutExpired:
+        logger.error(f"Docker compose command timed out after {timeout} seconds")
+        raise
+    except Exception as e:
+        logger.error(f"Error running docker compose command: {e}")
+        raise
+
+
 def ensure_postgres_test_running():
     """Ensure postgres_test container is running specifically"""
     try:
@@ -52,7 +69,13 @@ def ensure_postgres_test_running():
 
         # If not running or not healthy, ensure it's started with the test profile
         logger.info("Starting postgres_test container...")
-        run_docker_compose_command(["--profile", "test", "up", "-d", "postgres_test"])
+        start_result = run_docker_compose_command(
+            ["--profile", "test", "up", "-d", "postgres_test"]
+        )
+
+        if start_result.returncode != 0:
+            logger.error(f"Failed to start postgres_test: {start_result.stderr}")
+            return False
 
         # Wait for postgres_test to be healthy
         max_retries = 30
@@ -75,6 +98,33 @@ def ensure_postgres_test_running():
         return False
 
 
+def wait_for_services_simple(timeout: int = 120) -> bool:
+    """
+    Simple service waiting using Docker Compose's built-in capabilities
+    """
+    try:
+        logger.info("Starting all test services and waiting for health checks...")
+
+        # Use Docker Compose's --wait flag to wait for health checks
+        result = run_docker_compose_command(
+            ["--profile", "test", "up", "-d", "--wait"], timeout=timeout
+        )
+
+        if result.returncode == 0:
+            logger.info("All services are healthy")
+            return True
+        else:
+            logger.error(f"Services failed to start properly: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error(f"Timed out waiting for services after {timeout} seconds")
+        return False
+    except Exception as e:
+        logger.error(f"Error waiting for services: {e}")
+        return False
+
+
 @pytest.fixture(scope="session", autouse=True)
 def docker_environment():
     """
@@ -87,20 +137,16 @@ def docker_environment():
     if not ensure_postgres_test_running():
         pytest.fail("Failed to start postgres_test container")
 
-    # Then ensure all test services are running (validator, simulator)
-    # Run docker compose build if needed (this happens automatically in docker compose up)
-    # Start services with the test profile
-    run_docker_compose_command(["--profile", "test", "up", "-d"])
-
-    # Then start and wait for services to be healthy
-    is_ready = wait_for_services(timeout=360, interval=5)
+    # Start all test services and wait for them to be healthy
+    is_ready = wait_for_services_simple(timeout=180)
 
     if not is_ready:
-        is_healthy, statuses = verify_all_services_healthy()
-        status_details = "\n".join(
-            [f"- {svc}: {status}" for svc, status in statuses.items()]
-        )
-        logger.error(f"Services health check failed:\n{status_details}")
+        # Get service status for debugging
+        try:
+            ps_result = run_docker_compose_command(["ps"])
+            logger.error(f"Service status:\n{ps_result.stdout}")
+        except Exception:
+            pass
         pytest.fail("Docker environment setup failed - services not healthy")
 
     logger.info("Docker environment ready for testing")
@@ -114,43 +160,44 @@ def docker_environment():
 def ensure_containers(request):
     """
     Fixture for tests that require containers.
-    Verifies containers are healthy before each test,
-    and attempts to restart them if needed.
+    Verifies containers are healthy before each test.
     """
     test_name = request.node.name
     logger.info(f"Verifying containers for test: {test_name}")
 
-    is_healthy, statuses = verify_all_services_healthy()
-
-    if not is_healthy:
-        # Log which services are unhealthy
-        unhealthy = [
-            f"{svc}: {status}"
-            for svc, status in statuses.items()
-            if "not healthy" in status.lower()
-        ]
-        logger.warning(
-            f"Containers not healthy for test {test_name}: {', '.join(unhealthy)}"
+    try:
+        # Simple health check using docker compose ps
+        result = run_docker_compose_command(
+            ["ps", "--services", "--filter", "status=running"]
         )
-        logger.info("Attempting to restart containers...")
+        running_services = (
+            result.stdout.strip().split("\n") if result.stdout.strip() else []
+        )
 
-        # Restart services
-        restart_success = restart_service()
-        if not restart_success:
-            logger.error("Failed to restart services")
-            pytest.fail("Could not restart services")
+        required_services = ["validator", "simulator", "postgres_test"]
+        missing_services = [
+            svc for svc in required_services if svc not in running_services
+        ]
 
-        # Wait for services to become healthy
-        is_ready = wait_for_services(timeout=360, interval=5)
-        if not is_ready:
-            is_healthy, statuses = verify_all_services_healthy()
-            status_details = "\n".join(
-                [f"- {svc}: {status}" for svc, status in statuses.items()]
+        if missing_services:
+            logger.warning(f"Missing services for test {test_name}: {missing_services}")
+            logger.info("Attempting to restart services...")
+
+            # Try to restart services
+            restart_result = run_docker_compose_command(
+                ["--profile", "test", "up", "-d", "--wait"]
             )
-            logger.error(f"Services still not healthy after restart:\n{status_details}")
-            pytest.fail(f"Services not healthy for test {test_name}")
+            if restart_result.returncode != 0:
+                logger.error(f"Failed to restart services: {restart_result.stderr}")
+                pytest.fail("Could not restart services")
 
-    logger.info(f"Services healthy for test: {test_name}")
+            logger.info("Services restarted successfully")
+
+    except Exception as e:
+        logger.error(f"Error checking container health: {e}")
+        pytest.fail(f"Container health check failed for test {test_name}")
+
+    logger.info(f"Services ready for test: {test_name}")
     return True
 
 
@@ -321,12 +368,6 @@ def setup_demo_data(db_session: Session) -> None:
                 db_session.add(submission)
 
     db_session.commit()
-
-
-# Add the inspect_db_state decorator function
-import functools
-from sqlalchemy import inspect as sa_inspect, text
-from typing import List, Optional, Union
 
 
 def inspect_db_state(tables: Union[List[str], str] = None, all_tables: bool = False):
