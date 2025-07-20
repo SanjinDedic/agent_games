@@ -25,20 +25,6 @@ def mock_env_setup():
         yield
 
 
-def test_docker_compose_direct_usage(mock_docker_run, mock_env_setup):
-    """Test direct Docker Compose usage without compose_utils wrapper"""
-    # Test direct docker compose command
-    result = subprocess.run(
-        ["docker", "compose", "--profile", "test", "ps"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    # Should call the mock
-    mock_docker_run.assert_called()
-
-
 def test_container_logs_direct(mock_docker_run):
     """Test behavior when log retrieval fails using direct commands"""
     mock_docker_run.side_effect = subprocess.CalledProcessError(

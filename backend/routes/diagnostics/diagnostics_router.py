@@ -45,7 +45,6 @@ async def get_logs(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    print("VOLUME BIND WORKINGX")
     """Get logs for validator or simulator service"""
     has_access = await check_docker_access(current_user, session)
     if not has_access:

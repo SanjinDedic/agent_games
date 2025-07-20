@@ -4,7 +4,7 @@ import os
 import subprocess
 import time
 from datetime import datetime, timedelta
-from typing import List, Optional, Union
+from typing import List, Union
 
 import pytest
 import pytz

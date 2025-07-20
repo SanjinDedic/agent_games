@@ -1,7 +1,7 @@
 from enum import Enum as PyEnum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ServiceName(str, PyEnum):
@@ -11,7 +11,6 @@ class ServiceName(str, PyEnum):
     SIMULATOR = "simulator"
     API = "api"
 
-
 class LogsRequest(BaseModel):
     """Request model for getting service logs"""
     service: ServiceName
@@ -19,14 +18,11 @@ class LogsRequest(BaseModel):
         default=1000, description="Number of log lines to fetch (max 1000)"
     )
 
+    @field_validator("tail")
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate_tail
-
-    @classmethod
-    def validate_tail(cls, v):
+    def validate_tail(cls, v: Optional[int]) -> Optional[int]:
         if v and v > 1000:
-            v = 1000  # Cap at 1000 lines
+            return 1000  # Cap at 1000 lines
         return v
 
 

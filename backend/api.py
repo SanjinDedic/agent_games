@@ -14,7 +14,6 @@ from backend.routes.institution.institution_router import institution_router
 from backend.routes.user.user_router import user_router
 from sqlmodel import Session, create_engine, text
 
-from backend.models_api import ResponseModel
 from backend.database.db_config import get_database_url
 
 logger = logging.getLogger(__name__)
