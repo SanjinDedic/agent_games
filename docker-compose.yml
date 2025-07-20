@@ -31,7 +31,7 @@ services:
       - ./.env
     volumes:
       - ./backend:/agent_games/backend
-      # Mount individual log files read-only for API to read them
+      - ./logs/api.log:/agent_games/logs/api.log
       - ./logs/validator.log:/agent_games/logs/validator.log:ro
       - ./logs/simulator.log:/agent_games/logs/simulator.log:ro
     mem_limit: 400m
