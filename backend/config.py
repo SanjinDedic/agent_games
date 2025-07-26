@@ -45,7 +45,6 @@ ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
 GAMES = ["greedy_pig", "prisoners_dilemma", "lineup4"]
 
 
-# Service URL configuration
 def get_service_url(service_name, endpoint=None):
     """
     Get environment-aware URL for a service
@@ -65,8 +64,17 @@ def get_service_url(service_name, endpoint=None):
 
     port = port_mapping[service_name]
 
-    # Use localhost for tests, service name for production
-    host = "localhost" if os.environ.get("TESTING") == "1" else service_name
+    # Check if we're running inside Docker
+    is_docker = os.path.exists("/.dockerenv")
+
+    if is_docker:
+        # Inside Docker, always use service names
+        host = service_name
+    else:
+        # Outside Docker, use localhost for tests, service name for production
+        host = (
+            "localhost" if os.environ.get("DB_ENVIRONMENT") == "test" else service_name
+        )
 
     base_url = f"http://{host}:{port}"
 
