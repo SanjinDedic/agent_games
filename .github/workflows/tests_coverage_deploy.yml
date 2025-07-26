@@ -2,40 +2,27 @@ name: Test, Coverage and Deploy
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'pyproject.toml'
-      - 'docker-compose.yml'
+    branches: [main]
+    paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml']
   pull_request:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'pyproject.toml'
-      - 'docker-compose.yml'
+    branches: [main]
+    paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
-    env:
-      SECRET_KEY: "github_actions_test_secret_key"
-      SERVICE_TOKEN: "github_actions_test_service_token"
-      TESTING: "1"
-      # For testing, we use placeholder credentials
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "test_db_password"
-      DB_NAME: "agent_games"
-      TEST_DB_NAME: "agent_games_test"
-      
-    steps:
-    - uses: actions/checkout@v3
     
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v3
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-python@v5
       with:
-        python-version: 3.12
+        python-version: '3.12'
+        cache: 'pip'
 
     - name: Ensure validation files exist for tests
       env:
@@ -43,60 +30,37 @@ jobs:
       run: |
         mkdir -p backend/games/lineup4
         echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
-        echo "Created validation players file for tests"
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install pytest pytest-asyncio httpx pytest-cov
         pip install -r backend/requirements.txt
 
-    - name: Set up Docker Compose
-      uses: docker/setup-buildx-action@v2
-
-    - name: Create .env file for Docker Compose
-      run: |
-        echo "Creating .env file for Docker Compose"
-        echo "SECRET_KEY=${SECRET_KEY}" > .env
-        echo "SERVICE_TOKEN=${SERVICE_TOKEN}" >> .env
-        echo "POSTGRES_USER=${POSTGRES_USER}" >> .env
-        echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> .env
-        echo "DB_NAME=${DB_NAME}" >> .env
-        echo "TEST_DB_NAME=${TEST_DB_NAME}" >> .env
-        
-    - name: Start Docker Compose services with test profile
+    - name: Run tests with Docker Compose
       run: |
         docker compose build
-        # Use the test profile to make sure postgres_test is included
-        docker compose --profile test up -d
-        
-        echo "Waiting for services to start..."
-        timeout 60s bash -c 'until docker compose ps | grep postgres_test | grep -q "healthy"; do sleep 2; echo "Waiting for postgres_test..."; done'
-        timeout 60s bash -c 'until docker compose ps | grep validator | grep -q "healthy"; do sleep 2; echo "Waiting for validator..."; done'
-        timeout 60s bash -c 'until docker compose ps | grep simulator | grep -q "healthy"; do sleep 2; echo "Waiting for simulator..."; done'
-        
-        docker compose ps
-
-    - name: Run tests with coverage
-      run: |
-        export SECRET_KEY="${SECRET_KEY}"
-        export SERVICE_TOKEN="${SERVICE_TOKEN}"
-        export TESTING=1
-        pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
+        docker compose --profile test up --wait
+        docker compose exec -T api pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
+      env:
+        SECRET_KEY: "github_actions_test_secret_key"
+        SERVICE_TOKEN: "github_actions_test_service_token"
+        TESTING: "1"
+        DATABASE_URL: "postgresql://postgres:test_db_password@postgres:5432/agent_games_test"
+        POSTGRES_USER: "postgres"
+        POSTGRES_PASSWORD: "test_db_password"
+        DB_NAME: "agent_games"
+        TEST_DB_NAME: "agent_games_test"
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        slug: SanjinDedic/agent_games
-        directory: .
         flags: backend
         fail_ci_if_error: true
-        verbose: true
 
-    - name: Docker Compose down
+    - name: Cleanup
       if: always()
-      run: docker compose down
+      run: docker compose down --volumes
 
   deploy:
     needs: test_and_coverage
@@ -104,232 +68,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
-      - name: Deploy to EC2
-        env:
-          HOST: ${{ secrets.EC2_HOST }}
-          USERNAME: ${{ secrets.EC2_USERNAME }}
-          KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-          SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
-          # Using the same variable names as local .env
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no $USERNAME@$HOST "bash -s" << 'ENDSSH' "$SERVICE_TOKEN" "$SECRET_KEY" "$LINEUP4_VALIDATION_PLAYERS" "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$DB_NAME" "$TEST_DB_NAME"
-            SERVICE_TOKEN=$1
-            SECRET_KEY=$2
-            POSTGRES_USER=$4
-            POSTGRES_PASSWORD=$5
-            DB_NAME=$6
-            TEST_DB_NAME=$7
-            
-            echo "Starting containerized deployment..."
-            
-            # CRITICAL: Copy validation_players.py FIRST, before any Docker operations
-            echo "Copying validation_players.py from home directory..."
-            if [ -f ~/validation_players.py ]; then
-              # Create directories first
-              mkdir -p ~/agent_games/backend/games/lineup4
-              
-              # Copy to both directories
-              cp ~/validation_players.py ~/agent_games/backend/games/lineup4/validation_players.py
-              echo "Successfully copied validation_players.py to lineup4 directory."
-            else
-              echo "ERROR: ~/validation_players.py not found!"
-              exit 1
-            fi
-            
-            # Ensure Docker is running
-            if ! sudo systemctl is-active --quiet docker; then
-              sudo systemctl start docker
-            fi
-            
-            # Create deployment directory if it doesn't exist
-            mkdir -p ~/agent_games
-            cd ~/agent_games
-            
-            # Define Docker Compose path and ensure it's available
-            DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-            COMPOSE_BIN="$DOCKER_CONFIG/cli-plugins/docker-compose"
-            
-            # Check and install Docker Compose if needed
-            if [ ! -x "$COMPOSE_BIN" ]; then
-              echo "Installing Docker Compose plugin..."
-              mkdir -p $DOCKER_CONFIG/cli-plugins
-              sudo curl -SL https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 -o "$COMPOSE_BIN"
-              sudo chmod +x "$COMPOSE_BIN"
-            fi
-            
-            # Create database backup before deployment
-            echo "Creating database backup..."
-            timestamp=$(date +%Y%m%d_%H%M%S)
-            backup_dir=~/db_backups
-            mkdir -p $backup_dir
-            
-            # Check if we have existing postgres container running
-            POSTGRES_CONTAINER=$(sudo docker ps -q -f name=postgres | head -n 1)
-            if [ -n "$POSTGRES_CONTAINER" ]; then
-              # Create PostgreSQL database dump
-              sudo docker exec $POSTGRES_CONTAINER \
-                pg_dump -U "$POSTGRES_USER" -d "$DB_NAME" > $backup_dir/agent_games_backup_$timestamp.sql
-              echo "Database backup created at $backup_dir/agent_games_backup_$timestamp.sql"
-              
-              # Keep only the 5 most recent backups
-              ls -t $backup_dir/agent_games_backup_*.sql | tail -n +6 | xargs -r rm
-            else
-              echo "Postgres container not running, skipping database backup"
-            fi
-            
-            # Pull latest code - preserve .env file if it exists
-            echo "Fetching latest code..."
-            if [ -f ".env" ]; then
-              cp .env .env.bak
-            fi
-            
-            # Clone new code or update existing repository
-            if [ -d ".git" ]; then
-              git fetch --all
-              git reset --hard origin/main
-            else
-              rm -rf .git
-              git init
-              git remote add origin https://github.com/SanjinDedic/agent_games.git
-              git fetch --depth 1 origin main
-              git checkout origin/main
-            fi
-            
-            # Handle .env file with proper permissions
-            if [ -f ".env.bak" ]; then
-              echo "Restoring existing .env file..."
-              cp .env.bak .env
-              rm .env.bak
-            else
-              echo "Creating new .env file with proper permissions..."
-              # Create file first with proper permissions
-              touch .env && chmod 644 .env
-              # Then write to it
-              echo "SERVICE_TOKEN=$SERVICE_TOKEN" > .env
-              echo "SECRET_KEY=$SECRET_KEY" >> .env
-              echo "POSTGRES_USER=$POSTGRES_USER" >> .env
-              echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
-              echo "DB_NAME=$DB_NAME" >> .env
-              echo "TEST_DB_NAME=$TEST_DB_NAME" >> .env
-            fi
-            
-            # Gracefully update containers
-            echo "Updating containers..."
-            sudo docker pull postgres:14 || true
-            sudo docker pull tecnativa/docker-socket-proxy:latest || true
-            
-            # Stop containers that don't have persistent data first
-            running_containers=$(sudo docker ps --format "{{.Names}}" | grep -E 'api|validator|simulator|docker-proxy' || true)
-            if [ -n "$running_containers" ]; then
-              echo "Stopping services: $running_containers"
-              echo "$running_containers" | xargs sudo docker stop
-            fi
-            
-            # ENHANCED CLEANUP: Save Postgres container ID if it exists
-            echo "Getting Postgres container ID for preservation..."
-            POSTGRES_CONTAINER_ID=$(sudo docker ps -q -f name=postgres | head -n 1)
-            
-            if [ -n "$POSTGRES_CONTAINER_ID" ]; then
-              echo "Found Postgres container: $POSTGRES_CONTAINER_ID (this will be preserved)"
-              # Stop Postgres container gracefully
-              sudo docker stop $POSTGRES_CONTAINER_ID
-            else
-              echo "No running Postgres container found"
-            fi
-            
-            # Remove all containers except Postgres
-            echo "Removing all containers except Postgres..."
-            ALL_CONTAINERS=$(sudo docker ps -aq)
-            for container in $ALL_CONTAINERS; do
-              if [ "$container" != "$POSTGRES_CONTAINER_ID" ]; then
-                sudo docker rm -f $container || true
-              fi
-            done
-            
-            # Remove all images except Postgres
-            echo "Removing all images except Postgres..."
-            POSTGRES_IMAGE_ID=$(sudo docker images postgres:14 -q)
-            ALL_IMAGES=$(sudo docker images -q)
-            for image in $ALL_IMAGES; do
-              if [ "$image" != "$POSTGRES_IMAGE_ID" ]; then
-                sudo docker rmi -f $image || true
-              fi
-            done
-            
-            # Clean all build caches
-            echo "Cleaning Docker build cache..."
-            sudo docker builder prune -af || true
-            
-            # Restart preserved Postgres container if it existed
-            if [ -n "$POSTGRES_CONTAINER_ID" ]; then
-              echo "Restarting Postgres container..."
-              sudo docker start $POSTGRES_CONTAINER_ID
-              
-              # Wait for Postgres to be ready
-              echo "Waiting for Postgres to be ready..."
-              sleep 10
-            fi
-            
-            # Start docker-proxy first and wait for it to be ready
-            echo "Starting docker-proxy service..."
-            sudo "$COMPOSE_BIN" --profile prod up -d docker-proxy
-            
-            # Wait for docker-proxy to be ready
-            echo "Waiting for docker-proxy to be ready..."
-            timeout 30s bash -c 'until sudo docker ps | grep docker-proxy | grep -q "(healthy)" || sudo docker ps | grep docker-proxy | grep -qv "(unhealthy)"; do sleep 2; echo "Waiting for docker-proxy..."; done || echo "docker-proxy may not be ready"'
-            
-            # Verify docker-proxy is running
-            echo "Verifying docker-proxy service..."
-            if sudo docker ps | grep -q docker-proxy; then
-              echo "docker-proxy is running"
-            else
-              echo "ERROR: docker-proxy is not running! Starting it explicitly..."
-              sudo "$COMPOSE_BIN" --profile prod up -d docker-proxy
-              sleep 5
-            fi
-            
-            # Build and start the API service and its dependencies using absolute path
-            echo "Starting API service with Docker Compose..."
-            sudo "$COMPOSE_BIN" build --no-cache --pull
-            # Use the prod profile to ensure all necessary services are started
-            sudo "$COMPOSE_BIN" --profile prod up -d
-            
-            # Verify services are running
-            echo "Waiting for services to be healthy..."
-            timeout 120s bash -c 'until curl -fs http://localhost:8000/health >/dev/null 2>&1; do sleep 5; echo "Waiting for API..."; done || echo "API health check timed out"'
-            
-            # Verify API can connect to docker-proxy
-            echo "Testing Docker connection through proxy..."
-            API_CONTAINER=$(sudo docker ps -q -f name=api | head -n 1)
-            if [ -n "$API_CONTAINER" ]; then
-              if sudo docker exec $API_CONTAINER curl -s http://docker-proxy:2375/_ping; then
-                echo "API successfully connected to docker-proxy"
-              else
-                echo "Warning: API cannot connect to docker-proxy"
-              fi
-            else
-              echo "Warning: API container not found"
-            fi
-            
-            # Clean up unused Docker resources
-            echo "Cleaning up unused Docker resources..."
-            sudo docker image prune -af --filter "until=24h" --filter "label!=persist=true" || true
-            
-            # Log container status
-            echo "Docker container status:"
-            sudo docker ps
-            
-            echo "Deployment completed"
-          ENDSSH
+    - uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
+
+    - name: Deploy to EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+          set -e
+          
+          echo "Starting deployment..."
+          
+          # Ensure Docker is running
+          sudo systemctl start docker || true
+          
+          # Setup deployment directory
+          mkdir -p ~/agent_games
+          cd ~/agent_games
+          
+          # Copy validation file
+          if [ -f ~/validation_players.py ]; then
+            mkdir -p backend/games/lineup4
+            cp ~/validation_players.py backend/games/lineup4/validation_players.py
+          fi
+          
+          # Update code
+          if [ -d ".git" ]; then
+            git fetch --all && git reset --hard origin/main
+          else
+            git clone --depth 1 https://github.com/SanjinDedic/agent_games.git .
+          fi
+          
+          # Create environment file
+          cat > .env << EOF
+          SERVICE_TOKEN=${{ secrets.SERVICE_TOKEN }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.DB_NAME }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          TEST_DB_NAME=${{ secrets.TEST_DB_NAME }}
+          EOF
+          
+          # Deploy with Docker Compose
+          docker compose --profile prod down || true
+          docker compose --profile prod up --build --detach --wait
+          
+          # Verify deployment
+          timeout 60s bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done'
+          
+          echo "Deployment completed successfully"
+        ENDSSH
