@@ -23,6 +23,8 @@ jobs:
       POSTGRES_PASSWORD: "test_db_password"
       DB_NAME: "agent_games"
       TEST_DB_NAME: "agent_games_test"
+      # This is the key missing variable - points to the test database
+      DATABASE_URL: "postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test"
       
     steps:
     - uses: actions/checkout@v4
@@ -53,6 +55,7 @@ jobs:
         POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
         DB_NAME=${DB_NAME}
         TEST_DB_NAME=${TEST_DB_NAME}
+        DATABASE_URL=${DATABASE_URL}
         EOF
         
     - name: Start Docker Compose services with test profile
@@ -74,6 +77,7 @@ jobs:
         export SERVICE_TOKEN="${SERVICE_TOKEN}"
         export TESTING=1
         export DB_ENVIRONMENT=test
+        export DATABASE_URL="${DATABASE_URL}"
         pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
