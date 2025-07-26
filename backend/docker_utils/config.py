@@ -25,7 +25,7 @@ DOCKER_START_TIMEOUT = 30  # 30 seconds for starting containers
 CONTAINER_READY_DELAY = 2  # 2 seconds wait after container start
 
 # Service URLs - environment aware
-if os.environ.get("TESTING") == "1":
+if os.environ.get("DB_ENVIRONMENT") == "test":
     # For tests, use localhost
     VALIDATOR_URL = "http://localhost:8001/validate"
     SIMULATOR_URL = "http://localhost:8002/simulate"

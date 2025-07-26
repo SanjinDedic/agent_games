@@ -1,3 +1,7 @@
+# FRONTEND - Exclude entire frontend directory (major size reduction)
+frontend/
+**/frontend/
+
 # Python cache files
 **/__pycache__/
 **/*.py[cod]
@@ -52,3 +56,36 @@
 **/node_modules/
 **/package-lock.json
 **/yarn.lock
+
+# Project specific exclusions based on your structure
+# Test results and coverage
+**/simulation_results.json
+**/threading_benchmark_*.json
+
+# Temporary files that might be large
+**/teams.json
+**/*.tmp
+**/*.temp
+
+# CI/CD files not needed in container
+.github/
+**/.github/
+**/workflows/
+
+# Large test databases or backups
+**/*_backup_*.sql
+**/agent_games_backup_*.sql
+
+# Any generated files or caches
+**/.cache/
+**/cache/
+
+# macOS specific
+**/.DS_Store
+**/.AppleDouble
+**/.LSOverride
+
+# Windows specific
+**/Thumbs.db
+**/ehthumbs.db
+**/Desktop.ini

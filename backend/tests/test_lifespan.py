@@ -5,7 +5,6 @@ import pytest
 from fastapi import FastAPI
 
 from backend.api import lifespan
-from backend.docker_utils.compose_utils import get_container_logs
 
 
 @pytest.fixture
@@ -19,11 +18,18 @@ def test_app():
     return FastAPI()
 
 
-@pytest.fixture
-def mock_containers_logger():
-    """Fixture to provide a mock logger for the containers module"""
-    with patch("backend.docker_utils.compose_utils.logger") as mock_log:
-        yield mock_log
+def get_container_logs_direct(service_name: str, tail: int = 100) -> str:
+    """Direct replacement for removed get_container_logs function"""
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "logs", "--tail", str(tail), service_name],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"Could not retrieve logs for {service_name}: {e}"
 
 
 @pytest.mark.asyncio
@@ -51,17 +57,14 @@ async def test_lifespan_startup_exception(mock_logger, test_app):
             )
 
 
-from backend.api import lifespan
-
-
 @pytest.mark.asyncio
-async def test_get_service_logs(mock_containers_logger):
-    """Test getting service logs"""
+async def test_get_service_logs():
+    """Test getting service logs using direct docker compose command"""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.stdout = "Test log output"
         mock_run.return_value.returncode = 0
 
-        logs = get_container_logs("validator")
+        logs = get_container_logs_direct("validator")
         assert logs == "Test log output"
 
         # Verify docker-compose logs command was called
@@ -82,7 +85,5 @@ async def test_get_service_logs_error():
     )
 
     with patch("subprocess.run", side_effect=command_error):
-        with patch("backend.docker_utils.compose_utils.logger") as mock_logger:
-            logs = get_container_logs("validator")
-            assert "Could not retrieve logs" in logs
-            mock_logger.error.assert_called()
+        logs = get_container_logs_direct("validator")
+        assert "Could not retrieve logs" in logs

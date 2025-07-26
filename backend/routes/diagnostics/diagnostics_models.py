@@ -1,58 +1,33 @@
-from enum import Enum
-from typing import Dict, List, Optional, Union
+from enum import Enum as PyEnum
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
-class ServiceName(str, Enum):
+class ServiceName(str, PyEnum):
     """Enum for service names"""
-    API = "api"
+
     VALIDATOR = "validator"
     SIMULATOR = "simulator"
-    POSTGRES = "postgres"
-    POSTGRES_TEST = "postgres_test"
-    ALL = "all"
-
+    API = "api"
 
 class LogsRequest(BaseModel):
     """Request model for getting service logs"""
-    service: ServiceName = Field(default=ServiceName.ALL, description="Service name to get logs for")
-    tail: Optional[int] = Field(default=100, description="Number of log lines to fetch")
-    since: Optional[str] = Field(default=None, description="Only return logs since this timestamp (e.g. '2023-01-01T00:00:00Z')")
+    service: ServiceName
+    tail: Optional[int] = Field(
+        default=1000, description="Number of log lines to fetch (max 1000)"
+    )
 
-
-class ResourceUsage(BaseModel):
-    """Model for resource usage of a Docker container"""
-    container_id: str
-    name: str
-    cpu_percent: float
-    memory_usage: str
-    memory_percent: float
-    network_io: Dict[str, str]
-    disk_io: Dict[str, str]
-    status: str
-    uptime: str
-
-
-class SystemResources(BaseModel):
-    """Model for overall system resources"""
-    cpu_percent: float
-    memory_percent: float
-    memory_available: str
-    disk_percent: float
-    disk_available: str
-    load_average: List[float]
-
-
-class DiagnosticsResponse(BaseModel):
-    """Response model for diagnostics data"""
-    containers: Dict[str, ResourceUsage]
-    system: SystemResources
+    @field_validator("tail")
+    @classmethod
+    def validate_tail(cls, v: Optional[int]) -> Optional[int]:
+        if v and v > 1000:
+            return 1000  # Cap at 1000 lines
+        return v
 
 
 class ServiceStatus(BaseModel):
-    """Model for service status"""
+    """Model for service health status"""
     name: str
     status: str
-    health: str
     is_healthy: bool

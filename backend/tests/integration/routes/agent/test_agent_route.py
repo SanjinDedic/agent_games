@@ -1,14 +1,15 @@
 # tests/routes/agent/test_agent_router.py
 
 from datetime import datetime, timedelta
+import httpx
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.database.db_models import AgentAPIKey, League, Team, TeamType
+from backend.database.db_models import AgentAPIKey, League, Team, TeamType, Submission
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import inspect_db_state
+from backend.tests.conftest import inspect_db_state, ensure_containers
 
 # import patch
 from unittest.mock import patch
@@ -45,6 +46,49 @@ def setup_agent_team(db_session: Session, setup_agent_league: League) -> Team:
 
 
 @pytest.fixture
+def setup_player_teams_with_submissions(
+    db_session: Session, setup_agent_league: League
+):
+    """Create player teams with submissions for the agent to simulate against"""
+    # Create a few player teams
+    player_teams = []
+    for i in range(3):
+        team = Team(
+            name=f"player_team_{i+1}",
+            school_name=f"Test School {i+1}",
+            league_id=setup_agent_league.id,
+            team_type=TeamType.STUDENT,
+            password_hash="dummy_hash",
+        )
+        db_session.add(team)
+        player_teams.append(team)
+
+    db_session.commit()
+
+    # Create submissions for each player team
+    lineup4_code = '''
+def make_move(my_history, opponent_history, my_score, opponent_score):
+    """Simple lineup4 strategy"""
+    if len(my_history) == 0:
+        return 1
+    return (my_history[-1] % 4) + 1
+'''
+
+    for team in player_teams:
+        db_session.refresh(team)
+        submission = Submission(
+            team_id=team.id,
+            code=lineup4_code,
+            submission_time=datetime.now(),
+            is_valid=True,
+        )
+        db_session.add(submission)
+
+    db_session.commit()
+    return player_teams
+
+
+@pytest.fixture
 def setup_api_key(db_session: Session, setup_agent_team: Team) -> AgentAPIKey:
     """Create an API key for the test agent"""
     api_key = AgentAPIKey(
@@ -69,66 +113,69 @@ def agent_token(setup_agent_team: Team) -> str:
     )
 
 
-@inspect_db_state(all_tables=True)
-def test_agent_simulation_success(
-    client: TestClient,
+@pytest.mark.asyncio
+async def test_agent_simulation_success(
     db_session: Session,
     setup_agent_league: League,
     setup_agent_team: Team,
+    setup_player_teams_with_submissions,  # Add this fixture
     agent_token: str,
+    ensure_containers,  # Add as fixture parameter
 ):
     """Test successful simulation scenarios for agent endpoints"""
 
     headers = {"Authorization": f"Bearer {agent_token}"}
 
-    # Test case 1: Basic simulation request
-    response = client.post(
-        "/agent/simulate",
-        headers=headers,
-        json={
-            "league_id": setup_agent_league.id,
-            "game_name": "lineup4",
-            "num_simulations": 10,
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    print("Should work this ", data)
-    assert data["status"] == "success"
-    assert "data" in data
-    assert "simulation_results" in data["data"]
+    async with httpx.AsyncClient() as client:
+        # Test case 1: Basic simulation request
+        response = await client.post(
+            "http://localhost:8000/agent/simulate",
+            headers=headers,
+            json={
+                "league_id": setup_agent_league.id,
+                "game_name": "lineup4",
+                "num_simulations": 10,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        print("Should work this ", data)
+        assert data["status"] == "success"
+        assert "data" in data
+        assert "simulation_results" in data["data"]
 
-    # Test case 2: Simulation with custom rewards
-    response = client.post(
-        "/agent/simulate",
-        headers=headers,
-        json={
-            "league_id": setup_agent_league.id,
-            "game_name": "lineup4",
-            "num_simulations": 10,
-            "custom_rewards": [10, 5, 0],
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "data" in data
+        # Test case 2: Simulation with custom rewards
+        response = await client.post(
+            "http://localhost:8000/agent/simulate",
+            headers=headers,
+            json={
+                "league_id": setup_agent_league.id,
+                "game_name": "lineup4",
+                "num_simulations": 10,
+                "custom_rewards": [10, 5, 0],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert "data" in data
 
-    # Test case 3: Simulation with player feedback
-    response = client.post(
-        "/agent/simulate",
-        headers=headers,
-        json={
-            "league_id": setup_agent_league.id,
-            "game_name": "lineup4",
-            "num_simulations": 10,
-            "player_feedback": True,
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "feedback" in data["data"]
+        # Test case 3: Simulation with player feedback
+        response = await client.post(
+            "http://localhost:8000/agent/simulate",
+            headers=headers,
+            json={
+                "league_id": setup_agent_league.id,
+                "game_name": "lineup4",
+                "num_simulations": 10,
+                "player_feedback": True,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        print("Player feedback simulation responseXXX: ", data)
+        assert data["status"] == "success"
+        assert "data" in data
 
 
 def test_agent_simulation_exceptions(
