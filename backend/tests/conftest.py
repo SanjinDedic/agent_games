@@ -185,19 +185,24 @@ def db_engine():
         base_url = database_url.rsplit("/", 1)[0] + "/postgres"
         admin_engine = create_engine(base_url)
 
+        # Extract just the database name from the URL
+        db_name = database_url.rsplit("/", 1)[1].split("?")[0]  # Handle query params
+
+        # Use autocommit mode to avoid transaction issues with DDL
         with admin_engine.connect() as conn:
+            # Set autocommit mode
+            conn.execution_options(isolation_level="AUTOCOMMIT")
+
             # Terminate existing connections
             conn.execute(
                 text(
-                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'agent_games_test' AND pid <> pg_backend_pid()"
+                    f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{db_name}' AND pid <> pg_backend_pid()"
                 )
             )
-            conn.commit()
 
-            # Drop and create database
-            conn.execute(text("DROP DATABASE IF EXISTS agent_games_test"))
-            conn.execute(text("CREATE DATABASE agent_games_test"))
-            conn.commit()
+            # Drop and create database (these commands will run outside transaction)
+            conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
+            conn.execute(text(f"CREATE DATABASE {db_name}"))
 
         logger.info("Test database created successfully")
         engine = create_engine(database_url)
@@ -208,7 +213,6 @@ def db_engine():
 
     # Clean up: drop all tables but keep the database
     SQLModel.metadata.drop_all(engine)
-
 
 @pytest.fixture
 def db_session(db_engine):

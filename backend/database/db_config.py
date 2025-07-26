@@ -21,9 +21,10 @@ def get_database_url():
     # Check if we're in test environment and modify database name and port/host
     db_environment = os.environ.get("DB_ENVIRONMENT")
     if db_environment == "test":
-        # Replace database name with test database
-        if "/agent_games" in database_url:
+        # Replace database name with test database - but only if not already a test database
+        if "/agent_games_test" not in database_url and "/agent_games" in database_url:
             database_url = database_url.replace("/agent_games", "/agent_games_test")
+        # If it already points to a test database, don't modify it
 
         # For test environment, handle both Docker and local execution
         if os.path.exists("/.dockerenv"):
@@ -44,5 +45,3 @@ def get_database_url():
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://")
 
     return database_url
-
-# Function removed - use get_database_url() with DB_ENVIRONMENT=test instead
