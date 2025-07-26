@@ -30,11 +30,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code (from project root)
 COPY . /agent_games/
 
-# Create logs directory and log file, set permissions
-RUN mkdir -p /agent_games/logs && \
-    touch /agent_games/logs/api.log && \
-    chmod -R 755 /agent_games && \
-    chown -R apiuser:apigroup /agent_games/logs
+# Create directories and set permissions
+RUN chmod -R 755 /agent_games
 
 # Switch to non-root user
 USER apiuser
