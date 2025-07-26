@@ -44,12 +44,9 @@ jobs:
       env:
         SECRET_KEY: "github_actions_test_secret_key"
         SERVICE_TOKEN: "github_actions_test_service_token"
-        TESTING: "1"
-        DATABASE_URL: "postgresql://postgres:test_db_password@postgres:5432/agent_games_test"
-        POSTGRES_USER: "postgres"
+        DATABASE_URL: "postgresql://postgres:test_db_password@postgres_test:5432/postgres"
         POSTGRES_PASSWORD: "test_db_password"
-        DB_NAME: "agent_games"
-        TEST_DB_NAME: "agent_games_test"
+        DB_ENVIRONMENT: "testing"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -105,11 +102,14 @@ jobs:
           cat > .env << EOF
           SERVICE_TOKEN=${{ secrets.SERVICE_TOKEN }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
-          DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.DB_NAME }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          TEST_DB_NAME=${{ secrets.TEST_DB_NAME }}
+          INSTITUTION_PASSWORD=${{ secrets.INSTITUTION_PASSWORD }}
+          TEAM_A_PASSWORD=${{ secrets.TEAM_A_PASSWORD }}
+          TEAM_B_PASSWORD=${{ secrets.TEAM_B_PASSWORD }}
+          TEAM_C_PASSWORD=${{ secrets.TEAM_C_PASSWORD }}
+          DB_ENVIRONMENT=production
           EOF
           
           # Deploy with Docker Compose
