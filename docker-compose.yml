@@ -9,11 +9,11 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME}
-#      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/backup_test
+      - DATABASE_URL=${DATABASE_URL}
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,7 +60,6 @@ services:
     env_file:
       - ./.env
     volumes:
-      # Mount specific file for append-only access
       - ./logs/validator.log:/agent_games/logs/validator.log
     mem_limit: 500m
     mem_reservation: 200m
@@ -77,6 +76,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
@@ -87,7 +87,6 @@ services:
     env_file:
       - ./.env
     volumes:
-      # Mount specific file for append-only access
       - ./logs/simulator.log:/agent_games/logs/simulator.log
     mem_limit: 500m
     mem_reservation: 200m
@@ -101,13 +100,11 @@ services:
     env_file:
       - ./.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -124,13 +121,11 @@ services:
     env_file:
       - ./.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${TEST_DB_NAME}
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
