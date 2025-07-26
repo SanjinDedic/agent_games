@@ -36,17 +36,21 @@ jobs:
         pip install pytest pytest-asyncio httpx pytest-cov
         pip install -r backend/requirements.txt
 
+    - name: Create test .env file
+      run: |
+        cat > .env << EOF
+        SECRET_KEY=github_actions_test_secret_key
+        SERVICE_TOKEN=github_actions_test_service_token
+        DATABASE_URL=postgresql://postgres:test_db_password@postgres_test:5432/postgres
+        POSTGRES_PASSWORD=test_db_password
+        DB_ENVIRONMENT=testing
+        EOF
+
     - name: Run tests with Docker Compose
       run: |
         docker compose build
         docker compose --profile test up --wait
         docker compose exec -T api pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
-      env:
-        SECRET_KEY: "github_actions_test_secret_key"
-        SERVICE_TOKEN: "github_actions_test_service_token"
-        DATABASE_URL: "postgresql://postgres:test_db_password@postgres_test:5432/postgres"
-        POSTGRES_PASSWORD: "test_db_password"
-        DB_ENVIRONMENT: "testing"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
