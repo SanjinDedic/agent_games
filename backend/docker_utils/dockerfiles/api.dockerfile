@@ -38,4 +38,4 @@ USER apiuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload >> /agent_games/logs/api.log 2>&1"]
+CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload 2>&1 | tee -a /agent_games/logs/api.log"]

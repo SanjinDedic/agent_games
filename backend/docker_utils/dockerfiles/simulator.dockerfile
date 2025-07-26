@@ -38,4 +38,4 @@ USER simuser
 EXPOSE 8002
 
 # SECURE: Append to mounted log file (file already exists on host)
-CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/simulation_server.py >> /agent_games/logs/simulator.log 2>&1"]
+CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/simulation_server.py 2>&1 | tee -a /agent_games/logs/simulator.log"]

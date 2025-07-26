@@ -37,4 +37,4 @@ USER validatoruser
 EXPOSE 8001
 
 # SECURE: Append to mounted log file (file already exists on host)
-CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/validation_server.py >> /agent_games/logs/validator.log 2>&1"]
+CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/validation_server.py 2>&1 | tee -a /agent_games/logs/validator.log"]
