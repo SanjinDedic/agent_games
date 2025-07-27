@@ -127,6 +127,19 @@ jobs:
           # Ensure Docker is running
           sudo systemctl start docker || true
           
+          # Create backup directory if it doesn't exist
+          mkdir -p ~/db_backups
+          
+          echo "Creating database backup..."
+          if sudo docker ps -q -f name=postgres | grep -q .; then
+            sudo docker exec $(sudo docker ps -q -f name=postgres) pg_dump -U postgres -d agent_games > ~/db_backups/agent_games_backup_$(date +%Y%m%d_%H%M%S).sql
+            echo "Database backup created successfully"
+            echo "Latest backups:"
+            ls -lt ~/db_backups/ | head -5
+          else
+            echo "Warning: No postgres container found, skipping backup"
+          fi
+          
           # Setup deployment directory
           mkdir -p ~/agent_games
           cd ~/agent_games
