@@ -5,7 +5,19 @@ import time
 import httpx
 import pytest
 
-from backend.docker_utils.compose_utils import ensure_services_running
+
+def ensure_services_running_direct():
+    """Direct replacement for removed ensure_services_running function"""
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "--profile", "test", "up", "-d", "--wait"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
 
 
 @pytest.mark.asyncio
@@ -16,7 +28,7 @@ async def test_malicious_agent_recovery():
         subprocess.run(["docker", "compose", "restart", "validator"], check=False)
 
         # Ensure services are running
-        ensure_services_running()
+        ensure_services_running_direct()
 
         # Wait for services to initialize - reduced to 2 seconds
         await asyncio.sleep(2)

@@ -1,16 +1,19 @@
+import functools
 import logging
 import os
-import time
 import subprocess
+import time
 from datetime import datetime, timedelta
+from typing import List, Union
 
 import pytest
 import pytz
 from fastapi.testclient import TestClient
+from sqlalchemy import inspect as sa_inspect, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from backend.api import app
-from backend.database.db_config import get_test_database_url
+from backend.database.db_config import get_database_url
 from backend.database.db_models import (
     Admin,
     DemoUser,
@@ -21,163 +24,218 @@ from backend.database.db_models import (
     get_password_hash,
 )
 from backend.database.db_session import get_db
-from backend.docker_utils.compose_utils import (
-    restart_service,
-    verify_all_services_healthy,
-    wait_for_services,
-    run_docker_compose_command,
-)
 from backend.routes.auth.auth_core import create_access_token
 
 # Set environment variables for testing before any imports
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_tests")
-os.environ.setdefault("TESTING", "1")
-os.environ.setdefault("USE_TEST_DB", "1")  # Signal to use the test database
-
-os.environ["TESTING"] = "1"
+os.environ["DB_ENVIRONMENT"] = "test"
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def ensure_postgres_test_running():
-    """Ensure postgres_test container is running specifically"""
+def run_docker_compose_command(
+    command: List[str], timeout: int = 60
+) -> subprocess.CompletedProcess:
+    """Run a docker compose command with timeout"""
     try:
-        # Check if postgres_test is already running and healthy
-        result = run_docker_compose_command(["ps", "postgres_test", "--format", "json"])
-        if "healthy" in result.stdout:
-            logger.info("postgres_test is already running and healthy")
-            return True
+        full_command = ["docker", "compose"] + command
+        logger.debug(f"Running docker compose command: {' '.join(full_command)}")
 
-        # If not running or not healthy, ensure it's started with the test profile
-        logger.info("Starting postgres_test container...")
-        run_docker_compose_command(["--profile", "test", "up", "-d", "postgres_test"])
+        # Set environment variables for test mode
+        env = os.environ.copy()
+        env["DB_ENVIRONMENT"] = "test"
 
-        # Wait for postgres_test to be healthy
-        max_retries = 30
-        for i in range(max_retries):
-            result = run_docker_compose_command(
-                ["ps", "postgres_test", "--format", "json"]
-            )
-            if "healthy" in result.stdout:
-                logger.info("postgres_test is now healthy")
-                return True
-            logger.info(
-                f"Waiting for postgres_test to be healthy... ({i+1}/{max_retries})"
-            )
-            time.sleep(2)
-
-        logger.error("postgres_test failed to become healthy")
-        return False
+        result = subprocess.run(
+            full_command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+        return result
+    except subprocess.TimeoutExpired:
+        logger.error(f"Docker compose command timed out after {timeout} seconds")
+        raise
     except Exception as e:
-        logger.error(f"Error ensuring postgres_test is running: {str(e)}")
-        return False
+        logger.error(f"Error running docker compose command: {e}")
+        raise
 
 
 @pytest.fixture(scope="session", autouse=True)
-def docker_environment():
+def setup_test_environment():
     """
-    Primary fixture for Docker container management.
-    Ensures containers are built (if needed) and running for the test session.
+    Set up complete test environment with proper database switching
     """
-    logger.info("Setting up Docker environment for test session")
+    # Set test environment FIRST
+    os.environ["DB_ENVIRONMENT"] = "test"
 
-    # Ensure postgres_test is running first
-    if not ensure_postgres_test_running():
-        pytest.fail("Failed to start postgres_test container")
+    # Print database info
+    database_url = get_database_url()
+    print(f"\n{'='*60}")
+    print(f"TEST SUITE STARTING")
+    print(f"Database URL: {database_url}")
+    print(f"{'='*60}\n")
 
-    # Then ensure all test services are running (validator, simulator)
-    # Run docker compose build if needed (this happens automatically in docker compose up)
-    # Start services with the test profile
-    run_docker_compose_command(["--profile", "test", "up", "-d"])
+    # Stop any running services
+    logger.info("Stopping any running services...")
+    try:
+        run_docker_compose_command(["--profile", "test", "down"])
+        run_docker_compose_command(["--profile", "dev", "down"])
+    except Exception as e:
+        logger.warning(f"Error stopping services: {e}")
 
-    # Then start and wait for services to be healthy
-    is_ready = wait_for_services(timeout=360, interval=5)
-
-    if not is_ready:
-        is_healthy, statuses = verify_all_services_healthy()
-        status_details = "\n".join(
-            [f"- {svc}: {status}" for svc, status in statuses.items()]
+    # Start test services with test profile
+    logger.info("Starting test services...")
+    try:
+        result = run_docker_compose_command(
+            ["--profile", "test", "up", "-d", "--wait"], timeout=120
         )
-        logger.error(f"Services health check failed:\n{status_details}")
-        pytest.fail("Docker environment setup failed - services not healthy")
-
-    logger.info("Docker environment ready for testing")
+        if result.returncode == 0:
+            logger.info("All test services are healthy")
+        else:
+            logger.error(f"Services failed to start: {result.stderr}")
+            pytest.fail("Docker environment setup failed")
+    except Exception as e:
+        logger.error(f"Error setting up test environment: {e}")
+        pytest.fail("Docker environment setup failed")
 
     yield
-
-    logger.info("Test session complete - containers will remain running")
+    logger.info("Test session complete")
 
 
 @pytest.fixture
 def ensure_containers(request):
     """
-    Fixture for tests that require containers.
-    Verifies containers are healthy before each test,
-    and attempts to restart them if needed.
+    Verify that all 4 required services are healthy before each test.
+    Required services: api, validator, simulator, postgres_test
     """
     test_name = request.node.name
     logger.info(f"Verifying containers for test: {test_name}")
 
-    is_healthy, statuses = verify_all_services_healthy()
-
-    if not is_healthy:
-        # Log which services are unhealthy
-        unhealthy = [
-            f"{svc}: {status}"
-            for svc, status in statuses.items()
-            if "not healthy" in status.lower()
-        ]
-        logger.warning(
-            f"Containers not healthy for test {test_name}: {', '.join(unhealthy)}"
+    try:
+        # Check that all required services are running
+        result = run_docker_compose_command(
+            ["ps", "--services", "--filter", "status=running"]
         )
-        logger.info("Attempting to restart containers...")
+        running_services = (
+            result.stdout.strip().split("\n") if result.stdout.strip() else []
+        )
 
-        # Restart services
-        restart_success = restart_service()
-        if not restart_success:
-            logger.error("Failed to restart services")
-            pytest.fail("Could not restart services")
+        required_services = ["api", "validator", "simulator", "postgres_test"]
+        missing_services = [
+            svc for svc in required_services if svc not in running_services
+        ]
 
-        # Wait for services to become healthy
-        is_ready = wait_for_services(timeout=360, interval=5)
-        if not is_ready:
-            is_healthy, statuses = verify_all_services_healthy()
-            status_details = "\n".join(
-                [f"- {svc}: {status}" for svc, status in statuses.items()]
+        if missing_services:
+            logger.warning(f"Missing services for test {test_name}: {missing_services}")
+            logger.info("Attempting to restart services...")
+
+            # Try to restart services
+            restart_result = run_docker_compose_command(
+                ["--profile", "test", "up", "-d", "--wait"]
             )
-            logger.error(f"Services still not healthy after restart:\n{status_details}")
-            pytest.fail(f"Services not healthy for test {test_name}")
+            if restart_result.returncode != 0:
+                logger.error(f"Failed to restart services: {restart_result.stderr}")
+                pytest.fail("Could not restart services")
 
-    logger.info(f"Services healthy for test: {test_name}")
+            logger.info("Services restarted successfully")
+
+    except Exception as e:
+        logger.error(f"Error checking container health: {e}")
+        pytest.fail(f"Container health check failed for test {test_name}")
+
+    logger.info(f"All services ready for test: {test_name}")
     return True
 
 
 @pytest.fixture
 def db_engine():
-    """Create a new database engine for testing using the dedicated test database"""
-    engine = create_engine(get_test_database_url())
+    """Create database engine for testing using the dedicated test database"""
+    database_url = get_database_url()
+    logger.info(f"Creating database engine: {database_url}")
+
+    # Create the test database if it doesn't exist
+    try:
+        engine = create_engine(database_url)
+        with engine.connect():
+            pass  # Test connection
+        logger.info("Test database already exists")
+    except Exception as e:
+        logger.info(f"Test database doesn't exist, creating it: {e}")
+        # Connect to postgres to create the test database
+        base_url = database_url.rsplit("/", 1)[0] + "/postgres"
+        admin_engine = create_engine(base_url)
+
+        # Extract just the database name from the URL
+        db_name = database_url.rsplit("/", 1)[1].split("?")[0]  # Handle query params
+
+        # Use autocommit mode to avoid transaction issues with DDL
+        with admin_engine.connect() as conn:
+            # Set autocommit mode
+            conn.execution_options(isolation_level="AUTOCOMMIT")
+
+            # Terminate existing connections
+            conn.execute(
+                text(
+                    f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{db_name}' AND pid <> pg_backend_pid()"
+                )
+            )
+
+            # Drop and create database (these commands will run outside transaction)
+            conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
+            conn.execute(text(f"CREATE DATABASE {db_name}"))
+
+        logger.info("Test database created successfully")
+        engine = create_engine(database_url)
+
+    # Create all tables
     SQLModel.metadata.create_all(engine)
     yield engine
-    SQLModel.metadata.drop_all(engine)
 
+    # Clean up: drop all tables but keep the database
+    SQLModel.metadata.drop_all(engine)
 
 @pytest.fixture
 def db_session(db_engine):
+    """Create database session for testing"""
     with Session(db_engine) as session:
         try:
             logger.debug(f"Test session using database: {db_engine.url}")
             yield session
             session.rollback()  # Roll back any uncommitted changes
         finally:
-            session.close()  # Ensure session is closed
+            session.close()
+
+
+@pytest.fixture(autouse=True)
+def init_test_db(db_session):
+    """Initialize test database with basic data and unassigned league"""
+    from backend.docker_utils.init_db import populate_database
+
+    populate_database(db_session.get_bind())
+
+    # Ensure unassigned league exists
+    unassigned = db_session.exec(
+        select(League).where(League.name == "unassigned")
+    ).first()
+
+    if not unassigned:
+        unassigned = League(
+            name="unassigned",
+            created_date=datetime.now(),
+            expiry_date=datetime.now() + timedelta(days=7),
+            game="greedy_pig",
+        )
+        db_session.add(unassigned)
+        db_session.commit()
 
 
 @pytest.fixture
 def client(db_session) -> TestClient:
-    """Create a test client with a test database session"""
-
+    """Create TestClient with test database session"""
     def get_test_db():
         yield db_session
 
@@ -187,7 +245,7 @@ def client(db_session) -> TestClient:
 
 @pytest.fixture
 def admin_token(db_session: Session) -> str:
-    """Create an admin user and return an admin token"""
+    """Create admin user and return admin token"""
     admin = Admin(
         username="test_admin", password_hash=get_password_hash("test_password")
     )
@@ -201,7 +259,7 @@ def admin_token(db_session: Session) -> str:
 
 @pytest.fixture
 def team_token(db_session):
-    """Create a test team with league assignment"""
+    """Create test team with league assignment and return team token"""
     league = db_session.exec(select(League).where(League.name == "comp_test")).first()
     if not league:
         league = League(
@@ -240,26 +298,6 @@ def team_auth_headers(team_token) -> dict:
     return {"Authorization": f"Bearer {team_token}"}
 
 
-@pytest.fixture(autouse=True)
-def setup_unassigned_league(db_session):
-    """Create unassigned league if it doesn't exist"""
-    unassigned = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).first()
-
-    if not unassigned:
-        unassigned = League(
-            name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
-            game="greedy_pig",
-        )
-        db_session.add(unassigned)
-        db_session.commit()
-
-    return unassigned
-
-
 @pytest.fixture
 def test_league(db_session: Session) -> League:
     """Create a test league"""
@@ -284,7 +322,6 @@ def setup_demo_data(db_session: Session) -> None:
 
     # Create demo teams and tracking records
     for i in range(2):
-        # Check if team already exists
         team_name = f"demo_team_{i}"
         team = db_session.exec(select(Team).where(Team.name == team_name)).first()
 
@@ -295,7 +332,7 @@ def setup_demo_data(db_session: Session) -> None:
                 school_name=team_name,
                 password_hash="test_hash",
                 league_id=unassigned.id,
-                is_demo=True,  # Mark as demo
+                is_demo=True,
                 team_type=TeamType.STUDENT,
             )
             db_session.add(team)
@@ -304,7 +341,7 @@ def setup_demo_data(db_session: Session) -> None:
 
             # Create separate DemoUser tracking record
             demo_user = DemoUser(
-                username=team_name,  # This is the original username before adding "_Demo" suffix
+                username=team_name,
                 email=f"demo{i}@example.com",
                 created_at=datetime.now(),
             )
@@ -321,12 +358,6 @@ def setup_demo_data(db_session: Session) -> None:
                 db_session.add(submission)
 
     db_session.commit()
-
-
-# Add the inspect_db_state decorator function
-import functools
-from sqlalchemy import inspect as sa_inspect, text
-from typing import List, Optional, Union
 
 
 def inspect_db_state(tables: Union[List[str], str] = None, all_tables: bool = False):

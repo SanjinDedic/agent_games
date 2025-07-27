@@ -1,33 +1,4 @@
 services:
-  # New Docker Socket Proxy service
-  docker-proxy:
-    image: tecnativa/docker-socket-proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only mount
-    environment:
-      # Block write operations (only allow GET requests)
-      - POST=0
-      - PUT=0
-      - DELETE=0
-      # Allow access to needed API sections
-      - CONTAINERS=1
-      - SERVICES=1
-      - NETWORKS=1
-      - IMAGES=1
-      - EVENTS=1
-      - INFO=1
-      - PING=1
-      - VERSION=1
-      - SYSTEM=1
-      - VOLUMES=1
-      - LOG_LEVEL=info
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2375"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   api:
     build:
       context: .
@@ -38,19 +9,15 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME}
+      # Removed DATABASE_URL - now handled by get_database_url()
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
-      - DOCKER_HOST=tcp://docker-proxy:2375  # Connect to the proxy instead
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
-      postgres:
-        condition: service_healthy
       validator:
         condition: service_healthy
       simulator:
-        condition: service_healthy
-      docker-proxy:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -61,6 +28,11 @@ services:
       start_period: 40s
     env_file:
       - ./.env
+    volumes:
+      - ./backend:/agent_games/backend
+      - ./logs/api.log:/agent_games/logs/api.log
+      - ./logs/validator.log:/agent_games/logs/validator.log:ro
+      - ./logs/simulator.log:/agent_games/logs/simulator.log:ro
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -76,6 +48,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}  # Added for database switching
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -85,6 +58,8 @@ services:
       start_period: 10s
     env_file:
       - ./.env
+    volumes:
+      - ./logs/validator.log:/agent_games/logs/validator.log
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -100,6 +75,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
@@ -109,6 +85,8 @@ services:
       start_period: 10s
     env_file:
       - ./.env
+    volumes:
+      - ./logs/simulator.log:/agent_games/logs/simulator.log
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -121,9 +99,8 @@ services:
     env_file:
       - ./.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_DB: agent_games
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -135,18 +112,17 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
-    profiles: ["prod", "dev", "test"]
+    profiles: ["prod", "dev"]
 
   postgres_test:
     image: postgres:14
     ports:
       - "5433:5432"
-    env_file:
-      - ./.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${TEST_DB_NAME}
+      # Hardcoded test database credentials - no secrets needed
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_db_password
+      POSTGRES_DB: agent_games_test
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
@@ -158,7 +134,7 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
-    profiles: ["dev", "test"]
+    profiles: ["test"]
 
 volumes:
   postgres_data:

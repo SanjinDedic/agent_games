@@ -7,56 +7,34 @@ project_root = os.path.dirname(
 )
 load_dotenv(os.path.join(project_root, ".env"))
 
-# Get database configuration from environment variables with fallbacks
-POSTGRES_USER = os.environ.get("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.environ.get(
-    "POSTGRES_PASSWORD", ""
-)  # Password should be in .env file
-DB_NAME = os.environ.get("DB_NAME", "agent_games")
-TEST_DB_NAME = os.environ.get("TEST_DB_NAME", "agent_games_test")
-
 def get_database_url():
     """
-    Get the database URL from environment variable or use environment variables.
-    This works both for Docker and local setups, assuming the Docker PostgreSQL service is also
-    accessible on localhost:5432.
+    Get the database URL based on environment.
+    Uses hardcoded test URLs for testing, production URL from env otherwise.
     """
-    # First check for explicit DATABASE_URL environment variable (highest priority)
+    db_environment = os.environ.get("DB_ENVIRONMENT")
+
+    if db_environment == "test":
+        # Hardcoded test database URLs - no secrets needed
+        if os.path.exists("/.dockerenv"):
+            # Inside Docker containers - use postgres_test service
+            return "postgresql+psycopg://postgres:test_db_password@postgres_test:5432/agent_games_test"
+        else:
+            # Outside Docker - use localhost:5433
+            return "postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test"
+
+    # Production environment - use environment variable
     database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable is required for production")
 
-    if database_url:
-        # Check if we're running tests from outside Docker but using Docker services
-        if os.environ.get("TESTING") == "1" and not os.path.exists("/.dockerenv"):
-            # Replace postgres service name with localhost
-            if "@postgres:" in database_url:
-                database_url = database_url.replace("@postgres:", "@localhost:")
+    # Handle Docker vs local for production
+    if not os.path.exists("/.dockerenv") and "@postgres:" in database_url:
+        # Running outside Docker, replace service name with localhost
+        database_url = database_url.replace("@postgres:", "@localhost:")
 
-        # Make sure we're using psycopg3 by specifying the dialect+driver
-        if database_url.startswith("postgresql://"):
-            return database_url.replace("postgresql://", "postgresql+psycopg://")
-        return database_url
+    # Ensure we're using psycopg3 driver
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://")
 
-    # Check if we're running tests and outside Docker
-    if os.environ.get("TESTING") == "1" and not os.path.exists("/.dockerenv"):
-        # For tests, use the dedicated test database
-        if os.environ.get("USE_TEST_DB") == "1":
-            return get_test_database_url()
-        # Use localhost instead of service name for tests running outside Docker
-        return f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:5432/{DB_NAME}"
-
-    # Default PostgreSQL URL using psycopg3 driver and service name for Docker environment
-    return f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{DB_NAME}"
-
-
-def get_test_database_url():
-    """
-    Get the database URL for the test database.
-    This is a dedicated PostgreSQL instance running on port 5433.
-    """
-    # Check if we're running inside Docker
-    if os.path.exists("/.dockerenv"):
-        # When running inside Docker, use the service name
-        return f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres_test:5432/{TEST_DB_NAME}"
-    else:
-        # When running outside Docker, access via localhost
-        return f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:5433/{TEST_DB_NAME}"
+    return database_url

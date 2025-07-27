@@ -35,28 +35,10 @@ def wait_for_postgres(max_retries=30, retry_interval=2):
     retries = 0
     while retries < max_retries:
         try:
-            # Extract connection parameters from the SQLAlchemy URL
-            # Assuming format postgresql+psycopg://username:password@host:port/dbname
-            parts = database_url.replace("postgresql+psycopg://", "").split("@")
-            user_pass = parts[0].split(":")
-            host_db = parts[1].split("/")
-            host_port = host_db[0].split(":")
-
-            username = user_pass[0]
-            password = user_pass[1]
-            host = host_port[0]
-            port = int(host_port[1]) if len(host_port) > 1 else 5432
-            dbname = host_db[1]
-
-            # Try to connect
-            conn = psycopg.connect(
-                dbname=dbname,
-                user=username,
-                password=password,
-                host=host,
-                port=port
-            )
-            conn.close()
+            # Use SQLAlchemy engine to test connection - consistent with rest of project
+            engine = create_engine(database_url)
+            with engine.connect():
+                pass  # Test connection
             logger.info("Successfully connected to PostgreSQL")
             return True
         except Exception as e:
