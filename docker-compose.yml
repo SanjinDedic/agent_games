@@ -9,14 +9,12 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - DATABASE_URL=${DATABASE_URL}
+      # Removed DATABASE_URL - now handled by get_database_url()
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
-      postgres:
-        condition: service_healthy
       validator:
         condition: service_healthy
       simulator:
@@ -50,6 +48,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}  # Added for database switching
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -101,10 +100,11 @@ services:
       - ./.env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: agent_games
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -112,20 +112,21 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
-    profiles: ["prod", "dev", "test"]
+    profiles: ["prod", "dev"]
 
   postgres_test:
     image: postgres:14
     ports:
       - "5433:5432"
-    env_file:
-      - ./.env
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Hardcoded test database credentials - no secrets needed
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_db_password
+      POSTGRES_DB: agent_games_test
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -133,7 +134,7 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
-    profiles: ["dev", "test"]
+    profiles: ["test"]
 
 volumes:
   postgres_data:

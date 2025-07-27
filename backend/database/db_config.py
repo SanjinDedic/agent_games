@@ -9,35 +9,28 @@ load_dotenv(os.path.join(project_root, ".env"))
 
 def get_database_url():
     """
-    Get the database URL from environment variable.
-    Handles Docker vs local execution automatically.
-    Modifies database name based on DB_ENVIRONMENT.
+    Get the database URL based on environment.
+    Uses hardcoded test URLs for testing, production URL from env otherwise.
     """
-    database_url = os.environ.get("DATABASE_URL")
-
-    if not database_url:
-        raise ValueError("DATABASE_URL environment variable is required")
-
-    # Check if we're in test environment and modify database name and port/host
     db_environment = os.environ.get("DB_ENVIRONMENT")
+
     if db_environment == "test":
-        # Replace database name with test database - but only if not already a test database
-        if "/agent_games_test" not in database_url and "/agent_games" in database_url:
-            database_url = database_url.replace("/agent_games", "/agent_games_test")
-        # If it already points to a test database, don't modify it
-
-        # For test environment, handle both Docker and local execution
+        # Hardcoded test database URLs - no secrets needed
         if os.path.exists("/.dockerenv"):
-            # Running inside Docker, use postgres_test service name
-            if "@postgres:" in database_url:
-                database_url = database_url.replace("@postgres:", "@postgres_test:")
+            # Inside Docker containers - use postgres_test service
+            return "postgresql+psycopg://postgres:test_db_password@postgres_test:5432/agent_games_test"
         else:
-            # Running outside Docker, use localhost:5433 for postgres_test
-            database_url = database_url.replace(":5432", ":5433")
+            # Outside Docker - use localhost:5433
+            return "postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test"
 
-    # Check if we're running outside Docker but DATABASE_URL points to Docker service
+    # Production environment - use environment variable
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable is required for production")
+
+    # Handle Docker vs local for production
     if not os.path.exists("/.dockerenv") and "@postgres:" in database_url:
-        # Replace Docker service name with localhost for local execution
+        # Running outside Docker, replace service name with localhost
         database_url = database_url.replace("@postgres:", "@localhost:")
 
     # Ensure we're using psycopg3 driver

@@ -67,59 +67,43 @@ def run_docker_compose_command(
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
     """
-    Set up complete test environment:
-    - Print database info
-    - Stop conflicting postgres service
-    - Start all required test services
+    Set up complete test environment with proper database switching
     """
+    # Set test environment FIRST
+    os.environ["DB_ENVIRONMENT"] = "test"
+
     # Print database info
     database_url = get_database_url()
     print(f"\n{'='*60}")
     print(f"TEST SUITE STARTING")
     print(f"Database URL: {database_url}")
     print(f"{'='*60}\n")
-    logger.info(f"Test suite starting with database URL: {database_url}")
 
-    # Stop the main postgres container to avoid conflicts
+    # Stop any running services
+    logger.info("Stopping any running services...")
     try:
-        logger.info("Stopping main postgres container to avoid conflicts...")
-        stop_result = run_docker_compose_command(["stop", "postgres"])
-        if stop_result.returncode == 0:
-            logger.info("Main postgres container stopped successfully")
-        else:
-            logger.warning(
-                f"Failed to stop main postgres container: {stop_result.stderr}"
-            )
+        run_docker_compose_command(["--profile", "test", "down"])
+        run_docker_compose_command(["--profile", "dev", "down"])
     except Exception as e:
-        logger.warning(f"Error stopping main postgres container: {e}")
+        logger.warning(f"Error stopping services: {e}")
 
-    # Start all test services and wait for them to be healthy
-    logger.info("Starting all test services and waiting for health checks...")
+    # Start test services with test profile
+    logger.info("Starting test services...")
     try:
         result = run_docker_compose_command(
-            ["--profile", "test", "up", "-d", "--wait"], timeout=180
+            ["--profile", "test", "up", "-d", "--wait"], timeout=120
         )
         if result.returncode == 0:
             logger.info("All test services are healthy")
         else:
-            logger.error(f"Services failed to start properly: {result.stderr}")
-            # Get service status for debugging
-            try:
-                ps_result = run_docker_compose_command(["ps"])
-                logger.error(f"Service status:\n{ps_result.stdout}")
-            except Exception:
-                pass
-            pytest.fail("Docker environment setup failed - services not healthy")
-    except subprocess.TimeoutExpired:
-        logger.error("Timed out waiting for services")
-        pytest.fail("Docker environment setup timed out")
+            logger.error(f"Services failed to start: {result.stderr}")
+            pytest.fail("Docker environment setup failed")
     except Exception as e:
         logger.error(f"Error setting up test environment: {e}")
         pytest.fail("Docker environment setup failed")
 
-    logger.info("Test environment ready")
     yield
-    logger.info("Test session complete - test containers will remain running")
+    logger.info("Test session complete")
 
 
 @pytest.fixture
