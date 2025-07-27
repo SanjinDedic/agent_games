@@ -57,6 +57,20 @@ jobs:
         TEST_DB_NAME=${TEST_DB_NAME}
         DATABASE_URL=${DATABASE_URL}
         EOF
+
+    - name: Create log files for Docker volume mounts
+      run: |
+        # Create logs directory and log files
+        mkdir -p logs
+        touch logs/api.log
+        touch logs/validator.log  
+        touch logs/simulator.log
+        
+        # Set proper permissions
+        chmod 644 logs/*.log
+        
+        echo "Created log files:"
+        ls -la logs/
         
     - name: Start Docker Compose services with test profile
       run: |
@@ -129,6 +143,11 @@ jobs:
           else
             git clone --depth 1 https://github.com/SanjinDedic/agent_games.git .
           fi
+          
+          # Create log files for production deployment
+          mkdir -p logs
+          touch logs/api.log logs/validator.log logs/simulator.log
+          chmod 644 logs/*.log
           
           # Create environment file
           cat > .env << EOF
