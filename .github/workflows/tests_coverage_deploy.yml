@@ -118,18 +118,18 @@ jobs:
         ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
 
     - name: Deploy to EC2
-      env:
-        SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        INSTITUTION_PASSWORD: ${{ secrets.INSTITUTION_PASSWORD }}
-        TEAM_A_PASSWORD: ${{ secrets.TEAM_A_PASSWORD }}
-        TEAM_B_PASSWORD: ${{ secrets.TEAM_B_PASSWORD }}
-        TEAM_C_PASSWORD: ${{ secrets.TEAM_C_PASSWORD }}
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << ENDSSH
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
+          "SERVICE_TOKEN='${{ secrets.SERVICE_TOKEN }}' \
+           SECRET_KEY='${{ secrets.SECRET_KEY }}' \
+           DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+           ADMIN_PASSWORD='${{ secrets.ADMIN_PASSWORD }}' \
+           POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+           INSTITUTION_PASSWORD='${{ secrets.INSTITUTION_PASSWORD }}' \
+           TEAM_A_PASSWORD='${{ secrets.TEAM_A_PASSWORD }}' \
+           TEAM_B_PASSWORD='${{ secrets.TEAM_B_PASSWORD }}' \
+           TEAM_C_PASSWORD='${{ secrets.TEAM_C_PASSWORD }}' \
+           bash -s" << 'ENDSSH'
           set -e
           
           echo "Starting deployment..."
@@ -141,8 +141,9 @@ jobs:
           mkdir -p ~/db_backups
           
           echo "Creating database backup..."
-          if sudo docker ps -q -f name=postgres | grep -q .; then
-            sudo docker exec $(sudo docker ps -q -f name=postgres) pg_dump -U postgres -d agent_games > ~/db_backups/agent_games_backup_$(date +%Y%m%d_%H%M%S).sql
+          POSTGRES_CONTAINER=$(sudo docker ps -q -f name=postgres)
+          if [ -n "$POSTGRES_CONTAINER" ]; then
+            sudo docker exec "$POSTGRES_CONTAINER" pg_dump -U postgres -d agent_games > ~/db_backups/agent_games_backup_$(date +%Y%m%d_%H%M%S).sql
             echo "Database backup created successfully"
             echo "Latest backups:"
             ls -lt ~/db_backups/ | head -5
@@ -172,19 +173,19 @@ jobs:
           touch logs/api.log logs/validator.log logs/simulator.log
           chmod 644 logs/*.log
           
-          # Create environment file using proper here-document syntax
-          cat > .env << ENVEOF
-          SERVICE_TOKEN=${SERVICE_TOKEN}
-          SECRET_KEY=${SECRET_KEY}
-          DATABASE_URL=${DATABASE_URL}
-          ADMIN_PASSWORD=${ADMIN_PASSWORD}
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          INSTITUTION_PASSWORD=${INSTITUTION_PASSWORD}
-          TEAM_A_PASSWORD=${TEAM_A_PASSWORD}
-          TEAM_B_PASSWORD=${TEAM_B_PASSWORD}
-          TEAM_C_PASSWORD=${TEAM_C_PASSWORD}
-          DB_ENVIRONMENT=production
-          ENVEOF
+          # Create environment file
+          cat > .env << 'ENVEOF'
+        SERVICE_TOKEN=${SERVICE_TOKEN}
+        SECRET_KEY=${SECRET_KEY}
+        DATABASE_URL=${DATABASE_URL}
+        ADMIN_PASSWORD=${ADMIN_PASSWORD}
+        POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        INSTITUTION_PASSWORD=${INSTITUTION_PASSWORD}
+        TEAM_A_PASSWORD=${TEAM_A_PASSWORD}
+        TEAM_B_PASSWORD=${TEAM_B_PASSWORD}
+        TEAM_C_PASSWORD=${TEAM_C_PASSWORD}
+        DB_ENVIRONMENT=production
+        ENVEOF
           
           # Deploy with Docker Compose
           docker compose --profile prod down || true
