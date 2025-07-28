@@ -118,8 +118,18 @@ jobs:
         ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
 
     - name: Deploy to EC2
+      env:
+        SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        INSTITUTION_PASSWORD: ${{ secrets.INSTITUTION_PASSWORD }}
+        TEAM_A_PASSWORD: ${{ secrets.TEAM_A_PASSWORD }}
+        TEAM_B_PASSWORD: ${{ secrets.TEAM_B_PASSWORD }}
+        TEAM_C_PASSWORD: ${{ secrets.TEAM_C_PASSWORD }}
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << ENDSSH
           set -e
           
           echo "Starting deployment..."
@@ -162,19 +172,19 @@ jobs:
           touch logs/api.log logs/validator.log logs/simulator.log
           chmod 644 logs/*.log
           
-          # Create environment file
-          cat > .env << EOF
-          SERVICE_TOKEN=${{ secrets.SERVICE_TOKEN }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          INSTITUTION_PASSWORD=${{ secrets.INSTITUTION_PASSWORD }}
-          TEAM_A_PASSWORD=${{ secrets.TEAM_A_PASSWORD }}
-          TEAM_B_PASSWORD=${{ secrets.TEAM_B_PASSWORD }}
-          TEAM_C_PASSWORD=${{ secrets.TEAM_C_PASSWORD }}
+          # Create environment file using proper here-document syntax
+          cat > .env << ENVEOF
+          SERVICE_TOKEN=${SERVICE_TOKEN}
+          SECRET_KEY=${SECRET_KEY}
+          DATABASE_URL=${DATABASE_URL}
+          ADMIN_PASSWORD=${ADMIN_PASSWORD}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          INSTITUTION_PASSWORD=${INSTITUTION_PASSWORD}
+          TEAM_A_PASSWORD=${TEAM_A_PASSWORD}
+          TEAM_B_PASSWORD=${TEAM_B_PASSWORD}
+          TEAM_C_PASSWORD=${TEAM_C_PASSWORD}
           DB_ENVIRONMENT=production
-          EOF
+          ENVEOF
           
           # Deploy with Docker Compose
           docker compose --profile prod down || true
