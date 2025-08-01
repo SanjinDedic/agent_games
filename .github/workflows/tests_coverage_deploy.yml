@@ -123,12 +123,7 @@ jobs:
           "SERVICE_TOKEN='${{ secrets.SERVICE_TOKEN }}' \
            SECRET_KEY='${{ secrets.SECRET_KEY }}' \
            DATABASE_URL='${{ secrets.DATABASE_URL }}' \
-           ADMIN_PASSWORD='${{ secrets.ADMIN_PASSWORD }}' \
            POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
-           INSTITUTION_PASSWORD='${{ secrets.INSTITUTION_PASSWORD }}' \
-           TEAM_A_PASSWORD='${{ secrets.TEAM_A_PASSWORD }}' \
-           TEAM_B_PASSWORD='${{ secrets.TEAM_B_PASSWORD }}' \
-           TEAM_C_PASSWORD='${{ secrets.TEAM_C_PASSWORD }}' \
            bash -s" << 'ENDSSH'
           set -e
           
@@ -173,20 +168,16 @@ jobs:
           touch logs/api.log logs/validator.log logs/simulator.log
           chmod 644 logs/*.log
           
+          # Export environment variables for Docker Compose
           export SERVICE_TOKEN=${SERVICE_TOKEN}
           export SECRET_KEY=${SECRET_KEY}
           export DATABASE_URL=${DATABASE_URL}
-          export ADMIN_PASSWORD=${ADMIN_PASSWORD}
           export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          export INSTITUTION_PASSWORD=${INSTITUTION_PASSWORD}
-          export TEAM_A_PASSWORD=${TEAM_A_PASSWORD}
-          export TEAM_B_PASSWORD=${TEAM_B_PASSWORD}
-          export TEAM_C_PASSWORD=${TEAM_C_PASSWORD}
           export DB_ENVIRONMENT=production
           
           # Deploy with Docker Compose
-          docker compose --profile prod down || true
-          docker compose --profile prod up --build --detach --wait
+          sudo docker compose --profile prod down || true
+          sudo docker compose --profile prod up --build --detach --wait
           
           # Verify deployment
           timeout 60s bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done'

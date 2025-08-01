@@ -100,3 +100,4 @@ async def root():
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {"status": "healthy"}
+
