@@ -9,10 +9,10 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      # Removed DATABASE_URL - now handled by get_database_url()
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - DATABASE_URL=${DATABASE_URL}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
       validator:
@@ -26,8 +26,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    env_file:
-      - ./.env
     volumes:
       - ./backend:/agent_games/backend
       - ./logs/api.log:/agent_games/logs/api.log
@@ -48,7 +46,9 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}  # Added for database switching
+      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
+      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - DATABASE_URL=${DATABASE_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -56,8 +56,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    env_file:
-      - ./.env
     volumes:
       - ./logs/validator.log:/agent_games/logs/validator.log
     mem_limit: 500m
@@ -76,6 +74,8 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
+      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - DATABASE_URL=${DATABASE_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
@@ -83,8 +83,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    env_file:
-      - ./.env
     volumes:
       - ./logs/simulator.log:/agent_games/logs/simulator.log
     mem_limit: 500m
@@ -96,8 +94,6 @@ services:
     image: postgres:14
     ports:
       - "5432:5432"
-    env_file:
-      - ./.env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: agent_games

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def check_database_status():
-    """Check if database is initialized and warn if not"""
+    """Check if database is initialized and warn if its not"""
     try:
         engine = create_engine(get_database_url())
         with Session(engine) as session:
@@ -100,3 +100,4 @@ async def root():
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {"status": "healthy"}
+
