@@ -35,11 +35,35 @@ For more information, check out the [Backend README](./backend/README.md).
 
 ## Getting Started
 
-For instructions on how to set up and run the project locally, please refer to the respective README files in the frontend and backend directories.
+### Quick Start with Docker (Recommended)
+The entire platform can be run locally with a single Docker Compose command:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/SanjinDedic/agent_games.git
+   cd agent_games
+   ```
+
+2. **Run the complete platform:**
+   ```bash
+   docker compose --profile dev up --build
+   ```
+
+This single command will:
+- Build and start all services (API, validator, simulator, frontend, database)
+- Set up the PostgreSQL database with proper initialization
+- Start the React frontend on `http://localhost:3000`
+- Start the FastAPI backend on `http://localhost:8000`
+- Automatically handle all dependencies and networking between services
+
+### Alternative Setup
+For instructions on manual setup or detailed deployment options, please refer to the respective README files in the frontend and backend directories.
 
 ## Docker Compose Deployment
 
-The easiest way to deploy the entire application stack is using Docker Compose. This method sets up all required services with proper configurations and dependencies.
+> **Quick Start:** For the fastest setup, see the [Getting Started](#getting-started) section above for a single-command deployment.
+
+The following section provides detailed information about Docker Compose deployment options for different environments and advanced configurations.
 
 ### Prerequisites
 

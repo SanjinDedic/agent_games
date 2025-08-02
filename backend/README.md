@@ -5,9 +5,25 @@
 The Multi-Game Simulation Platform is a Python-based project that allows users to simulate and play various games, starting with the popular dice game, Greedy Pig. The platform has been expanded to support multiple games and includes a front-end interface for enhanced user experience.
 
 ## 🚀 Getting Started
-To get started with the Multi-Game Simulation Platform, follow these steps:
 
-1. Clone the repository: `git clone https://github.com/your-username/multi-game-simulation.git`
+### Quick Start with Docker (Recommended)
+The entire platform can be run locally with a single Docker Compose command:
+
+1. Clone the repository: `git clone https://github.com/SanjinDedic/agent_games.git`
+2. Navigate to the project directory: `cd agent_games`
+3. Run the complete platform: `docker compose --profile dev up --build`
+
+This single command will:
+- Build and start all services (API, validator, simulator, frontend, database)
+- Set up the PostgreSQL database with proper initialization
+- Start the React frontend on `http://localhost:3000`
+- Start the FastAPI backend on `http://localhost:8000`
+- Automatically handle all dependencies and networking between services
+
+### Manual Setup (Alternative)
+If you prefer to run components individually:
+
+1. Clone the repository: `git clone https://github.com/SanjinDedic/agent_games.git`
 2. Install the required dependencies: `pip install -r requirements.txt`
 3. Set up the database by running the database initialization script: `python initialize_db.py`
 4. Start the FastAPI server: `PYTHONPATH=$PYTHONPATH:$(pwd | xargs dirname): uvicorn api:app --reload`
