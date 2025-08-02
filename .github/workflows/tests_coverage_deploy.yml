@@ -136,9 +136,9 @@ jobs:
           mkdir -p ~/db_backups
           
           echo "Creating database backup..."
-          POSTGRES_CONTAINER=$(sudo docker ps -q -f name=postgres)
+          POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
           if [ -n "$POSTGRES_CONTAINER" ]; then
-            sudo docker exec "$POSTGRES_CONTAINER" pg_dump -U postgres -d agent_games > ~/db_backups/agent_games_backup_$(date +%Y%m%d_%H%M%S).sql
+            docker exec "$POSTGRES_CONTAINER" pg_dump -U postgres -d agent_games > ~/db_backups/agent_games_backup_$(date +%Y%m%d_%H%M%S).sql
             echo "Database backup created successfully"
             echo "Latest backups:"
             ls -lt ~/db_backups/ | head -5
@@ -176,8 +176,8 @@ jobs:
           export DB_ENVIRONMENT=production
           
           # Deploy with Docker Compose
-          sudo docker compose --profile prod down || true
-          sudo docker compose --profile prod up --build --detach --wait
+          docker compose --profile prod down || true
+          docker compose --profile prod up --build --detach --wait
           
           # Verify deployment
           timeout 60s bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done'
