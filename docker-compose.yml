@@ -57,6 +57,7 @@ services:
       retries: 3
       start_period: 10s
     volumes:
+      - ./backend:/agent_games/backend
       - ./logs/validator.log:/agent_games/logs/validator.log
     mem_limit: 500m
     mem_reservation: 200m
