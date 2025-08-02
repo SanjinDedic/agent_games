@@ -15,6 +15,7 @@ from backend.routes.user.user_router import user_router
 from sqlmodel import Session, create_engine, text
 
 from backend.database.db_config import get_database_url
+from backend.docker_utils.init_db import initialize_database
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +31,26 @@ def check_database_status():
                 logger.warning("=" * 60)
                 logger.warning("🚨 DATABASE APPEARS EMPTY")
                 logger.warning("=" * 60)
-                logger.warning(
-                    "No admin users found. Database may need initialization."
-                )
-                logger.warning("Run: python backend/docker_utils/init_db.py")
+                logger.warning("No admin users found. Initializing database...")
                 logger.warning("=" * 60)
+
+                # Automatically initialize the database
+                try:
+                    if initialize_database():
+                        logger.warning("✅ DATABASE INITIALIZATION SUCCESSFUL")
+                        logger.warning("=" * 60)
+                    else:
+                        logger.warning("❌ DATABASE INITIALIZATION FAILED")
+                        logger.warning(
+                            "Please run manually: python backend/docker_utils/init_db.py"
+                        )
+                        logger.warning("=" * 60)
+                except Exception as init_error:
+                    logger.warning(f"❌ DATABASE INITIALIZATION ERROR: {init_error}")
+                    logger.warning(
+                        "Please run manually: python backend/docker_utils/init_db.py"
+                    )
+                    logger.warning("=" * 60)
             else:
                 logger.warning("=" * 60)
                 logger.warning("✅ DATABASE PROPERLY INITIALIZED")
@@ -46,8 +62,26 @@ def check_database_status():
         logger.warning("🚨 DATABASE CHECK FAILED")
         logger.warning("=" * 60)
         logger.warning(f"Error: {e}")
-        logger.warning("Database may need initialization.")
+        logger.warning("Database tables may not exist. Initializing database...")
         logger.warning("=" * 60)
+
+        # Automatically initialize the database when tables don't exist
+        try:
+            if initialize_database():
+                logger.warning("✅ DATABASE INITIALIZATION SUCCESSFUL")
+                logger.warning("=" * 60)
+            else:
+                logger.warning("❌ DATABASE INITIALIZATION FAILED")
+                logger.warning(
+                    "Please run manually: python backend/docker_utils/init_db.py"
+                )
+                logger.warning("=" * 60)
+        except Exception as init_error:
+            logger.warning(f"❌ DATABASE INITIALIZATION ERROR: {init_error}")
+            logger.warning(
+                "Please run manually: python backend/docker_utils/init_db.py"
+            )
+            logger.warning("=" * 60)
 
 
 @asynccontextmanager

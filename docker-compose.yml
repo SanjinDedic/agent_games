@@ -12,9 +12,11 @@ services:
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
+      postgres:
+        condition: service_healthy
       validator:
         condition: service_healthy
       simulator:
@@ -48,7 +50,10 @@ services:
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -75,7 +80,10 @@ services:
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
       - SECRET_KEY=${SECRET_KEY:-default_secret_key}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
@@ -95,7 +103,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_pw}
       POSTGRES_DB: agent_games
     volumes:
       - postgres_data:/var/lib/postgresql/data
