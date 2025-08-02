@@ -1,6 +1,4 @@
 # FRONTEND - Exclude entire frontend directory (major size reduction)
-frontend/
-**/frontend/
 
 # Python cache files
 **/__pycache__/
