@@ -24,7 +24,10 @@ def get_database_url():
             return "postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test"
 
     # Production environment - use environment variable
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games",
+    )
     if not database_url:
         raise ValueError("DATABASE_URL environment variable is required for production")
 
