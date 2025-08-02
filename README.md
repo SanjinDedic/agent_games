@@ -33,10 +33,10 @@ The backend is powered by FastAPI, handling game logic, user authentication, and
 For more information, check out the [Backend README](./backend/README.md).
 
 
-## Getting Started
+## 🚀 Getting Started
 
-### Quick Start with Docker (Recommended)
-The entire platform can be run locally with a single Docker Compose command:
+### ⚡ One-Command Local Setup (Recommended)
+**Run the entire platform locally with a single Docker Compose command - no configuration files needed!**
 
 1. **Clone the repository:**
    ```bash
@@ -44,24 +44,25 @@ The entire platform can be run locally with a single Docker Compose command:
    cd agent_games
    ```
 
-2. **Run the complete platform:**
+2. **Launch everything with one command:**
    ```bash
    docker compose --profile dev up --build
    ```
 
-This single command will:
-- Build and start all services (API, validator, simulator, frontend, database)
-- Set up the PostgreSQL database with proper initialization
-- Start the React frontend on `http://localhost:3000`
-- Start the FastAPI backend on `http://localhost:8000`
-- Automatically handle all dependencies and networking between services
+**That's it!** This single command will:
+- ✅ Build and start all services (API, validator, simulator, frontend, database)
+- ✅ Set up the PostgreSQL database with proper initialization
+- ✅ Start the React frontend on `http://localhost:3000`
+- ✅ Start the FastAPI backend on `http://localhost:8000`
+- ✅ Automatically handle all dependencies and networking between services
+- ✅ **No .env file configuration required for local development!**
 
 ### Alternative Setup
 For instructions on manual setup or detailed deployment options, please refer to the respective README files in the frontend and backend directories.
 
-## Docker Compose Deployment
+## 🐳 Docker Compose Deployment
 
-> **Quick Start:** For the fastest setup, see the [Getting Started](#getting-started) section above for a single-command deployment.
+> **Quick Start:** For the fastest local development setup, see the [Getting Started](#-getting-started) section above for a single-command deployment that requires **no configuration files**.
 
 The following section provides detailed information about Docker Compose deployment options for different environments and advanced configurations.
 
@@ -72,7 +73,9 @@ The following section provides detailed information about Docker Compose deploym
 
 ### Environment Configuration
 
-1. Create a `.env` file in the project root with the following variables:
+**For local development:** No .env file is required! Just use the quick start command above.
+
+**For production deployment:** Create a `.env` file in the project root with the following variables:
 
 ```env
 # Database Configuration
@@ -154,86 +157,17 @@ Each service has memory and process limits configured to ensure stability:
 - Simulator: 500MB memory limit, 50 processes
 - PostgreSQL: 700MB memory limit
 
-## Running the App Locally
+## 💻 Manual Local Development
 
-> **Note:** Use separate terminals for running the backend and frontend. Navigate to the respective directories (`cd backend` or `cd frontend`) in each terminal before running the commands.
+> **💡 Tip:** For most users, we recommend using the [one-command Docker setup](#-one-command-local-setup-recommended) above instead of manual setup.
 
-### Backend
+For detailed instructions on setting up the backend and frontend manually for local development, please see the [Backend README](./backend/README.md#manual-local-development).
 
-To run the backend locally, follow these steps:
+## 📝 Notes
 
-1. **Create a Virtual Environment and Install Dependencies:**
-
-    ```bash
-    cd backend
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-    pip install -r requirements.txt
-    ```
-
-2. **Build the Docker Image:**
-
-    This step is crucial for secure code execution and simulations:
-
-    ```bash
-    docker build -t run-with-docker .
-    ```
-
-3. **Set Up the Production Database:**
-
-    ```bash
-    python3 production_database_setup.py
-    ```
-
-4. **Run the Uvicorn Server:**
-
-    ```bash
-    uvicorn api:app --reload
-    ```
-
-The backend server should now be running locally on `http://localhost:8000`. Game simulations will run in isolated Docker containers for security.
-
-### Frontend
-
-To run the frontend locally, follow these steps:
-
-1. **Update the `.env` File:**
-
-    Ensure your `.env` file is configured to use the local backend:
-
-    ```env
-    REACT_APP_AGENT_API_URL=http://localhost:8000
-    ```
-
-2. **Install Node.js Dependencies:**
-
-    ```bash
-    cd frontend
-    npm install
-    ```
-
-3. **Run the Application:**
-
-    If you encounter any issues, you may need to clear the npm cache and remove `node_modules`:
-
-    ```bash
-    npm cache clean --force
-    rm -rf node_modules
-    npm install
-    ```
-
-    Then start the application:
-
-    ```bash
-    npm start
-    ```
-
-The frontend should now be running locally and accessible via `http://localhost:3000`.
-
-## Notes
-
-- Make sure you have Python, Docker, Node.js, and npm installed on your machine.
+- **Recommended:** Use the single Docker Compose command for the easiest local development experience
+- For manual setup: Make sure you have Python, Docker, Node.js, and npm installed on your machine
 - Docker is required for running game simulations in secure containers
-- The commands for setting up the backend and frontend assume you're using a Unix-based system (Linux or macOS). Windows commands may differ slightly, especially for activating the virtual environment.
-- The backend server runs on port 8000 by default, and the frontend runs on port 3000.
-- Use different terminals for running backend and frontend processes to avoid command conflicts.
+- The commands for manual setup assume you're using a Unix-based system (Linux or macOS). Windows commands may differ slightly, especially for activating the virtual environment
+- The backend server runs on port 8000 by default, and the frontend runs on port 3000
+- Use different terminals for running backend and frontend processes when doing manual setup

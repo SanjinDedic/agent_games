@@ -93,6 +93,92 @@ The platform includes a user-friendly front-end interface built with modern web 
 ## 🔧 Customization and Expansion
 The Multi-Game Simulation Platform is designed to be easily customizable and expandable. You can add new games by following the steps outlined in the [Game Creation Guide](games/game_instructions.md).
 
+## 💻 Manual Local Development
+
+> **💡 Tip:** For most users, we recommend using the [one-command Docker setup](../README.md#-one-command-local-setup-recommended) from the main project directory instead of manual setup.
+
+> **Note:** Use separate terminals for running the backend and frontend. Navigate to the respective directories (`cd backend` or `cd frontend`) in each terminal before running the commands.
+
+### Backend Manual Setup
+
+To run the backend locally without Docker, follow these steps:
+
+1. **Create a Virtual Environment and Install Dependencies:**
+
+    ```bash
+    cd backend
+    python3 -m venv venv
+    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    pip install -r requirements.txt
+    ```
+
+2. **Build the Docker Image:**
+
+    This step is crucial for secure code execution and simulations:
+
+    ```bash
+    docker build -t run-with-docker .
+    ```
+
+3. **Set Up the Production Database:**
+
+    ```bash
+    python3 production_database_setup.py
+    ```
+
+4. **Run the Uvicorn Server:**
+
+    ```bash
+    uvicorn api:app --reload
+    ```
+
+The backend server should now be running locally on `http://localhost:8000`. Game simulations will run in isolated Docker containers for security.
+
+### Frontend Manual Setup
+
+To run the frontend locally without Docker, follow these steps:
+
+1. **Update the `.env` File:**
+
+    Ensure your `.env` file is configured to use the local backend:
+
+    ```env
+    REACT_APP_AGENT_API_URL=http://localhost:8000
+    ```
+
+2. **Install Node.js Dependencies:**
+
+    ```bash
+    cd frontend
+    npm install
+    ```
+
+3. **Run the Application:**
+
+    If you encounter any issues, you may need to clear the npm cache and remove `node_modules`:
+
+    ```bash
+    npm cache clean --force
+    rm -rf node_modules
+    npm install
+    ```
+
+    Then start the application:
+
+    ```bash
+    npm start
+    ```
+
+The frontend should now be running locally and accessible via `http://localhost:3000`.
+
+### Manual Setup Notes
+
+- Make sure you have Python, Docker, Node.js, and npm installed on your machine
+- Docker is required for running game simulations in secure containers
+- The commands assume you're using a Unix-based system (Linux or macOS). Windows commands may differ slightly, especially for activating the virtual environment
+- The backend server runs on port 8000 by default, and the frontend runs on port 3000
+- Use different terminals for running backend and frontend processes when doing manual setup
+
 ## 🤝 Contributing
 Contributions to the Multi-Game Simulation Platform are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request on the project's GitHub repository.
 
