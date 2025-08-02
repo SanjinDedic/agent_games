@@ -15,8 +15,6 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
-      postgres:
-        condition: service_healthy
       validator:
         condition: service_healthy
       simulator:
