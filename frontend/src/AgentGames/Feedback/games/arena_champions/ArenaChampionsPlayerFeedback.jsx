@@ -69,103 +69,144 @@ const ArenaChampionsPlayerFeedback = ({ currentTurn, battleData, feedback }) => 
     }
 
     return (
-        <div className="mt-6 mb-4">
-            <div className="bg-ui-lighter rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-medium text-ui-dark">
-                        Player Feedback - Turn {currentTurn.turn}
-                    </h3>
-                    <button
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-primary hover:text-primary-hover text-sm font-medium"
-                    >
-                        {isExpanded ? 'Show Less' : 'Show More'}
-                    </button>
-                </div>
+      <div className="mt-6 mb-4">
+        <div className="bg-ui-lighter rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-medium text-ui-dark">
+              Player Feedback - Turn {currentTurn.turn}
+            </h3>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-primary hover:text-primary-hover text-sm font-medium"
+            >
+              {isExpanded ? "Show Less" : "Show More"}
+            </button>
+          </div>
 
-                <div className={`
+          <div
+            className={`
                     transition-all duration-200 ease-in-out
-                    ${isExpanded ? 'max-h-96' : 'max-h-32'}
+                    ${isExpanded ? "max-h-96" : "max-h-32"}
                     overflow-y-auto
-                `}>
-                    <div className="space-y-4">
-                        {playerFeedbacks.map((playerFeedback, playerIndex) => (
-                            <div key={playerIndex} className="space-y-2">
-                                <h4 className="font-medium text-ui-dark flex items-center gap-2">
-                                    <span className={playerFeedback.player === battleData.player1 ? 'text-primary' : 'text-danger'}>
-                                        {playerFeedback.player}
-                                    </span>
-                                    <span className="text-ui">Feedback:</span>
-                                </h4>
-                                
-                                {Array.isArray(playerFeedback.feedback) ? (
-                                    playerFeedback.feedback.map((feedback, feedbackIndex) => (
-                                        <div key={feedbackIndex} className="relative">
-                                            <div className="absolute top-2 right-2 flex items-center gap-2">
-                                                {copySuccess && (
-                                                    <span className="text-xs text-success font-medium">
-                                                        {copySuccess}
-                                                    </span>
-                                                )}
-                                                <button
-                                                    onClick={() => handleCopy(formatFeedback(feedback))}
-                                                    className="bg-white hover:bg-ui-lighter text-ui-dark rounded px-2 py-1 text-xs font-medium border border-ui-light transition-colors duration-200"
-                                                >
-                                                    Copy
-                                                </button>
-                                            </div>
-                                            <div className="p-3 pt-10 bg-white rounded border border-ui-light text-ui break-words font-mono text-sm whitespace-pre-wrap">
-                                                {formatFeedback(feedback)}
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="relative">
-                                        <div className="absolute top-2 right-2 flex items-center gap-2">
-                                            {copySuccess && (
-                                                <span className="text-xs text-success font-medium">
-                                                    {copySuccess}
-                                                </span>
-                                            )}
-                                            <button
-                                                onClick={() => handleCopy(formatFeedback(playerFeedback.feedback))}
-                                                className="bg-white hover:bg-ui-lighter text-ui-dark rounded px-2 py-1 text-xs font-medium border border-ui-light transition-colors duration-200"
-                                            >
-                                                Copy
-                                            </button>
-                                        </div>
-                                        <div className="p-3 pt-10 bg-white rounded border border-ui-light text-ui break-words font-mono text-sm whitespace-pre-wrap">
-                                            {formatFeedback(playerFeedback.feedback)}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                `}
+          >
+            <div className="space-y-4">
+              {playerFeedbacks.map((playerFeedback, playerIndex) => (
+                <div key={playerIndex} className="space-y-2">
+                  <h4 className="font-medium text-ui-dark flex items-center gap-2">
+                    <span
+                      className={
+                        playerFeedback.player === battleData.player1
+                          ? "text-primary"
+                          : "text-danger"
+                      }
+                    >
+                      {playerFeedback.player}
+                    </span>
+                    <span className="text-ui">Feedback:</span>
+                  </h4>
 
-                {/* Turn Actions Summary */}
-                <div className="mt-4 pt-3 border-t border-ui-light">
-                    <h4 className="font-medium text-ui-dark mb-2">Turn Actions:</h4>
-                    <div className="flex justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="text-primary font-medium">{battleData.player1}:</span>
-                            <span className="capitalize">{currentTurn.actions[battleData.player1]}</span>
-                            {currentTurn[`${battleData.player1}_damage`] && (
-                                <span className="text-danger">({currentTurn[`${battleData.player1}_damage`]} dmg)</span>
-                            )}
+                  {Array.isArray(playerFeedback.feedback) ? (
+                    playerFeedback.feedback.map((feedback, feedbackIndex) => (
+                      <div key={feedbackIndex} className="relative">
+                        <div className="absolute top-2 right-2 flex items-center gap-2">
+                          {copySuccess && (
+                            <span className="text-xs text-success font-medium">
+                              {copySuccess}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleCopy(formatFeedback(feedback))}
+                            className="bg-white hover:bg-ui-lighter text-ui-dark rounded px-2 py-1 text-xs font-medium border border-ui-light transition-colors duration-200"
+                          >
+                            Copy
+                          </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-danger font-medium">{battleData.player2}:</span>
-                            <span className="capitalize">{currentTurn.actions[battleData.player2]}</span>
-                            {currentTurn[`${battleData.player2}_damage`] && (
-                                <span className="text-danger">({currentTurn[`${battleData.player2}_damage`]} dmg)</span>
-                            )}
+                        <div className="p-3 pt-10 bg-white rounded border border-ui-light text-ui break-words font-mono text-sm whitespace-pre-wrap">
+                          {formatFeedback(feedback)}
                         </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="relative">
+                      <div className="absolute top-2 right-2 flex items-center gap-2">
+                        {copySuccess && (
+                          <span className="text-xs text-success font-medium">
+                            {copySuccess}
+                          </span>
+                        )}
+                        <button
+                          onClick={() =>
+                            handleCopy(formatFeedback(playerFeedback.feedback))
+                          }
+                          className="bg-white hover:bg-ui-lighter text-ui-dark rounded px-2 py-1 text-xs font-medium border border-ui-light transition-colors duration-200"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <div className="p-3 pt-10 bg-white rounded border border-ui-light text-ui break-words font-mono text-sm whitespace-pre-wrap">
+                        {formatFeedback(playerFeedback.feedback)}
+                      </div>
                     </div>
+                  )}
                 </div>
+              ))}
             </div>
+          </div>
+
+          {/* Turn Actions Summary - ✅ Fixed for Arena Champions data structure */}
+          <div className="mt-4 pt-3 border-t border-ui-light">
+            <h4 className="font-medium text-ui-dark mb-2">Turn Actions:</h4>
+            <div className="flex justify-between text-sm">
+              {/* Active Player */}
+              <div className="flex items-center gap-2">
+                <span
+                  className={`font-medium ${
+                    currentTurn.active_player === battleData.player1
+                      ? "text-primary"
+                      : "text-danger"
+                  }`}
+                >
+                  {currentTurn.active_player}:
+                </span>
+                <span className="capitalize">{currentTurn.action}</span>
+                {currentTurn.effects?.damage_dealt && (
+                  <span className="text-danger">
+                    ({currentTurn.effects.damage_dealt} dmg)
+                  </span>
+                )}
+                {currentTurn.effects?.health_cost && (
+                  <span className="text-amber-600">
+                    (-{currentTurn.effects.health_cost} HP)
+                  </span>
+                )}
+                {currentTurn.effects?.ran_away && (
+                  <span className="text-amber-600">(ran away)</span>
+                )}
+              </div>
+
+              {/* Passive Player */}
+              <div className="flex items-center gap-2">
+                {currentTurn.active_player === battleData.player1 ? (
+                  <>
+                    <span className="font-medium text-danger">
+                      {battleData.player2}:
+                    </span>
+                    <span className="text-ui">waiting</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium text-primary">
+                      {battleData.player1}:
+                    </span>
+                    <span className="text-ui">waiting</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     );
 };
 
