@@ -1,236 +1,281 @@
-import random
 from typing import Dict
 
 from backend.games.arena_champions.player import Player
 
 
-class GlassCannon(Player):
-    """High attack, low defense/HP build"""
+class NormalAttackNormalDefend(Player):
+    """Always uses normal attack and defend - Balanced tank build"""
 
     def __init__(self):
         super().__init__()
-        self.attack = 50  # Max attack
-        self.defense = 10
-        self.health = 20
-        self.dexterity = 20
-
-    def make_combat_decision(self, combat_state: Dict) -> str:
-        # Aggressive strategy - focus on big attacks when opponent is weak
-        hp_percentage = combat_state['my_current_hp'] / combat_state['my_max_hp']
-
-        # If we're very low on health, try to run away
-        if hp_percentage < 0.2:
-            self.add_feedback("Very low HP - running away!")
-            return "run_away"
-
-        # Use big attack when opponent is low (if we can see their HP)
-        if combat_state.get('opponent_stats'):
-            opp_hp_percent = combat_state['opponent_stats']['current_hp'] / combat_state['opponent_stats']['hp']
-            if opp_hp_percent < 0.4 and hp_percentage > 0.5:
-                self.add_feedback("Opponent low - big attack!")
-                return "big_attack"
-
-        # Default to normal attack
-        return 'attack'
-
-
-class DodgeMaster(Player):
-    """High dexterity build focused on avoiding damage"""
-
-    def __init__(self):
-        super().__init__()
-        self.attack = 25
-        self.defense = 10
-        self.health = 15
-        self.dexterity = 50  # Max dexterity
-
-    def make_combat_decision(self, combat_state: Dict) -> str:
-        hp_percentage = combat_state["my_current_hp"] / combat_state["my_max_hp"]
-
-        # Run away if very low health
-        if hp_percentage < 0.15:
-            self.add_feedback("Critical health - running!")
-            return "run_away"
-
-        # Always try to dodge when opponent might attack
-        if combat_state.get("last_opponent_action") in ["big_attack", "attack"]:
-            self.add_feedback("Trying to dodge incoming attack")
-            return "dodge"
-
-        # Counter-attack when safe
-        if hp_percentage > 0.6:
-            return "attack"
-        else:
-            return "dodge"
-
-
-class Tank(Player):
-    """High HP and defense, focused on outlasting opponents"""
-
-    def __init__(self):
-        super().__init__()
-        self.attack = 15
-        self.defense = 35
-        self.health = 45
+        # Balanced tank: good defense and health to outlast opponents
+        self.attack = 20
+        self.defense = 40
+        self.max_health = 35
         self.dexterity = 5
+        self.health = self.max_health
+        self._store_original_attributes()
 
-    def make_combat_decision(self, combat_state: Dict) -> str:
-        hp_percentage = combat_state["my_current_hp"] / combat_state["my_max_hp"]
-
-        # Only run if absolutely desperate
-        if hp_percentage < 0.1:
-            self.add_feedback("Desperate retreat!")
-            return "run_away"
-
-        # Defend when under attack
-        if combat_state.get("last_opponent_action") in ["big_attack", "attack"]:
-            self.add_feedback("Defending against attack")
-            return 'defend'
-
-        # Attack when we have health advantage
-        if combat_state.get("opponent_stats"):
-            my_hp_percent = hp_percentage
-            opp_hp_percent = (
-                combat_state["opponent_stats"]["current_hp"]
-                / combat_state["opponent_stats"]["hp"]
-            )
-
-            if my_hp_percent > opp_hp_percent * 1.5:
-                self.add_feedback("Health advantage - attacking!")
-                return "attack"
-
-        # Default to defense
-        return "defend"
-
-
-class Berserker(Player):
-    """Aggressive build that uses big attacks frequently"""
-
-    def __init__(self):
-        super().__init__()
-        self.attack = 40
-        self.defense = 20
-        self.health = 30
-        self.dexterity = 10
-
-    def make_combat_decision(self, combat_state: Dict) -> str:
-        hp_percentage = combat_state["my_current_hp"] / combat_state["my_max_hp"]
-        turn = combat_state["turns_elapsed"]
-
-        # Run away only when critically low
-        if hp_percentage < 0.2:
-            self.add_feedback("Low health - tactical retreat")
-            return "run_away"
-
-        # Use big attack early in fight when we have health
-        if hp_percentage > 0.6 and turn <= 3:
-            self.add_feedback("Early big attack!")
-            return "big_attack"
-
-        # Try to finish with big attack if opponent seems weak
-        if combat_state.get("opponent_stats"):
-            opp_hp_percent = (
-                combat_state["opponent_stats"]["current_hp"]
-                / combat_state["opponent_stats"]["hp"]
-            )
-            if opp_hp_percent < 0.3 and hp_percentage > 0.4:
-                self.add_feedback("Finishing move!")
-                return "big_attack"
-
-        # Defend when badly hurt
-        if hp_percentage < 0.4:
-            return 'defend'
-
-        # Default attack
-        return 'attack'
-
-
-class Balanced(Player):
-    """Well-rounded build with adaptive strategy"""
-
-    def __init__(self):
-        super().__init__()
-        self.attack = 25
-        self.defense = 25
-        self.health = 25
-        self.dexterity = 25
-
-    def make_combat_decision(self, combat_state: Dict) -> str:
-        hp_percentage = combat_state["my_current_hp"] / combat_state["my_max_hp"]
-
-        # Emergency escape
-        if hp_percentage < 0.2:
-            self.add_feedback("Emergency retreat!")
-            return "run_away"
-
-        # Adapt based on opponent info
-        if combat_state.get("opponent_stats"):
-            opp_stats = combat_state["opponent_stats"]
-            opp_hp_percent = opp_stats["current_hp"] / opp_stats["hp"]
-
-            # If opponent is almost dead, finish them
-            if opp_hp_percent < 0.2:
-                self.add_feedback("Finishing weak opponent")
-                return "attack"
-
-            # If opponent has high attack, focus on defense
-            if opp_stats["attack"] > 35:
-                self.add_feedback("High-attack opponent - defending")
-                return "defend"
-
-            # If opponent has low dexterity but high defense, use big attack
-            if opp_stats["dexterity"] < 15 and opp_stats["defense"] > 30:
-                if hp_percentage > 0.5:
-                    self.add_feedback("Slow tank - big attack!")
-                    return "big_attack"
-
-        # Default balanced approach
-        if hp_percentage > 0.6:
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        # Validate role and return appropriate action
+        if your_role == "attacker":
+            self.add_feedback("Normal attack as attacker")
             return "attack"
-        elif hp_percentage < 0.4:
+        elif your_role == "defender":
+            self.add_feedback("Defending with defense")
             return "defend"
         else:
-            # Alternate between dodge and defend
-            turn = combat_state["turns_elapsed"]
-            return "dodge" if turn % 2 == 0 else "defend"
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
 
 
-class Coward(Player):
-    """Survival-focused player that runs away often"""
+class BigAttackNormalDefend(Player):
+    """Always uses big attack and defend - Power tank build"""
 
     def __init__(self):
         super().__init__()
-        self.attack = 20
+        # Power tank: high attack with good defense to survive big attack costs
+        self.attack = 45
         self.defense = 30
-        self.health = 40
-        self.dexterity = 10
+        self.max_health = 20
+        self.dexterity = 5
+        self.health = self.max_health
+        self._store_original_attributes()
 
-    def make_combat_decision(self, combat_state: Dict) -> str:
-        hp_percentage = combat_state['my_current_hp'] / combat_state['my_max_hp']
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            self.add_feedback("Big attack as attacker")
+            return "big_attack"
+        elif your_role == "defender":
+            self.add_feedback("Defending with defense")
+            return "defend"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
 
-        # Run away frequently
-        if hp_percentage < 0.5:
-            self.add_feedback("Running away - safety first!")
+
+class NormalAttackDodge(Player):
+    """Always uses normal attack and dodge - Agile fighter build"""
+
+    def __init__(self):
+        super().__init__()
+        # Agile fighter: high dexterity for dodging, moderate attack
+        self.attack = 25
+        self.defense = 10
+        self.max_health = 15
+        self.dexterity = 50
+        self.health = self.max_health
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            self.add_feedback("Normal attack as attacker")
+            return "attack"
+        elif your_role == "defender":
+            self.add_feedback("Defending with dodge")
+            return "dodge"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+
+class BigAttackDodge(Player):
+    """Always uses big attack and dodge - Glass cannon dodger build"""
+
+    def __init__(self):
+        super().__init__()
+        # Glass cannon dodger: high attack and dexterity, low defense/health
+        self.attack = 40
+        self.defense = 5
+        self.max_health = 15
+        self.dexterity = 40
+        self.health = self.max_health
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            self.add_feedback("Big attack as attacker")
+            return "big_attack"
+        elif your_role == "defender":
+            self.add_feedback("Defending with dodge")
+            return "dodge"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+
+class NormalAttackRunAway(Player):
+    """Always uses normal attack and run away - Survivalist build"""
+
+    def __init__(self):
+        super().__init__()
+        # Survivalist: high health to survive run away costs, moderate attack
+        self.attack = 15
+        self.defense = 20
+        self.max_health = 50
+        self.dexterity = 15
+        self.health = self.max_health
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            self.add_feedback("Normal attack as attacker")
+            return "attack"
+        elif your_role == "defender":
+            self.add_feedback("Defending by running away")
             return "run_away"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
 
-        # Only attack when very healthy and opponent seems weak
-        if combat_state.get('opponent_stats'):
-            opp_hp_percent = combat_state['opponent_stats']['current_hp'] / combat_state['opponent_stats']['hp']
-            if hp_percentage > 0.8 and opp_hp_percent < 0.3:
-                self.add_feedback("Safe to attack now")
+
+class BigAttackRunAway(Player):
+    """Always uses big attack and run away - Berserker build"""
+
+    def __init__(self):
+        super().__init__()
+        # Berserker: high attack and health to survive both big attack and run away costs
+        self.attack = 45
+        self.defense = 15
+        self.max_health = 35
+        self.dexterity = 5
+        self.health = self.max_health
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            self.add_feedback("Big attack as attacker")
+            return "big_attack"
+        elif your_role == "defender":
+            self.add_feedback("Defending by running away")
+            return "run_away"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+
+class AdaptivePlayer(Player):
+    """More complex player that adapts based on health, role, and opponent"""
+
+    def __init__(self):
+        super().__init__()
+        # Balanced build with room for adaptation
+        self.attack = 30
+        self.defense = 25
+        self.max_health = 25
+        self.dexterity = 20
+        self.health = self.max_health
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            # Offensive decision making
+            health_percentage = self.health / self.max_health
+            opponent_health_percentage = (
+                opponent_stats["health"] / opponent_stats["max_health"]
+            )
+
+            if health_percentage > 0.7 and opponent_health_percentage < 0.4:
+                self.add_feedback("Going for the kill with big attack")
+                return "big_attack"
+            elif health_percentage < 0.4:
+                self.add_feedback("Playing it safe with normal attack")
+                return "attack"
+            else:
+                self.add_feedback("Standard attack approach")
                 return "attack"
 
-        # Default to defense
-        self.add_feedback("Playing it safe")
-        return "defend"
+        elif your_role == "defender":
+            # Defensive decision making
+            health_percentage = self.health / self.max_health
+
+            if health_percentage < 0.25:
+                self.add_feedback("Critical health - running away")
+                return "run_away"
+            elif last_opponent_action == "big_attack":
+                self.add_feedback("Big attack incoming - attempting dodge")
+                return "dodge"
+            elif self.defense > 30:
+                self.add_feedback("High defense - using defend")
+                return "defend"
+            else:
+                self.add_feedback("Attempting to dodge")
+                return "dodge"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+
+# Validation function to ensure actions match roles
+def validate_action_for_role(action: str, role: str) -> bool:
+    """Validate that the action is appropriate for the given role"""
+    attack_actions = ["attack", "big_attack"]
+    defense_actions = ["defend", "dodge", "run_away"]
+
+    if role == "attacker":
+        return action in attack_actions
+    elif role == "defender":
+        return action in defense_actions
+    else:
+        return False
 
 
 # List of players to be used for validation games
 players = [
-    GlassCannon(),
-    DodgeMaster(),
-    Tank(),
-    Berserker(),
-    Balanced(),
-    Coward(),
+    NormalAttackNormalDefend(),
+    BigAttackNormalDefend(),
+    NormalAttackDodge(),
+    BigAttackDodge(),
+    NormalAttackRunAway(),
+    BigAttackRunAway(),
+    AdaptivePlayer(),
 ]
