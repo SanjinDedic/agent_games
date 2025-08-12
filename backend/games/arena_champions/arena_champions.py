@@ -202,7 +202,8 @@ Implement:
 
     def _validate_player_attributes(self, player):
         """Validate that player attributes are within allowed ranges"""
-        attributes = ["attack", "defense", "max_health", "dexterity"]
+        player.reset_to_original_stats() #Delete this line if a better way to avoid the bug where validiation fails due to carrying over the stats from the last submission is implemented
+        attributes = ["strength", "defense", "vitality", "dexterity"]
 
         for attr_name in attributes:
             if not hasattr(player, attr_name):
@@ -261,37 +262,19 @@ Implement:
             self.add_feedback(f"Error getting action from {player.name}: {e}")
             return "attack" if role == "attacker" else "defend"
 
-    def apply_action_effects(self, player, action: str) -> Dict:
-        """Apply the effects of an action to a player"""
-        effects = {"damage_dealt": 0, "health_cost": 0, "ran_away": False}
-
-        if action == "big_attack":
-            # Big attack costs 50% of current health
-            health_cost = player.health // 2
-            player.health -= health_cost
-            effects["health_cost"] = health_cost
-            effects["damage_dealt"] = player.attack * 2
-        elif action == "attack":
-            effects["damage_dealt"] = player.attack
-        elif action == "run_away":
-            # Running away costs 50% of current health
-            health_cost = player.health // 2
-            player.health -= health_cost
-            effects["health_cost"] = health_cost
-            effects["ran_away"] = True
-
-        return effects
-
-    def calculate_damage_taken(
-        self, incoming_damage: int, defender, defense_action: str
+    def calculate_damage(
+        self, incoming_damage: int, attacker, defender, attack_action: str, defense_action: str
     ) -> Tuple[int, str]:
-        """Calculate final damage taken after defense"""
-        # Scale down damage for balance
-        incoming_damage = incoming_damage / 5
-
+        """Calculate final damage taken"""
+        # apply run_away first
         if defense_action == "run_away":
             return 0, "ran away"
+        
+        #then apply attack-specific effects
+        if attack_action == "big_attack":
+            incoming_damage *= 2
 
+        #then apply defenses
         if defense_action == "dodge":
             dodge_chance = min(defender.dexterity, 100)
             if random.randint(1, 100) <= dodge_chance:
@@ -300,11 +283,11 @@ Implement:
                 return incoming_damage, "dodge failed"
 
         if defense_action == "defend":
-            defense_reduction = min(defender.defense, 90) / 100
-            final_damage = int(incoming_damage * (1 - defense_reduction))
+            defense_reduction = defender.defense
+            final_damage = int(incoming_damage - defense_reduction)
             return (
-                max(1, final_damage),
-                f"defended (reduced by {min(defender.defense, 90)}%)",
+                max(5, final_damage),
+                f"defended (reduced by {defender.defense}%)",
             )
 
         # No defense
@@ -328,16 +311,14 @@ Implement:
             "health_after": {},
         }
 
-        # Apply attacker's action effects first
+        # Apply self-damage from big attack here (increased damage is in calculate_damage)
         if attack_action == "big_attack":
             health_cost = attacker.health // 2
             attacker.health -= health_cost
-            damage_to_deal = attacker.attack * 2
             turn_result["effects"]["attacker_health_cost"] = health_cost
-        elif attack_action == "attack":
-            damage_to_deal = attacker.attack
-        else:
-            damage_to_deal = 0  # Invalid attack action
+        
+        #sets the initial damage to deal before it is modified
+        damage_to_deal = attacker.attack
 
         # Apply defender's response
         if defend_action == "run_away":
@@ -348,9 +329,9 @@ Implement:
             turn_result["effects"]["defender_health_cost"] = health_cost
             turn_result["effects"]["defender_ran_away"] = True
         else:
-            # Calculate damage taken with defense
-            final_damage, defense_msg = self.calculate_damage_taken(
-                damage_to_deal, defender, defend_action
+            # Calculate damage the defender takes
+            final_damage, defense_msg = self.calculate_damage(
+                damage_to_deal, attacker, defender, attack_action, defend_action
             )
             defender.health -= final_damage
             turn_result["effects"]["defense_result"] = defense_msg

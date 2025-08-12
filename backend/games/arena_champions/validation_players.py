@@ -9,11 +9,11 @@ class NormalAttackNormalDefend(Player):
     def __init__(self):
         super().__init__()
         # Balanced tank: good defense and health to outlast opponents
-        self.attack = 20
+        self.strength = 20
         self.defense = 40
-        self.max_health = 35
+        self.vitality = 35
         self.dexterity = 5
-        self.health = self.max_health
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
@@ -42,11 +42,11 @@ class BigAttackNormalDefend(Player):
     def __init__(self):
         super().__init__()
         # Power tank: high attack with good defense to survive big attack costs
-        self.attack = 45
+        self.strength = 45
         self.defense = 30
-        self.max_health = 20
+        self.vitality = 20
         self.dexterity = 5
-        self.health = self.max_health
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
@@ -74,11 +74,11 @@ class NormalAttackDodge(Player):
     def __init__(self):
         super().__init__()
         # Agile fighter: high dexterity for dodging, moderate attack
-        self.attack = 25
-        self.defense = 10
-        self.max_health = 15
+        self.strength = 30
+        self.defense = 5
+        self.vitality = 15
         self.dexterity = 50
-        self.health = self.max_health
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
@@ -106,11 +106,11 @@ class BigAttackDodge(Player):
     def __init__(self):
         super().__init__()
         # Glass cannon dodger: high attack and dexterity, low defense/health
-        self.attack = 40
+        self.strength = 40
         self.defense = 5
-        self.max_health = 15
+        self.vitality = 15
         self.dexterity = 40
-        self.health = self.max_health
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
@@ -137,12 +137,12 @@ class NormalAttackRunAway(Player):
 
     def __init__(self):
         super().__init__()
-        # Survivalist: high health to survive run away costs, moderate attack
-        self.attack = 15
-        self.defense = 20
-        self.max_health = 50
-        self.dexterity = 15
-        self.health = self.max_health
+        # vitality and defense are useless when the only damage you ever take is 50% of your health, and dexterity is useless when the attacks/defenses you use don't require it. 
+        self.strength = 50
+        self.defense = 17
+        self.vitality = 17
+        self.dexterity = 16
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
@@ -169,12 +169,12 @@ class BigAttackRunAway(Player):
 
     def __init__(self):
         super().__init__()
-        # Berserker: high attack and health to survive both big attack and run away costs
-        self.attack = 45
-        self.defense = 15
-        self.max_health = 35
-        self.dexterity = 5
-        self.health = self.max_health
+        # Max strength to take advantage of big attack. Defense, vitality, and dexterity do not matter at all (see normalattackrunaway)
+        self.strength = 50
+        self.defense = 17
+        self.vitality = 17
+        self.dexterity = 16
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
@@ -202,11 +202,11 @@ class AdaptivePlayer(Player):
     def __init__(self):
         super().__init__()
         # Balanced build with room for adaptation
-        self.attack = 30
+        self.strength = 30
         self.defense = 25
-        self.max_health = 25
+        self.vitality = 25
         self.dexterity = 20
-        self.health = self.max_health
+        self.create_derived_stats()
         self._store_original_attributes()
 
     def make_combat_decision(
