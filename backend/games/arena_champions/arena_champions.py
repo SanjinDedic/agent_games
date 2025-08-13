@@ -223,7 +223,7 @@ Implement:
     @staticmethod
     def validate_action_for_role(action: str, role: str) -> bool:
         """Validate that the action is appropriate for the given role"""
-        attack_actions = ["attack", "big_attack"]
+        attack_actions = ["attack", "big_attack", "multiattack", "precise_attack"]
         defense_actions = ["defend", "dodge", "run_away"]
 
         if role == "attacker":
@@ -246,7 +246,7 @@ Implement:
             # Validate action matches role
             if not self.validate_action_for_role(action, role):
                 valid_actions = (
-                    ["attack", "big_attack"]
+                    ["attack", "big_attack", "multiattack", "precise_attack"]
                     if role == "attacker"
                     else ["defend", "dodge", "run_away"]
                 )
@@ -261,37 +261,73 @@ Implement:
         except Exception as e:
             self.add_feedback(f"Error getting action from {player.name}: {e}")
             return "attack" if role == "attacker" else "defend"
+    
+    def count_multiattacks(
+            self, attacker
+    ) -> int:
+        #minimum of 2 attacks
+        number_of_attacks = 2
+
+        #chance to trigger up to three extra attacks, probability for each is equal to dexterity
+        for i in range(3):
+            if random.randint(1, 100) <= attacker.dexterity:
+                number_of_attacks += 1
+
+        return number_of_attacks
+        
 
     def calculate_damage(
-        self, incoming_damage: int, attacker, defender, attack_action: str, defense_action: str
+        self, attacker, defender, attack_action: str, defense_action: str
     ) -> Tuple[int, str]:
         """Calculate final damage taken"""
-        # apply run_away first
-        if defense_action == "run_away":
-            return 0, "ran away"
-        
-        #then apply attack-specific effects
+        incoming_damage = attacker.attack
+        blocked_damage = defender.defense
+
+        #apply attack-specific effects
         if attack_action == "big_attack":
+            #big attack doubles attack (but causes attacker to lose half their hp)
             incoming_damage *= 2
+        elif attack_action == "multiattack":
+            #multiattack halves attack (but attacks multiple times)
+            incoming_damage *= 0.5
+        elif attack_action == "precise_attack":
+            #precise attack reduces attack by 10% (but has a chance to ignore block)
+            incoming_damage *= 0.9
+            if random.randint(1, 100) <= attacker.dexterity:
+                blocked_damage = 0
+
 
         #then apply defenses
         if defense_action == "dodge":
-            dodge_chance = min(defender.dexterity, 100)
+            #chance to take no damage equal to dexterity, but defense is halved
+            dodge_chance = min(defender.dexterity, 75)
             if random.randint(1, 100) <= dodge_chance:
                 return 0, "dodged completely"
             else:
-                return incoming_damage, "dodge failed"
-
-        if defense_action == "defend":
-            defense_reduction = defender.defense
-            final_damage = int(incoming_damage - defense_reduction)
+                blocked_damage = (blocked_damage // 2)
+                final_damage = int(incoming_damage - blocked_damage)
+                return max(5, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
+        elif defense_action == "defend":
+            #regular defense
+            final_damage = int(incoming_damage - blocked_damage)
             return (
                 max(5, final_damage),
-                f"defended (reduced by {defender.defense}%)",
+                f"defended ({blocked_damage} damage blocked)",
             )
+        elif defense_action == "run_away":
+            #take a minimum damage of 1/4 of maximum hp, but a maximum of 1/2
+            minimum_damage = defender.max_health // 4
+            maximum_damage = defender.max_health // 2
 
-        # No defense
-        return incoming_damage, "no defense"
+            final_damage = int(incoming_damage - blocked_damage)
+            final_damage = max(minimum_damage, final_damage)
+            final_damage = min(maximum_damage, final_damage)
+
+            return final_damage, "took no more than 1/2 and no less than 1/4 max health in damage"
+
+        else:
+            # No defense
+            return incoming_damage, "no defense"
 
     def resolve_combat_round(
         self,
@@ -299,7 +335,6 @@ Implement:
         defender,
         attack_action: str,
         defend_action: str,
-        ran_away_players: set,
     ) -> Dict:
         """Resolve a single round of combat with attacker and defender actions"""
         turn_result = {
@@ -313,25 +348,38 @@ Implement:
 
         # Apply self-damage from big attack here (increased damage is in calculate_damage)
         if attack_action == "big_attack":
-            health_cost = attacker.health // 2
+            health_cost = attacker.max_health // 2
             attacker.health -= health_cost
             turn_result["effects"]["attacker_health_cost"] = health_cost
-        
-        #sets the initial damage to deal before it is modified
-        damage_to_deal = attacker.attack
 
         # Apply defender's response
-        if defend_action == "run_away":
-            health_cost = defender.health // 2
-            defender.health -= health_cost
-            ran_away_players.add(str(defender.name))
-            final_damage = 0  # Running away negates the attack
-            turn_result["effects"]["defender_health_cost"] = health_cost
-            turn_result["effects"]["defender_ran_away"] = True
+        # if defend_action == "run_away":
+        #     health_cost = defender.health // 2
+        #     defender.health -= health_cost
+        #     ran_away_players.add(str(defender.name))
+        #     final_damage = 0  # Running away negates the attack
+        #     turn_result["effects"]["defender_health_cost"] = health_cost
+        #     turn_result["effects"]["defender_ran_away"] = True
+        if attack_action == "multiattack":
+            # Attack multiple times (at least two, then three more possible additional attacks, each with a chance to happen equal to dex/100)
+            number_of_attacks = self.count_multiattacks(attacker)
+            
+            # Calculate damage the defender takes
+            final_damage = 0
+            defense_msg = f"defended from {number_of_attacks} attacks, results:"
+            for i in range (number_of_attacks):
+                partial_damage, partial_defense_msg = self.calculate_damage(
+                    attacker, defender, attack_action, defend_action
+                )
+                final_damage += partial_damage
+                defense_msg += (" " + partial_defense_msg)
+            
+            defender.health -= final_damage
+            turn_result["effects"]["defense_result"] = defense_msg
         else:
             # Calculate damage the defender takes
             final_damage, defense_msg = self.calculate_damage(
-                damage_to_deal, attacker, defender, attack_action, defend_action
+                attacker, defender, attack_action, defend_action
             )
             defender.health -= final_damage
             turn_result["effects"]["defense_result"] = defense_msg
@@ -366,7 +414,6 @@ Implement:
 
         turn_number = 0
         last_actions = {str(first_player.name): None, str(second_player.name): None}
-        ran_away_players = set()
 
         while (
             first_player.health > 0 and second_player.health > 0 and turn_number < 100
@@ -381,10 +428,6 @@ Implement:
                 attacker = second_player
                 defender = first_player
 
-            # Skip turn if attacker ran away
-            if str(attacker.name) in ran_away_players:
-                continue
-
             # Get attacker's action
             attacker_last_opponent_action = last_actions.get(str(defender.name))
             attack_action = self.get_player_action_with_role(
@@ -396,20 +439,18 @@ Implement:
             )
 
             # Get defender's response (only if they haven't run away)
-            defend_action = "no_defense"
-            if str(defender.name) not in ran_away_players:
-                defender_last_opponent_action = last_actions.get(str(attacker.name))
-                defend_action = self.get_player_action_with_role(
-                    defender,
-                    attacker,
-                    turn_number,
-                    "defender",
-                    defender_last_opponent_action,
-                )
+            defender_last_opponent_action = last_actions.get(str(attacker.name))
+            defend_action = self.get_player_action_with_role(
+                defender,
+                attacker,
+                turn_number,
+                "defender",
+                defender_last_opponent_action,
+            )
 
             # Resolve the combat round
             turn_result = self.resolve_combat_round(
-                attacker, defender, attack_action, defend_action, ran_away_players
+                attacker, defender, attack_action, defend_action
             )
 
             turn_result["turn"] = turn_number
@@ -419,21 +460,10 @@ Implement:
             last_actions[str(attacker.name)] = attack_action
             last_actions[str(defender.name)] = defend_action
 
-            # Check for end conditions
-            if len(ran_away_players) == 2:
-                # Both ran away - highest health wins
-                winner = (
-                    str(first_player.name)
-                    if first_player.health > second_player.health
-                    else str(second_player.name)
-                )
-                battle_result.set_winner(winner)
-                break
-
             if first_player.health <= 0 or second_player.health <= 0:
                 break
 
-        # Determine winner if battle didn't end early
+        # Determine winner if battle didn't end early. The second player wins a tie
         if not battle_result.winner:
             if first_player.health > 0:
                 battle_result.set_winner(str(first_player.name))
@@ -441,6 +471,10 @@ Implement:
                 battle_result.set_winner(str(second_player.name))
 
         battle_result.set_final_health(first_player.health, second_player.health)
+        #reset health after battle to prevent bugs
+        first_player.health = first_player.max_health
+        second_player.health = second_player.max_health
+        
         return battle_result.winner, battle_result
 
     def _update_stats_and_history(

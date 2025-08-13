@@ -33,10 +33,10 @@ class Player(ABC):
 
     def level_up(self):
         """Player manages own leveling - add 1 to all attributes"""
-        self.strength += 1
-        self.defense += 1
-        self.dexterity += 1
-        self.vitality += 1
+        self.strength += 0
+        self.defense += 0
+        self.dexterity += 0
+        self.vitality += 0
         self.create_derived_stats()
         
 
