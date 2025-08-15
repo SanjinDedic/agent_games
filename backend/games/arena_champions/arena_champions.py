@@ -80,10 +80,10 @@ class CustomPlayer(Player):
                 return 'attack'
                 
         elif your_role == "defender":
-            # Defense Actions: 'defend', 'dodge', 'run_away'
+            # Defense Actions: 'defend', 'dodge', 'brace'
             if hp_percentage < 0.2:
                 self.add_feedback("Low health - running away!")
-                return 'run_away'
+                return 'brace'
             elif hp_percentage < 0.4:
                 self.add_feedback("Defending to stay alive")
                 return 'defend'
@@ -224,7 +224,7 @@ Implement:
     def validate_action_for_role(action: str, role: str) -> bool:
         """Validate that the action is appropriate for the given role"""
         attack_actions = ["attack", "big_attack", "multiattack", "precise_attack"]
-        defense_actions = ["defend", "dodge", "run_away"]
+        defense_actions = ["defend", "dodge", "brace"]
 
         if role == "attacker":
             return action in attack_actions
@@ -248,7 +248,7 @@ Implement:
                 valid_actions = (
                     ["attack", "big_attack", "multiattack", "precise_attack"]
                     if role == "attacker"
-                    else ["defend", "dodge", "run_away"]
+                    else ["defend", "dodge", "brace"]
                 )
                 self.add_feedback(
                     f"Invalid action '{action}' for role '{role}' from {player.name}. "
@@ -314,16 +314,29 @@ Implement:
                 max(5, final_damage),
                 f"defended ({blocked_damage} damage blocked)",
             )
-        elif defense_action == "run_away":
-            #take a minimum damage of 1/4 of maximum hp, but a maximum of 1/2
-            minimum_damage = defender.max_health // 4
-            maximum_damage = defender.max_health // 2
+        elif defense_action == "brace":
+            # Old version #take a maximum damage of 1/2 of maximum hp, defence*0.75
+            # maximum_damage = defender.max_health // 2
+            # blocked_damage *= 0.75
+
+            # final_damage = int(incoming_damage - blocked_damage)
+            # if final_damage > maximum_damage:
+            #     return maximum_damage, "braced, lost half of max hp"
+            # else:
+            #     return final_damage, f"braced, blocked {blocked_damage}"
+
+            #halve the incoming damage, then add the attacker's dex (happens after attack calculations)
+            incoming_damage /= 2
+            lost_attack = incoming_damage
+            incoming_damage += attacker.dexterity
 
             final_damage = int(incoming_damage - blocked_damage)
-            final_damage = max(minimum_damage, final_damage)
-            final_damage = min(maximum_damage, final_damage)
+            return (
+                max(5, final_damage),
+                f"braced ({lost_attack} damage subtracted, {attacker.dexterity} damage added, {blocked_damage} damage blocked)",
+            )
 
-            return final_damage, "took no more than 1/2 and no less than 1/4 max health in damage"
+
 
         else:
             # No defense
@@ -351,15 +364,7 @@ Implement:
             health_cost = attacker.max_health // 2
             attacker.health -= health_cost
             turn_result["effects"]["attacker_health_cost"] = health_cost
-
-        # Apply defender's response
-        # if defend_action == "run_away":
-        #     health_cost = defender.health // 2
-        #     defender.health -= health_cost
-        #     ran_away_players.add(str(defender.name))
-        #     final_damage = 0  # Running away negates the attack
-        #     turn_result["effects"]["defender_health_cost"] = health_cost
-        #     turn_result["effects"]["defender_ran_away"] = True
+            
         if attack_action == "multiattack":
             # Attack multiple times (at least two, then three more possible additional attacks, each with a chance to happen equal to dex/100)
             number_of_attacks = self.count_multiattacks(attacker)

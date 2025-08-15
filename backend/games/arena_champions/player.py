@@ -68,19 +68,6 @@ class Player(ABC):
             "vitality": self.vitality,
         }
 
-    @staticmethod
-    def validate_action_for_role(action: str, role: str) -> bool:
-        """Validate that the action is appropriate for the given role"""
-        attack_actions = ["attack", "big_attack"]
-        defense_actions = ["defend", "dodge", "run_away"]
-
-        if role == "attacker":
-            return action in attack_actions
-        elif role == "defender":
-            return action in defense_actions
-        else:
-            return False
-
     @abstractmethod
     def make_combat_decision(
         self,

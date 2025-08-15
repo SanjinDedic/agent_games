@@ -257,44 +257,12 @@ class PreciseAttackDodge(Player):
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
 
-class NormalAttackRunAway(Player):
-    """Always uses normal attack and run away - Survivalist build"""
+class NormalAttackBrace(Player):
+    """Always uses normal attack and brace - Survivalist build"""
 
     def __init__(self):
         super().__init__()
-        # vitality and defense are less important when damage is a percentage of health, and dexterity is useless when the attacks/defenses you use don't require it. 
-        self.strength = 50
-        self.defense = 30
-        self.vitality = 15
-        self.dexterity = 5
-        self.create_derived_stats()
-        self._store_original_attributes()
-
-    def make_combat_decision(
-        self,
-        opponent_stats: Dict,
-        turn: int,
-        your_role: str,
-        last_opponent_action: str = None,
-    ) -> str:
-        if your_role == "attacker":
-            self.add_feedback("Normal attack as attacker")
-            return "attack"
-        elif your_role == "defender":
-            self.add_feedback("Defending by running away")
-            return "run_away"
-        else:
-            raise ValueError(
-                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
-            )
-
-
-class BigAttackRunAway(Player):
-    """Always uses big attack and run away - Berserker build"""
-
-    def __init__(self):
-        super().__init__()
-        # Max strength to take advantage of big attack. Defense, vitality, and dexterity matter even less than normalattackrunaway
+        # vitality and defense are less important, and dexterity is useless when the attacks/defenses you use don't require it. 
         self.strength = 50
         self.defense = 20
         self.vitality = 25
@@ -310,26 +278,58 @@ class BigAttackRunAway(Player):
         last_opponent_action: str = None,
     ) -> str:
         if your_role == "attacker":
-            self.add_feedback("Big attack as attacker")
-            return "big_attack"
+            self.add_feedback("Normal attack as attacker")
+            return "attack"
         elif your_role == "defender":
-            self.add_feedback("Defending by running away")
-            return "run_away"
+            self.add_feedback("Defending by bracing")
+            return "brace"
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
 
-class MultiattackRunAway(Player):
-    """Always uses multiattack and run away"""
+
+class BigAttackBrace(Player):
+    """Always uses big attack and brace - Berserker build"""
 
     def __init__(self):
         super().__init__()
-        # very high dexterity and attack, no defensive stats (relies on run away for defense) 
+        # Max strength to take advantage of big attack. Defense, vitality, and dexterity don't matter much
         self.strength = 50
-        self.defense = 5
-        self.vitality = 5
-        self.dexterity = 40
+        self.defense = 24
+        self.vitality = 21
+        self.dexterity = 5
+        self.create_derived_stats()
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        if your_role == "attacker":
+            self.add_feedback("Big attack as attacker")
+            return "big_attack"
+        elif your_role == "defender":
+            self.add_feedback("Defending by bracing")
+            return "brace"
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+class MultiattackBrace(Player):
+    """Always uses multiattack and brace"""
+
+    def __init__(self):
+        super().__init__()
+        # very high dexterity and attack, low defensive stats
+        self.strength = 40
+        self.defense = 10
+        self.vitality = 15
+        self.dexterity = 35
         self.create_derived_stats()
         self._store_original_attributes()
 
@@ -344,23 +344,23 @@ class MultiattackRunAway(Player):
             self.add_feedback("multiattack as attacker")
             return "multiattack"
         elif your_role == "defender":
-            self.add_feedback("Defending by running away")
-            return "run_away"
+            self.add_feedback("Defending by bracing")
+            return "brace"
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
 
-class PreciseAttackRunAway(Player):
-    """Always uses precise attack and run away"""
+class PreciseAttackBrace(Player):
+    """Always uses precise attack and brace"""
 
     def __init__(self):
         super().__init__()
-        # higher dex to succeed in precise attacks and higher attack to still do damage, vitality isn't very useful with running away
+        # higher dex to succeed in precise attacks and higher attack to still do damage
         self.strength = 40
         self.defense = 15
-        self.vitality = 5
-        self.dexterity = 40
+        self.vitality = 15
+        self.dexterity = 30
         self.create_derived_stats()
         self._store_original_attributes()
 
@@ -375,8 +375,8 @@ class PreciseAttackRunAway(Player):
             self.add_feedback("Precise attack as attacker")
             return "precise_attack"
         elif your_role == "defender":
-            self.add_feedback("Defending by running away")
-            return "run_away"
+            self.add_feedback("Defending by bracing")
+            return "brace"
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
@@ -424,8 +424,8 @@ class AdaptivePlayer(Player):
             health_percentage = self.health / self.max_health
 
             if health_percentage < 0.25:
-                self.add_feedback("Critical health - running away")
-                return "run_away"
+                self.add_feedback("Critical health - bracing")
+                return "brace"
             elif last_opponent_action == "big_attack":
                 self.add_feedback("Big attack incoming - attempting dodge")
                 return "dodge"
@@ -466,7 +466,7 @@ class HighStrengthRandomMoves(Player):
             return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
         elif your_role == "defender":
             self.add_feedback("random defense")
-            return random.choice(["defend", "dodge", "run_away"])
+            return random.choice(["defend", "dodge", "brace"])
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
@@ -498,7 +498,7 @@ class HighDefenseRandomMoves(Player):
             return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
         elif your_role == "defender":
             self.add_feedback("random defense")
-            return random.choice(["defend", "dodge", "run_away"])
+            return random.choice(["defend", "dodge", "brace"])
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
@@ -530,7 +530,7 @@ class HighVitalityRandomMoves(Player):
             return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
         elif your_role == "defender":
             self.add_feedback("random defense")
-            return random.choice(["defend", "dodge", "run_away"])
+            return random.choice(["defend", "dodge", "brace"])
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
@@ -562,25 +562,171 @@ class HighDexterityRandomMoves(Player):
             return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
         elif your_role == "defender":
             self.add_feedback("random defense")
-            return random.choice(["defend", "dodge", "run_away"])
+            return random.choice(["defend", "dodge", "brace"])
         else:
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
 
-# Validation function to ensure actions match roles
-def validate_action_for_role(action: str, role: str) -> bool:
-    """Validate that the action is appropriate for the given role"""
-    attack_actions = ["attack", "big_attack"]
-    defense_actions = ["defend", "dodge", "run_away"]
+class LowStrengthRandomMoves(Player):
+    """Uses random moves"""
 
-    if role == "attacker":
-        return action in attack_actions
-    elif role == "defender":
-        return action in defense_actions
-    else:
-        return False
+    def __init__(self):
+        super().__init__()
+        # Low Strength
+        self.strength = 5
+        self.defense = 32
+        self.vitality = 31
+        self.dexterity = 32
+        self.create_derived_stats()
+        self._store_original_attributes()
 
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        # Validate role and return appropriate action
+        if your_role == "attacker":
+            self.add_feedback("Random attack")
+            return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
+        elif your_role == "defender":
+            self.add_feedback("random defense")
+            return random.choice(["defend", "dodge", "brace"])
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+class LowDefenseRandomMoves(Player):
+    """Uses random moves"""
+
+    def __init__(self):
+        super().__init__()
+        # Low Defense
+        self.strength = 32
+        self.defense = 5
+        self.vitality = 31
+        self.dexterity = 32
+        self.create_derived_stats()
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        # Validate role and return appropriate action
+        if your_role == "attacker":
+            self.add_feedback("Random attack")
+            return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
+        elif your_role == "defender":
+            self.add_feedback("random defense")
+            return random.choice(["defend", "dodge", "brace"])
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+class LowVitalityRandomMoves(Player):
+    """Uses random moves"""
+
+    def __init__(self):
+        super().__init__()
+        # Low Vitality
+        self.strength = 32
+        self.defense = 32
+        self.vitality = 5
+        self.dexterity = 31
+        self.create_derived_stats()
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        # Validate role and return appropriate action
+        if your_role == "attacker":
+            self.add_feedback("Random attack")
+            return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
+        elif your_role == "defender":
+            self.add_feedback("random defense")
+            return random.choice(["defend", "dodge", "brace"])
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+        
+class LowDexterityRandomMoves(Player):
+    """Uses random moves"""
+
+    def __init__(self):
+        super().__init__()
+        # Low Strength
+        self.strength = 32
+        self.defense = 32
+        self.vitality = 31
+        self.dexterity = 5
+        self.create_derived_stats()
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        # Validate role and return appropriate action
+        if your_role == "attacker":
+            self.add_feedback("Random attack")
+            return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
+        elif your_role == "defender":
+            self.add_feedback("random defense")
+            return random.choice(["defend", "dodge", "brace"])
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
+
+class EqualStatsRandomMoves(Player):
+    """Uses random moves"""
+
+    def __init__(self):
+        super().__init__()
+        # Equal Stats
+        self.strength = 25
+        self.defense = 25
+        self.vitality = 25
+        self.dexterity = 25
+        self.create_derived_stats()
+        self._store_original_attributes()
+
+    def make_combat_decision(
+        self,
+        opponent_stats: Dict,
+        turn: int,
+        your_role: str,
+        last_opponent_action: str = None,
+    ) -> str:
+        # Validate role and return appropriate action
+        if your_role == "attacker":
+            self.add_feedback("Random attack")
+            return random.choice(["attack", "big_attack", "multiattack", "precise_attack"])
+        elif your_role == "defender":
+            self.add_feedback("random defense")
+            return random.choice(["defend", "dodge", "brace"])
+        else:
+            raise ValueError(
+                f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
+            )
 
 # List of players to be used for validation games
 players = [
@@ -592,13 +738,18 @@ players = [
     BigAttackDodge(),
     MultiattackDodge(),
     PreciseAttackDodge(),
-    NormalAttackRunAway(),
-    BigAttackRunAway(),
-    MultiattackRunAway(),
-    PreciseAttackRunAway(),
+    NormalAttackBrace(),
+    BigAttackBrace(),
+    MultiattackBrace(),
+    PreciseAttackBrace(),
     AdaptivePlayer(),
     HighStrengthRandomMoves(),
     HighDefenseRandomMoves(),
     HighVitalityRandomMoves(),
-    HighDexterityRandomMoves()
+    HighDexterityRandomMoves(),
+    LowStrengthRandomMoves(),
+    LowDefenseRandomMoves(),
+    LowVitalityRandomMoves(),
+    LowDexterityRandomMoves(),
+    EqualStatsRandomMoves()
 ]
