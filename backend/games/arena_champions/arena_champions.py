@@ -301,7 +301,7 @@ Implement:
             if random.randint(1, 100) <= dodge_chance:
                 return 0, "dodged completely"
             else:
-                blocked_damage = (blocked_damage // 2)
+                blocked_damage = (blocked_damage / 2)
                 final_damage = incoming_damage - blocked_damage #floating point damage is allowed
                 return max(5, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
         elif defense_action == "defend":
@@ -358,7 +358,7 @@ Implement:
 
         # Apply self-damage from big attack here (increased damage is in calculate_damage)
         if attack_action == "big_attack":
-            health_cost = attacker.max_health // 2
+            health_cost = attacker.max_health / 2
             attacker.health -= health_cost
             turn_result["effects"]["attacker_health_cost"] = health_cost
             
