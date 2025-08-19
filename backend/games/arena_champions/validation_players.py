@@ -10,12 +10,11 @@ class NormalAttackNormalDefend(Player):
     def __init__(self):
         super().__init__()
         # Balanced tank: good defense and health to outlast opponents
-        self.strength = 20
-        self.defense = 40
-        self.vitality = 35
-        self.dexterity = 5
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.20
+        self.defense_p = 0.40
+        self.vitality_p = 0.35
+        self.dexterity_p = 0.05
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -43,12 +42,11 @@ class BigAttackNormalDefend(Player):
     def __init__(self):
         super().__init__()
         # Power tank: high attack with good defense to survive big attack costs
-        self.strength = 45
-        self.defense = 30
-        self.vitality = 20
-        self.dexterity = 5
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.45
+        self.defense_p = 0.30
+        self.vitality_p = 0.20
+        self.dexterity_p = 0.05
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -74,12 +72,11 @@ class MultiattackNormalDefend(Player):
     def __init__(self):
         super().__init__()
         # Higher dexterity and defence to take advantage of its moves, high strength, low vitality 
-        self.strength = 25
-        self.defense = 30
-        self.vitality = 10
-        self.dexterity = 35
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.25
+        self.defense_p = 0.30
+        self.vitality_p = 0.10
+        self.dexterity_p = 0.35
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -106,12 +103,11 @@ class PreciseAttackNormalDefend(Player):
     def __init__(self):
         super().__init__()
         # High dexterity to use precise attack well, moderate defense and attack, low vitality
-        self.strength = 25
-        self.defense = 25
-        self.vitality = 15
-        self.dexterity = 40
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.25
+        self.defense_p = 0.25
+        self.vitality_p = 0.15
+        self.dexterity_p = 0.40
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -138,12 +134,11 @@ class NormalAttackDodge(Player):
     def __init__(self):
         super().__init__()
         # Agile fighter: high dexterity for dodging, moderate attack
-        self.strength = 30
-        self.defense = 5
-        self.vitality = 15
-        self.dexterity = 50
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.30
+        self.defense_p = 0.05
+        self.vitality_p = 0.15
+        self.dexterity_p = 0.50
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -170,12 +165,11 @@ class BigAttackDodge(Player):
     def __init__(self):
         super().__init__()
         # Glass cannon dodger: high attack and dexterity, low defense/health
-        self.strength = 40
-        self.defense = 5
-        self.vitality = 15
-        self.dexterity = 40
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.40
+        self.defense_p = 0.05
+        self.vitality_p = 0.15
+        self.dexterity_p = 0.40
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -201,12 +195,11 @@ class MultiattackDodge(Player):
     def __init__(self):
         super().__init__()
         # high dexterity and attack to combo into really high damage, low non-dexterity defensive stats
-        self.strength = 40
-        self.defense = 5
-        self.vitality = 10
-        self.dexterity = 45
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.40
+        self.defense_p = 0.5
+        self.vitality_p = 0.10
+        self.dexterity_p = 0.45
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -232,12 +225,11 @@ class PreciseAttackDodge(Player):
     def __init__(self):
         super().__init__()
         #high dexterity for dodging and precise attack, moderate vitality, low other stats
-        self.strength = 15
-        self.defense = 5
-        self.vitality = 30
-        self.dexterity = 50
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.15
+        self.defense_p = 0.05
+        self.vitality_p = 0.30
+        self.dexterity_p = 0.50
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -263,12 +255,11 @@ class NormalAttackBrace(Player):
     def __init__(self):
         super().__init__()
         # vitality and defense are less important, and dexterity is useless when the attacks/defenses you use don't require it. 
-        self.strength = 50
-        self.defense = 20
-        self.vitality = 25
-        self.dexterity = 5
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.50
+        self.defense_p = 0.20
+        self.vitality_p = 0.25
+        self.dexterity_p = 0.05
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -295,12 +286,11 @@ class BigAttackBrace(Player):
     def __init__(self):
         super().__init__()
         # Max strength to take advantage of big attack. Defense, vitality, and dexterity don't matter much
-        self.strength = 50
-        self.defense = 24
-        self.vitality = 21
-        self.dexterity = 5
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.50
+        self.defense_p = 0.24
+        self.vitality_p = 0.21
+        self.dexterity_p = 0.05
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -326,12 +316,11 @@ class MultiattackBrace(Player):
     def __init__(self):
         super().__init__()
         # very high dexterity and attack, low defensive stats
-        self.strength = 40
-        self.defense = 10
-        self.vitality = 15
-        self.dexterity = 35
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.40
+        self.defense_p = 0.10
+        self.vitality_p = 0.15
+        self.dexterity_p = 0.35
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -357,12 +346,11 @@ class PreciseAttackBrace(Player):
     def __init__(self):
         super().__init__()
         # higher dex to succeed in precise attacks and higher attack to still do damage
-        self.strength = 40
-        self.defense = 15
-        self.vitality = 15
-        self.dexterity = 30
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.40
+        self.defense_p = 0.15
+        self.vitality_p = 0.15
+        self.dexterity_p = 0.30
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -388,12 +376,11 @@ class AdaptivePlayer(Player):
     def __init__(self):
         super().__init__()
         # Balanced build with room for adaptation
-        self.strength = 30
-        self.defense = 25
-        self.vitality = 25
-        self.dexterity = 20
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.30
+        self.defense_p = 0.25
+        self.vitality_p = 0.25
+        self.dexterity_p = 0.20
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -446,12 +433,11 @@ class HighStrengthRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # High Strength
-        self.strength = 49
-        self.defense = 17
-        self.vitality = 17
-        self.dexterity = 17
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.49
+        self.defense_p = 0.17
+        self.vitality_p = 0.17
+        self.dexterity_p = 0.17
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -478,12 +464,11 @@ class HighDefenseRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # High Defense
-        self.strength = 17
-        self.defense = 49
-        self.vitality = 17
-        self.dexterity = 17
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.17
+        self.defense_p = 0.49
+        self.vitality_p = 0.17
+        self.dexterity_p = 0.17
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -510,12 +495,11 @@ class HighVitalityRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # High Vitality
-        self.strength = 17
-        self.defense = 17
-        self.vitality = 49
-        self.dexterity = 17
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.17
+        self.defense_p = 0.17
+        self.vitality_p = 0.49
+        self.dexterity_p = 0.17
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -542,12 +526,11 @@ class HighDexterityRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # High Dexterity
-        self.strength = 17
-        self.defense = 17
-        self.vitality = 17
-        self.dexterity = 49
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.17
+        self.defense_p = 0.17
+        self.vitality_p = 0.17
+        self.dexterity_p = 0.49
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -574,12 +557,11 @@ class LowStrengthRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # Low Strength
-        self.strength = 5
-        self.defense = 32
-        self.vitality = 31
-        self.dexterity = 32
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.05
+        self.defense_p = 0.32
+        self.vitality_p = 0.31
+        self.dexterity_p = 0.32
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -606,12 +588,11 @@ class LowDefenseRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # Low Defense
-        self.strength = 32
-        self.defense = 5
-        self.vitality = 31
-        self.dexterity = 32
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.32
+        self.defense_p = 0.05
+        self.vitality_p = 0.31
+        self.dexterity_p = 0.32
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -638,12 +619,11 @@ class LowVitalityRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # Low Vitality
-        self.strength = 32
-        self.defense = 32
-        self.vitality = 5
-        self.dexterity = 31
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.32
+        self.defense_p = 0.32
+        self.vitality_p = 0.05
+        self.dexterity_p = 0.31
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -670,12 +650,11 @@ class LowDexterityRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # Low Strength
-        self.strength = 32
-        self.defense = 32
-        self.vitality = 31
-        self.dexterity = 5
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.32
+        self.defense_p = 0.32
+        self.vitality_p = 0.31
+        self.dexterity_p = 0.05
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,
@@ -702,12 +681,11 @@ class EqualStatsRandomMoves(Player):
     def __init__(self):
         super().__init__()
         # Equal Stats
-        self.strength = 25
-        self.defense = 25
-        self.vitality = 25
-        self.dexterity = 25
-        self.create_derived_stats()
-        self._store_original_attributes()
+        self.strength_p = 0.25
+        self.defense_p = 0.25
+        self.vitality_p = 0.25
+        self.dexterity_p = 0.25
+        self.set_to_original_stats()
 
     def make_combat_decision(
         self,

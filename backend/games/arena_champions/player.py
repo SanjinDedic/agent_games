@@ -6,21 +6,19 @@ class Player(ABC):
     def __init__(self):
         self.name = self.__class__.__name__
         self.feedback = []
-        # Set your character attributes here (each must be between 5 and 50)
-        self.strength = 25  # Attribute that determines damage per strike
-        self.defense = 25  # Damage reduction value
-        self.dexterity = 25  # Dodge chance percentage
-        self.vitality = 25  # attribute that determines health points
 
-        #Attributes derived from stats
-        self.create_derived_stats()
+        # set the proportions attributes use here (each must be between 0.05 and 0.5)
+        self.strength_p = 0.25  # Attribute that determines damage per strike
+        self.defense_p = 0.25  # Damage reduction value
+        self.dexterity_p = 0.25  # Dodge chance percentage
+        self.vitality_p = 0.25  # attribute that determines health points
+
+        # Set your character attributes here (each must be between 5 and 50)
+        self.set_to_original_stats()
 
         # Game tracking attributes
         self.wins = 0
         self.losses = 0
-
-        # Store original attributes after they're set
-        self._store_original_attributes()
 
     def add_feedback(self, message):
         """Add feedback that will be visible in the game output"""
@@ -32,22 +30,21 @@ class Player(ABC):
         self.health = self.max_health # this goes down during combat
 
     def level_up(self):
-        """Player manages own leveling - add 1 to all attributes"""
-        self.strength += 0
-        self.defense += 0
-        self.dexterity += 0
-        self.vitality += 0
+        """Player manages own leveling - add 1 distributed amoung all attributes"""
+        self.strength += 1*self.strength_p
+        self.defense += 1*self.defense_p
+        self.dexterity += 1*self.dexterity_p
+        self.vitality += 1*self.vitality_p
         self.create_derived_stats()
         
 
-    def reset_to_original_stats(self):
-        """Reset player to original attribute values"""
-        if hasattr(self, "_original_attributes"):
-            self.strength = self._original_attributes["strength"]
-            self.defense = self._original_attributes["defense"]
-            self.dexterity = self._original_attributes["dexterity"]
-            self.vitality = self._original_attributes["vitality"]
-            self.create_derived_stats()
+    def set_to_original_stats(self):
+        """Set player to original attribute values"""
+        self.strength = 100*self.strength_p  # Attribute that determines damage per strike
+        self.defense = 100*self.defense_p  # Damage reduction value
+        self.dexterity = 100*self.dexterity_p  # Dodge chance percentage
+        self.vitality = 100*self.vitality_p  # attribute that determines health points
+        self.create_derived_stats()
 
     def get_combat_info(self):
         """Return minimal combat information"""
@@ -57,15 +54,6 @@ class Player(ABC):
             "dexterity": self.dexterity,
             "health": self.health,
             "max_health": self.max_health,
-        }
-
-    def _store_original_attributes(self):
-        """Store original attributes for reset purposes"""
-        self._original_attributes = {
-            "strength": self.strength,
-            "defense": self.defense,
-            "dexterity": self.dexterity,
-            "vitality": self.vitality,
         }
 
     @abstractmethod

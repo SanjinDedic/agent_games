@@ -45,14 +45,12 @@ class CustomPlayer(Player):
     def __init__(self):
         super().__init__()
         # Set your character attributes (each must be between 5 and 50)
-        self.attack = 30      # Damage per hit
-        self.defense = 20     # Damage reduction %
-        self.max_health = 25  # Health points
-        self.dexterity = 25   # Dodge chance %
-        self.health = self.max_health  # Current health
+        self.strength_p = 0.30      # Damage per hit
+        self.defense_p = 0.20     # Damage reduction %
+        self.vitality_p = 0.25  # Health points
+        self.dexterity_p = 0.25   # Dodge chance %
+        self.set_to_original_stats()
         
-        # IMPORTANT: Store original attributes after setting custom values
-        self._store_original_attributes()
         
         # Example builds:
         # Glass Cannon: attack=45, defense=5, max_health=25, dexterity=25
@@ -140,7 +138,6 @@ Design a champion that battles others in **turn-based** 1-on-1 combat through st
 ## Programming Challenge
 Implement:
 1. `__init__()`: Set your character attributes (attack, defense, max_health, dexterity) between 5-50
-   - **IMPORTANT**: Call `self._store_original_attributes()` after setting your custom attributes
 2. `make_combat_decision()`: Choose your action based on your role using:
    - `your_role`: Either "attacker" or "defender" 
    - `self.health`, `self.attack`, etc. for your stats
@@ -202,7 +199,7 @@ Implement:
 
     def _validate_player_attributes(self, player):
         """Validate that player attributes are within allowed ranges"""
-        player.reset_to_original_stats() #Delete this line if a better way to avoid the bug where validiation fails due to carrying over the stats from the last submission is implemented
+        player.set_to_original_stats() #Delete this line if a better way to avoid the bug where validiation fails due to carrying over the stats from the last submission is implemented
         attributes = ["strength", "defense", "vitality", "dexterity"]
 
         for attr_name in attributes:
@@ -305,11 +302,11 @@ Implement:
                 return 0, "dodged completely"
             else:
                 blocked_damage = (blocked_damage // 2)
-                final_damage = int(incoming_damage - blocked_damage)
+                final_damage = incoming_damage - blocked_damage #floating point damage is allowed
                 return max(5, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
         elif defense_action == "defend":
             #regular defense
-            final_damage = int(incoming_damage - blocked_damage)
+            final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
                 max(5, final_damage),
                 f"defended ({blocked_damage} damage blocked)",
@@ -330,7 +327,7 @@ Implement:
             lost_attack = incoming_damage
             incoming_damage += attacker.dexterity
 
-            final_damage = int(incoming_damage - blocked_damage)
+            final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
                 max(5, final_damage),
                 f"braced ({lost_attack} damage subtracted, {attacker.dexterity} damage added, {blocked_damage} damage blocked)",
@@ -624,7 +621,7 @@ Implement:
     def reset_player_attributes(self):
         """Reset all players to their original attribute values"""
         for player in self.players:
-            player.reset_to_original_stats()
+            player.set_to_original_stats()
             player.wins = 0
             player.losses = 0
             self.battle_history[str(player.name)] = []
