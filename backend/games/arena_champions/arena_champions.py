@@ -259,18 +259,6 @@ Implement:
             self.add_feedback(f"Error getting action from {player.name}: {e}")
             return "attack" if role == "attacker" else "defend"
     
-    def count_multiattacks(
-            self, attacker
-    ) -> int:
-        #minimum of 2 attacks
-        number_of_attacks = 2
-
-        #chance to trigger up to three extra attacks, probability for each is equal to dexterity
-        for i in range(3):
-            if random.randint(1, 100) <= attacker.dexterity:
-                number_of_attacks += 1
-
-        return number_of_attacks
         
 
     def calculate_damage(
@@ -285,8 +273,8 @@ Implement:
             #big attack doubles attack (but causes attacker to lose half their hp)
             incoming_damage *= 2
         elif attack_action == "multiattack":
-            #multiattack halves attack (but attacks multiple times)
-            incoming_damage *= 0.5
+            #multiattack uses dexterity instead of attack (but attacks three times)
+            incoming_damage = attacker.dexterity
         elif attack_action == "precise_attack":
             #precise attack reduces attack by 10% (but has a chance to ignore block)
             incoming_damage *= 0.9
@@ -363,8 +351,8 @@ Implement:
             turn_result["effects"]["attacker_health_cost"] = health_cost
             
         if attack_action == "multiattack":
-            # Attack multiple times (at least two, then three more possible additional attacks, each with a chance to happen equal to dex/100)
-            number_of_attacks = self.count_multiattacks(attacker)
+            # Attack multiple times (3)
+            number_of_attacks = 3
             
             # Calculate damage the defender takes
             final_damage = 0
@@ -465,7 +453,7 @@ Implement:
             if first_player.health <= 0 or second_player.health <= 0:
                 break
 
-        # Determine winner if battle didn't end early. The second player wins a tie
+        # Determine winner if battle didn't end early. The second player wins the tie if both players are at/below 0 hp 
         if not battle_result.winner:
             if first_player.health > 0:
                 battle_result.set_winner(str(first_player.name))
