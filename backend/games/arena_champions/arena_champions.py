@@ -267,14 +267,16 @@ Implement:
         """Calculate final damage taken"""
         incoming_damage = attacker.attack
         blocked_damage = defender.defense
+        min_damage = 5
 
         #apply attack-specific effects
         if attack_action == "big_attack":
             #big attack doubles attack (but causes attacker to lose half their hp)
             incoming_damage *= 2
         elif attack_action == "multiattack":
-            #multiattack uses dexterity instead of attack (but attacks three times)
+            #multiattack uses dexterity instead of attack and can do less than 5 damage (but attacks three times)
             incoming_damage = attacker.dexterity
+            min_damage = 0
         elif attack_action == "precise_attack":
             #precise attack reduces attack by 10% (but has a chance to ignore block)
             incoming_damage *= 0.9
@@ -291,12 +293,12 @@ Implement:
             else:
                 blocked_damage = (blocked_damage / 2)
                 final_damage = incoming_damage - blocked_damage #floating point damage is allowed
-                return max(5, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
+                return max(min_damage, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
         elif defense_action == "defend":
             #regular defense
             final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
-                max(5, final_damage),
+                max(min_damage, final_damage),
                 f"defended ({blocked_damage} damage blocked)",
             )
         elif defense_action == "brace":
@@ -317,7 +319,7 @@ Implement:
 
             final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
-                max(5, final_damage),
+                max(min_damage, final_damage),
                 f"braced ({lost_attack} damage subtracted, {attacker.dexterity} damage added, {blocked_damage} damage blocked)",
             )
 

@@ -71,11 +71,11 @@ class MultiattackNormalDefend(Player):
 
     def __init__(self):
         super().__init__()
-        # Higher dexterity and defence to take advantage of its moves, high strength, low vitality 
-        self.strength_p = 0.25
-        self.defense_p = 0.30
-        self.vitality_p = 0.10
-        self.dexterity_p = 0.35
+        # Higher dexterity and defence to take advantage of its moves, no strength, low vitality 
+        self.strength_p = 0.05
+        self.defense_p = 0.35
+        self.vitality_p = 0.15
+        self.dexterity_p = 0.45
         self.set_to_original_stats()
 
     def make_combat_decision(
@@ -194,11 +194,11 @@ class MultiattackDodge(Player):
 
     def __init__(self):
         super().__init__()
-        # high dexterity and attack to combo into really high damage, low non-dexterity defensive stats
-        self.strength_p = 0.40
-        self.defense_p = 0.5
-        self.vitality_p = 0.10
-        self.dexterity_p = 0.45
+        # max dexterity for really high damage and dodge, moderate non-dexterity defensive stats, no strength
+        self.strength_p = 0.05
+        self.defense_p = 0.20
+        self.vitality_p = 0.25
+        self.dexterity_p = 0.50
         self.set_to_original_stats()
 
     def make_combat_decision(
@@ -315,11 +315,11 @@ class MultiattackBrace(Player):
 
     def __init__(self):
         super().__init__()
-        # very high dexterity and attack, low defensive stats
-        self.strength_p = 0.40
-        self.defense_p = 0.10
-        self.vitality_p = 0.15
-        self.dexterity_p = 0.35
+        # very high dexterity, moderate defensive stats, no strength
+        self.strength_p = 0.05
+        self.defense_p = 0.25
+        self.vitality_p = 0.20
+        self.dexterity_p = 0.50
         self.set_to_original_stats()
 
     def make_combat_decision(
