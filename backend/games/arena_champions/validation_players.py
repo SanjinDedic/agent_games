@@ -12,7 +12,7 @@ class NormalAttackNormalDefend(Player):
         # Balanced tank: good defense and health to outlast opponents
         self.strength_p = 0.20
         self.defense_p = 0.40
-        self.vitality_p = 0.35
+        self.health_points_p = 0.35
         self.dexterity_p = 0.05
         self.set_to_original_stats()
 
@@ -44,7 +44,7 @@ class BigAttackNormalDefend(Player):
         # Power tank: high attack with good defense to survive big attack costs
         self.strength_p = 0.45
         self.defense_p = 0.30
-        self.vitality_p = 0.20
+        self.health_points_p = 0.20
         self.dexterity_p = 0.05
         self.set_to_original_stats()
 
@@ -71,10 +71,10 @@ class MultiattackNormalDefend(Player):
 
     def __init__(self):
         super().__init__()
-        # Higher dexterity and defence to take advantage of its moves, no strength, low vitality 
+        # Higher dexterity and defence to take advantage of its moves, no strength, low health_points
         self.strength_p = 0.05
         self.defense_p = 0.35
-        self.vitality_p = 0.15
+        self.health_points_p = 0.15
         self.dexterity_p = 0.45
         self.set_to_original_stats()
 
@@ -102,10 +102,10 @@ class PreciseAttackNormalDefend(Player):
 
     def __init__(self):
         super().__init__()
-        # High dexterity to use precise attack well, moderate defense and attack, low vitality
+        # High dexterity to use precise attack well, moderate defense and attack, low health_points
         self.strength_p = 0.25
         self.defense_p = 0.25
-        self.vitality_p = 0.15
+        self.health_points_p = 0.15
         self.dexterity_p = 0.40
         self.set_to_original_stats()
 
@@ -136,7 +136,7 @@ class NormalAttackDodge(Player):
         # Agile fighter: high dexterity for dodging, moderate attack
         self.strength_p = 0.30
         self.defense_p = 0.05
-        self.vitality_p = 0.15
+        self.health_points_p = 0.15
         self.dexterity_p = 0.50
         self.set_to_original_stats()
 
@@ -167,7 +167,7 @@ class BigAttackDodge(Player):
         # Glass cannon dodger: high attack and dexterity, low defense/health
         self.strength_p = 0.40
         self.defense_p = 0.05
-        self.vitality_p = 0.15
+        self.health_points_p = 0.15
         self.dexterity_p = 0.40
         self.set_to_original_stats()
 
@@ -188,7 +188,7 @@ class BigAttackDodge(Player):
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
-        
+
 class MultiattackDodge(Player):
     """Always uses multiattack and dodge"""
 
@@ -197,7 +197,7 @@ class MultiattackDodge(Player):
         # max dexterity for really high damage and dodge, moderate non-dexterity defensive stats, no strength
         self.strength_p = 0.05
         self.defense_p = 0.20
-        self.vitality_p = 0.25
+        self.health_points_p = 0.25
         self.dexterity_p = 0.50
         self.set_to_original_stats()
 
@@ -224,10 +224,10 @@ class PreciseAttackDodge(Player):
 
     def __init__(self):
         super().__init__()
-        #high dexterity for dodging and precise attack, moderate vitality, low other stats
+        # high dexterity for dodging and precise attack, moderate health_points, low other stats
         self.strength_p = 0.15
         self.defense_p = 0.05
-        self.vitality_p = 0.30
+        self.health_points_p = 0.30
         self.dexterity_p = 0.50
         self.set_to_original_stats()
 
@@ -254,10 +254,10 @@ class NormalAttackBrace(Player):
 
     def __init__(self):
         super().__init__()
-        # vitality and defense are less important, and dexterity is useless when the attacks/defenses you use don't require it. 
+        # health_points and defense are less important, and dexterity is useless when the attacks/defenses you use don't require it.
         self.strength_p = 0.50
         self.defense_p = 0.20
-        self.vitality_p = 0.25
+        self.health_points_p = 0.25
         self.dexterity_p = 0.05
         self.set_to_original_stats()
 
@@ -285,10 +285,10 @@ class BigAttackBrace(Player):
 
     def __init__(self):
         super().__init__()
-        # Max strength to take advantage of big attack. Defense, vitality, and dexterity don't matter much
+        # Max strength to take advantage of big attack. Defense, health_points, and dexterity don't matter much
         self.strength_p = 0.50
         self.defense_p = 0.24
-        self.vitality_p = 0.21
+        self.health_points_p = 0.21
         self.dexterity_p = 0.05
         self.set_to_original_stats()
 
@@ -318,7 +318,7 @@ class MultiattackBrace(Player):
         # very high dexterity, moderate defensive stats, no strength
         self.strength_p = 0.05
         self.defense_p = 0.25
-        self.vitality_p = 0.20
+        self.health_points_p = 0.20
         self.dexterity_p = 0.50
         self.set_to_original_stats()
 
@@ -348,7 +348,7 @@ class PreciseAttackBrace(Player):
         # higher dex to succeed in precise attacks and higher attack to still do damage
         self.strength_p = 0.40
         self.defense_p = 0.15
-        self.vitality_p = 0.15
+        self.health_points_p = 0.15
         self.dexterity_p = 0.30
         self.set_to_original_stats()
 
@@ -378,7 +378,7 @@ class AdaptivePlayer(Player):
         # Balanced build with room for adaptation
         self.strength_p = 0.30
         self.defense_p = 0.25
-        self.vitality_p = 0.25
+        self.health_points_p = 0.25
         self.dexterity_p = 0.20
         self.set_to_original_stats()
 
@@ -435,7 +435,7 @@ class HighStrengthRandomMoves(Player):
         # High Strength
         self.strength_p = 0.49
         self.defense_p = 0.17
-        self.vitality_p = 0.17
+        self.health_points_p = 0.17
         self.dexterity_p = 0.17
         self.set_to_original_stats()
 
@@ -457,7 +457,7 @@ class HighStrengthRandomMoves(Player):
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
-        
+
 class HighDefenseRandomMoves(Player):
     """Uses random moves"""
 
@@ -466,7 +466,7 @@ class HighDefenseRandomMoves(Player):
         # High Defense
         self.strength_p = 0.17
         self.defense_p = 0.49
-        self.vitality_p = 0.17
+        self.health_points_p = 0.17
         self.dexterity_p = 0.17
         self.set_to_original_stats()
 
@@ -489,15 +489,16 @@ class HighDefenseRandomMoves(Player):
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
 
-class HighVitalityRandomMoves(Player):
-    """Uses random moves"""
+
+class HighHealthPointsRandomMoves(Player):
+    """Makes purely random combat decisions - High health_points build"""
 
     def __init__(self):
         super().__init__()
-        # High Vitality
+        # High Health Points
         self.strength_p = 0.17
         self.defense_p = 0.17
-        self.vitality_p = 0.49
+        self.health_points_p = 0.49
         self.dexterity_p = 0.17
         self.set_to_original_stats()
 
@@ -519,6 +520,7 @@ class HighVitalityRandomMoves(Player):
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
+
 
 class HighDexterityRandomMoves(Player):
     """Uses random moves"""
@@ -528,7 +530,7 @@ class HighDexterityRandomMoves(Player):
         # High Dexterity
         self.strength_p = 0.17
         self.defense_p = 0.17
-        self.vitality_p = 0.17
+        self.health_points_p = 0.17
         self.dexterity_p = 0.49
         self.set_to_original_stats()
 
@@ -559,7 +561,7 @@ class LowStrengthRandomMoves(Player):
         # Low Strength
         self.strength_p = 0.05
         self.defense_p = 0.32
-        self.vitality_p = 0.31
+        self.health_points_p = 0.31
         self.dexterity_p = 0.32
         self.set_to_original_stats()
 
@@ -590,7 +592,7 @@ class LowDefenseRandomMoves(Player):
         # Low Defense
         self.strength_p = 0.32
         self.defense_p = 0.05
-        self.vitality_p = 0.31
+        self.health_points_p = 0.31
         self.dexterity_p = 0.32
         self.set_to_original_stats()
 
@@ -613,15 +615,16 @@ class LowDefenseRandomMoves(Player):
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
 
-class LowVitalityRandomMoves(Player):
+
+class LowHealthPointsRandomMoves(Player):
     """Uses random moves"""
 
     def __init__(self):
         super().__init__()
-        # Low Vitality
+        # Low Health Points
         self.strength_p = 0.32
         self.defense_p = 0.32
-        self.vitality_p = 0.05
+        self.health_points_p = 0.05
         self.dexterity_p = 0.31
         self.set_to_original_stats()
 
@@ -643,7 +646,8 @@ class LowVitalityRandomMoves(Player):
             raise ValueError(
                 f"Invalid role: {your_role}. Must be 'attacker' or 'defender'"
             )
-        
+
+
 class LowDexterityRandomMoves(Player):
     """Uses random moves"""
 
@@ -652,7 +656,7 @@ class LowDexterityRandomMoves(Player):
         # Low Strength
         self.strength_p = 0.32
         self.defense_p = 0.32
-        self.vitality_p = 0.31
+        self.health_points_p = 0.31
         self.dexterity_p = 0.05
         self.set_to_original_stats()
 
@@ -683,7 +687,7 @@ class EqualStatsRandomMoves(Player):
         # Equal Stats
         self.strength_p = 0.25
         self.defense_p = 0.25
-        self.vitality_p = 0.25
+        self.health_points_p = 0.25
         self.dexterity_p = 0.25
         self.set_to_original_stats()
 
@@ -723,11 +727,11 @@ players = [
     AdaptivePlayer(),
     HighStrengthRandomMoves(),
     HighDefenseRandomMoves(),
-    HighVitalityRandomMoves(),
+    HighHealthPointsRandomMoves(),
     HighDexterityRandomMoves(),
     LowStrengthRandomMoves(),
     LowDefenseRandomMoves(),
-    LowVitalityRandomMoves(),
+    LowHealthPointsRandomMoves(),
     LowDexterityRandomMoves(),
-    EqualStatsRandomMoves()
+    EqualStatsRandomMoves(),
 ]

@@ -11,7 +11,7 @@ class Player(ABC):
         self.strength_p = 0.25  # Attribute that determines damage per strike
         self.defense_p = 0.25  # Damage reduction value
         self.dexterity_p = 0.25  # Dodge chance percentage
-        self.vitality_p = 0.25  # attribute that determines health points
+        self.health_points_p = 0.25  # attribute that determines health points
 
         # Set your character attributes here (each must be between 5 and 50)
         self.set_to_original_stats()
@@ -23,10 +23,10 @@ class Player(ABC):
     def add_feedback(self, message):
         """Add feedback that will be visible in the game output"""
         self.feedback.append(message)
-    
+
     def create_derived_stats(self):
         self.attack = self.strength*2 # Actual damage per strike (before defences or specific attacks are applied)
-        self.max_health = self.vitality*5 # Health points
+        self.max_health = self.health_points * 5  # Health points
         self.health = self.max_health # this goes down during combat
 
     def level_up(self):
@@ -34,16 +34,17 @@ class Player(ABC):
         self.strength += 1*self.strength_p
         self.defense += 1*self.defense_p
         self.dexterity += 1*self.dexterity_p
-        self.vitality += 1*self.vitality_p
+        self.health_points += 1 * self.health_points_p
         self.create_derived_stats()
-        
 
     def set_to_original_stats(self):
         """Set player to original attribute values"""
         self.strength = 100*self.strength_p  # Attribute that determines damage per strike
         self.defense = 100*self.defense_p  # Damage reduction value
         self.dexterity = 100*self.dexterity_p  # Dodge chance percentage
-        self.vitality = 100*self.vitality_p  # attribute that determines health points
+        self.health_points = (
+            100 * self.health_points_p
+        )  # attribute that determines health points
         self.create_derived_stats()
 
     def get_combat_info(self):

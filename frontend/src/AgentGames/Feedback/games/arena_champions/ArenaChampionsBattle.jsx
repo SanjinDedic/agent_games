@@ -3,67 +3,60 @@ import React from 'react';
 const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnIndex }) => {
   const { player1, player2, turns } = battleData;
 
-  // Get HP values for current turn
+  // Get HP values directly from backend data - no complex calculations needed!
   const getCurrentHP = () => {
     if (battleComplete && turns.length > 0) {
-      return turns[turns.length - 1].health_after || {}; // ✅ Fixed: use health_after
+      // Show final HP after last turn
+      return turns[turns.length - 1].health_after || {};
     }
-    if (currentTurn) {
-      return currentTurn.health_after || {}; // ✅ Fixed: use health_after
+    if (currentTurn && currentTurn.health_after) {
+      // Show HP after current turn
+      return currentTurn.health_after;
     }
-    // Initial HP values - we'll estimate based on damage patterns
-    return { [player1]: 100, [player2]: 100 };
-  };
-
-  // Get previous HP to show damage taken
-  const getPreviousHP = () => {
-    if (turnIndex === 0) {
-      // Estimate initial HP based on final HP and damage dealt
-      const currentHP = getCurrentHP();
-      const totalDamage1 = turns.reduce(
-        (sum, turn) => sum + (turn.effects?.damage_dealt || 0),
-        0
-      );
-      const totalDamage2 = turns.reduce(
-        (sum, turn) => sum + (turn.effects?.damage_dealt || 0),
-        0
-      );
-
-      return {
-        [player1]: (currentHP[player1] || 0) + totalDamage2,
-        [player2]: (currentHP[player2] || 0) + totalDamage1,
-      };
+    if (currentTurn && currentTurn.health_before) {
+      // Fallback: show HP before current turn if after isn't available
+      return currentTurn.health_before;
     }
-    return turns[turnIndex - 1]?.health_after || {}; // ✅ Fixed: use health_after with safe access
+    // Initial state: use first turn's health_before if available
+    if (turns.length > 0 && turns[0].health_before) {
+      return turns[0].health_before;
+    }
+    return { [player1]: 0, [player2]: 0 };
   };
 
   const currentHP = getCurrentHP();
-  const previousHP = getPreviousHP();
 
-  // Calculate max HP for progress bars
+  // Calculate max HP for progress bars - find the highest HP value any player has had
   const getMaxHP = (player) => {
-    const allHPValues = turns
-      .map((turn) => turn.health_after?.[player])
-      .filter((hp) => hp !== undefined);
-    const currentHPValue = currentHP[player] || 0;
-    const previousHPValue = previousHP[player] || 0;
+    let maxHP = 50; // minimum fallback
 
-    return Math.max(currentHPValue, previousHPValue, ...allHPValues, 50); // minimum 50 for display
+    turns.forEach((turn) => {
+      if (turn.health_before && turn.health_before[player] !== undefined) {
+        maxHP = Math.max(maxHP, turn.health_before[player]);
+      }
+      if (turn.health_after && turn.health_after[player] !== undefined) {
+        maxHP = Math.max(maxHP, turn.health_after[player]);
+      }
+    });
+
+    return maxHP;
   };
 
   const maxHP1 = getMaxHP(player1);
   const maxHP2 = getMaxHP(player2);
 
-  // ✅ Fixed: Get player action based on actual data structure
+  // ✅ Fixed: Get player action based on new data structure
   const getPlayerAction = (player) => {
     if (!currentTurn) return null;
 
-    // In Arena Champions, only the active player has an action each turn
-    if (currentTurn.active_player === player) {
-      return currentTurn.action;
+    // In the new structure, we have attacker/defender with their respective actions
+    if (currentTurn.attacker === player) {
+      return currentTurn.attack_action;
+    } else if (currentTurn.defender === player) {
+      return currentTurn.defend_action;
     }
 
-    // For the passive player, we don't have an action this turn
+    // If player is not involved in this turn
     return "waiting";
   };
 
@@ -73,12 +66,16 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
         return "⚔️";
       case "big_attack":
         return "💥";
+      case "multiattack":
+        return "🔥";
+      case "precise_attack":
+        return "🎯";
       case "defend":
         return "🛡️";
       case "dodge":
         return "🤸";
-      case "run_away":
-        return "🏃";
+      case "brace":
+        return "🔒";
       case "waiting":
         return "⏳";
       default:
@@ -90,12 +87,14 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
     switch (action) {
       case "attack":
       case "big_attack":
+      case "multiattack":
+      case "precise_attack":
         return "text-danger";
       case "defend":
         return "text-primary";
       case "dodge":
         return "text-purple-600";
-      case "run_away":
+      case "brace":
         return "text-amber-600";
       case "waiting":
         return "text-ui";
@@ -104,19 +103,28 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
     }
   };
 
-  // ✅ Fixed: Get damage info from effects
+  // ✅ Fixed: Get damage info from new effects structure
   const getDamageInfo = (player) => {
-    if (!currentTurn || currentTurn.active_player !== player) return null;
+    if (!currentTurn) return null;
 
     const effects = currentTurn.effects || {};
-    const damageDealt = effects.damage_dealt;
-    const healthCost = effects.health_cost;
-    const ranAway = effects.ran_away;
-
     const info = [];
-    if (damageDealt) info.push(`Dealt ${damageDealt} damage`);
-    if (healthCost) info.push(`Lost ${healthCost} HP`);
-    if (ranAway) info.push(`Ran away`);
+
+    // If this player is the attacker
+    if (currentTurn.attacker === player) {
+      const damageDealt = effects.damage_dealt;
+      const attackerHealthCost = effects.attacker_health_cost;
+
+      if (damageDealt) info.push(`Dealt ${Math.round(damageDealt)} damage`);
+      if (attackerHealthCost)
+        info.push(`Lost ${Math.round(attackerHealthCost)} HP`);
+    }
+
+    // If this player is the defender
+    if (currentTurn.defender === player) {
+      const defenseResult = effects.defense_result;
+      if (defenseResult) info.push(defenseResult);
+    }
 
     return info.length > 0 ? info.join(", ") : null;
   };
@@ -134,7 +142,7 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                 <div className="flex justify-between text-sm text-ui mb-1">
                   <span>HP</span>
                   <span>
-                    {currentHP[player1] || 0}/{maxHP1}
+                    {Math.round(currentHP[player1] || 0)}/{maxHP1}
                   </span>
                 </div>
                 <div className="w-full bg-ui-lighter rounded-full h-4">
@@ -180,7 +188,7 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                 <div className="flex justify-between text-sm text-ui mb-1">
                   <span>HP</span>
                   <span>
-                    {currentHP[player2] || 0}/{maxHP2}
+                    {Math.round(currentHP[player2] || 0)}/{maxHP2}
                   </span>
                 </div>
                 <div className="w-full bg-ui-lighter rounded-full h-4">
@@ -224,27 +232,44 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
           <div className="mt-6 text-center">
             <div className="bg-white rounded-lg p-4 shadow-md">
               <h4 className="font-bold text-ui-dark mb-2">
-                Turn {currentTurn.turn} Summary
+                Turn {currentTurn.turn || turnIndex + 1} Summary
               </h4>
               <div className="text-sm text-ui space-y-1">
                 <div>
                   <span className="font-medium text-primary">
-                    {currentTurn.active_player}
+                    {currentTurn.attacker}
                   </span>{" "}
                   used{" "}
-                  <span className="capitalize font-medium">
-                    {currentTurn.action}
+                  <span className="capitalize font-medium text-danger">
+                    {currentTurn.attack_action}
                   </span>
                   {currentTurn.effects?.damage_dealt && (
                     <span className="text-danger">
                       {" "}
-                      (Dealt {currentTurn.effects.damage_dealt} damage)
+                      (Dealt {Math.round(currentTurn.effects.damage_dealt)}{" "}
+                      damage)
                     </span>
                   )}
-                  {currentTurn.effects?.health_cost && (
+                  {currentTurn.effects?.attacker_health_cost && (
                     <span className="text-amber-600">
                       {" "}
-                      (Lost {currentTurn.effects.health_cost} HP)
+                      (Lost{" "}
+                      {Math.round(currentTurn.effects.attacker_health_cost)} HP)
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-medium text-purple-600">
+                    {currentTurn.defender}
+                  </span>{" "}
+                  used{" "}
+                  <span className="capitalize font-medium text-purple-600">
+                    {currentTurn.defend_action}
+                  </span>
+                  {currentTurn.effects?.defense_result && (
+                    <span className="text-ui">
+                      {" "}
+                      ({currentTurn.effects.defense_result})
                     </span>
                   )}
                 </div>
@@ -271,7 +296,7 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
       {/* Action Legend */}
       <div className="bg-white rounded-lg p-4 shadow-md">
         <h4 className="font-bold text-ui-dark mb-3">Action Legend</h4>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-danger">⚔️</span>
             <span>Attack</span>
@@ -279,6 +304,14 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
           <div className="flex items-center gap-2">
             <span className="text-danger">💥</span>
             <span>Big Attack</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-danger">🔥</span>
+            <span>Multiattack</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-danger">🎯</span>
+            <span>Precise Attack</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-primary">🛡️</span>
@@ -289,8 +322,8 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
             <span>Dodge</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-amber-600">🏃</span>
-            <span>Run Away</span>
+            <span className="text-amber-600">🔒</span>
+            <span>Brace</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-ui">⏳</span>

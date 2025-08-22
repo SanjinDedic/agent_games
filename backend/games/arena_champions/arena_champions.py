@@ -47,7 +47,7 @@ class CustomPlayer(Player):
         # Set your character attributes (each must be between 5 and 50)
         self.strength_p = 0.30      # Damage per hit
         self.defense_p = 0.20     # Damage reduction %
-        self.vitality_p = 0.25  # Health points
+        self.health_points_p = 0.25  # Health points
         self.dexterity_p = 0.25   # Dodge chance %
         self.set_to_original_stats()
         
@@ -200,7 +200,7 @@ Implement:
     def _validate_player_attributes(self, player):
         """Validate that player attributes are within allowed ranges"""
         player.set_to_original_stats() #Delete this line if a better way to avoid the bug where validiation fails due to carrying over the stats from the last submission is implemented
-        attributes = ["strength", "defense", "vitality", "dexterity"]
+        attributes = ["strength", "defense", "health_points", "dexterity"]
 
         for attr_name in attributes:
             if not hasattr(player, attr_name):
@@ -258,8 +258,6 @@ Implement:
         except Exception as e:
             self.add_feedback(f"Error getting action from {player.name}: {e}")
             return "attack" if role == "attacker" else "defend"
-    
-        
 
     def calculate_damage(
         self, attacker, defender, attack_action: str, defense_action: str
@@ -269,24 +267,23 @@ Implement:
         blocked_damage = defender.defense
         min_damage = 5
 
-        #apply attack-specific effects
+        # apply attack-specific effects
         if attack_action == "big_attack":
-            #big attack doubles attack (but causes attacker to lose half their hp)
+            # big attack doubles attack (but causes attacker to lose half their hp)
             incoming_damage *= 2
         elif attack_action == "multiattack":
-            #multiattack uses dexterity instead of attack and can do less than 5 damage (but attacks three times)
+            # multiattack uses dexterity instead of attack and can do less than 5 damage (but attacks three times)
             incoming_damage = attacker.dexterity
             min_damage = 0
         elif attack_action == "precise_attack":
-            #precise attack reduces attack by 10% (but has a chance to ignore block)
+            # precise attack reduces attack by 10% (but has a chance to ignore block)
             incoming_damage *= 0.9
             if random.randint(1, 100) <= attacker.dexterity:
                 blocked_damage = 0
 
-
-        #then apply defenses
+        # then apply defenses
         if defense_action == "dodge":
-            #chance to take no damage equal to dexterity, but defense is halved
+            # chance to take no damage equal to dexterity, but defense is halved
             dodge_chance = min(defender.dexterity, 75)
             if random.randint(1, 100) <= dodge_chance:
                 return 0, "dodged completely"
@@ -295,7 +292,7 @@ Implement:
                 final_damage = incoming_damage - blocked_damage #floating point damage is allowed
                 return max(min_damage, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
         elif defense_action == "defend":
-            #regular defense
+            # regular defense
             final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
                 max(min_damage, final_damage),
@@ -312,7 +309,7 @@ Implement:
             # else:
             #     return final_damage, f"braced, blocked {blocked_damage}"
 
-            #halve the incoming damage, then add the attacker's dex (happens after attack calculations)
+            # halve the incoming damage, then add the attacker's dex (happens after attack calculations)
             incoming_damage /= 2
             lost_attack = incoming_damage
             incoming_damage += attacker.dexterity
@@ -322,8 +319,6 @@ Implement:
                 max(min_damage, final_damage),
                 f"braced ({lost_attack} damage subtracted, {attacker.dexterity} damage added, {blocked_damage} damage blocked)",
             )
-
-
 
         else:
             # No defense
@@ -343,19 +338,23 @@ Implement:
             "attack_action": attack_action,
             "defend_action": defend_action,
             "effects": {},
+            "health_before": {
+                str(attacker.name): max(0, attacker.health),
+                str(defender.name): max(0, defender.health),
+            },
             "health_after": {},
         }
 
         # Apply self-damage from big attack here (increased damage is in calculate_damage)
         if attack_action == "big_attack":
-            health_cost = attacker.max_health / 2
+            health_cost = 1 + attacker.health / 2
             attacker.health -= health_cost
             turn_result["effects"]["attacker_health_cost"] = health_cost
-            
+
         if attack_action == "multiattack":
             # Attack multiple times (3)
             number_of_attacks = 3
-            
+
             # Calculate damage the defender takes
             final_damage = 0
             defense_msg = f"defended from {number_of_attacks} attacks, results:"
@@ -365,7 +364,7 @@ Implement:
                 )
                 final_damage += partial_damage
                 defense_msg += (" " + partial_defense_msg)
-            
+
             defender.health -= final_damage
             turn_result["effects"]["defense_result"] = defense_msg
         else:
@@ -455,7 +454,7 @@ Implement:
             if first_player.health <= 0 or second_player.health <= 0:
                 break
 
-        # Determine winner if battle didn't end early. The second player wins the tie if both players are at/below 0 hp 
+        # Determine winner if battle didn't end early. The second player wins the tie if both players are at/below 0 hp
         if not battle_result.winner:
             if first_player.health > 0:
                 battle_result.set_winner(str(first_player.name))
@@ -463,10 +462,10 @@ Implement:
                 battle_result.set_winner(str(second_player.name))
 
         battle_result.set_final_health(first_player.health, second_player.health)
-        #reset health after battle to prevent bugs
+        # reset health after battle to prevent bugs
         first_player.health = first_player.max_health
         second_player.health = second_player.max_health
-        
+
         return battle_result.winner, battle_result
 
     def _update_stats_and_history(
