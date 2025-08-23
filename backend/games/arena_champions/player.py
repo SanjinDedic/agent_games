@@ -29,12 +29,12 @@ class Player(ABC):
         self.max_health = self.health_points * 5  # Health points
         self.health = self.max_health # this goes down during combat
 
-    def level_up(self):
+    def level_up(self, level_up_amount=1):
         """Player manages own leveling - add 1 distributed amoung all attributes"""
-        self.strength += 1*self.strength_p
-        self.defense += 1*self.defense_p
-        self.dexterity += 1*self.dexterity_p
-        self.health_points += 1 * self.health_points_p
+        self.strength += level_up_amount * self.strength_p
+        self.defense += level_up_amount * self.defense_p
+        self.dexterity += level_up_amount * self.dexterity_p
+        self.health_points += level_up_amount * self.health_points_p
         self.create_derived_stats()
 
     def set_to_original_stats(self):

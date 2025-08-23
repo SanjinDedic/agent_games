@@ -475,7 +475,8 @@ Implement:
         if winner_name == str(player1.name):
             player1.wins += 1
             player2.losses += 1
-            player1.level_up()
+            player1.level_up(1)
+            player2.level_up(0.8)  # No level up for loser
             self.add_feedback(
                 f"{player1.name} wins {match_type} match vs {player2.name} and levels up!"
             )
@@ -483,6 +484,7 @@ Implement:
             player2.wins += 1
             player1.losses += 1
             player2.level_up()
+            player1.level_up(0.8)  # No level up for loser
             self.add_feedback(
                 f"{player2.name} wins away match vs {player1.name} and levels up!"
             )
