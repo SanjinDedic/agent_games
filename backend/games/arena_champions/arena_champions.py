@@ -44,10 +44,10 @@ import random
 class CustomPlayer(Player):
     def __init__(self):
         super().__init__()
-        # Set your character attributes (each must be between 5 and 50)
+        # Set your character attributes (each must be between 0.1 and 0.5)
         self.strength_p = 0.30      # Damage per hit
         self.defense_p = 0.20     # Damage reduction %
-        self.health_points_p = 0.25  # Health points
+        self.max_health_p = 0.25  # Max health points
         self.dexterity_p = 0.25   # Dodge chance %
         self.set_to_original_stats()
         
@@ -200,24 +200,34 @@ Implement:
             self.battle_history[player_name] = []
 
     def _validate_player_attributes(self, player):
-        """Validate that player attributes are within allowed ranges"""
-        player.set_to_original_stats() #Delete this line if a better way to avoid the bug where validiation fails due to carrying over the stats from the last submission is implemented
-        attributes = ["strength", "defense", "health_points", "dexterity"]
-
-        for attr_name in attributes:
-            if not hasattr(player, attr_name):
-                raise ValueError(f"Missing required attribute: {attr_name}")
-
-            value = getattr(player, attr_name)
-            if not isinstance(value, (int, float)):
-                raise ValueError(
-                    f"Attribute {attr_name} must be a number, got {type(value).__name__}"
-                )
-
-            if value < 5 or value > 50:
-                raise ValueError(
-                    f"Initial attribute {attr_name} must be between 5 and 50, got {value}"
-                )
+        """Validate player attributes are within allowed ranges"""
+        if not (0.1 <= player.attack_proportion <= 0.5):
+            raise ValueError(
+                f"Invalid attack proportion for {player.name}: {player.attack_proportion}"
+            )
+        if not (0.1 <= player.defense_proportion <= 0.5):
+            raise ValueError(
+                f"Invalid defense proportion for {player.name}: {player.defense_proportion}"
+            )
+        if not (0.1 <= player.dexterity_proportion <= 0.5):
+            raise ValueError(
+                f"Invalid dexterity proportion for {player.name}: {player.dexterity_proportion}"
+            )
+        if not (0.1 <= player.max_health_proportion <= 0.5):
+            raise ValueError(
+                f"Invalid max health proportion for {player.name}: {player.max_health_proportion}"
+            )
+        if (
+            not player.max_health_proportion
+            + player.attack_proportion
+            + player.defense_proportion
+            + player.dexterity_proportion
+            <= 1.0
+        ):
+            raise ValueError(
+                f"Total proportions for {player.name} exceed 1.0: "
+                f"{player.attack_proportion + player.defense_proportion + player.dexterity_proportion + player.max_health_proportion}"
+            )
 
     @staticmethod
     def validate_action_for_role(action: str, role: str) -> bool:
@@ -264,59 +274,76 @@ Implement:
     def calculate_damage(
         self, attacker, defender, attack_action: str, defense_action: str
     ) -> Tuple[int, str]:
-        """Calculate final damage taken"""
-        incoming_damage = attacker.attack
-        blocked_damage = defender.defense
-        min_damage = 5
-        attack_dex = attacker.dexterity
+        """Calculate final damage taken using rock-paper-scissors defense system"""
+        base_damage = attacker.attack
+        min_damage = 10
 
-        # apply attack-specific effects
+        # tweak these figures until the game is blanced (min 6000 wind and max 9000 wins)
+        big_attack_multiplier = 2.3  # Big attack multiplier
+        precise_attack_multiplier = 0.5
+        def_vs_precise_attack_multiplier = 1.3
+        def_vs_big_attack_reducer = 0.3  # Defense effectiveness vs big attack
+        brace_vs_attack_multiplier = 0.6  # Brace effectiveness vs regular attack
+        brace_vs_precise_attack_multiplier = 0.5  # Brace effectiveness vs big attack
+
+        # Attack modifiers
         if attack_action == "big_attack":
-            # big attack doubles attack (but triples or quadruples opponents defense)
-            incoming_damage *= 2
-            if random.randint(1, 100) <= attack_dex:
-                blocked_damage *= 3
-            else:
-                blocked_damage *= 4
+            # Big attack doubles damage but increases opponent's defense
+            base_damage *= big_attack_multiplier
+            attacker.health = attacker.health / 2 - 1  # Lose 50% health
         elif attack_action == "precise_attack":
-            # precise attack reduces attack by 10% (but has a chance to ignore block)
-            incoming_damage *= 0.9
-            if random.randint(1, 100) <= attack_dex:
-                blocked_damage = 0
-            attack_dex *= 3
+            # Enhanced by dexterity
+            base_damage += attacker.dexterity * precise_attack_multiplier
 
-        # then apply defenses
+        # Defense handling with effectiveness system
         if defense_action == "dodge":
-            # chance to take no damage equal to dexterity, but defense is halved
+            # Dodge chance enhanced by dexterity
             dodge_chance = min(defender.dexterity, 75)
-            if random.randint(1, 100) <= dodge_chance:
+            if random.randint(0, 100) <= dodge_chance:
                 return 0, "dodged completely"
-            else:
-                blocked_damage = (blocked_damage / 2)
-                final_damage = incoming_damage - blocked_damage #floating point damage is allowed
-                return max(min_damage, final_damage), f"dodge failed ({blocked_damage} damage blocked)"
+            # Effectiveness after failed dodge
+            if attack_action == "big_attack":
+                final_damage = base_damage * 0.7  # Strong vs big attack
+                msg = "dodge failed but reduced big attack damage"
+            elif attack_action == "precise_attack":
+                final_damage = base_damage  # Average vs precise
+                msg = "dodge failed, moderate damage from precise attack"
+            else:  # regular attack
+                final_damage = base_damage * 1.3  # Weak vs regular
+                msg = "dodge failed, vulnerable to regular attack"
+
         elif defense_action == "defend":
-            # regular defense
-            final_damage = incoming_damage - blocked_damage #floating point damage is allowed
-            return (
-                max(min_damage, final_damage),
-                f"defended ({blocked_damage} damage blocked)",
-            )
+            if attack_action == "precise_attack":
+                final_damage = (
+                    base_damage - defender.defense * def_vs_precise_attack_multiplier
+                )
+                msg = f"strong defense vs precise attack ({defender.defense * 1.5} blocked)"
+            elif attack_action == "attack":
+                final_damage = 10 + base_damage - defender.defense  # Average vs regular
+                msg = f"defended normally ({defender.defense} blocked)"
+            else:  # big_attack
+                final_damage = (
+                    base_damage - defender.defense * def_vs_big_attack_reducer
+                )  # Weak vs big
+                msg = f"defense overwhelmed by big attack ({defender.defense} blocked)"
+
         elif defense_action == "brace":
-            # halve the incoming damage, then add the attacker's dex (happens after attack calculations)
-            incoming_damage /= 2
-            lost_attack = incoming_damage
-            incoming_damage += attack_dex
-
-            final_damage = incoming_damage - blocked_damage #floating point damage is allowed
-            return (
-                max(min_damage, final_damage),
-                f"braced ({lost_attack} damage subtracted, {attack_dex} damage added, {blocked_damage} damage blocked)",
-            )
-
+            if attack_action == "attack":
+                final_damage = (
+                    base_damage * brace_vs_attack_multiplier
+                )  # Strong vs regular
+                msg = "braced effectively vs regular attack"
+            elif attack_action == "big_attack":
+                final_damage = base_damage
+                msg = "braced with moderate effectiveness vs big attack"
+            else:  # precise_attack
+                final_damage = base_damage * brace_vs_precise_attack_multiplier
+                msg = "brace vulnerable to precise attack"
         else:
             # No defense
-            return incoming_damage, "no defense"
+            final_damage = base_damage
+            msg = "no defense"
+        return max(min_damage, final_damage), msg
 
     def resolve_combat_round(
         self,
@@ -446,16 +473,16 @@ Implement:
         if winner_name == str(player1.name):
             player1.wins += 1
             player2.losses += 1
-            player1.level_up(1)
-            player2.level_up(0.8)  # No level up for loser
+            # player1.level_up(1)
+            # player2.level_up(0.8)  # No level up for loser
             self.add_feedback(
                 f"{player1.name} wins {match_type} match vs {player2.name} and levels up!"
             )
         else:
             player2.wins += 1
             player1.losses += 1
-            player2.level_up()
-            player1.level_up(0.8)  # No level up for loser
+            # player2.level_up()
+            # player1.level_up(0.8)  # No level up for loser
             self.add_feedback(
                 f"{player2.name} wins away match vs {player1.name} and levels up!"
             )

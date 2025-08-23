@@ -8,11 +8,10 @@ class Player(ABC):
         self.feedback = []
 
         # set the proportions attributes use here (each must be between 0.05 and 0.5)
-        self.strength_p = 0.25  # Attribute that determines damage per strike
-        self.defense_p = 0.25  # Damage reduction value
-        self.dexterity_p = 0.25  # Dodge chance percentage
-        self.health_points_p = 0.25  # attribute that determines health points
-
+        self.attack_proportion = 0.25  # Attribute that determines damage per strike
+        self.defense_proportion = 0.25  # Damage reduction value
+        self.dexterity_proportion = 0.25  # Dodge chance percentage
+        self.max_health_proportion = 0.25  # attribute that determines max health points
         # Set your character attributes here (each must be between 5 and 50)
         self.set_to_original_stats()
 
@@ -25,26 +24,28 @@ class Player(ABC):
         self.feedback.append(message)
 
     def create_derived_stats(self):
-        self.attack = self.strength*2 # Actual damage per strike (before defences or specific attacks are applied)
-        self.max_health = self.health_points * 5  # Health points
-        self.health = self.max_health # this goes down during combat
+        self.health = self.max_health  # this goes down during combat
+        self.defense = self.defense
 
     def level_up(self, level_up_amount=1):
         """Player manages own leveling - add 1 distributed amoung all attributes"""
-        self.strength += level_up_amount * self.strength_p
-        self.defense += level_up_amount * self.defense_p
-        self.dexterity += level_up_amount * self.dexterity_p
-        self.health_points += level_up_amount * self.health_points_p
+        self.strength += level_up_amount * self.attack_proportion
+        self.defense += level_up_amount * self.defense_proportion
+        self.dexterity += level_up_amount * self.dexterity_proportion
+        self.max_health += level_up_amount * self.max_health_proportion
         self.create_derived_stats()
 
     def set_to_original_stats(self):
         """Set player to original attribute values"""
-        self.strength = 100*self.strength_p  # Attribute that determines damage per strike
-        self.defense = 100*self.defense_p  # Damage reduction value
-        self.dexterity = 100*self.dexterity_p  # Dodge chance percentage
-        self.health_points = (
-            100 * self.health_points_p
-        )  # attribute that determines health points
+        self.attack = (
+            2 * 100 * self.attack_proportion
+        )  # Actual damage per strike (before defences or specific attacks are applied)
+        self.strength = (
+            100 * self.attack_proportion
+        )  # Attribute that determines damage per strike
+        self.defense = 100 * self.defense_proportion  # Damage reduction value
+        self.dexterity = 100 * self.dexterity_proportion  # Dodge chance percentage
+        self.max_health = 1000 * self.max_health_proportion  # Maximum health points
         self.create_derived_stats()
 
     def get_combat_info(self):
