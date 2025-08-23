@@ -220,7 +220,7 @@ Implement:
     @staticmethod
     def validate_action_for_role(action: str, role: str) -> bool:
         """Validate that the action is appropriate for the given role"""
-        attack_actions = ["attack", "big_attack", "multiattack", "precise_attack"]
+        attack_actions = ["attack", "big_attack", "precise_attack"]
         defense_actions = ["defend", "dodge", "brace"]
 
         if role == "attacker":
@@ -243,7 +243,7 @@ Implement:
             # Validate action matches role
             if not self.validate_action_for_role(action, role):
                 valid_actions = (
-                    ["attack", "big_attack", "multiattack", "precise_attack"]
+                    ["attack", "big_attack", "precise_attack"]
                     if role == "attacker"
                     else ["defend", "dodge", "brace"]
                 )
@@ -268,20 +268,22 @@ Implement:
         incoming_damage = attacker.attack
         blocked_damage = defender.defense
         min_damage = 5
+        attack_dex = attacker.dexterity
 
         #apply attack-specific effects
         if attack_action == "big_attack":
-            #big attack doubles attack (but causes attacker to lose half their hp)
+            #big attack doubles attack (but triples or quadruples opponents defense)
             incoming_damage *= 2
-        elif attack_action == "multiattack":
-            #multiattack uses dexterity instead of attack and can do less than 5 damage (but attacks three times)
-            incoming_damage = attacker.dexterity
-            min_damage = 0
+            if random.randint(1, 100) <= attack_dex:
+                blocked_damage *= 3
+            else:
+                blocked_damage *= 4
         elif attack_action == "precise_attack":
             #precise attack reduces attack by 10% (but has a chance to ignore block)
             incoming_damage *= 0.9
-            if random.randint(1, 100) <= attacker.dexterity:
+            if random.randint(1, 100) <= attack_dex:
                 blocked_damage = 0
+            attack_dex *= 3
 
 
         #then apply defenses
@@ -302,20 +304,9 @@ Implement:
                 f"defended ({blocked_damage} damage blocked)",
             )
         elif defense_action == "brace":
-            # Old version #take a maximum damage of 1/2 of maximum hp, defence*0.75
-            # maximum_damage = defender.max_health // 2
-            # blocked_damage *= 0.75
-
-            # final_damage = int(incoming_damage - blocked_damage)
-            # if final_damage > maximum_damage:
-            #     return maximum_damage, "braced, lost half of max hp"
-            # else:
-            #     return final_damage, f"braced, blocked {blocked_damage}"
-
-            #halve the incoming damage, then add the attacker's dex (happens after attack calculations)
             incoming_damage /= 2
             lost_attack = incoming_damage
-            incoming_damage += attacker.dexterity
+            incoming_damage += attack_dex
 
             final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
@@ -345,36 +336,12 @@ Implement:
             "effects": {},
             "health_after": {},
         }
-
-        # Apply self-damage from big attack here (increased damage is in calculate_damage)
-        if attack_action == "big_attack":
-            health_cost = attacker.max_health / 2
-            attacker.health -= health_cost
-            turn_result["effects"]["attacker_health_cost"] = health_cost
-            
-        if attack_action == "multiattack":
-            # Attack multiple times (3)
-            number_of_attacks = 3
-            
-            # Calculate damage the defender takes
-            final_damage = 0
-            defense_msg = f"defended from {number_of_attacks} attacks, results:"
-            for i in range (number_of_attacks):
-                partial_damage, partial_defense_msg = self.calculate_damage(
-                    attacker, defender, attack_action, defend_action
-                )
-                final_damage += partial_damage
-                defense_msg += (" " + partial_defense_msg)
-            
-            defender.health -= final_damage
-            turn_result["effects"]["defense_result"] = defense_msg
-        else:
-            # Calculate damage the defender takes
-            final_damage, defense_msg = self.calculate_damage(
-                attacker, defender, attack_action, defend_action
-            )
-            defender.health -= final_damage
-            turn_result["effects"]["defense_result"] = defense_msg
+        # Calculate damage the defender takes
+        final_damage, defense_msg = self.calculate_damage(
+            attacker, defender, attack_action, defend_action
+        )
+        defender.health -= final_damage
+        turn_result["effects"]["defense_result"] = defense_msg
 
         turn_result["effects"]["damage_dealt"] = final_damage
         turn_result["health_after"] = {
