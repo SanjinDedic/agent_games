@@ -1,6 +1,12 @@
 import React from 'react';
+import { formatNumber } from "../../../../utils/numberFormat";
 
-const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnIndex }) => {
+const ArenaChampionsBattle = ({
+  battleData,
+  currentTurn,
+  battleComplete,
+  turnIndex,
+}) => {
   const { player1, player2, turns } = battleData;
 
   // Get HP values directly from backend data - no complex calculations needed!
@@ -115,15 +121,25 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
       const damageDealt = effects.damage_dealt;
       const attackerHealthCost = effects.attacker_health_cost;
 
-      if (damageDealt) info.push(`Dealt ${Math.round(damageDealt)} damage`);
+      if (damageDealt) info.push(`Dealt ${formatNumber(damageDealt)} damage`);
       if (attackerHealthCost)
-        info.push(`Lost ${Math.round(attackerHealthCost)} HP`);
+        info.push(`Lost ${formatNumber(attackerHealthCost)} HP`);
     }
 
     // If this player is the defender
     if (currentTurn.defender === player) {
       const defenseResult = effects.defense_result;
-      if (defenseResult) info.push(defenseResult);
+      if (defenseResult) {
+        // Format any numbers in the defense result text
+        const formattedResult = defenseResult.replace(
+          /(\d+\.?\d*)/g,
+          (match) => {
+            const num = parseFloat(match);
+            return !isNaN(num) ? formatNumber(num) : match;
+          }
+        );
+        info.push(formattedResult);
+      }
     }
 
     return info.length > 0 ? info.join(", ") : null;
@@ -142,7 +158,8 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                 <div className="flex justify-between text-sm text-ui mb-1">
                   <span>HP</span>
                   <span>
-                    {Math.round(currentHP[player1] || 0)}/{maxHP1}
+                    {formatNumber(currentHP[player1] || 0)}/
+                    {formatNumber(maxHP1)}
                   </span>
                 </div>
                 <div className="w-full bg-ui-lighter rounded-full h-4">
@@ -188,7 +205,8 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                 <div className="flex justify-between text-sm text-ui mb-1">
                   <span>HP</span>
                   <span>
-                    {Math.round(currentHP[player2] || 0)}/{maxHP2}
+                    {formatNumber(currentHP[player2] || 0)}/
+                    {formatNumber(maxHP2)}
                   </span>
                 </div>
                 <div className="w-full bg-ui-lighter rounded-full h-4">
@@ -246,7 +264,9 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                   {currentTurn.effects?.damage_dealt && (
                     <span className="text-danger">
                       {" "}
-                      (Dealt {Math.round(currentTurn.effects.damage_dealt)}{" "}
+                      (Dealt {formatNumber(
+                        currentTurn.effects.damage_dealt
+                      )}{" "}
                       damage)
                     </span>
                   )}
@@ -254,7 +274,10 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                     <span className="text-amber-600">
                       {" "}
                       (Lost{" "}
-                      {Math.round(currentTurn.effects.attacker_health_cost)} HP)
+                      {formatNumber(
+                        currentTurn.effects.attacker_health_cost
+                      )}{" "}
+                      HP)
                     </span>
                   )}
                 </div>
@@ -269,7 +292,15 @@ const ArenaChampionsBattle = ({ battleData, currentTurn, battleComplete, turnInd
                   {currentTurn.effects?.defense_result && (
                     <span className="text-ui">
                       {" "}
-                      ({currentTurn.effects.defense_result})
+                      (
+                      {currentTurn.effects.defense_result.replace(
+                        /(\d+\.?\d*)/g,
+                        (match) => {
+                          const num = parseFloat(match);
+                          return !isNaN(num) ? formatNumber(num) : match;
+                        }
+                      )}
+                      )
                     </span>
                   )}
                 </div>

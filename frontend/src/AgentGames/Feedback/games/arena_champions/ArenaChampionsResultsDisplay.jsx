@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { formatNumber } from '../../../../utils/numberFormat';
 
 const ArenaChampionsResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
     const [results, setResults] = useState([]);
@@ -29,8 +30,8 @@ const ArenaChampionsResultsDisplay = ({ data, highlight = true, data_message = '
             awayWins,
             winRate:
               totalMatches > 0
-                ? ((wins / totalMatches) * 100).toFixed(1)
-                : "0.0",
+                ? formatNumber((wins / totalMatches) * 100)
+                : "0",
             // ✅ Fixed: Include character stats from flattened structure
             attack: data.table?.attack?.[team] || 0,
             defense: data.table?.defense?.[team] || 0,
@@ -232,7 +233,7 @@ const ArenaChampionsResultsDisplay = ({ data, highlight = true, data_message = '
                         key={index}
                         className="p-4 border-b border-ui-light/30"
                       >
-                        {result[column] || 0}
+                        {typeof result[column] === 'number' ? formatNumber(result[column]) : (result[column] || 0)}
                       </td>
                     ))}
                   </tr>
