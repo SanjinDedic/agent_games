@@ -58,20 +58,6 @@ jobs:
         DATABASE_URL=${DATABASE_URL}
         EOF
 
-    - name: Create log files for Docker volume mounts
-      run: |
-        # Create logs directory and log files
-        mkdir -p logs
-        touch logs/api.log
-        touch logs/validator.log  
-        touch logs/simulator.log
-        
-        # Set proper permissions
-        chmod 644 logs/*.log
-        
-        echo "Created log files:"
-        ls -la logs/
-        
     - name: Start Docker Compose services with test profile
       run: |
         docker compose build
@@ -126,15 +112,9 @@ jobs:
            POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
            bash -s" << 'ENDSSH'
           set -e
-          
           echo "Starting deployment..."
-          
-          # Ensure Docker is running
           sudo systemctl start docker || true
-          
-          # Create backup directory if it doesn't exist
           mkdir -p ~/db_backups
-          
           echo "Creating database backup..."
           POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
           if [ -n "$POSTGRES_CONTAINER" ]; then
@@ -145,42 +125,25 @@ jobs:
           else
             echo "Warning: No postgres container found, skipping backup"
           fi
-          
-          # Setup deployment directory
           mkdir -p ~/agent_games
           cd ~/agent_games
-          
-          # Copy validation file
           if [ -f ~/validation_players.py ]; then
             mkdir -p backend/games/lineup4
             cp ~/validation_players.py backend/games/lineup4/validation_players.py
           fi
-          
-          # Update code
           if [ -d ".git" ]; then
             git fetch --all && git reset --hard origin/main
           else
             git clone --depth 1 https://github.com/SanjinDedic/agent_games.git .
           fi
-          
-          # Create log files for production deployment
-          mkdir -p logs
-          touch logs/api.log logs/validator.log logs/simulator.log
-          chmod 644 logs/*.log
-          
-          # Export environment variables for Docker Compose
+          # Logs handled automatically at app startup now
           export SERVICE_TOKEN=${SERVICE_TOKEN}
-          export SECRET_KEY=${SECRET_KEY}
-          export DATABASE_URL=${DATABASE_URL}
-          export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          export DB_ENVIRONMENT=production
-          
-          # Deploy with Docker Compose
+            export SECRET_KEY=${SECRET_KEY}
+            export DATABASE_URL=${DATABASE_URL}
+            export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            export DB_ENVIRONMENT=production
           docker compose --profile prod down || true
           docker compose --profile prod up --build --detach --wait
-          
-          # Verify deployment
           timeout 60s bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done'
-          
           echo "Deployment completed successfully"
         ENDSSH

@@ -2,6 +2,7 @@ import MarkdownFeedback from '../types/MarkdownFeedback';
 import JsonFeedback from '../types/JsonFeedback';
 import PrisonersFeedback from '../games/prisoners_dilemma/PrisonersFeedback';
 import Lineup4Feedback from '../games/lineup4/Lineup4Feedback';
+import ArenaChampionsFeedback from '../games/arena_champions/ArenaChampionsFeedback';
 
 export const getFeedbackComponent = (feedback) => {
     // Handle game-specific feedback
@@ -11,6 +12,8 @@ export const getFeedbackComponent = (feedback) => {
                 return PrisonersFeedback;
             case 'lineup4':
                 return Lineup4Feedback;
+            case 'arena_champions':
+                return ArenaChampionsFeedback;
             default:
                 return JsonFeedback;
         }

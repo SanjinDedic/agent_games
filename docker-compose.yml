@@ -28,9 +28,8 @@ services:
       start_period: 40s
     volumes:
       - ./backend:/agent_games/backend
-      - ./logs/api.log:/agent_games/logs/api.log
-      - ./logs/validator.log:/agent_games/logs/validator.log:ro
-      - ./logs/simulator.log:/agent_games/logs/simulator.log:ro
+      # Mount the whole logs directory (simpler & cross-platform). The app will create files.
+      - ./logs:/agent_games/logs
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -57,7 +56,8 @@ services:
       retries: 3
       start_period: 10s
     volumes:
-      - ./logs/validator.log:/agent_games/logs/validator.log
+      - ./backend:/agent_games/backend
+      - ./logs:/agent_games/logs
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -84,7 +84,7 @@ services:
       retries: 3
       start_period: 10s
     volumes:
-      - ./logs/simulator.log:/agent_games/logs/simulator.log
+      - ./logs:/agent_games/logs
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
