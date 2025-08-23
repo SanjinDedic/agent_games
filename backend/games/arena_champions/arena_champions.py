@@ -121,19 +121,21 @@ Design a champion that battles others in **turn-based** 1-on-1 combat through st
 
 ### Attack Actions (when your_role == "attacker"):
 - **attack**: Deal normal damage based on your attack stat to opponent
-- **big_attack**: Deal double damage to opponent but lose 50% of your current health
+- **big_attack**: Deal double damage to opponent but greatly increases opponent's defense
+- **precise_attack**: Deal 90% damage but chance to ignore opponent's defense completely
 
 ### Defense Actions (when your_role == "defender"):
 - **defend**: Reduce incoming damage by your defense percentage
 - **dodge**: Attempt to completely avoid damage (dexterity% chance)
-- **run_away**: Lose 50% of current health but become immune to this attack
+- **brace**: Halve incoming damage but add attacker's dexterity to the damage
 
 ## Combat Mechanics
 - **Damage Calculation**: Base damage = your attack stat
 - **Defense**: Reduces incoming damage by defense% (capped at 90% damage reduction)
 - **Dodge**: dexterity% chance to completely avoid opponent's attack
-- **Big Attack Cost**: Lose 50% of current HP when using big_attack
-- **Running Away**: Lose 50% current HP, but become immune to this specific attack
+- **Big Attack**: Doubles damage but triples/quadruples opponent's defense based on your dexterity
+- **Precise Attack**: 90% damage but dexterity% chance to ignore all defense, triples dexterity after use
+- **Brace**: Halves incoming damage but adds attacker's dexterity to final damage
 
 ## Programming Challenge
 Implement:
@@ -149,7 +151,7 @@ Implement:
 - **Role Awareness**: Different strategies for attacking vs defending
 - **Turn Order Matters**: Going first in a match gives strategic advantage
 - **Action Validation**: You can only use attack actions when attacking, defense actions when defending
-- **Resource Management**: Big attacks and running away both cost health
+- **Resource Management**: Big attacks increase opponent defense, precise attacks affect your dexterity
 
 ## Leveling Up
 - **Each win automatically adds +1 to ALL attributes**
@@ -158,14 +160,14 @@ Implement:
 ## Strategy Tips
 - **High Attack**: Deal more damage but consider survivability
 - **High Defense**: Consistent damage reduction, good for defensive play
-- **High Dexterity**: High-risk/high-reward - either dodge completely or take full damage
-- **High Health**: More staying power, especially important for big_attack users
+- **High Dexterity**: Important for dodging, precise attacks, and big attack effectiveness
+- **High Health**: More staying power for longer battles
 - **Adaptive Strategy**: Use different approaches when attacking vs defending
 
 ## Example Builds
 - **Glass Cannon**: attack=45, defense=5, max_health=25, dexterity=25
 - **Tank**: attack=10, defense=40, max_health=45, dexterity=5  
-- **Dodge Master**: attack=25, defense=10, max_health=15, dexterity=50
+- **Precise Fighter**: attack=25, defense=10, max_health=15, dexterity=50
 - **Balanced**: attack=25, defense=25, max_health=25, dexterity=25
 """
 
@@ -220,7 +222,7 @@ Implement:
     @staticmethod
     def validate_action_for_role(action: str, role: str) -> bool:
         """Validate that the action is appropriate for the given role"""
-        attack_actions = ["attack", "big_attack", "multiattack", "precise_attack"]
+        attack_actions = ["attack", "big_attack", "precise_attack"]
         defense_actions = ["defend", "dodge", "brace"]
 
         if role == "attacker":
@@ -243,7 +245,7 @@ Implement:
             # Validate action matches role
             if not self.validate_action_for_role(action, role):
                 valid_actions = (
-                    ["attack", "big_attack", "multiattack", "precise_attack"]
+                    ["attack", "big_attack", "precise_attack"]
                     if role == "attacker"
                     else ["defend", "dodge", "brace"]
                 )
@@ -266,20 +268,22 @@ Implement:
         incoming_damage = attacker.attack
         blocked_damage = defender.defense
         min_damage = 5
+        attack_dex = attacker.dexterity
 
         # apply attack-specific effects
         if attack_action == "big_attack":
-            # big attack doubles attack (but causes attacker to lose half their hp)
+            # big attack doubles attack (but triples or quadruples opponents defense)
             incoming_damage *= 2
-        elif attack_action == "multiattack":
-            # multiattack uses dexterity instead of attack and can do less than 5 damage (but attacks three times)
-            incoming_damage = attacker.dexterity
-            min_damage = 0
+            if random.randint(1, 100) <= attack_dex:
+                blocked_damage *= 3
+            else:
+                blocked_damage *= 4
         elif attack_action == "precise_attack":
             # precise attack reduces attack by 10% (but has a chance to ignore block)
             incoming_damage *= 0.9
-            if random.randint(1, 100) <= attacker.dexterity:
+            if random.randint(1, 100) <= attack_dex:
                 blocked_damage = 0
+            attack_dex *= 3
 
         # then apply defenses
         if defense_action == "dodge":
@@ -299,25 +303,15 @@ Implement:
                 f"defended ({blocked_damage} damage blocked)",
             )
         elif defense_action == "brace":
-            # Old version #take a maximum damage of 1/2 of maximum hp, defence*0.75
-            # maximum_damage = defender.max_health // 2
-            # blocked_damage *= 0.75
-
-            # final_damage = int(incoming_damage - blocked_damage)
-            # if final_damage > maximum_damage:
-            #     return maximum_damage, "braced, lost half of max hp"
-            # else:
-            #     return final_damage, f"braced, blocked {blocked_damage}"
-
             # halve the incoming damage, then add the attacker's dex (happens after attack calculations)
             incoming_damage /= 2
             lost_attack = incoming_damage
-            incoming_damage += attacker.dexterity
+            incoming_damage += attack_dex
 
             final_damage = incoming_damage - blocked_damage #floating point damage is allowed
             return (
                 max(min_damage, final_damage),
-                f"braced ({lost_attack} damage subtracted, {attacker.dexterity} damage added, {blocked_damage} damage blocked)",
+                f"braced ({lost_attack} damage subtracted, {attack_dex} damage added, {blocked_damage} damage blocked)",
             )
 
         else:
@@ -345,35 +339,12 @@ Implement:
             "health_after": {},
         }
 
-        # Apply self-damage from big attack here (increased damage is in calculate_damage)
-        if attack_action == "big_attack":
-            health_cost = 1 + attacker.health / 2
-            attacker.health -= health_cost
-            turn_result["effects"]["attacker_health_cost"] = health_cost
-
-        if attack_action == "multiattack":
-            # Attack multiple times (3)
-            number_of_attacks = 3
-
-            # Calculate damage the defender takes
-            final_damage = 0
-            defense_msg = f"defended from {number_of_attacks} attacks, results:"
-            for i in range (number_of_attacks):
-                partial_damage, partial_defense_msg = self.calculate_damage(
-                    attacker, defender, attack_action, defend_action
-                )
-                final_damage += partial_damage
-                defense_msg += (" " + partial_defense_msg)
-
-            defender.health -= final_damage
-            turn_result["effects"]["defense_result"] = defense_msg
-        else:
-            # Calculate damage the defender takes
-            final_damage, defense_msg = self.calculate_damage(
-                attacker, defender, attack_action, defend_action
-            )
-            defender.health -= final_damage
-            turn_result["effects"]["defense_result"] = defense_msg
+        # Calculate damage the defender takes
+        final_damage, defense_msg = self.calculate_damage(
+            attacker, defender, attack_action, defend_action
+        )
+        defender.health -= final_damage
+        turn_result["effects"]["defense_result"] = defense_msg
 
         turn_result["effects"]["damage_dealt"] = final_damage
         turn_result["health_after"] = {
