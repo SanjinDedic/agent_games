@@ -44,18 +44,13 @@ import random
 class CustomPlayer(Player):
     def __init__(self):
         super().__init__()
-        # Set your character attributes (each must be between 0.1 and 0.5)
-        self.strength_p = 0.30      # Damage per hit
-        self.defense_p = 0.20     # Damage reduction %
-        self.max_health_p = 0.25  # Max health points
-        self.dexterity_p = 0.25   # Dodge chance %
+        # Distribute proportions between 0.2 and 0.4 and keep the sum <= 1.0
+        self.attack_proportion = 0.30
+        self.defense_proportion = 0.20
+        self.max_health_proportion = 0.25
+        self.dexterity_proportion = 0.25
         self.set_to_original_stats()
-        
-        
-        # Example builds:
-        # Glass Cannon: attack=45, defense=5, max_health=25, dexterity=25
-        # Tank: attack=10, defense=40, max_health=45, dexterity=5
-        # Dodger: attack=25, defense=10, max_health=15, dexterity=50
+
     
     def make_combat_decision(self, opponent_stats, turn, your_role, last_opponent_action=None):
         # ROLE-BASED COMBAT: You are told if you're attacking or defending
@@ -93,82 +88,41 @@ class CustomPlayer(Player):
 """
 
     game_instructions = """
-# Arena Champions - Turn-Based Combat Programming Game
+# Arena Champions — concise rules and RPS matchup
 
-Design a champion that battles others in **turn-based** 1-on-1 combat through strategic programming.
+Program a fighter and battle 1v1 in turns. Each turn has clear roles:
+- Attacker chooses an attack.
+- Defender chooses a response.
+You may only use attack actions as attacker and defense actions as defender.
 
-## Tournament Structure (Home/Away System)
-- **Each pair fights TWICE** (like soccer home/away matches)
-- **Match 1**: Player A goes first, Player B goes second
-- **Match 2**: Player B goes first, Player A goes second  
-- **First player advantage**: Gets to act first in turn-based combat
+## Build your champion (5–50 each)
+- attack: base damage
+- defense: damage reduction (capped)
+- max_health: total HP
+- dexterity: dodge chance and precision
 
-## Turn-Based Combat System
-- **Players alternate turns** - only ONE player acts per turn
-- **Role-Based**: You're explicitly told if you're the "attacker" or "defender" each turn
-- **Attacker**: Choose attack actions that affect the opponent
-- **Defender**: Choose defensive actions to counter incoming attacks
+## Actions
+- Attacker: attack, big_attack, precise_attack
+- Defender: defend, dodge, brace
 
-## Character Creation
-- Set your attributes directly in the `__init__` method
-- Each attribute must be between **5 and 50**:
-  - **attack**: Damage per strike
-  - **defense**: Damage reduction percentage (capped at 90% effectiveness)
-  - **max_health**: Total health points
-  - **dexterity**: Dodge chance percentage
+## Rock–Paper–Scissors (RPS) core
+- Each attack is strong vs one defense, weak vs another; the third is neutral.
+- Each defense is strong vs one attack, weak vs another; the third is neutral.
 
-## Combat Actions (Based on Your Role)
+### Matchup table
+```
+|                | defend | brace  | dodge  |
+|----------------|:------:|:------:|:------:|
+| attack         | neutral|  weak  | strong |
+| big_attack     | strong | neutral|  weak  |
+| precise_attack |  weak  | strong | neutral|
+```
 
-### Attack Actions (when your_role == "attacker"):
-- **attack**: Deal normal damage based on your attack stat to opponent
-- **big_attack**: Deal double damage to opponent but greatly increases opponent's defense
-- **precise_attack**: Deal 90% damage but chance to ignore opponent's defense completely
-
-### Defense Actions (when your_role == "defender"):
-- **defend**: Reduce incoming damage by your defense percentage
-- **dodge**: Attempt to completely avoid damage (dexterity% chance)
-- **brace**: Halve incoming damage but add attacker's dexterity to the damage
-
-## Combat Mechanics
-- **Damage Calculation**: Base damage = your attack stat
-- **Defense**: Reduces incoming damage by defense% (capped at 90% damage reduction)
-- **Dodge**: dexterity% chance to completely avoid opponent's attack
-- **Big Attack**: Doubles damage but triples/quadruples opponent's defense based on your dexterity
-- **Precise Attack**: 90% damage but dexterity% chance to ignore all defense, triples dexterity after use
-- **Brace**: Halves incoming damage but adds attacker's dexterity to final damage
-
-## Programming Challenge
-Implement:
-1. `__init__()`: Set your character attributes (attack, defense, max_health, dexterity) between 5-50
-2. `make_combat_decision()`: Choose your action based on your role using:
-   - `your_role`: Either "attacker" or "defender" 
-   - `self.health`, `self.attack`, etc. for your stats
-   - `opponent_stats` dict for opponent information
-   - `turn` number for turn-based strategy
-   - `last_opponent_action` to react to what they just did
-
-## Strategic Considerations
-- **Role Awareness**: Different strategies for attacking vs defending
-- **Turn Order Matters**: Going first in a match gives strategic advantage
-- **Action Validation**: You can only use attack actions when attacking, defense actions when defending
-- **Resource Management**: Big attacks increase opponent defense, precise attacks affect your dexterity
-
-## Leveling Up
-- **Each win automatically adds +1 to ALL attributes**
-- Plan your initial build knowing you'll become stronger with victories
-
-## Strategy Tips
-- **High Attack**: Deal more damage but consider survivability
-- **High Defense**: Consistent damage reduction, good for defensive play
-- **High Dexterity**: Important for dodging, precise attacks, and big attack effectiveness
-- **High Health**: More staying power for longer battles
-- **Adaptive Strategy**: Use different approaches when attacking vs defending
-
-## Example Builds
-- **Glass Cannon**: attack=45, defense=5, max_health=25, dexterity=25
-- **Tank**: attack=10, defense=40, max_health=45, dexterity=5  
-- **Precise Fighter**: attack=25, defense=10, max_health=15, dexterity=50
-- **Balanced**: attack=25, defense=25, max_health=25, dexterity=25
+## Notes
+- Dodge can fully avoid hits (chance scales with dexterity).
+- Big attack trades reliability for burst and may self-penalize.
+- Precise attack trades raw damage for accuracy/armor-pierce potential.
+- Each win can level up your stats (+1 each).
 """
 
     def __init__(self, league, verbose=False):
@@ -201,19 +155,19 @@ Implement:
 
     def _validate_player_attributes(self, player):
         """Validate player attributes are within allowed ranges"""
-        if not (0.1 <= player.attack_proportion <= 0.5):
+        if not (0.2 <= player.attack_proportion <= 0.4):
             raise ValueError(
                 f"Invalid attack proportion for {player.name}: {player.attack_proportion}"
             )
-        if not (0.1 <= player.defense_proportion <= 0.5):
+        if not (0.2 <= player.defense_proportion <= 0.4):
             raise ValueError(
                 f"Invalid defense proportion for {player.name}: {player.defense_proportion}"
             )
-        if not (0.1 <= player.dexterity_proportion <= 0.5):
+        if not (0.2 <= player.dexterity_proportion <= 0.4):
             raise ValueError(
                 f"Invalid dexterity proportion for {player.name}: {player.dexterity_proportion}"
             )
-        if not (0.1 <= player.max_health_proportion <= 0.5):
+        if not (0.2 <= player.max_health_proportion <= 0.4):
             raise ValueError(
                 f"Invalid max health proportion for {player.name}: {player.max_health_proportion}"
             )
@@ -279,11 +233,11 @@ Implement:
         min_damage = 10
 
         # tweak these figures until the game is blanced (min 6000 wind and max 9000 wins)
-        big_attack_multiplier = 2.3  # Big attack multiplier
-        precise_attack_multiplier = 0.5
+        big_attack_multiplier = 2.33  # Big attack multiplier
+        precise_attack_multiplier = 0.55
         def_vs_precise_attack_multiplier = 1.3
         def_vs_big_attack_reducer = 0.3  # Defense effectiveness vs big attack
-        brace_vs_attack_multiplier = 0.6  # Brace effectiveness vs regular attack
+        brace_vs_attack_multiplier = 0.65  # Brace effectiveness vs regular attack
         brace_vs_precise_attack_multiplier = 0.5  # Brace effectiveness vs big attack
 
         # Attack modifiers
@@ -298,7 +252,7 @@ Implement:
         # Defense handling with effectiveness system
         if defense_action == "dodge":
             # Dodge chance enhanced by dexterity
-            dodge_chance = min(defender.dexterity, 75)
+            dodge_chance = min(defender.dexterity * 1.5, 75)
             if random.randint(0, 100) <= dodge_chance:
                 return 0, "dodged completely"
             # Effectiveness after failed dodge
@@ -309,7 +263,7 @@ Implement:
                 final_damage = base_damage  # Average vs precise
                 msg = "dodge failed, moderate damage from precise attack"
             else:  # regular attack
-                final_damage = base_damage * 1.3  # Weak vs regular
+                final_damage = base_damage * 1.2  # Weak vs regular
                 msg = "dodge failed, vulnerable to regular attack"
 
         elif defense_action == "defend":
@@ -508,7 +462,7 @@ Implement:
         self.game_feedback = {"game": "arena_champions", "battles": []}
 
         # Initialize characters without validation (preserve leveled-up stats)
-        self.initialize_characters(validate_initial_attributes=False)
+        self.initialize_characters(validate_initial_attributes=True)
 
         # FIXED: Use combinations to ensure each pair fights exactly twice
         for player1, player2 in itertools.combinations(self.players, 2):
