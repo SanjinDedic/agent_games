@@ -68,9 +68,11 @@ function AgentGamesNavbar() {
                 <Link to="/AdminDockerStatus" className={navLinkClasses}>
                   Docker Status
                 </Link>
+                {/*
                 <Link to="/AdminDemoUsers" className={navLinkClasses}>
                   Demo Users
                 </Link>
+                */}
               </>
             ) : isInstitutionRoute ? (
               // Institution navigation links
@@ -94,9 +96,11 @@ function AgentGamesNavbar() {
                 <Link to="/" className={navLinkClasses}>
                   Home
                 </Link>
+                {/*
                 <Link to="/Demo" className={navLinkClasses}>
                   Demo
                 </Link>
+                */}
                 <Link to="/Institution" className={navLinkClasses}>
                   Institutions
                 </Link>
