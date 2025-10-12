@@ -63,28 +63,13 @@ class CustomPlayer(Player):
         
         hp_percentage = self.health / self.max_health
         
+        # Chose a random valid attack
         if your_role == "attacker":
-            # Attack Actions: 'attack', 'big_attack'
-            if opponent_stats['health'] < 20 and hp_percentage > 0.5:
-                self.add_feedback("Going for the kill with big attack!")
-                return 'big_attack'
-            else:
-                self.add_feedback("Standard attack")
-                return 'attack'
-                
+            return random.choice(['attack', 'big_attack', 'precise_attack'])
+
+        # Always brace as defender        
         elif your_role == "defender":
-            # Defense Actions: 'defend', 'dodge', 'brace'
-            if hp_percentage < 0.2:
-                self.add_feedback("Low health - running away!")
-                return 'brace'
-            elif hp_percentage < 0.4:
-                self.add_feedback("Defending to stay alive")
-                return 'defend'
-            else:
-                self.add_feedback("Attempting to dodge")
-                return 'dodge'
-        else:
-            raise ValueError(f"Invalid role: {your_role}")
+            return "brace"
 """
 
     game_instructions = """
