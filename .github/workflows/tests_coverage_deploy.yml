@@ -127,9 +127,23 @@ jobs:
           fi
           mkdir -p ~/agent_games
           cd ~/agent_games
-          if [ -f ~/validation_players.py ]; then
+          # Inject validation players from server home if available
+          # lineup4
+          if [ -f ~/lineup4_players.py ]; then
+            echo "Using ~/lineup4_players.py for lineup4 validation players"
             mkdir -p backend/games/lineup4
-            cp ~/validation_players.py backend/games/lineup4/validation_players.py
+            cp ~/lineup4_players.py backend/games/lineup4/validation_players.py
+          else
+            echo "No lineup4 validation players file found in home directory"
+          fi
+
+          # arena_champions
+          if [ -f ~/arena_players.py ]; then
+            echo "Using ~/arena_players.py for arena_champions validation players"
+            mkdir -p backend/games/arena_champions
+            cp ~/arena_players.py backend/games/arena_champions/validation_players.py
+          else
+            echo "No arena_champions validation players file found in home directory"
           fi
           if [ -d ".git" ]; then
             git fetch --all && git reset --hard origin/main
