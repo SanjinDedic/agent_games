@@ -55,14 +55,13 @@ class CustomPlayer(Player):
     def make_combat_decision(self, opponent_stats, turn, your_role, last_opponent_action=None):
         # ROLE-BASED COMBAT: You are told if you're attacking or defending
         # your_role will be either "attacker" or "defender"
-        
-        # You can access your own stats with self.health, self.attack, etc.
-        # Opponent stats available in opponent_stats dict (see below)
-
-        self.add_feedback(
-            f"Turn {turn} | Role: {your_role} | Opp last: {last_opponent_action} | "
-            f"Opp stats: {opponent_stats} | My HP: {self.health}/{self.max_health} | Action: {decision}"
-        )
+        # ------------------------------------------------------------------------------------
+        # USEFUL INFORMATION ABOUT THE GAME AND YOUR OPPONENT:
+        self.add_feedback(opponent_stats)
+        opponent_action= "Here are the opponents last action: " + str(last_opponent_action)
+        self.add_feedback(opponent_action)
+        # NOTE: self.add_feedback needs a string or a dictionary
+        #-------------------------------------------------------------------------------------
         # Chose a random valid attack
         if your_role == "attacker":
             return random.choice(['attack', 'big_attack', 'precise_attack'])
@@ -70,6 +69,7 @@ class CustomPlayer(Player):
         # Always brace as defender        
         elif your_role == "defender":
             return "brace"
+
 """
 
     game_instructions = """
