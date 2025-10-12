@@ -81,10 +81,10 @@ class CustomPlayer(Player):
 
 ### Step 1: Assign Attributes 
 First assign attribute proportions (each is between 0.2 and 0.4, total adds up to 1.0):
-`attack_proportion`: increases attack damage
-`defense_proportion`: increases damage reduction
-`max_health_proportion`: increases total HP (more HP = harder to KO)
-`dexterity_proportion`: increases dodge chance and precision
+- `attack_proportion`: increases attack damage
+- `defense_proportion`: increases damage reduction
+- `max_health_proportion`: increases total HP (more HP = harder to KO)
+- `dexterity_proportion`: increases dodge chance and precision
 
 
 ### Step 2: Combat Actions
