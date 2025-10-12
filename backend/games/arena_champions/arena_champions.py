@@ -95,11 +95,13 @@ Each turn, one player is the attacker and the other is the defender.
 
 ### Matchup table
 ```
-|                | defend | brace  | dodge  |
-|----------------|:------:|:------:|:------:|
-| attack         | neutral|  weak  | strong |
-| big_attack     | strong | neutral|  weak  |
-| precise_attack |  weak  | strong | neutral|
+------------------------------------------------
+|                | defend  |  brace  |  dodge  |
+|----------------|---------|---------|---------|
+| attack         | neutral |  weak   | strong  |
+| big_attack     | strong  | neutral |  weak   |
+| precise_attack |  weak   | strong  | neutral |
+------------------------------------------------
 ```
 
 ### Notes
