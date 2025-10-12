@@ -45,8 +45,8 @@ class CustomPlayer(Player):
     def __init__(self):
         super().__init__()
         # Distribute proportions between 0.2 and 0.4 and keep the sum <= 1.0
-        self.attack_proportion = 0.30
-        self.defense_proportion = 0.20
+        self.attack_proportion = 0.25
+        self.defense_proportion = 0.25
         self.max_health_proportion = 0.25
         self.dexterity_proportion = 0.25
         self.set_to_original_stats()
