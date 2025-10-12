@@ -127,6 +127,11 @@ jobs:
           fi
           mkdir -p ~/agent_games
           cd ~/agent_games
+          if [ -d ".git" ]; then
+            git fetch --all && git reset --hard origin/main
+          else
+            git clone --depth 1 https://github.com/SanjinDedic/agent_games.git .
+          fi
           # Inject validation players from server home if available
           # lineup4
           if [ -f ~/lineup4_players.py ]; then
@@ -144,11 +149,6 @@ jobs:
             cp ~/arena_players.py backend/games/arena_champions/validation_players.py
           else
             echo "No arena_champions validation players file found in home directory"
-          fi
-          if [ -d ".git" ]; then
-            git fetch --all && git reset --hard origin/main
-          else
-            git clone --depth 1 https://github.com/SanjinDedic/agent_games.git .
           fi
           # Logs handled automatically at app startup now
           export SERVICE_TOKEN=${SERVICE_TOKEN}
