@@ -56,13 +56,13 @@ class CustomPlayer(Player):
         # ROLE-BASED COMBAT: You are told if you're attacking or defending
         # your_role will be either "attacker" or "defender"
         
-        # Access your own stats with self.health, self.attack, etc.
-        # Opponent stats available in opponent_stats dict
-        # turn = current turn number
-        # last_opponent_action = what they did on their last turn
-        
-        hp_percentage = self.health / self.max_health
-        
+        # You can access your own stats with self.health, self.attack, etc.
+        # Opponent stats available in opponent_stats dict (see below)
+
+        self.add_feedback(
+            f"Turn {turn} | Role: {your_role} | Opp last: {last_opponent_action} | "
+            f"Opp stats: {opponent_stats} | My HP: {self.health}/{self.max_health} | Action: {decision}"
+        )
         # Chose a random valid attack
         if your_role == "attacker":
             return random.choice(['attack', 'big_attack', 'precise_attack'])
