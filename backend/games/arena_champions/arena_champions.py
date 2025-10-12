@@ -75,24 +75,23 @@ class CustomPlayer(Player):
     game_instructions = """
 # Arena Champions — concise rules and RPS matchup
 
-Program a fighter and battle 1v1 in turns. Each turn has clear roles:
-- Attacker chooses an attack.
-- Defender chooses a response.
-You may only use attack actions as attacker and defense actions as defender.
+### Overview
+- 2 players face off in turn-based combat.
+- Competition format is a leauge where each player fights every other player twice (home and away).
 
-## Build your champion (5–50 each)
-- attack: base damage
-- defense: damage reduction (capped)
-- max_health: total HP
-- dexterity: dodge chance and precision
+### Step 1: Assign Attributes 
+First assign attribute proportions (each is between 0.2 and 0.4, total adds up to 1.0):
+`attack_proportion`: increases attack damage
+`defense_proportion`: increases damage reduction
+`max_health_proportion`: increases total HP (more HP = harder to KO)
+`dexterity_proportion`: increases dodge chance and precision
 
-## Actions
-- Attacker: attack, big_attack, precise_attack
-- Defender: defend, dodge, brace
 
-## Rock–Paper–Scissors (RPS) core
-- Each attack is strong vs one defense, weak vs another; the third is neutral.
-- Each defense is strong vs one attack, weak vs another; the third is neutral.
+### Step 2: Combat Actions
+Each turn, one player is the attacker and the other is the defender.
+- Attacker can choose: attack, big_attack, precise_attack
+- Defender can choose: defend, dodge, brace
+
 
 ### Matchup table
 ```
@@ -103,11 +102,15 @@ You may only use attack actions as attacker and defense actions as defender.
 | precise_attack |  weak  | strong | neutral|
 ```
 
-## Notes
+### Notes
 - Dodge can fully avoid hits (chance scales with dexterity).
-- Big attack trades reliability for burst and may self-penalize.
-- Precise attack trades raw damage for accuracy/armor-pierce potential.
-- Each win can level up your stats (+1 each).
+- Big attack deals double damage but costs 50% of your current HP + 15 HP.
+- Precise attack is more effective against bracing defenders and scales with dexterity.
+- Each win can level up your stats in their chosen proportions.
+
+### Game logic:
+You can find the source code for the exact damage calculations [HERE](https://github.com/SanjinDedic/agent_games/blob/88305bcc5fa28c8bafff69b310dbaea0305ff4dd/backend/games/arena_champions/arena_champions.py#L213)
+
 """
 
     def __init__(self, league, verbose=False):
