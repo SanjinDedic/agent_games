@@ -228,75 +228,111 @@ You may only use attack actions as attacker and defense actions as defender.
     def calculate_damage(
         self, attacker, defender, attack_action: str, defense_action: str
     ) -> Tuple[int, str]:
-        """Calculate final damage taken using rock-paper-scissors defense system"""
-        base_damage = attacker.attack
+        """Calculate final damage taken using rock-paper-scissors defense system
+
+        RPS Table:
+        - attack:         neutral vs defend | weak vs brace    | strong vs dodge
+        - big_attack:     strong vs defend  | neutral vs brace | weak vs dodge
+        - precise_attack: weak vs defend    | strong vs brace  | neutral vs dodge
+        """
+
+        # ==================== BRACE MULTIPLIERS ====================
+        # (multiply final damage - lower = stronger defense)
+        brace_vs_standard_attack = 0.5  # STRONG vs attack
+        brace_vs_big_attack = 1.4  # NEUTRAL vs big_attack (attacker takes self-damage)
+        brace_vs_precise = 1.0  # WEAK vs precise_attack
+
+        # ==================== DEFEND MULTIPLIERS ====================
+        # (multiply final damage - lower = stronger defense)
+        defend_vs_standard_attack = 1.1  # NEUTRAL vs attack
+        defend_vs_big_attack = 2  # WEAK vs big_attack
+        defend_vs_precise = 0.4  # STRONG vs precise_attack
+
+        # ==================== DODGE CHANCE MULTIPLIERS ====================
+        # (multiply dodge chance - higher = easier to dodge)
+        dodge_vs_standard_attack_multiplier = 0.3  # WEAK vs attack
+        dodge_vs_big_attack_multiplier = 1.6  # STRONG vs big_attack
+        dodge_vs_precise_attack_multiplier = 1.1  # NEUTRAL vs precise_attack
+
+        # ==================== BASE MECHANICS ====================
+        base_dodge_chance_per_dex = 1.5
+        max_dodge_chance = 75
         min_damage = 10
 
-        # tweak these figures until the game is blanced (min 6000 wind and max 9000 wins)
-        big_attack_multiplier = 2.33  # Big attack multiplier
-        precise_attack_multiplier = 0.55
-        def_vs_precise_attack_multiplier = 1.3
-        def_vs_big_attack_reducer = 0.3  # Defense effectiveness vs big attack
-        brace_vs_attack_multiplier = 0.65  # Brace effectiveness vs regular attack
-        brace_vs_precise_attack_multiplier = 0.5  # Brace effectiveness vs big attack
+        # ==================== CALCULATE BASE DAMAGE ====================
+        base_damage = attacker.attack
 
-        # Attack modifiers
+        # Apply attack modifiers
         if attack_action == "big_attack":
-            # Big attack doubles damage but increases opponent's defense
-            base_damage *= big_attack_multiplier
-            attacker.health = attacker.health / 2 - 1  # Lose 50% health
+            base_damage *= 2  # Big attack always deals double damage
+            attacker.health -= (attacker.health * 0.5) + 15  # Always costs 50% HP + 10
         elif attack_action == "precise_attack":
-            # Enhanced by dexterity
-            base_damage += attacker.dexterity * precise_attack_multiplier
+            base_damage += attacker.dexterity * 0.5  # Dexterity bonus
+        # else: standard attack uses base_damage as-is
 
-        # Defense handling with effectiveness system
+        # ==================== APPLY DEFENSE ====================
+
         if defense_action == "dodge":
-            # Dodge chance enhanced by dexterity
-            dodge_chance = min(defender.dexterity * 1.5, 75)
+            # Calculate base dodge chance
+            base_dodge_chance = min(
+                defender.dexterity * base_dodge_chance_per_dex, max_dodge_chance
+            )
+
+            # Apply dodge multiplier based on attack type
+            if attack_action == "attack":
+                dodge_chance = base_dodge_chance * dodge_vs_standard_attack_multiplier
+                attack_type = "standard attack"
+            elif attack_action == "big_attack":
+                dodge_chance = base_dodge_chance * dodge_vs_big_attack_multiplier
+                attack_type = "big attack"
+            else:  # precise_attack
+                dodge_chance = base_dodge_chance * dodge_vs_precise_attack_multiplier
+                attack_type = "precise attack"
+
+            # Attempt dodge
             if random.randint(0, 100) <= dodge_chance:
-                return 0, "dodged completely"
-            # Effectiveness after failed dodge
-            if attack_action == "big_attack":
-                final_damage = base_damage * 0.7  # Strong vs big attack
-                msg = "dodge failed but reduced big attack damage"
-            elif attack_action == "precise_attack":
-                final_damage = base_damage  # Average vs precise
-                msg = "dodge failed, moderate damage from precise attack"
-            else:  # regular attack
-                final_damage = base_damage * 1.2  # Weak vs regular
-                msg = "dodge failed, vulnerable to regular attack"
+                return 0, f"dodged {attack_type} completely"
+
+            # Failed dodge - take full damage
+            final_damage = base_damage * 1.3  # Slight penalty for failed dodge
+            msg = f"dodge failed vs {attack_type}"
 
         elif defense_action == "defend":
-            if attack_action == "precise_attack":
-                final_damage = (
-                    base_damage - defender.defense * def_vs_precise_attack_multiplier
-                )
-                msg = f"strong defense vs precise attack ({defender.defense * 1.5} blocked)"
-            elif attack_action == "attack":
-                final_damage = 10 + base_damage - defender.defense  # Average vs regular
-                msg = f"defended normally ({defender.defense} blocked)"
-            else:  # big_attack
-                final_damage = (
-                    base_damage - defender.defense * def_vs_big_attack_reducer
-                )  # Weak vs big
-                msg = f"defense overwhelmed by big attack ({defender.defense} blocked)"
+            # Apply defend multiplier based on attack type
+            if attack_action == "attack":
+                multiplier = defend_vs_standard_attack
+                effectiveness = "neutral defense"
+            elif attack_action == "big_attack":
+                multiplier = defend_vs_big_attack
+                effectiveness = "weak defense vs big attack"
+            else:  # precise_attack
+                multiplier = defend_vs_precise
+                effectiveness = "strong defense vs precise"
+
+            final_damage = base_damage * multiplier
+            msg = f"{effectiveness}"
 
         elif defense_action == "brace":
+            # Apply brace multiplier based on attack type
             if attack_action == "attack":
-                final_damage = (
-                    base_damage * brace_vs_attack_multiplier
-                )  # Strong vs regular
-                msg = "braced effectively vs regular attack"
+                multiplier = brace_vs_standard_attack
+                effectiveness = "strong brace vs attack"
             elif attack_action == "big_attack":
-                final_damage = base_damage
-                msg = "braced with moderate effectiveness vs big attack"
+                multiplier = brace_vs_big_attack
+                effectiveness = "neutral brace vs big attack"
             else:  # precise_attack
-                final_damage = base_damage * brace_vs_precise_attack_multiplier
-                msg = "brace vulnerable to precise attack"
+                multiplier = brace_vs_precise
+                effectiveness = "weak brace vs precise"
+
+            final_damage = base_damage * multiplier
+            msg = f"{effectiveness}"
+
         else:
-            # No defense
+            # No valid defense
             final_damage = base_damage
             msg = "no defense"
+
+        # Return final damage (at least min_damage)
         return max(min_damage, final_damage), msg
 
     def resolve_combat_round(
@@ -399,6 +435,20 @@ You may only use attack actions as attacker and defense actions as defender.
             turn_result["turn"] = turn_number
             battle_result.add_turn(turn_result)
 
+            # New rule: if a big_attack causes the attacker to KO themselves,
+            # the attacker loses immediately (defender wins), even if it's a double-KO.
+            try:
+                if attack_action == "big_attack":
+                    after_attacker_hp = turn_result["health_after"][str(attacker.name)]
+                    after_defender_hp = turn_result["health_after"][str(defender.name)]
+                    if after_attacker_hp <= 0:
+                        battle_result.set_winner(str(defender.name))
+                        # End battle immediately per self-KO rule
+                        break
+            except Exception:
+                # If anything goes wrong reading the turn_result, fall back to default logic
+                pass
+
             # Update last actions
             last_actions[str(attacker.name)] = attack_action
             last_actions[str(defender.name)] = defend_action
@@ -406,11 +456,15 @@ You may only use attack actions as attacker and defense actions as defender.
             if first_player.health <= 0 or second_player.health <= 0:
                 break
 
-        # Determine winner if battle didn't end early. The second player wins the tie if both players are at/below 0 hp
+        # Determine winner if battle didn't end early or was not decided by self-KO rule.
+        # The second player wins the tie if both players are at/below 0 hp.
         if not battle_result.winner:
-            if first_player.health > 0:
+            if first_player.health > 0 and second_player.health <= 0:
                 battle_result.set_winner(str(first_player.name))
+            elif second_player.health > 0 and first_player.health <= 0:
+                battle_result.set_winner(str(second_player.name))
             else:
+                # Tie/double-KO fallback
                 battle_result.set_winner(str(second_player.name))
 
         battle_result.set_final_health(first_player.health, second_player.health)
