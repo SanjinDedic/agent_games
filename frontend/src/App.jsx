@@ -3,8 +3,7 @@ import AgentHome from './AgentGames/AgentHome';
 import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
-import AgentLeagueSignUp from './AgentGames/User/LeagueSignup';
-import Demo from './AgentGames/Demo';
+import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
 import Institutions from './AgentGames/Institutions';
 import Institution from "./AgentGames/Institution/Institution";
 import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
@@ -24,7 +23,9 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { toggleTooltips } from "./slices/settingsSlice";
 import DockerStatus from "./AgentGames/Admin/DockerStatus";
-import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
+// Demo and AdminDemoUsers temporarily hidden
+// import Demo from './AgentGames/Demo';
+// import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
 
 function App() {
@@ -44,7 +45,8 @@ function App() {
           <Route path="AgentLeagueSignUp" element={<AgentLeagueSignUp />} />
           <Route path="AgentSubmission" element={<AgentSubmission />} />
           <Route path="Rankings" element={<AgentRankings />} />
-          <Route path="Demo" element={<Demo />} />
+          {/* Demo route temporarily hidden */}
+          {/* <Route path="Demo" element={<Demo />} /> */}
           <Route path="Institutions" element={<Institutions />} />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route
@@ -61,7 +63,7 @@ function App() {
             element={<AdminLeagueSimulation />}
           />
           <Route path="AdminInstitutions" element={<AdminInstitutions />} />
-          <Route path="AdminDemoUsers" element={<AdminDemoUsers />} />
+          {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
           <Route path="AdminDockerStatus" element={<DockerStatus />} />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />

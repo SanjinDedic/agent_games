@@ -28,9 +28,7 @@ services:
       start_period: 40s
     volumes:
       - ./backend:/agent_games/backend
-      - ./logs/api.log:/agent_games/logs/api.log
-      - ./logs/validator.log:/agent_games/logs/validator.log:ro
-      - ./logs/simulator.log:/agent_games/logs/simulator.log:ro
+      - logs_data:/agent_games/logs
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -57,7 +55,8 @@ services:
       retries: 3
       start_period: 10s
     volumes:
-      - ./logs/validator.log:/agent_games/logs/validator.log
+      - ./backend:/agent_games/backend
+      - logs_data:/agent_games/logs
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -84,7 +83,7 @@ services:
       retries: 3
       start_period: 10s
     volumes:
-      - ./logs/simulator.log:/agent_games/logs/simulator.log
+      - logs_data:/agent_games/logs
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -131,7 +130,6 @@ services:
     ports:
       - "5433:5432"
     environment:
-      # Hardcoded test database credentials - no secrets needed
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test_db_password
       POSTGRES_DB: agent_games_test
@@ -151,3 +149,4 @@ services:
 volumes:
   postgres_data:
   postgres_test_data:
+  logs_data:

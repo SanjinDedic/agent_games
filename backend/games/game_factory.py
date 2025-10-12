@@ -11,7 +11,9 @@ class GameFactory:
             return PrisonersDilemmaGame
         elif game_name == "lineup4":
             from backend.games.lineup4.lineup4 import Lineup4Game
-
             return Lineup4Game
+        elif game_name == "arena_champions":
+            from backend.games.arena_champions.arena_champions import ArenaChampionsGame
+            return ArenaChampionsGame
         else:
             raise ValueError(f"Unknown game: {game_name}")

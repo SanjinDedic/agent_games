@@ -15,9 +15,9 @@ function AgentLeagueSignUp() {
   const accessToken = useSelector((state) => state.auth.token);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
-  const isDemo = useSelector(
-    (state) => state.auth.currentUser?.is_demo || false
-  );
+  // const isDemo = useSelector(
+  //   (state) => state.auth.currentUser?.is_demo || false
+  // );
 
   // Use the league API hook
   const { fetchUserLeagues, assignToLeague, isLoading } = useLeagueAPI();
@@ -56,11 +56,9 @@ function AgentLeagueSignUp() {
   };
 
   // Filter leagues for demo users if needed
-  const displayLeagues = isDemo
-    ? allLeagues.filter((league) => league.name.toLowerCase().includes("_demo"))
-    : allLeagues.filter(
-        (league) => !league.name.toLowerCase().includes("_demo")
-      );
+  const displayLeagues = allLeagues.filter(
+    (league) => !league.name.toLowerCase().includes("_demo")
+  );
 
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center bg-ui-lighter">
@@ -70,6 +68,7 @@ function AgentLeagueSignUp() {
             PICK A LEAGUE TO JOIN
           </h1>
 
+          {/**
           {isDemo && (
             <div className="mb-6 bg-notice-yellowBg border border-notice-yellow rounded-lg p-4">
               <div className="flex items-center space-x-2">
@@ -84,6 +83,7 @@ function AgentLeagueSignUp() {
               </p>
             </div>
           )}
+          */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-ui-lighter p-6 rounded-lg">
             {displayLeagues.length > 0 ? (
@@ -92,15 +92,14 @@ function AgentLeagueSignUp() {
                   key={league.id}
                   className={`
                     flex items-center p-4 rounded-lg cursor-pointer
-                    ${
-                      isDemo
-                        ? "bg-notice-orange hover:bg-notice-orange/90"
-                        : "bg-league-blue hover:bg-league-hover"
-                    }
+                    bg-league-blue hover:bg-league-hover
                     transform transition-all duration-200 hover:scale-105
                     shadow-md
                   `}
                 >
+                  {/** If demo mode is re-enabled, replace the bg classes above with:
+                   *  ${isDemo ? "bg-notice-orange hover:bg-notice-orange/90" : "bg-league-blue hover:bg-league-hover"}
+                   */}
                   <input
                     type="checkbox"
                     name={league.name}
@@ -137,12 +136,7 @@ function AgentLeagueSignUp() {
               <button
                 onClick={handleSignUp}
                 disabled={isLoading || !currentLeague}
-                className={`w-full py-3 px-4 text-lg font-medium text-white 
-                         ${
-                           isDemo
-                             ? "bg-notice-orange hover:bg-notice-orange/90"
-                             : "bg-primary hover:bg-primary-hover"
-                         }
+                className={`w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover
                          rounded-lg transition-colors duration-200
                          shadow-md hover:shadow-lg
                          disabled:bg-ui-light disabled:cursor-not-allowed`}

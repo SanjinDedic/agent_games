@@ -16,6 +16,7 @@ from sqlmodel import Session, create_engine, text
 
 from backend.database.db_config import get_database_url
 from backend.docker_utils.init_db import initialize_database
+from backend.log_setup import ensure_log_files
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,8 @@ async def lifespan(app: FastAPI):
     """Lifecycle manager for the FastAPI application"""
     try:
         logger.info("Starting application...")
+        # Ensure log files exist before anything tries to write to them
+        ensure_log_files()
         check_database_status()  # Add this line
         # Container management now handled by Docker Compose
 
