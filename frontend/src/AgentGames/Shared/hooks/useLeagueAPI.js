@@ -196,6 +196,9 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
+      //set publishData.feedback to none
+      publishData.feedback = undefined
+
       const response = await fetch(`${apiUrl}/institution/publish-results`, {
         method: 'POST',
         headers: {
