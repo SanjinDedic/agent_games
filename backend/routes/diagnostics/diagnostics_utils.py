@@ -1,5 +1,5 @@
 import logging
-import os
+import subprocess
 from typing import Dict, Optional, Tuple
 
 import httpx
@@ -12,50 +12,47 @@ SERVICE_URLS = {
     "simulator": "http://simulator:8002",
 }
 
-# Log file paths
-LOG_DIR = "/agent_games/logs"
-LOG_FILES = {
-    "validator": os.path.join(LOG_DIR, "validator.log"),
-    "simulator": os.path.join(LOG_DIR, "simulator.log"),
-    "api": os.path.join(LOG_DIR, "api.log"),
-}
-
 
 def get_service_logs(service_name: str, tail: Optional[int] = 1000) -> str:
     """
-    Get logs for a specific service from log files
+    Get logs for a specific service using docker compose logs
 
     Args:
         service_name: Name of the service to get logs for
         tail: Number of log lines to return (default: 1000)
 
     Returns:
-        Logs as a string
+        Logs as a string, or an explanatory message if unavailable
     """
     try:
-        log_file = LOG_FILES.get(service_name)
-        if not log_file:
-            return f"Unknown service: {service_name}"
-
-        if not os.path.exists(log_file):
-            # MINIMAL ADDITION: Better error message
-            return f"Log file not found: {log_file}\nRun './setup_logs.sh' to create log files first."
-
-        # Read the last 'tail' lines from the log file
-        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
-
-        # Return the last 'tail' lines
-        if tail and len(lines) > tail:
-            lines = lines[-tail:]
-
-        # MINIMAL ADDITION: Handle empty files
-        return "".join(lines) if lines else f"Log file {log_file} is empty"
-
+        cmd = [
+            "docker",
+            "compose",
+            "logs",
+            "--no-color",
+            "--tail",
+            str(tail or 1000),
+            service_name,
+        ]
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, timeout=15
+        )
+        output = result.stdout.strip()
+        return output or f"No logs available for {service_name}"
+    except FileNotFoundError:
+        return (
+            "Docker CLI not available in this environment. "
+            "Run 'docker compose logs --tail 1000 "
+            f"{service_name}' on the host machine."
+        )
+    except subprocess.CalledProcessError as e:
+        err = (e.stderr or e.stdout or "").strip()
+        return f"Could not retrieve logs for {service_name}: {err}"
+    except subprocess.TimeoutExpired:
+        return f"Timed out while retrieving logs for {service_name}"
     except Exception as e:
-        error_msg = f"Error reading log file for {service_name}: {str(e)}"
-        logger.error(error_msg)
-        return error_msg
+        logger.error(f"Unexpected error retrieving logs: {e}")
+        return f"Unexpected error retrieving logs: {e}"
 
 
 async def check_service_health_http(service_name: str) -> Tuple[bool, str]:

@@ -92,6 +92,7 @@ def populate_database(engine):
         institution_password = os.getenv(
             "INSTITUTION_PASSWORD", "institution"
         )  # Default for backward compatibility
+        print(f"INSTITUTION_PASSWORD: {institution_password}")
         default_institution = Institution(
             name="Admin Institution",
             contact_person="Admin",

@@ -38,4 +38,5 @@ USER apiuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload 2>&1 | tee -a /agent_games/logs/api.log"]
+# Log to stdout/stderr (captured by Docker logging driver)
+CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload"]

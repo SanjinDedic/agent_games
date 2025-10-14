@@ -1,39 +1,16 @@
 #!/bin/bash
-echo "Setting up secure log files..."
+set -euo pipefail
 
-# Stop any running containers first
-echo "Stopping Docker containers..."
-docker compose down 2>/dev/null || true
+cat <<'EOF'
+This project no longer uses bind-mounted log files.
 
-# Remove existing logs directory completely to start fresh
-if [ -d "./logs" ]; then
-    echo "Removing existing logs directory..."
-    sudo rm -rf ./logs
-fi
+- Services now log to stdout/stderr and are captured by Docker's logging driver.
+- View logs with:  docker compose logs -f [service]
+- On Linux hosts you can switch to journald by running with LOG_DRIVER=journald.
+  Example: LOG_DRIVER=journald docker compose up
+- On macOS/Windows (Docker Desktop), journald is not supported; the compose defaults to the 'local' driver.
 
-# Create logs directory
-echo "Creating logs directory..."
-mkdir -p ./logs
+This script is deprecated and does nothing now.
+EOF
 
-# Create log files (these will definitely be files now)
-echo "Creating log files..."
-touch ./logs/api.log
-touch ./logs/validator.log
-touch ./logs/simulator.log
-
-# Set secure permissions:
-# 666 = rw-rw-rw- (read/write for owner, group, others - NO execute)
-# This allows containers to append but files can't be executed
-chmod 666 ./logs/api.log
-chmod 666 ./logs/validator.log
-chmod 666 ./logs/simulator.log
-
-echo "Log files created with permissions:"
-ls -la ./logs/
-
-echo "Verifying files are actually files (not directories):"
-file ./logs/api.log
-file ./logs/validator.log  
-file ./logs/simulator.log
-
-echo "✅ Log setup complete. Safe to start containers."
+exit 0

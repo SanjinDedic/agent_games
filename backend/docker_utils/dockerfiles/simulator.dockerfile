@@ -27,9 +27,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY . /agent_games/
 
-# Create logs directory (the file will be mounted from host)
-RUN mkdir -p /agent_games/logs && \
-    chmod -R 755 /agent_games && \
+# Set sane permissions (no log dir creation)
+RUN chmod -R 755 /agent_games && \
     chmod 755 /agent_games/backend/docker_utils/services/simulation_server.py
 
 # Switch to non-root user
@@ -37,5 +36,5 @@ USER simuser
 
 EXPOSE 8002
 
-# SECURE: Append to mounted log file (file already exists on host)
-CMD ["sh", "-c", "python /agent_games/backend/docker_utils/services/simulation_server.py 2>&1 | tee -a /agent_games/logs/simulator.log"]
+# Log to stdout/stderr; Docker logging driver will capture
+CMD ["python", "/agent_games/backend/docker_utils/services/simulation_server.py"]

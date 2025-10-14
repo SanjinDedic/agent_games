@@ -66,7 +66,9 @@ def institution_login(login: InstitutionLogin, session: Session = Depends(get_db
     """
     logger.info(f'Institution login attempt for name: "{login.name}"')
     try:
+        print(f'Institution login attempt for name: "{login.name}"')
         token = get_institution_token(session, login.name, login.password)
+        print(f"Generated token for institution {login.name}: {token}")
         return ResponseModel(status="success", message="Login successful", data=token)
     except InvalidCredentialsError as e:
         return ResponseModel(status="failed", message=str(e))

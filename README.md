@@ -157,6 +157,22 @@ Each service has memory and process limits configured to ensure stability:
 - Simulator: 500MB memory limit, 50 processes
 - PostgreSQL: 700MB memory limit
 
+## 🧾 Logging
+
+This project no longer bind-mounts log files. All services write to stdout/stderr and Docker captures logs using its logging driver.
+
+- Default logging driver in compose: `${LOG_DRIVER:-local}`
+- On Linux hosts using systemd, you can switch to journald by setting `LOG_DRIVER=journald` when running compose:
+  - One-off: `LOG_DRIVER=journald docker compose up`
+  - Or add `LOG_DRIVER=journald` to a `.env` on the host
+- Docker Desktop on macOS/Windows does not support the journald driver, so `local` remains the default there.
+
+Viewing logs:
+- All services: `docker compose logs -f`
+- Specific service: `docker compose logs -f api`
+
+Note: The previous file-based logging scripts (e.g. setup_logs.sh) are deprecated and no longer required.
+
 ## 💻 Manual Local Development
 
 > **💡 Tip:** For most users, we recommend using the [one-command Docker setup](#-one-command-local-setup-recommended) above instead of manual setup.
