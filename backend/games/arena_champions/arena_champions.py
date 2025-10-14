@@ -50,6 +50,8 @@ class CustomPlayer(Player):
         self.max_health_proportion = 0.25
         self.dexterity_proportion = 0.25
         self.set_to_original_stats()
+        self.opponent_last_attack = "" 
+        self.opponent_last_defense = ""
 
     
     def make_combat_decision(self, opponent_stats, turn, your_role, last_opponent_action=None):
@@ -79,6 +81,10 @@ class CustomPlayer(Player):
 - 2 players face off in turn-based combat.
 - Competition format is a leauge where each player fights every other player twice (home and away).
 
+### Key idea: Stats vs Actions
+- Stats are chosen once at the beginning (before matches start). You do NOT change stats mid-battle.
+- Actions are chosen each turn/round during a battle.
+
 ### Step 1: Assign Attributes 
 First assign attribute proportions (each is between 0.2 and 0.4, total adds up to 1.0):
 - `attack_proportion`: increases attack damage
@@ -91,6 +97,13 @@ First assign attribute proportions (each is between 0.2 and 0.4, total adds up t
 Each turn, one player is the attacker and the other is the defender.
 - Attacker can choose: attack, big_attack, precise_attack
 - Defender can choose: defend, dodge, brace
+
+### What you can see on your turn
+- You are told your role this turn: `attacker` or `defender`.
+- `opponent_stats` is always available (attack, defense, dexterity, health, max_health).
+- `last_opponent_action` shows what your opponent did on their previous turn only.
+    - You cannot see what they choose this turn; decisions are simultaneous for the round.
+    - Example: as attacker you do not see the defender's current defense choice.
 
 
 ### Matchup table
@@ -109,6 +122,11 @@ Each turn, one player is the attacker and the other is the defender.
 - Big attack deals double damage but costs 50% of your current HP + 15 HP.
 - Precise attack is more effective against bracing defenders and scales with dexterity.
 - Each win can level up your stats in their chosen proportions.
+
+### For advanced students (Y9–10)
+- You can create simple memory between turns by storing values on `self`, e.g. `self.last_seen_defense`.
+- Update that memory using `last_opponent_action` and use it to adapt your next move.
+- This is optional; you can compete without any extra attributes.
 
 ### Game logic:
 You can find the source code for the exact damage calculations [HERE](https://github.com/SanjinDedic/agent_games/blob/88305bcc5fa28c8bafff69b310dbaea0305ff4dd/backend/games/arena_champions/arena_champions.py#L213)
