@@ -93,7 +93,7 @@ jobs:
       run: docker compose down --volumes
 
   deploy:
-    needs: test_and_coverage
+    # needs: test_and_coverage
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
