@@ -34,7 +34,7 @@ COPY . /agent_games/
 RUN chmod -R 755 /agent_games
 
 # Switch to non-root user
-USER apiuser
+# USER apiuser
 
 EXPOSE 8000
 

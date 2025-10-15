@@ -33,7 +33,7 @@ RUN mkdir -p /agent_games/logs && \
     chmod 755 /agent_games/backend/docker_utils/services/simulation_server.py
 
 # Switch to non-root user
-USER simuser
+# USER simuser
 
 EXPOSE 8002
 

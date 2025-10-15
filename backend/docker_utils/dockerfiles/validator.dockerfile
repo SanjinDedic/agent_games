@@ -32,7 +32,7 @@ RUN mkdir -p /agent_games/logs && \
     chmod 755 /agent_games/backend/docker_utils/services/validation_server.py
 
 # Switch to non-root user
-USER validatoruser
+# USER validatoruser
 
 EXPOSE 8001
 
