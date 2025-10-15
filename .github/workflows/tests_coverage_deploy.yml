@@ -3,10 +3,10 @@ name: Test, Coverage and Deploy
 on:
   push:
     branches: [main]
-    paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml']
   pull_request:
     branches: [main]
     paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml']
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
