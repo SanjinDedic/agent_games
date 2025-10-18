@@ -82,7 +82,7 @@ class CustomPlayer(Player):
 - 2 players face off in turn-based combat.
 - Competition format is a leauge where each player fights every other player twice (home and away).
 - Stats (self.attack_proportion etc...) are chosen once at the beginning (before matches start).
-- Actions ("attack", "precise attack" etc ..) are chosen each turn/round during a battle.
+- Actions ("attack", "precise_attack" etc ..) are chosen each turn/round during a battle.
 
 ### Step 1: Assign Attributes 
 First assign attribute proportions (each is between 0.2 and 0.4, total adds up to 1.0):
@@ -118,8 +118,8 @@ Each turn, one player is the attacker and the other is the defender.
 
 ### Notes
 - Dodge can fully avoid hits (chance scales with dexterity).
-- Big attack deals double damage but costs 50% of your current HP + 15 HP.
-- Precise attack is more effective against bracing defenders and scales with dexterity.
+- big_attack deals double damage but costs 50% of your current HP + 15 HP.
+- precise_attack is more effective against bracing defenders and scales with dexterity.
 - Each win can level up your stats in their chosen proportions.
 
 ### Game logic:
@@ -266,7 +266,7 @@ You can find the source code for the exact damage calculations [HERE](https://gi
 
         # Apply attack modifiers
         if attack_action == "big_attack":
-            base_damage *= 2  # Big attack always deals double damage
+            base_damage *= 2  # big_attack always deals double damage
             attacker.health -= (attacker.health * 0.5) + 15  # Always costs 50% HP + 10
         elif attack_action == "precise_attack":
             base_damage += attacker.dexterity * 0.5  # Dexterity bonus
@@ -286,10 +286,10 @@ You can find the source code for the exact damage calculations [HERE](https://gi
                 attack_type = "standard attack"
             elif attack_action == "big_attack":
                 dodge_chance = base_dodge_chance * dodge_vs_big_attack_multiplier
-                attack_type = "big attack"
+                attack_type = "big_attack"
             else:  # precise_attack
                 dodge_chance = base_dodge_chance * dodge_vs_precise_attack_multiplier
-                attack_type = "precise attack"
+                attack_type = "precise_attack"
 
             # Attempt dodge
             if random.randint(0, 100) <= dodge_chance:
@@ -306,7 +306,7 @@ You can find the source code for the exact damage calculations [HERE](https://gi
                 effectiveness = "neutral defense"
             elif attack_action == "big_attack":
                 multiplier = defend_vs_big_attack
-                effectiveness = "weak defense vs big attack"
+                effectiveness = "weak defense vs big_attack"
             else:  # precise_attack
                 multiplier = defend_vs_precise
                 effectiveness = "strong defense vs precise"
@@ -321,7 +321,7 @@ You can find the source code for the exact damage calculations [HERE](https://gi
                 effectiveness = "strong brace vs attack"
             elif attack_action == "big_attack":
                 multiplier = brace_vs_big_attack
-                effectiveness = "neutral brace vs big attack"
+                effectiveness = "neutral brace vs big_attack"
             else:  # precise_attack
                 multiplier = brace_vs_precise
                 effectiveness = "weak brace vs precise"
