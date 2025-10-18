@@ -215,17 +215,23 @@ You can find the source code for the exact damage calculations [HERE](https://gi
                     if role == "attacker"
                     else ["defend", "dodge", "brace"]
                 )
-                self.add_feedback(
-                    f"Invalid action '{action}' for role '{role}' from {player.name}. "
-                    f"Valid actions: {valid_actions}. Defaulting to appropriate action."
+                # Emit a clear, per-turn feedback message for the student/frontend
+                default_action = "attack" if role == "attacker" else "defend"
+                # Also add a concise human-readable line
+                player.add_feedback(
+                    f"System default: Invalid action '{action}' for role '{role}'. Defaulting to '{default_action}'."
                 )
                 # Default to appropriate action based on role
-                action = "attack" if role == "attacker" else "defend"
+                action = default_action
 
             return action
         except Exception as e:
-            self.add_feedback(f"Error getting action from {player.name}: {e}")
-            return "attack" if role == "attacker" else "defend"
+            # Emit a clear, per-turn feedback message for the student/frontend
+            default_action = "attack" if role == "attacker" else "defend"
+            player.add_feedback(
+                f"System default: Error in make_combat_decision ({type(e).__name__}). Defaulting to '{default_action}'."
+            )
+            return default_action
 
     def calculate_damage(
         self, attacker, defender, attack_action: str, defense_action: str
