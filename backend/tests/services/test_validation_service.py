@@ -126,7 +126,7 @@ def test_validate_endpoint_exceptions(validator_client: TestClient):
 
 def test_code_validator_success():
     """Test successful code validation scenarios"""
-    validator = CodeValidator()
+    validator = CodeValidator([])
 
     # Test case 1: Valid imports
     code = "import random\nimport math"
@@ -150,7 +150,7 @@ class CustomPlayer(Player):
 
 def test_code_validator_exceptions():
     """Test code validator error cases"""
-    validator = CodeValidator()
+    validator = CodeValidator([])
 
     # Test case 1: Unauthorized import
     code = "import os"
@@ -178,7 +178,7 @@ def test_code_validator_exceptions():
 
 def test_code_validator_unsafe_functions():
     """Test code validator for unsafe function calls"""
-    validator = CodeValidator()
+    validator = CodeValidator([])
 
     # Test case 1: Unauthorized eval
     code = "eval('1 + 1')"
