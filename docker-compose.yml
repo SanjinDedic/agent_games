@@ -37,7 +37,8 @@ services:
   validator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/validator.dockerfile
+      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+    command: python /agent_games/backend/docker_utils/services/validation_server.py
     ports:
       - "8001:8001"
     environment:
@@ -65,7 +66,8 @@ services:
   simulator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/simulator.dockerfile
+      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+    command: python /agent_games/backend/docker_utils/services/simulation_server.py
     ports:
       - "8002:8002"
     environment:
