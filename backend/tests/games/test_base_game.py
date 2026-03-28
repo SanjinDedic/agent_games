@@ -6,9 +6,7 @@ from sqlmodel import Session
 
 from backend.database.db_models import League, Submission, Team
 from backend.games.base_game import BaseGame
-
-# Mark all tests to use containers
-pytestmark = pytest.mark.usefixtures("ensure_containers")
+from backend.tests.conftest import VALIDATOR_URL, SIMULATOR_URL
 
 
 @pytest.fixture
@@ -69,7 +67,7 @@ async def xtest_validation_workflow(db_session, test_league, test_submission):
     async with httpx.AsyncClient() as client:
         # Request validation through validator service
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json={
                 "code": test_submission["code"],
                 "game_name": test_league.game,
@@ -91,7 +89,7 @@ async def xtest_simulation_workflow(db_session, test_league, test_submission):
     async with httpx.AsyncClient() as client:
         # Run simulation through simulator service
         response = await client.post(
-            "http://localhost:8002/simulate",
+            f"{SIMULATOR_URL}/simulate",
             json={
                 "league_id": test_league.id,
                 "game_name": test_league.game,
@@ -116,7 +114,7 @@ async def test_error_handling(db_session, test_league):
             This is not valid Python code
         """
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json={
                 "code": invalid_code,
                 "game_name": test_league.game,
@@ -139,7 +137,7 @@ async def xtest_concurrent_simulations(db_session, test_league, test_submission)
         tasks = []
         for _ in range(3):
             task = client.post(
-                "http://localhost:8002/simulate",
+                f"{SIMULATOR_URL}/simulate",
                 json={
                     "league_id": test_league.id,
                     "game_name": test_league.game,

@@ -5,11 +5,12 @@ from datetime import datetime, timedelta
 
 import httpx
 import pytest
+
+from backend.tests.conftest import VALIDATOR_URL, SIMULATOR_URL
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
 
-pytestmark = pytest.mark.usefixtures("ensure_containers")
 
 
 @pytest.fixture
@@ -59,7 +60,7 @@ class CustomPlayer(Player):
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json={
                 "code": invalid_security_code,
                 "game_name": "prisoners_dilemma",
@@ -81,7 +82,7 @@ class CustomPlayer(Player):
         return "collude"
 """
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json={
                 "code": valid_code,
                 "game_name": "prisoners_dilemma",
@@ -102,7 +103,7 @@ async def test_simulation_service_workflow(db_session: Session, test_league: Lea
     async with httpx.AsyncClient() as client:
         # Basic simulation
         response = await client.post(
-            "http://localhost:8002/simulate",
+            f"{SIMULATOR_URL}/simulate",
             json={
                 "league_id": test_league.id,
                 "game_name": "prisoners_dilemma",
@@ -116,7 +117,7 @@ async def test_simulation_service_workflow(db_session: Session, test_league: Lea
 
         # Test with custom rewards
         response = await client.post(
-            "http://localhost:8002/simulate",
+            f"{SIMULATOR_URL}/simulate",
             json={
                 "league_id": test_league.id,
                 "game_name": "prisoners_dilemma",
@@ -135,12 +136,12 @@ async def test_service_health_checks():
 
     async with httpx.AsyncClient() as client:
         # Check validator health
-        validator_response = await client.get("http://localhost:8001/health")
+        validator_response = await client.get(f"{VALIDATOR_URL}/health")
         assert validator_response.status_code == 200
         assert validator_response.json()["status"] == "healthy"
 
         # Check simulator health
-        simulator_response = await client.get("http://localhost:8002/health")
+        simulator_response = await client.get(f"{SIMULATOR_URL}/health")
         assert simulator_response.status_code == 200
         assert simulator_response.json()["status"] == "healthy"
 
@@ -152,7 +153,7 @@ async def test_service_error_recovery():
     async with httpx.AsyncClient() as client:
         try:
             await client.post(
-                "http://localhost:8001/validate",
+                f"{VALIDATOR_URL}/validate",
                 json={"code": "test"},
                 timeout=0.001,  # Very short timeout
             )
@@ -161,18 +162,18 @@ async def test_service_error_recovery():
             pass
 
         # Verify service still responsive after timeout
-        response = await client.get("http://localhost:8001/health")
+        response = await client.get(f"{VALIDATOR_URL}/health")
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 
         # Test invalid request handling
         response = await client.post(
-            "http://localhost:8001/validate", json={}  # Invalid request
+            f"{VALIDATOR_URL}/validate", json={}  # Invalid request
         )
         assert response.status_code == 422
 
         # Verify service still healthy
-        health_response = await client.get("http://localhost:8001/health")
+        health_response = await client.get(f"{VALIDATOR_URL}/health")
         assert health_response.status_code == 200
 
 
@@ -196,7 +197,7 @@ class CustomPlayer(Player):
         return "collude"
 """
             await client.post(
-                "http://localhost:8001/validate",
+                f"{VALIDATOR_URL}/validate",
                 json={
                     "code": timeout_code,
                     "game_name": "prisoners_dilemma",
@@ -212,7 +213,7 @@ class CustomPlayer(Player):
 
         # Test 2: Service still responsive after timeout
         health_response = await client.get(
-            "http://localhost:8001/health",
+            f"{VALIDATOR_URL}/health",
             timeout=httpx.Timeout(5.0),  # Normal timeout for health check
         )
         assert health_response.status_code == 200
@@ -220,7 +221,7 @@ class CustomPlayer(Player):
 
         # Test 3: Invalid request handling
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json={
                 "code": None,  # Invalid code
                 "game_name": "prisoners_dilemma",
@@ -230,19 +231,19 @@ class CustomPlayer(Player):
 
         # Test 4: Missing required fields
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json={},
         )
         assert response.status_code == 422
 
         # Test 5: Service remains healthy after errors
-        health_response = await client.get("http://localhost:8001/health")
+        health_response = await client.get(f"{VALIDATOR_URL}/health")
         assert health_response.status_code == 200
         assert health_response.json()["status"] == "healthy"
 
         # Test 6: Malformed JSON
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             content=b"invalid json data",
             headers={"Content-Type": "application/json"},
         )
@@ -256,7 +257,7 @@ class CustomPlayer(Player):
             "num_simulations": 1,
         }
         response = await client.post(
-            "http://localhost:8001/validate",
+            f"{VALIDATOR_URL}/validate",
             json=large_payload,
             timeout=httpx.Timeout(10.0),  # Increased timeout for large payload
         )
@@ -277,7 +278,7 @@ async def test_concurrent_operations(db_session: Session, test_league: League):
         tasks = []
         for _ in range(5):
             task = client.post(
-                "http://localhost:8002/simulate",
+                f"{SIMULATOR_URL}/simulate",
                 json={
                     "league_id": test_league.id,
                     "game_name": "prisoners_dilemma",

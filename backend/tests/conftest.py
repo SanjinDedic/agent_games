@@ -1,8 +1,6 @@
 import functools
 import logging
 import os
-import subprocess
-import time
 from datetime import datetime, timedelta
 from typing import List, Union
 
@@ -34,121 +32,11 @@ AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-def run_docker_compose_command(
-    command: List[str], timeout: int = 60
-) -> subprocess.CompletedProcess:
-    """Run a docker compose command with timeout"""
-    try:
-        full_command = ["docker", "compose"] + command
-        logger.debug(f"Running docker compose command: {' '.join(full_command)}")
-
-        # Set environment variables for test mode
-        env = os.environ.copy()
-        env["DB_ENVIRONMENT"] = "test"
-
-        result = subprocess.run(
-            full_command,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=env,
-        )
-        return result
-    except subprocess.TimeoutExpired:
-        logger.error(f"Docker compose command timed out after {timeout} seconds")
-        raise
-    except Exception as e:
-        logger.error(f"Error running docker compose command: {e}")
-        raise
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_environment():
-    """
-    Set up complete test environment with proper database switching
-    """
-    # Set test environment FIRST
-    os.environ["DB_ENVIRONMENT"] = "test"
-
-    # Print database info
-    database_url = get_database_url()
-    print(f"\n{'='*60}")
-    print(f"TEST SUITE STARTING")
-    print(f"Database URL: {database_url}")
-    print(f"{'='*60}\n")
-
-    # Stop any running services
-    logger.info("Stopping any running services...")
-    try:
-        run_docker_compose_command(["--profile", "test", "down"])
-        run_docker_compose_command(["--profile", "dev", "down"])
-    except Exception as e:
-        logger.warning(f"Error stopping services: {e}")
-
-    # Start test services with test profile
-    logger.info("Starting test services...")
-    try:
-        result = run_docker_compose_command(
-            ["--profile", "test", "up", "-d", "--wait"], timeout=120
-        )
-        if result.returncode == 0:
-            logger.info("All test services are healthy")
-        else:
-            logger.error(f"Services failed to start: {result.stderr}")
-            pytest.fail("Docker environment setup failed")
-    except Exception as e:
-        logger.error(f"Error setting up test environment: {e}")
-        pytest.fail("Docker environment setup failed")
-
-    yield
-    logger.info("Test session complete")
-
-
-@pytest.fixture
-def ensure_containers(request):
-    """
-    Verify that all 4 required services are healthy before each test.
-    Required services: api, validator, simulator, postgres_test
-    """
-    test_name = request.node.name
-    logger.info(f"Verifying containers for test: {test_name}")
-
-    try:
-        # Check that all required services are running
-        result = run_docker_compose_command(
-            ["ps", "--services", "--filter", "status=running"]
-        )
-        running_services = (
-            result.stdout.strip().split("\n") if result.stdout.strip() else []
-        )
-
-        required_services = ["api", "validator", "simulator", "postgres_test"]
-        missing_services = [
-            svc for svc in required_services if svc not in running_services
-        ]
-
-        if missing_services:
-            logger.warning(f"Missing services for test {test_name}: {missing_services}")
-            logger.info("Attempting to restart services...")
-
-            # Try to restart services
-            restart_result = run_docker_compose_command(
-                ["--profile", "test", "up", "-d", "--wait"]
-            )
-            if restart_result.returncode != 0:
-                logger.error(f"Failed to restart services: {restart_result.stderr}")
-                pytest.fail("Could not restart services")
-
-            logger.info("Services restarted successfully")
-
-    except Exception as e:
-        logger.error(f"Error checking container health: {e}")
-        pytest.fail(f"Container health check failed for test {test_name}")
-
-    logger.info(f"All services ready for test: {test_name}")
-    return True
+# Service URL constants — resolve to container names inside Docker, localhost outside
+_IS_DOCKER = os.path.exists("/.dockerenv")
+VALIDATOR_URL = "http://validator:8001" if _IS_DOCKER else "http://localhost:8001"
+SIMULATOR_URL = "http://simulator:8002" if _IS_DOCKER else "http://localhost:8002"
+API_URL = "http://api:8000" if _IS_DOCKER else "http://localhost:8000"
 
 
 @pytest.fixture

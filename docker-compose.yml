@@ -11,7 +11,7 @@ services:
       - PYTHONPATH=/agent_games
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
-      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - SECRET_KEY=${SECRET_KEY:-test_secret_key_for_tests}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
@@ -32,12 +32,12 @@ services:
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
-    profiles: ["prod", "dev", "test"]
 
   validator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/validator.dockerfile
+      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+    command: python /agent_games/backend/docker_utils/services/validation_server.py
     ports:
       - "8001:8001"
     environment:
@@ -45,7 +45,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - SECRET_KEY=${SECRET_KEY:-test_secret_key_for_tests}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
     restart: unless-stopped
     healthcheck:
@@ -60,12 +60,12 @@ services:
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
-    profiles: ["prod", "dev", "test"]
 
   simulator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/simulator.dockerfile
+      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+    command: python /agent_games/backend/docker_utils/services/simulation_server.py
     ports:
       - "8002:8002"
     environment:
@@ -73,7 +73,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - SECRET_KEY=${SECRET_KEY:-test_secret_key_for_tests}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
     restart: unless-stopped
     healthcheck:
@@ -87,7 +87,6 @@ services:
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
-    profiles: ["prod", "dev", "test"]
 
   frontend:
     build:
@@ -103,13 +102,13 @@ services:
     restart: unless-stopped
     mem_limit: 1g
     mem_reservation: 250m
-    profiles: ["dev"]
 
   postgres:
     image: postgres:14
     ports:
       - "5432:5432"
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_pw}
       POSTGRES_DB: agent_games
     volumes:
@@ -123,30 +122,32 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
-    profiles: ["prod", "dev"]
 
-  postgres_test:
-    image: postgres:14
-    ports:
-      - "5433:5432"
+  # Test runner — not started by `docker compose up`, only via `docker compose run`
+  test-runner:
+    build:
+      context: .
+      dockerfile: ./backend/docker_utils/dockerfiles/test.dockerfile
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: test_db_password
-      POSTGRES_DB: agent_games_test
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/agent_games
+      - DB_ENVIRONMENT=test
+      - SECRET_KEY=test_secret_key_for_tests
+    depends_on:
+      api:
+        condition: service_healthy
+      validator:
+        condition: service_healthy
+      simulator:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     volumes:
-      - postgres_test_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    mem_limit: 700m
-    mem_reservation: 300m
-    profiles: ["test"]
+      - ./backend:/agent_games/backend
+      - /var/run/docker.sock:/var/run/docker.sock
+    scale: 0
 
 volumes:
   postgres_data:
-  postgres_test_data:
   logs_data:

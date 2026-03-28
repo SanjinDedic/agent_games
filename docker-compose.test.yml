@@ -1,0 +1,13 @@
+# Override file for test runs.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
+# Points all services at the test database so real HTTP calls from tests hit the right data.
+services:
+  api:
+    environment:
+      - DB_ENVIRONMENT=test
+  validator:
+    environment:
+      - DB_ENVIRONMENT=test
+  simulator:
+    environment:
+      - DB_ENVIRONMENT=test

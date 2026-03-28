@@ -9,7 +9,7 @@ from backend.routes.diagnostics.diagnostics_models import ServiceName
 client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_get_logs_success(client, auth_headers, ensure_containers):
+async def test_get_logs_success(client, auth_headers):
     """Test successful retrieval of logs for a service."""
 
     # Test getting logs for validator service
@@ -30,7 +30,7 @@ async def test_get_logs_success(client, auth_headers, ensure_containers):
 
 
 @pytest.mark.asyncio
-async def test_get_logs_with_parameters(client, auth_headers, ensure_containers):
+async def test_get_logs_with_parameters(client, auth_headers):
     """Test logs retrieval with tail parameter."""
 
     # Test with tail parameter
@@ -69,7 +69,7 @@ async def test_get_logs_invalid_service(client, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_logs_exception(client, auth_headers, ensure_containers):
+async def test_get_logs_exception(client, auth_headers):
     """Test handling of exceptions during logs retrieval."""
 
     # Mock the get_service_logs function to raise an exception

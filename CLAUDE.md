@@ -5,33 +5,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Running tests
-Tests run locally via pytest but require Docker Compose services running. One-time local setup:
+Tests run entirely via Docker Compose — no local Python/venv needed:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
-pip install pytest pytest-asyncio httpx pytest-cov
-```
-
-```bash
-# 1. Start services with test profile (spins up api, validator, simulator, postgres_test)
-docker compose --profile test up -d
-
-# 2. Run tests (from repo root, with test env vars)
-DB_ENVIRONMENT=test DATABASE_URL="postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test" pytest backend/tests/
+# Run all tests
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
 
 # Run a single test file
-DB_ENVIRONMENT=test DATABASE_URL="postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test" pytest backend/tests/integration/routes/auth/test_auth.py -v
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner pytest backend/tests/integration/routes/auth/test_auth.py -v
 
 # Run with coverage
-DB_ENVIRONMENT=test DATABASE_URL="postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test" pytest --cov=backend --cov-report=term backend/tests/
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner pytest --cov=backend --cov-report=term backend/tests/
 ```
 
 ### Running the app
 ```bash
-# Development (includes frontend + postgres)
-docker compose --profile dev up -d
+# Development (starts api, validator, simulator, postgres, frontend)
+docker compose up -d
 
 # First-time DB init
 docker compose exec api python -m backend.docker_utils.init_db
@@ -56,7 +46,7 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 - **API** (port 8000): Main FastAPI app — authentication, league/team management, agent submission
 - **Validator** (port 8001): Validates submitted agent code before acceptance
 - **Simulator** (port 8002): Executes game simulations in isolated Docker containers
-- **PostgreSQL** (port 5432): Main DB; test DB on port 5433
+- **PostgreSQL** (port 5432): Single cluster hosting both `agent_games` and `agent_games_test` databases
 - **Frontend** (port 3000): React SPA
 
 The API calls Validator and Simulator via async HTTP (httpx/aiohttp). Simulator runs submitted code in isolated Docker containers with resource limits (500MB RAM, 50 processes).
@@ -82,6 +72,7 @@ Three user roles: **Admin**, **Team** (student user), **Institution** (manages t
 Each game extends `BaseGame` and implements match logic. The `game_factory.py` registers available games. Games produce structured feedback (Markdown + JSON) shown in the frontend. `backend/games/game_instructions.md` documents how to add a new game.
 
 ### Testing
-- Integration tests hit a real test PostgreSQL instance (port 5433) — do not mock the database
-- Test environment is configured in `backend/tests/conftest.py` via `setup_test_environment` fixture
-- `DB_ENVIRONMENT=test` env var switches the DB connection to the test database
+- Tests run inside a Docker container via `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner`
+- Integration tests hit a real test database (`agent_games_test`) on the same Postgres instance — do not mock the database
+- Service URLs (validator, simulator, api) auto-resolve via `conftest.py` constants (`VALIDATOR_URL`, `SIMULATOR_URL`, `API_URL`) — use these instead of hardcoded localhost URLs
+- `DB_ENVIRONMENT=test` is set automatically in the test-runner container

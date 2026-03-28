@@ -8,7 +8,6 @@ from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
 
 
-pytestmark = pytest.mark.usefixtures("ensure_containers")
 
 
 def _create_institution(db_session: Session) -> Institution:
