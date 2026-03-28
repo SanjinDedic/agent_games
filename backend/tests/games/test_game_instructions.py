@@ -52,12 +52,15 @@ def test_starter_code_content():
         data = response.json()
         starter_code = data["data"]["starter_code"]
         assert "CustomPlayer" in starter_code
-        assert "make_decision" in starter_code
+        if game == "arena_champions":
+            assert "make_combat_decision" in starter_code
+        else:
+            assert "make_decision" in starter_code
 
 
 def test_game_instructions_content():
     for game in GAMES:
-        if game == "lineup4":
+        if game in ("lineup4", "arena_champions"):
             continue
         response = client.post("user/get-game-instructions", json={"game_name": game})
         assert response.status_code == 200

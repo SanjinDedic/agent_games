@@ -11,7 +11,7 @@ services:
       - PYTHONPATH=/agent_games
       - VALIDATOR_URL=http://validator:8001
       - SIMULATOR_URL=http://simulator:8002
-      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - SECRET_KEY=${SECRET_KEY:-test_secret_key_for_tests}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     depends_on:
@@ -45,7 +45,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - SECRET_KEY=${SECRET_KEY:-test_secret_key_for_tests}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
     restart: unless-stopped
     healthcheck:
@@ -73,7 +73,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-      - SECRET_KEY=${SECRET_KEY:-default_secret_key}
+      - SECRET_KEY=${SECRET_KEY:-test_secret_key_for_tests}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
     restart: unless-stopped
     healthcheck:
@@ -108,6 +108,7 @@ services:
     ports:
       - "5432:5432"
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_pw}
       POSTGRES_DB: agent_games
     volumes:
@@ -122,29 +123,7 @@ services:
     mem_limit: 700m
     mem_reservation: 300m
 
-  # --- Test infrastructure (only starts with --profile test) ---
-
-  postgres_test:
-    image: postgres:14
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: test_db_password
-      POSTGRES_DB: agent_games_test
-    volumes:
-      - postgres_test_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_games_test"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    mem_limit: 700m
-    mem_reservation: 300m
-    profiles: ["test"]
-
+  # Test runner — not started by `docker compose up`, only via `docker compose run`
   test-runner:
     build:
       context: .
@@ -162,14 +141,13 @@ services:
         condition: service_healthy
       simulator:
         condition: service_healthy
-      postgres_test:
+      postgres:
         condition: service_healthy
     volumes:
       - ./backend:/agent_games/backend
       - /var/run/docker.sock:/var/run/docker.sock
-    profiles: ["test"]
+    scale: 0
 
 volumes:
   postgres_data:
-  postgres_test_data:
   logs_data:

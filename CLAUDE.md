@@ -9,17 +9,13 @@ Tests run entirely via Docker Compose — no local Python/venv needed:
 
 ```bash
 # Run all tests
-./run_tests.sh
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
 
 # Run a single test file
-./run_tests.sh backend/tests/integration/routes/auth/test_auth.py -v
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner pytest backend/tests/integration/routes/auth/test_auth.py -v
 
 # Run with coverage
-./run_tests.sh --cov=backend --cov-report=term backend/tests/
-
-# Or use docker compose directly
-docker compose --profile test run --rm test-runner
-docker compose --profile test run --rm test-runner pytest backend/tests/integration/ -v
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner pytest --cov=backend --cov-report=term backend/tests/
 ```
 
 ### Running the app
@@ -50,7 +46,7 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 - **API** (port 8000): Main FastAPI app — authentication, league/team management, agent submission
 - **Validator** (port 8001): Validates submitted agent code before acceptance
 - **Simulator** (port 8002): Executes game simulations in isolated Docker containers
-- **PostgreSQL** (port 5432): Main DB; test DB on port 5433
+- **PostgreSQL** (port 5432): Single cluster hosting both `agent_games` and `agent_games_test` databases
 - **Frontend** (port 3000): React SPA
 
 The API calls Validator and Simulator via async HTTP (httpx/aiohttp). Simulator runs submitted code in isolated Docker containers with resource limits (500MB RAM, 50 processes).
@@ -76,7 +72,7 @@ Three user roles: **Admin**, **Team** (student user), **Institution** (manages t
 Each game extends `BaseGame` and implements match logic. The `game_factory.py` registers available games. Games produce structured feedback (Markdown + JSON) shown in the frontend. `backend/games/game_instructions.md` documents how to add a new game.
 
 ### Testing
-- Tests run inside a Docker container via `./run_tests.sh` (or `docker compose --profile test run --rm test-runner`)
-- Integration tests hit a real test PostgreSQL instance (postgres_test, port 5433) — do not mock the database
+- Tests run inside a Docker container via `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner`
+- Integration tests hit a real test database (`agent_games_test`) on the same Postgres instance — do not mock the database
 - Service URLs (validator, simulator, api) auto-resolve via `conftest.py` constants (`VALIDATOR_URL`, `SIMULATOR_URL`, `API_URL`) — use these instead of hardcoded localhost URLs
 - `DB_ENVIRONMENT=test` is set automatically in the test-runner container

@@ -15,13 +15,11 @@ def get_database_url():
     db_environment = os.environ.get("DB_ENVIRONMENT")
 
     if db_environment == "test":
-        # Hardcoded test database URLs - no secrets needed
+        # Test database on same Postgres cluster, different database name
         if os.path.exists("/.dockerenv"):
-            # Inside Docker containers - use postgres_test service
-            return "postgresql+psycopg://postgres:test_db_password@postgres_test:5432/agent_games_test"
+            return "postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games_test"
         else:
-            # Outside Docker - use localhost:5433
-            return "postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test"
+            return "postgresql+psycopg://postgres:local_pw@localhost:5432/agent_games_test"
 
     # Production environment - use environment variable
     database_url = os.environ.get(
