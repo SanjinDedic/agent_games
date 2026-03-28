@@ -1,0 +1,93 @@
+service: agent_games
+
+image: sanjin/agent_games_api
+
+servers:
+  web:
+    hosts:
+      - api.agentgames.io
+    options:
+      memory: 400m
+      pids-limit: 50
+
+  validator:
+    hosts:
+      - api.agentgames.io
+    cmd: "python /agent_games/backend/docker_utils/services/validation_server.py"
+    proxy: false
+    options:
+      hostname: validator
+      memory: 500m
+      pids-limit: 50
+
+  simulator:
+    hosts:
+      - api.agentgames.io
+    cmd: "python /agent_games/backend/docker_utils/services/simulation_server.py"
+    proxy: false
+    options:
+      hostname: simulator
+      memory: 500m
+      pids-limit: 50
+
+deploy_timeout: 120
+
+proxy:
+  ssl: true
+  hosts:
+    - api.agentgames.io
+  app_port: 8000
+  healthcheck:
+    path: /health
+    interval: 10
+    timeout: 30
+
+registry:
+  server: registry.digitalocean.com
+  username: doctr
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  dockerfile: backend/docker_utils/dockerfiles/api.dockerfile
+  context: .
+
+env:
+  clear:
+    PYTHONDONTWRITEBYTECODE: "1"
+    PYTHONUNBUFFERED: "1"
+    PYTHONPATH: /agent_games
+    VALIDATOR_URL: http://validator:8001
+    SIMULATOR_URL: http://simulator:8002
+    DB_ENVIRONMENT: production
+  secret:
+    - SECRET_KEY
+    - DATABASE_URL
+    - ADMIN_PASSWORD
+    - INSTITUTION_PASSWORD
+
+accessories:
+  postgres:
+    image: postgres:14
+    hosts:
+      - api.agentgames.io
+    options:
+      hostname: postgres
+      memory: 700m
+      shm-size: 256m
+    env:
+      clear:
+        POSTGRES_USER: postgres
+        POSTGRES_DB: agent_games
+        PGDATA: /var/lib/postgresql/data/pgdata
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data
+
+aliases:
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs --tail 100 --follow
+  health: app exec --reuse "curl -f http://localhost:8000/health"
+  db: accessory exec --interactive postgres "psql -U postgres -d agent_games"
