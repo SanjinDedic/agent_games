@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+echo "Injecting validation players..."
+
+if [ -n "$LINEUP4_VALIDATION_PLAYERS" ]; then
+  mkdir -p backend/games/lineup4
+  echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
+  echo "  lineup4 validation players injected"
+fi
+
+if [ -n "$ARENA_VALIDATION_PLAYERS" ]; then
+  mkdir -p backend/games/arena_champions
+  echo "$ARENA_VALIDATION_PLAYERS" | base64 -d > backend/games/arena_champions/validation_players.py
+  echo "  arena_champions validation players injected"
+fi

@@ -42,7 +42,7 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
-GAMES = ["greedy_pig", "prisoners_dilemma", "lineup4"]
+GAMES = ["greedy_pig", "prisoners_dilemma", "lineup4", "arena_champions"]
 
 
 def get_service_url(service_name, endpoint=None):
