@@ -2,19 +2,23 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from typing import List, Optional
 
-from passlib.context import CryptContext
+import bcrypt as _bcrypt
 from sqlalchemy import Column, DateTime, String, Text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    if isinstance(password, str):
+        password = password.encode("utf-8")
+    return _bcrypt.hashpw(password, _bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    if isinstance(plain_password, str):
+        plain_password = plain_password.encode("utf-8")
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode("utf-8")
+    return _bcrypt.checkpw(plain_password, hashed_password)
 
 
 class TeamType(str, PyEnum):
