@@ -14,13 +14,11 @@ const Homepage = () => {
             intelligent agents in strategic games.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
-            {/**
-            <a href="/demo" className="inline-block">
+            <a href="/Demo" className="inline-block">
               <button className="bg-success hover:bg-success-hover text-white shadow-lg text-xl py-3 px-8 rounded">
                 Try Demo
               </button>
             </a>
-            */}
             <a href="/AgentLogin" className="inline-block">
               <button className="bg-white text-primary hover:bg-league-text hover:text-primary-dark shadow-lg text-xl py-3 px-8 rounded">
                 Player Login
@@ -148,13 +146,11 @@ const Homepage = () => {
                 A strategic game of risk and reward where players must decide
                 when to bank their points or continue rolling.
               </p>
-              {/**
-              <a href="/demo?game=greedy_pig">
+              <a href="/Demo?game=greedy_pig">
                 <span className="text-primary font-medium hover:text-primary-hover">
                   Try it →
                 </span>
               </a>
-              */}
             </div>
 
             {/* Game 2 */}
@@ -174,13 +170,11 @@ const Homepage = () => {
                 cooperate or defect, balancing individual vs. collective
                 benefit.
               </p>
-              {/**
-              <a href="/demo?game=prisoners_dilemma">
+              <a href="/Demo?game=prisoners_dilemma">
                 <span className="text-primary font-medium hover:text-primary-hover">
                   Try it →
                 </span>
               </a>
-              */}
             </div>
 
             {/* Game 3 */}
@@ -199,13 +193,11 @@ const Homepage = () => {
                 Program an agent to play the classic Connect Four game,
                 requiring spatial reasoning and forward planning.
               </p>
-              {/**
-              <a href="/demo?game=lineup4">
+              <a href="/Demo?game=lineup4">
                 <span className="text-primary font-medium hover:text-primary-hover">
                   Try it →
                 </span>
               </a>
-              */}
             </div>
           </div>
         </div>
