@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import AgentAPIKey, League, Team, TeamType, Submission
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import inspect_db_state, ensure_containers
+from backend.tests.conftest import inspect_db_state, API_URL
 
 # import patch
 from unittest.mock import patch
@@ -120,7 +120,6 @@ async def test_agent_simulation_success(
     setup_agent_team: Team,
     setup_player_teams_with_submissions,  # Add this fixture
     agent_token: str,
-    ensure_containers,  # Add as fixture parameter
 ):
     """Test successful simulation scenarios for agent endpoints"""
 
@@ -129,7 +128,7 @@ async def test_agent_simulation_success(
     async with httpx.AsyncClient() as client:
         # Test case 1: Basic simulation request
         response = await client.post(
-            "http://localhost:8000/agent/simulate",
+            f"{API_URL}/agent/simulate",
             headers=headers,
             json={
                 "league_id": setup_agent_league.id,
@@ -146,7 +145,7 @@ async def test_agent_simulation_success(
 
         # Test case 2: Simulation with custom rewards
         response = await client.post(
-            "http://localhost:8000/agent/simulate",
+            f"{API_URL}/agent/simulate",
             headers=headers,
             json={
                 "league_id": setup_agent_league.id,
@@ -162,7 +161,7 @@ async def test_agent_simulation_success(
 
         # Test case 3: Simulation with player feedback
         response = await client.post(
-            "http://localhost:8000/agent/simulate",
+            f"{API_URL}/agent/simulate",
             headers=headers,
             json={
                 "league_id": setup_agent_league.id,

@@ -32,7 +32,6 @@ services:
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
-    profiles: ["prod", "dev", "test"]
 
   validator:
     build:
@@ -61,7 +60,6 @@ services:
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
-    profiles: ["prod", "dev", "test"]
 
   simulator:
     build:
@@ -89,7 +87,6 @@ services:
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
-    profiles: ["prod", "dev", "test"]
 
   frontend:
     build:
@@ -105,7 +102,6 @@ services:
     restart: unless-stopped
     mem_limit: 1g
     mem_reservation: 250m
-    profiles: ["dev"]
 
   postgres:
     image: postgres:14
@@ -125,7 +121,8 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
-    profiles: ["prod", "dev"]
+
+  # --- Test infrastructure (only starts with --profile test) ---
 
   postgres_test:
     image: postgres:14
@@ -146,6 +143,30 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     mem_reservation: 300m
+    profiles: ["test"]
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: ./backend/docker_utils/dockerfiles/test.dockerfile
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/agent_games
+      - DB_ENVIRONMENT=test
+      - SECRET_KEY=test_secret_key_for_tests
+    depends_on:
+      api:
+        condition: service_healthy
+      validator:
+        condition: service_healthy
+      simulator:
+        condition: service_healthy
+      postgres_test:
+        condition: service_healthy
+    volumes:
+      - ./backend:/agent_games/backend
+      - /var/run/docker.sock:/var/run/docker.sock
     profiles: ["test"]
 
 volumes:

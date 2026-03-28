@@ -5,12 +5,14 @@ import time
 import httpx
 import pytest
 
+from backend.tests.conftest import VALIDATOR_URL
+
 
 def ensure_services_running_direct():
-    """Direct replacement for removed ensure_services_running function"""
+    """Ensure docker compose services are running"""
     try:
         result = subprocess.run(
-            ["docker", "compose", "--profile", "test", "up", "-d", "--wait"],
+            ["docker", "compose", "up", "-d", "--wait"],
             capture_output=True,
             text=True,
             check=False,
@@ -46,7 +48,7 @@ async def test_malicious_agent_recovery():
             try:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
-                        f"http://localhost:{port}/health",
+                        f"{VALIDATOR_URL}/health",
                         timeout=1.0,  # Reduced timeout
                     )
                     return response.status_code == 200
@@ -83,7 +85,7 @@ class CustomPlayer(Player):
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    "http://localhost:8001/validate",
+                    f"{VALIDATOR_URL}/validate",
                     json={
                         "code": malicious_code,
                         "game_name": "prisoners_dilemma",

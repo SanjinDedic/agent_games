@@ -5,33 +5,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Running tests
-Tests run locally via pytest but require Docker Compose services running. One-time local setup:
+Tests run entirely via Docker Compose — no local Python/venv needed:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
-pip install pytest pytest-asyncio httpx pytest-cov
-```
-
-```bash
-# 1. Start services with test profile (spins up api, validator, simulator, postgres_test)
-docker compose --profile test up -d
-
-# 2. Run tests (from repo root, with test env vars)
-DB_ENVIRONMENT=test DATABASE_URL="postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test" pytest backend/tests/
+# Run all tests
+./run_tests.sh
 
 # Run a single test file
-DB_ENVIRONMENT=test DATABASE_URL="postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test" pytest backend/tests/integration/routes/auth/test_auth.py -v
+./run_tests.sh backend/tests/integration/routes/auth/test_auth.py -v
 
 # Run with coverage
-DB_ENVIRONMENT=test DATABASE_URL="postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test" pytest --cov=backend --cov-report=term backend/tests/
+./run_tests.sh --cov=backend --cov-report=term backend/tests/
+
+# Or use docker compose directly
+docker compose --profile test run --rm test-runner
+docker compose --profile test run --rm test-runner pytest backend/tests/integration/ -v
 ```
 
 ### Running the app
 ```bash
-# Development (includes frontend + postgres)
-docker compose --profile dev up -d
+# Development (starts api, validator, simulator, postgres, frontend)
+docker compose up -d
 
 # First-time DB init
 docker compose exec api python -m backend.docker_utils.init_db
@@ -82,6 +76,7 @@ Three user roles: **Admin**, **Team** (student user), **Institution** (manages t
 Each game extends `BaseGame` and implements match logic. The `game_factory.py` registers available games. Games produce structured feedback (Markdown + JSON) shown in the frontend. `backend/games/game_instructions.md` documents how to add a new game.
 
 ### Testing
-- Integration tests hit a real test PostgreSQL instance (port 5433) — do not mock the database
-- Test environment is configured in `backend/tests/conftest.py` via `setup_test_environment` fixture
-- `DB_ENVIRONMENT=test` env var switches the DB connection to the test database
+- Tests run inside a Docker container via `./run_tests.sh` (or `docker compose --profile test run --rm test-runner`)
+- Integration tests hit a real test PostgreSQL instance (postgres_test, port 5433) — do not mock the database
+- Service URLs (validator, simulator, api) auto-resolve via `conftest.py` constants (`VALIDATOR_URL`, `SIMULATOR_URL`, `API_URL`) — use these instead of hardcoded localhost URLs
+- `DB_ENVIRONMENT=test` is set automatically in the test-runner container

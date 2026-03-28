@@ -8,7 +8,7 @@ from backend.api import app
 client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_status_success(client, auth_headers, ensure_containers):
+async def test_status_success(client, auth_headers):
     """Test successful retrieval of service status."""
 
     # Test getting status for all services
@@ -44,7 +44,7 @@ async def test_status_unauthorized(client):
     assert "not authenticated" in response.json()["detail"].lower()
 
 @pytest.mark.asyncio
-async def test_status_exception(client, auth_headers, ensure_containers):
+async def test_status_exception(client, auth_headers):
     """Test handling of exceptions during status retrieval."""
 
     # Mock service status functions to raise an exception
