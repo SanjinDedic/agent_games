@@ -1,11 +1,11 @@
-name: Test, Coverage and Deploy
+name: Tests and Coverage
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-    paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml']
+    paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml', 'docker-compose.test.yml']
   workflow_dispatch:
 
 concurrency:
@@ -13,26 +13,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test_and_coverage:
+  test:
     runs-on: ubuntu-latest
-    env:
-      SECRET_KEY: "github_actions_test_secret_key"
-      SERVICE_TOKEN: "github_actions_test_service_token"
-      TESTING: "1"
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "test_db_password"
-      DB_NAME: "agent_games"
-      TEST_DB_NAME: "agent_games_test"
-      # This is the key missing variable - points to the test database
-      DATABASE_URL: "postgresql+psycopg://postgres:test_db_password@localhost:5433/agent_games_test"
-      
+
     steps:
     - uses: actions/checkout@v4
-    
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: 'pip'
 
     - name: Ensure validation files exist for tests
       env:
@@ -41,44 +26,11 @@ jobs:
         mkdir -p backend/games/lineup4
         echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
 
-    - name: Install dependencies
-      run: |
-        pip install pytest pytest-asyncio httpx pytest-cov
-        pip install -r backend/requirements.txt
-
-    - name: Create .env file for Docker Compose
-      run: |
-        cat > .env << EOF
-        SECRET_KEY=${SECRET_KEY}
-        SERVICE_TOKEN=${SERVICE_TOKEN}
-        POSTGRES_USER=${POSTGRES_USER}
-        POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-        DB_NAME=${DB_NAME}
-        TEST_DB_NAME=${TEST_DB_NAME}
-        DATABASE_URL=${DATABASE_URL}
-        EOF
-
-    - name: Start Docker Compose services with test profile
-      run: |
-        docker compose build
-        # Use the test profile to make sure postgres_test is included
-        docker compose --profile test up -d
-        
-        echo "Waiting for services to start..."
-        timeout 60s bash -c 'until docker compose ps | grep postgres_test | grep -q "healthy"; do sleep 2; echo "Waiting for postgres_test..."; done'
-        timeout 60s bash -c 'until docker compose ps | grep validator | grep -q "healthy"; do sleep 2; echo "Waiting for validator..."; done'
-        timeout 60s bash -c 'until docker compose ps | grep simulator | grep -q "healthy"; do sleep 2; echo "Waiting for simulator..."; done'
-        
-        docker compose ps
-
     - name: Run tests with coverage
       run: |
-        export SECRET_KEY="${SECRET_KEY}"
-        export SERVICE_TOKEN="${SERVICE_TOKEN}"
-        export TESTING=1
-        export DB_ENVIRONMENT=test
-        export DATABASE_URL="${DATABASE_URL}"
-        pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
+        docker compose -f docker-compose.yml -f docker-compose.test.yml build
+        docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner \
+          pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -89,75 +41,4 @@ jobs:
 
     - name: Cleanup
       if: always()
-      run: docker compose down --volumes
-
-  deploy:
-    needs: test_and_coverage
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
-
-    - name: Deploy to EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
-          "SERVICE_TOKEN='${{ secrets.SERVICE_TOKEN }}' \
-           SECRET_KEY='${{ secrets.SECRET_KEY }}' \
-           DATABASE_URL='${{ secrets.DATABASE_URL }}' \
-           POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
-           bash -s" << 'ENDSSH'
-          set -e
-          echo "Starting deployment..."
-          sudo systemctl start docker || true
-          mkdir -p ~/db_backups
-          echo "Creating database backup..."
-          POSTGRES_CONTAINER=$(docker ps -q -f name=postgres)
-          if [ -n "$POSTGRES_CONTAINER" ]; then
-            docker exec "$POSTGRES_CONTAINER" pg_dump -U postgres -d agent_games > ~/db_backups/agent_games_backup_$(date +%Y%m%d_%H%M%S).sql
-            echo "Database backup created successfully"
-            echo "Latest backups:"
-            ls -lt ~/db_backups/ | head -5
-          else
-            echo "Warning: No postgres container found, skipping backup"
-          fi
-          mkdir -p ~/agent_games
-          cd ~/agent_games
-          if [ -d ".git" ]; then
-            git fetch --all && git reset --hard origin/main
-          else
-            git clone --depth 1 https://github.com/SanjinDedic/agent_games.git .
-          fi
-          # Inject validation players from server home if available
-          # lineup4
-          if [ -f ~/lineup4_players.py ]; then
-            echo "Using ~/lineup4_players.py for lineup4 validation players"
-            mkdir -p backend/games/lineup4
-            cp ~/lineup4_players.py backend/games/lineup4/validation_players.py
-          else
-            echo "No lineup4 validation players file found in home directory"
-          fi
-
-          # arena_champions
-          if [ -f ~/arena_players.py ]; then
-            echo "Using ~/arena_players.py for arena_champions validation players"
-            mkdir -p backend/games/arena_champions
-            cp ~/arena_players.py backend/games/arena_champions/validation_players.py
-          else
-            echo "No arena_champions validation players file found in home directory"
-          fi
-          # Logs handled automatically at app startup now
-          export SERVICE_TOKEN=${SERVICE_TOKEN}
-            export SECRET_KEY=${SECRET_KEY}
-            export DATABASE_URL=${DATABASE_URL}
-            export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-            export DB_ENVIRONMENT=production
-          docker compose --profile prod down || true
-          docker compose --profile prod up --build --detach --wait
-          timeout 60s bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done'
-          echo "Deployment completed successfully"
-        ENDSSH
+      run: docker compose -f docker-compose.yml -f docker-compose.test.yml down --volumes
