@@ -175,3 +175,5 @@ backend/.env
 .env
 backend/games/arena_champions/validation_players.py
 .kamal/secrets
+
+docs/
