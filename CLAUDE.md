@@ -27,7 +27,6 @@ docker compose up -d
 docker compose exec api python -m backend.docker_utils.init_db
 
 ./stop_services.sh   # Stop all containers
-./setup_logs.sh      # One-time log setup before first run
 ```
 
 ### Frontend (standalone)

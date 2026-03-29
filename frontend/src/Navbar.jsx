@@ -66,7 +66,7 @@ function AgentGamesNavbar() {
                   League Simulation
                 </Link>
                 <Link to="/AdminDockerStatus" className={navLinkClasses}>
-                  Docker Status
+                  Service Status
                 </Link>
                 {/*
                 <Link to="/AdminDemoUsers" className={navLinkClasses}>

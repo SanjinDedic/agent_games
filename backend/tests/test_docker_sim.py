@@ -1,5 +1,4 @@
 import asyncio
-import os
 from unittest.mock import Mock, patch
 
 import httpx
@@ -38,22 +37,6 @@ def test_simulator_container_health():
             )
 
     asyncio.run(check_health())
-
-
-def test_service_logs_accessible():
-    """Test that service log files are accessible"""
-    # Check if log directory exists (it should be created by setup)
-    log_dir = "./logs"
-    if not os.path.exists(log_dir):
-        pytest.skip("Log directory not found - run setup_logs.sh first")
-
-    # Check for validator log file
-    validator_log = os.path.join(log_dir, "validator.log")
-    simulator_log = os.path.join(log_dir, "simulator.log")
-
-    # Files might not exist initially, but directory should be accessible
-    assert os.access(log_dir, os.R_OK), "Log directory should be readable"
-    assert os.access(log_dir, os.W_OK), "Log directory should be writable"
 
 
 if __name__ == "__main__":
