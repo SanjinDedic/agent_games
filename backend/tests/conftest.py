@@ -15,14 +15,41 @@ from backend.database.db_config import get_database_url
 from backend.database.db_models import (
     Admin,
     DemoUser,
+    Institution,
     League,
+    LeagueType,
     Submission,
     Team,
     TeamType,
-    get_password_hash,
 )
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import create_access_token
+
+# Precomputed bcrypt hashes to avoid expensive hashing on every test
+_HASH_ADMIN = "$2b$12$2uyQydcoxVc6yB9.SexO8.459AjYhGDTxJGP.k5qW4e8/0yWXFSla"  # "admin"
+_HASH_INSTITUTION = "$2b$12$tNyxHdEN4oHZHnvaoXHVC.SrQiU/Ax/edebRkzWnW3bVRiO7YzRwu"  # "institution"
+_HASH_AA = "$2b$12$DmxMM9uom0S2t9gsRWuHOOfRdeORx5u3cu6jWXQ6/QRki4aXCOuRO"  # "AA"
+_HASH_BB = "$2b$12$OuJhmPMiWtlq.jcWwPnoAORJt56d5jmYncRzeR9dN.8bEa4x/GWr6"  # "BB"
+_HASH_CC = "$2b$12$y8g0Cxu9N/kw2CDtAtoS6ulC3GHAV5h7/H.Mmmi9nMiLzt3zQAmhy"  # "CC"
+_HASH_TEST_PASSWORD = "$2b$12$LtUOTV9o8BVRuLe8.V0wAu5/65/b08B5rglBnKnlv1zjJYAJUqC1W"  # "test_password"
+_HASH_TEAM_PASSWORD = "$2b$12$gn3bcwrwEGgLKoETX8FvTuKxU3fgoEJrpgUuxzMGYNN9wnezW01U2"  # "team_password"
+_HASH_PASSWORD2 = "$2b$12$CPYMcO0geKvhtzBd4A2rbera3Sl6jbMNUTCAGHQmsdN8RFNDNr12q"  # "password2"
+_HASH_INST_PASSWORD = "$2b$12$8HS7Qk89LX/VrTuQzuw4DeIsMOMokU/3rdvWh.R2rfaIarZAk10ci"  # "inst_password"
+
+# Lookup for test files that need hashes for known passwords
+TEST_PASSWORD_HASHES = {
+    "admin": _HASH_ADMIN,
+    "institution": _HASH_INSTITUTION,
+    "AA": _HASH_AA,
+    "BB": _HASH_BB,
+    "CC": _HASH_CC,
+    "test_password": _HASH_TEST_PASSWORD,
+    "team_password": _HASH_TEAM_PASSWORD,
+    "password2": _HASH_PASSWORD2,
+    "inst_password": _HASH_INST_PASSWORD,
+    "expired_password": "$2b$12$YFbroVeqFiar5Qrt1w9HHuFl4Nt5oaUn11JtVE7/YMdwZ2Ilhd2aa",
+    "inactive_password": "$2b$12$pSXeqDIBwLaAI2c4kMar1e7hv4acu4snhZg3oK51OIMlgBJ35BWru",
+}
 
 # Set environment variables for testing before any imports
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_tests")
@@ -100,27 +127,81 @@ def db_session(db_engine):
             session.close()
 
 
+def populate_test_database(session):
+    """Seed test database with precomputed hashes (no bcrypt cost)"""
+    existing_admin = session.exec(select(Admin).where(Admin.username == "admin")).first()
+    if existing_admin:
+        return
+
+    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+
+    admin = Admin(username="admin", password_hash=_HASH_ADMIN)
+    session.add(admin)
+
+    institution = Institution(
+        name="Admin Institution",
+        contact_person="Admin",
+        contact_email="admin@admin.com",
+        created_date=now,
+        subscription_active=True,
+        subscription_expiry=now + timedelta(days=365),
+        docker_access=True,
+        password_hash=_HASH_INSTITUTION,
+    )
+    session.add(institution)
+    session.commit()
+
+    unassigned_league = League(
+        name="unassigned",
+        created_date=now,
+        expiry_date=now + timedelta(days=30),
+        game="greedy_pig",
+        league_type=LeagueType.STUDENT,
+        institution_id=institution.id,
+    )
+    session.add(unassigned_league)
+
+    greedy_pig_league = League(
+        name="greedy_pig_league",
+        created_date=now,
+        expiry_date=now + timedelta(days=30),
+        game="greedy_pig",
+        league_type=LeagueType.STUDENT,
+        institution_id=institution.id,
+    )
+    session.add(greedy_pig_league)
+
+    prisoners_dilemma_league = League(
+        name="prisoners_dilemma_league",
+        created_date=now,
+        expiry_date=now + timedelta(days=30),
+        game="prisoners_dilemma",
+        league_type=LeagueType.STUDENT,
+        institution_id=institution.id,
+    )
+    session.add(prisoners_dilemma_league)
+    session.commit()
+
+    for name, school, pw_hash in [
+        ("TeamA", "Sirius College", _HASH_AA),
+        ("TeamB", "Sirius College", _HASH_BB),
+        ("TeamC", "Glen Waverley Secondary College", _HASH_CC),
+    ]:
+        session.add(Team(
+            name=name,
+            school_name=school,
+            password_hash=pw_hash,
+            league_id=unassigned_league.id,
+            team_type=TeamType.STUDENT,
+            institution_id=institution.id,
+        ))
+    session.commit()
+
+
 @pytest.fixture(autouse=True)
 def init_test_db(db_session):
-    """Initialize test database with basic data and unassigned league"""
-    from backend.docker_utils.init_db import populate_database
-
-    populate_database(db_session.get_bind())
-
-    # Ensure unassigned league exists
-    unassigned = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).first()
-
-    if not unassigned:
-        unassigned = League(
-            name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
-            game="greedy_pig",
-        )
-        db_session.add(unassigned)
-        db_session.commit()
+    """Seed fresh test data before each test"""
+    populate_test_database(db_session)
 
 
 @pytest.fixture
@@ -137,7 +218,7 @@ def client(db_session) -> TestClient:
 def admin_token(db_session: Session) -> str:
     """Create admin user and return admin token"""
     admin = Admin(
-        username="test_admin", password_hash=get_password_hash("test_password")
+        username="test_admin", password_hash=_HASH_TEST_PASSWORD
     )
     db_session.add(admin)
     db_session.commit()
@@ -165,7 +246,7 @@ def team_token(db_session):
     team = Team(
         name="test_team",
         school_name="Test School",
-        password_hash=get_password_hash("test_password"),
+        password_hash=_HASH_TEST_PASSWORD,
         league_id=league.id,
     )
     db_session.add(team)
