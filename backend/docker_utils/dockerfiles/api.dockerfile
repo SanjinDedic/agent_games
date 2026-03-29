@@ -38,4 +38,4 @@ RUN chmod -R 755 /agent_games
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload 2>&1 | tee -a /agent_games/logs/api.log"]
+CMD ["sh", "-c", "gunicorn backend.api:app --worker-class uvicorn.workers.UvicornWorker --workers ${GUNICORN_WORKERS:-3} --bind 0.0.0.0:8000 --access-logfile - --error-logfile - 2>&1 | tee -a /agent_games/logs/api.log"]
