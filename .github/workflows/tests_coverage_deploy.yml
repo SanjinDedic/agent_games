@@ -30,12 +30,13 @@ jobs:
       run: |
         docker compose -f docker-compose.yml -f docker-compose.test.yml build
         docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner \
-          pytest --cov=backend --cov-report=xml --cov-report=term backend/tests/
+          pytest --cov=backend --cov-report=xml:backend/coverage.xml --cov-report=term backend/tests/
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        files: backend/coverage.xml
         flags: backend
         fail_ci_if_error: true
 

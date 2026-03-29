@@ -11,14 +11,22 @@ A multi-game agent simulation platform where students and teams submit code agen
 
 ## Backend
 
-![Python](https://img.shields.io/badge/python-3.14-blue.svg)
+![Python](https://img.shields.io/badge/python-3.14-blue.svg?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135.2-009688.svg?logo=fastapi)
 ![Pydantic](https://img.shields.io/badge/Pydantic-2.12.5-E92063.svg?logo=pydantic)
 ![SQLModel](https://img.shields.io/badge/SQLModel-0.0.37-3776AB.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1.svg?logo=postgresql&logoColor=white)
 ![Gunicorn](https://img.shields.io/badge/Gunicorn-25.3.0-499848.svg?logo=gunicorn&logoColor=white)
+![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9.svg?logo=uv&logoColor=white)
 [![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/tests_coverage_deploy.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/tests_coverage_deploy.yml)
 [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
+
+## Containers
+
+All Python services use lightweight two-stage Alpine builds. Dependencies are compiled in a builder stage and only the virtual environment is copied into the final image, keeping containers at ~400MB (API) compared to ~1.6GB for the full Debian-based Python image.
+
+![Docker](https://img.shields.io/badge/Alpine_API-~400MB-0db7ed.svg?logo=docker&logoColor=white)
+![Docker](https://img.shields.io/badge/Alpine_Test_Runner-~456MB-0db7ed.svg?logo=docker&logoColor=white)
 
 ## Setup
 

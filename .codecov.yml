@@ -11,7 +11,7 @@ ignore:
   - "backend/tests/*"
   - "backend/production_database_setup.py"
   - "backend/dockerfile_script.py"
-  - "backend/requirements.txt"
+  - "backend/docker_utils/*"
   - "backend/games/alpha_guess/leagues/*"
   - "backend/games/greedy_pig/leagues/*"
   - "backend/games/prisoners_dilemma/leagues/*"
