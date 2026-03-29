@@ -11,3 +11,6 @@ services:
   simulator:
     environment:
       - DB_ENVIRONMENT=test
+  frontend:
+    profiles:
+      - disabled
