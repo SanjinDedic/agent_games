@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session
 
-from backend.database.db_models import Institution, get_password_hash
+from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
+from backend.tests.conftest import TEST_PASSWORD_HASHES
 
 
 @pytest.fixture
@@ -20,13 +21,13 @@ def test_institution(db_session: Session):
         subscription_active=True,
         subscription_expiry=datetime.now() + timedelta(days=30),  # Using naive datetime
         docker_access=True,
+        password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )
-    institution.set_password("inst_password")
-    
+
     db_session.add(institution)
     db_session.commit()
     db_session.refresh(institution)
-    
+
     return institution
 
 
@@ -41,13 +42,13 @@ def expired_institution(db_session: Session):
         subscription_active=True,
         subscription_expiry=datetime.now() - timedelta(days=1),  # Expired
         docker_access=True,
+        password_hash=TEST_PASSWORD_HASHES["expired_password"],
     )
-    institution.set_password("expired_password")
-    
+
     db_session.add(institution)
     db_session.commit()
     db_session.refresh(institution)
-    
+
     return institution
 
 
@@ -62,8 +63,8 @@ def inactive_institution(db_session: Session):
         subscription_active=False,  # Inactive
         subscription_expiry=datetime.now() + timedelta(days=30),
         docker_access=True,
+        password_hash=TEST_PASSWORD_HASHES["inactive_password"],
     )
-    institution.set_password("inactive_password")
     
     db_session.add(institution)
     db_session.commit()

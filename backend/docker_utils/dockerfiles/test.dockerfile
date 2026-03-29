@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM python:3.13 AS builder
+FROM python:3.14 AS builder
 
 WORKDIR /build
 
@@ -8,7 +8,7 @@ COPY ./backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime stage
-FROM python:3.13
+FROM python:3.14
 
 # Set working directory
 WORKDIR /agent_games
@@ -25,7 +25,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder stage
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code (from project root)

@@ -2,9 +2,14 @@ from sqlmodel import Session, create_engine
 
 from backend.database.db_config import get_database_url
 
+_engine = None
+
 
 def get_db_engine():
-    return create_engine(get_database_url())
+    global _engine
+    if _engine is None:
+        _engine = create_engine(get_database_url())
+    return _engine
 
 
 def get_db():

@@ -1,0 +1,33 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+domains:
+- domain: agentgames.io
+  type: PRIMARY
+  zone: agentgames.io
+features:
+- buildpack-stack=ubuntu-22
+ingress:
+  rules:
+  - component:
+      name: agent-games-frontend
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /
+name: sea-lion-app
+region: syd
+static_sites:
+- catchall_document: index.html
+  environment_slug: node-js
+  envs:
+  - key: REACT_APP_AGENT_API_URL
+    scope: BUILD_TIME
+    value: https://api.agentgames.io
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: SanjinDedic/agent_games
+  name: agent-games-frontend
+  source_dir: frontend

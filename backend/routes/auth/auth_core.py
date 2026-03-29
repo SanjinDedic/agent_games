@@ -8,8 +8,6 @@ import pytz
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-
 from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY, create_access_token
 
 logger = logging.getLogger(__name__)
@@ -17,7 +15,6 @@ logger = logging.getLogger(__name__)
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Define valid roles
 ROLE_ADMIN = "admin"

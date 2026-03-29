@@ -15,7 +15,8 @@ from backend.routes.auth.auth_core import (
     verify_ai_agent_service_or_student,
     verify_any_role,
 )
-from backend.routes.auth.auth_db import create_access_token, get_db
+from backend.database.db_session import get_db
+from backend.routes.auth.auth_db import create_access_token
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,

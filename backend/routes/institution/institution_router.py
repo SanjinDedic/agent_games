@@ -13,7 +13,7 @@ from backend.routes.auth.auth_core import (
     verify_admin_or_institution,
     verify_institution_role,
 )
-from backend.routes.auth.auth_db import get_db
+from backend.database.db_session import get_db
 from backend.routes.institution.institution_db import (
     assign_team_to_league,
     create_league,

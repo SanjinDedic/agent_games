@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM python:3.13 AS builder
+FROM python:3.14 AS builder
 
 WORKDIR /build
 
@@ -8,7 +8,7 @@ COPY ./backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime stage
-FROM python:3.13
+FROM python:3.14
 
 # Set working directory
 WORKDIR /agent_games
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN groupadd -r apigroup && useradd -r -g apigroup apiuser
 
 # Copy installed packages from builder stage
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code (from project root)
@@ -38,4 +38,4 @@ RUN chmod -R 755 /agent_games
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload 2>&1 | tee -a /agent_games/logs/api.log"]
+CMD ["sh", "-c", "gunicorn backend.api:app --worker-class uvicorn.workers.UvicornWorker --workers ${GUNICORN_WORKERS:-3} --bind 0.0.0.0:8000 --access-logfile - --error-logfile - 2>&1 | tee -a /agent_games/logs/api.log"]

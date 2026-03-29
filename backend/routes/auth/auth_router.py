@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from backend.models_api import ResponseModel
+from backend.database.db_session import get_db
 from backend.routes.auth.auth_db import (
     InvalidCredentialsError,
     get_admin_token,
-    get_db,
     get_institution_token,
     get_team_token,
     verify_agent_api_key,

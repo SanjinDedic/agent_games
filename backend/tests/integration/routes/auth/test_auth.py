@@ -9,8 +9,8 @@ from backend.database.db_models import (
     Institution,
     League,
     Team,
-    get_password_hash,
 )
+from backend.tests.conftest import TEST_PASSWORD_HASHES
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -19,7 +19,7 @@ def test_admin_login_success(client, db_session: Session):
 
     # Test case 1: Basic admin login
     admin = Admin(
-        username="test_admin", password_hash=get_password_hash("test_password")
+        username="test_admin", password_hash=TEST_PASSWORD_HASHES["test_password"]
     )
     db_session.add(admin)
     db_session.commit()
@@ -35,7 +35,7 @@ def test_admin_login_success(client, db_session: Session):
     assert data["data"]["token_type"] == "bearer"
 
     # Test case 2: Login with different admin
-    admin2 = Admin(username="admin2", password_hash=get_password_hash("password2"))
+    admin2 = Admin(username="admin2", password_hash=TEST_PASSWORD_HASHES["password2"])
     db_session.add(admin2)
     db_session.commit()
 
@@ -53,7 +53,7 @@ def test_admin_login_exceptions(client, db_session: Session):
 
     # Create test admin
     admin = Admin(
-        username="test_admin", password_hash=get_password_hash("test_password")
+        username="test_admin", password_hash=TEST_PASSWORD_HASHES["test_password"]
     )
     db_session.add(admin)
     db_session.commit()
@@ -108,7 +108,7 @@ def test_team_login_success(client, db_session: Session):
     team = Team(
         name="test_team",
         school_name="Test School",
-        password_hash=get_password_hash("team_password"),
+        password_hash=TEST_PASSWORD_HASHES["team_password"],
         league_id=league.id,
     )
     db_session.add(team)
@@ -127,7 +127,7 @@ def test_team_login_success(client, db_session: Session):
     team2 = Team(
         name="team2",
         school_name="School 2",
-        password_hash=get_password_hash("password2"),
+        password_hash=TEST_PASSWORD_HASHES["password2"],
         league_id=league.id,
     )
     db_session.add(team2)
@@ -158,7 +158,7 @@ def test_team_login_exceptions(client, db_session: Session):
     team = Team(
         name="test_team",
         school_name="Test School",
-        password_hash=get_password_hash("team_password"),
+        password_hash=TEST_PASSWORD_HASHES["team_password"],
         league_id=league.id,
     )
     db_session.add(team)
@@ -215,7 +215,7 @@ def test_token_validation(client, db_session: Session):
         subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ)
         + timedelta(days=30),  # Add timezone
         docker_access=True,
-        password_hash=get_password_hash("inst_password"),
+        password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )
     db_session.add(institution)
     db_session.commit()

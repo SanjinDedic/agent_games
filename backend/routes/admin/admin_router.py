@@ -26,7 +26,7 @@ from backend.routes.admin.admin_models import (
     ToggleDockerAccess,
 )
 from backend.routes.auth.auth_core import get_current_user, verify_admin_role
-from backend.routes.auth.auth_db import get_db
+from backend.database.db_session import get_db
 
 logger = logging.getLogger(__name__)
 
