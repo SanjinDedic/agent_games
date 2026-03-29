@@ -167,12 +167,6 @@ Each service has memory and process limits configured to ensure stability:
 - PostgreSQL: 700MB memory limit
 - Frontend: 1GB memory limit
 
-## Manual Local Development
-
-> **Tip:** For most users, we recommend using the [one-command Docker setup](#one-command-local-setup-recommended) above instead of manual setup.
-
-For detailed instructions on setting up the backend and frontend manually for local development, please see the [Backend README](./backend/README.md#manual-local-development).
-
 ## Notes
 
 - **Recommended:** Use the single Docker Compose command for the easiest local development experience
