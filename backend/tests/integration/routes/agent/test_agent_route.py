@@ -1,7 +1,6 @@
 # tests/routes/agent/test_agent_router.py
 
 from datetime import datetime, timedelta
-import httpx
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,9 +8,8 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import AgentAPIKey, League, Team, TeamType, Submission
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import inspect_db_state, API_URL
+from backend.tests.conftest import inspect_db_state
 
-# import patch
 from unittest.mock import patch
 
 @pytest.fixture
@@ -113,68 +111,65 @@ def agent_token(setup_agent_team: Team) -> str:
     )
 
 
-@pytest.mark.asyncio
-async def test_agent_simulation_success(
+def test_agent_simulation_success(
+    client: TestClient,
     db_session: Session,
     setup_agent_league: League,
     setup_agent_team: Team,
-    setup_player_teams_with_submissions,  # Add this fixture
+    setup_player_teams_with_submissions,
     agent_token: str,
 ):
     """Test successful simulation scenarios for agent endpoints"""
 
     headers = {"Authorization": f"Bearer {agent_token}"}
 
-    async with httpx.AsyncClient() as client:
-        # Test case 1: Basic simulation request
-        response = await client.post(
-            f"{API_URL}/agent/simulate",
-            headers=headers,
-            json={
-                "league_id": setup_agent_league.id,
-                "game_name": "lineup4",
-                "num_simulations": 10,
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        print("Should work this ", data)
-        assert data["status"] == "success"
-        assert "data" in data
-        assert "simulation_results" in data["data"]
+    # Test case 1: Basic simulation request
+    response = client.post(
+        "/agent/simulate",
+        headers=headers,
+        json={
+            "league_id": setup_agent_league.id,
+            "game_name": "lineup4",
+            "num_simulations": 10,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "data" in data
+    assert "simulation_results" in data["data"]
 
-        # Test case 2: Simulation with custom rewards
-        response = await client.post(
-            f"{API_URL}/agent/simulate",
-            headers=headers,
-            json={
-                "league_id": setup_agent_league.id,
-                "game_name": "lineup4",
-                "num_simulations": 10,
-                "custom_rewards": [10, 5, 0],
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert "data" in data
+    # Test case 2: Simulation with custom rewards
+    response = client.post(
+        "/agent/simulate",
+        headers=headers,
+        json={
+            "league_id": setup_agent_league.id,
+            "game_name": "lineup4",
+            "num_simulations": 10,
+            "custom_rewards": [10, 5, 0],
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "data" in data
 
-        # Test case 3: Simulation with player feedback
-        response = await client.post(
-            f"{API_URL}/agent/simulate",
-            headers=headers,
-            json={
-                "league_id": setup_agent_league.id,
-                "game_name": "lineup4",
-                "num_simulations": 10,
-                "player_feedback": True,
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        print("Player feedback simulation responseXXX: ", data)
-        assert data["status"] == "success"
-        assert "data" in data
+    # Test case 3: Simulation with player feedback
+    response = client.post(
+        "/agent/simulate",
+        headers=headers,
+        json={
+            "league_id": setup_agent_league.id,
+            "game_name": "lineup4",
+            "num_simulations": 10,
+            "player_feedback": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "data" in data
 
 
 def test_agent_simulation_exceptions(

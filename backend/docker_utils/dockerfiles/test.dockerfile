@@ -1,14 +1,18 @@
 # Stage 1: Build stage
-FROM python:3.14 AS builder
+FROM python:3.14-alpine AS builder
 
-WORKDIR /build
+WORKDIR /agent_games
 
-# Copy requirements and install dependencies
-COPY ./backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv and build dependencies for compiled packages
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+RUN apk add --no-cache gcc musl-dev postgresql-dev
+
+# Install dependencies including test group (cached layer)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --group test
 
 # Stage 2: Runtime stage
-FROM python:3.14
+FROM python:3.14-alpine
 
 # Set working directory
 WORKDIR /agent_games
@@ -16,17 +20,14 @@ WORKDIR /agent_games
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/agent_games
+ENV PATH="/agent_games/.venv/bin:$PATH"
 ENV DB_ENVIRONMENT=test
 
-# Install curl for healthchecks and Docker CLI for tests that manage containers
-RUN apt-get update && \
-    apt-get install -y curl && \
-    curl -fsSL https://get.docker.com | sh && \
-    rm -rf /var/lib/apt/lists/*
+# Install curl for healthchecks, libpq for psycopg, and Docker CLI for tests
+RUN apk add --no-cache curl libpq docker-cli
 
-# Copy installed packages from builder stage
-COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy virtual environment from builder stage
+COPY --from=builder /agent_games/.venv /agent_games/.venv
 
 # Copy application code (from project root)
 COPY . /agent_games/

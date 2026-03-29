@@ -16,7 +16,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # Use a default secret key for testing if none is provided
 # This should NEVER be used in production
-SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_development_only")
+SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_tests")
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
