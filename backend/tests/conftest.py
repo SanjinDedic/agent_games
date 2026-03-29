@@ -39,7 +39,7 @@ SIMULATOR_URL = "http://simulator:8002" if _IS_DOCKER else "http://localhost:800
 API_URL = "http://api:8000" if _IS_DOCKER else "http://localhost:8000"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def db_engine():
     """Create database engine for testing using the dedicated test database"""
     database_url = get_database_url()
@@ -101,17 +101,11 @@ def db_session(db_engine):
 
 
 @pytest.fixture(autouse=True)
-def init_test_db(db_engine, db_session):
+def init_test_db(db_session):
     """Initialize test database with basic data and unassigned league"""
     from backend.docker_utils.init_db import populate_database
 
-    # Truncate all tables before each test to ensure clean state
-    with Session(db_engine) as cleanup_session:
-        for table in reversed(SQLModel.metadata.sorted_tables):
-            cleanup_session.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
-        cleanup_session.commit()
-
-    populate_database(db_engine)
+    populate_database(db_session.get_bind())
 
     # Ensure unassigned league exists
     unassigned = db_session.exec(
