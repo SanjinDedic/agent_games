@@ -1,16 +1,15 @@
 # Stage 1: Build stage
 FROM python:3.14-alpine AS builder
 
-WORKDIR /build
+WORKDIR /agent_games
 
 # Install uv and build dependencies for compiled packages
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 RUN apk add --no-cache gcc musl-dev postgresql-dev
 
-# Copy requirements and install dependencies
-COPY ./backend/requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt && \
-    uv pip install --system --no-cache psycopg[c]
+# Install dependencies (cached layer)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
 
 # Stage 2: Runtime stage
 FROM python:3.14-alpine
@@ -21,6 +20,7 @@ WORKDIR /agent_games
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/agent_games
+ENV PATH="/agent_games/.venv/bin:$PATH"
 
 # Install curl for healthchecks and libpq for psycopg
 RUN apk add --no-cache curl libpq
@@ -28,9 +28,8 @@ RUN apk add --no-cache curl libpq
 # Create non-root user and group
 RUN addgroup -S apigroup && adduser -S apiuser -G apigroup
 
-# Copy installed packages from builder stage
-COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy virtual environment from builder stage
+COPY --from=builder /agent_games/.venv /agent_games/.venv
 
 # Copy application code (from project root)
 COPY . /agent_games/
