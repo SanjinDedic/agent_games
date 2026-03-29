@@ -9,7 +9,7 @@ from sqlmodel import Session
 from backend.config import DEMO_TOKEN_EXPIRY
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_config import create_access_token
-from backend.routes.auth.auth_db import get_db
+from backend.database.db_session import get_db
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
 from backend.routes.demo.demo_models import DemoLaunchRequestWithUser
 from backend.utils import get_games_names

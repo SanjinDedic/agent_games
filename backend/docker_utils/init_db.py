@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import psycopg
 import pytz
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -18,6 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from backend.database.db_config import get_database_url
 from backend.database.db_models import (Admin, Institution, League, LeagueType,
                                         Team, TeamType, get_password_hash)
+from backend.database.db_session import get_db_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,8 +36,7 @@ def wait_for_postgres(max_retries=30, retry_interval=2):
     retries = 0
     while retries < max_retries:
         try:
-            # Use SQLAlchemy engine to test connection - consistent with rest of project
-            engine = create_engine(database_url)
+            engine = get_db_engine()
             with engine.connect():
                 pass  # Test connection
             logger.info("Successfully connected to PostgreSQL")
@@ -59,7 +59,7 @@ def initialize_database():
         return False
     
     # Create database engine
-    engine = create_engine(get_database_url())
+    engine = get_db_engine()
     
     # Create all tables
     SQLModel.metadata.create_all(engine)

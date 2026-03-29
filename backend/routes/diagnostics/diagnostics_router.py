@@ -5,7 +5,7 @@ import logging
 from backend.database.db_models import Institution
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import get_current_user, verify_admin_or_institution
-from backend.routes.auth.auth_db import get_db
+from backend.database.db_session import get_db
 from backend.routes.diagnostics.diagnostics_models import ServiceName
 from backend.routes.diagnostics.diagnostics_utils import (
     get_service_logs,

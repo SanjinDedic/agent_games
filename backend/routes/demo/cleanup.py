@@ -3,9 +3,10 @@ import threading
 import time
 from datetime import datetime
 
-from sqlmodel import Session, create_engine
+from sqlmodel import Session
 
-from backend.config import DEMO_TOKEN_EXPIRY, get_database_url
+from backend.config import DEMO_TOKEN_EXPIRY
+from backend.database.db_session import get_db_engine
 from backend.routes.demo.demo_db import (
     cleanup_expired_demo_users,
     cleanup_old_demo_submissions,
@@ -28,7 +29,7 @@ class DemoCleanupThread(threading.Thread):
         logger.info(
             f"Starting demo cleanup thread (interval: {self.interval_minutes} minutes)"
         )
-        engine = create_engine(get_database_url())
+        engine = get_db_engine()
 
         while not self.stop_event.is_set():
             try:

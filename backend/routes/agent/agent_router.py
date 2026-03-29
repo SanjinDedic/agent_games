@@ -13,7 +13,7 @@ from backend.routes.agent.agent_db import (
 )
 from backend.routes.agent.agent_models import SimulationRequest, ValidationRequest
 from backend.routes.auth.auth_core import get_current_user, verify_ai_agent_role
-from backend.routes.auth.auth_db import get_db
+from backend.database.db_session import get_db
 
 logger = logging.getLogger(__name__)
 

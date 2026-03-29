@@ -3,9 +3,8 @@ import os
 from datetime import datetime, timedelta
 
 import pytz
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, select
 
-from backend.database.db_config import get_database_url
 from backend.database.db_models import Admin, AgentAPIKey, Institution, Team, TeamType
 from backend.routes.auth.auth_core import create_access_token
 
@@ -25,13 +24,6 @@ class RateLimitExceededError(Exception):
 
 
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
-
-
-def get_db():
-    """Database session dependency"""
-    engine = create_engine(get_database_url())
-    with Session(engine) as session:
-        yield session
 
 
 def get_team_token(session: Session, team_name: str, team_password: str):

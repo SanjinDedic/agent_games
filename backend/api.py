@@ -12,9 +12,9 @@ from backend.routes.demo.demo_router import demo_router
 from backend.routes.diagnostics.diagnostics_router import diagnostics_router
 from backend.routes.institution.institution_router import institution_router
 from backend.routes.user.user_router import user_router
-from sqlmodel import Session, create_engine, text
+from sqlmodel import Session, text
 
-from backend.database.db_config import get_database_url
+from backend.database.db_session import get_db_engine
 from backend.docker_utils.init_db import initialize_database
 from backend.log_setup import ensure_log_files
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def check_database_status():
     """Check if database is initialized and warn if its not"""
     try:
-        engine = create_engine(get_database_url())
+        engine = get_db_engine()
         with Session(engine) as session:
             # Check if admin table exists and has data
             admin_count = session.exec(text("SELECT COUNT(*) FROM admin")).first()
