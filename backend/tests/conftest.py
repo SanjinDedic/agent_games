@@ -39,9 +39,9 @@ SIMULATOR_URL = "http://simulator:8002" if _IS_DOCKER else "http://localhost:800
 API_URL = "http://api:8000" if _IS_DOCKER else "http://localhost:8000"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def db_engine():
-    """Create database engine for testing using the dedicated test database"""
+    """Create a single database engine for the entire test session"""
     database_url = get_database_url()
     logger.info(f"Creating database engine: {database_url}")
 
@@ -53,26 +53,17 @@ def db_engine():
         logger.info("Test database already exists")
     except Exception as e:
         logger.info(f"Test database doesn't exist, creating it: {e}")
-        # Connect to postgres to create the test database
         base_url = database_url.rsplit("/", 1)[0] + "/postgres"
         admin_engine = create_engine(base_url)
+        db_name = database_url.rsplit("/", 1)[1].split("?")[0]
 
-        # Extract just the database name from the URL
-        db_name = database_url.rsplit("/", 1)[1].split("?")[0]  # Handle query params
-
-        # Use autocommit mode to avoid transaction issues with DDL
         with admin_engine.connect() as conn:
-            # Set autocommit mode
             conn.execution_options(isolation_level="AUTOCOMMIT")
-
-            # Terminate existing connections
             conn.execute(
                 text(
                     f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{db_name}' AND pid <> pg_backend_pid()"
                 )
             )
-
-            # Drop and create database (these commands will run outside transaction)
             conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
             conn.execute(text(f"CREATE DATABASE {db_name}"))
 
@@ -90,22 +81,31 @@ def db_engine():
 
 @pytest.fixture
 def db_session(db_engine):
-    """Create database session for testing"""
+    """Create a fresh database session per test"""
     with Session(db_engine) as session:
         try:
             logger.debug(f"Test session using database: {db_engine.url}")
             yield session
-            session.rollback()  # Roll back any uncommitted changes
+            session.rollback()
         finally:
             session.close()
 
 
 @pytest.fixture(autouse=True)
-def init_test_db(db_session):
-    """Initialize test database with basic data and unassigned league"""
+def init_test_db(db_engine, db_session):
+    """Truncate all tables and re-seed before each test"""
     from backend.docker_utils.init_db import populate_database
 
-    populate_database(db_session.get_bind())
+    # Clean slate: truncate all tables (fast, keeps schema)
+    with Session(db_engine) as cleanup_session:
+        for table in reversed(SQLModel.metadata.sorted_tables):
+            cleanup_session.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+        cleanup_session.commit()
+
+    populate_database(db_engine)
+
+    # Refresh db_session so it sees the newly populated data
+    db_session.expire_all()
 
     # Ensure unassigned league exists
     unassigned = db_session.exec(

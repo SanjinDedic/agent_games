@@ -351,7 +351,7 @@ class CustomPlayer(Player):
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
-        assert f"Submission ID: {i+1}" in data["message"]
+        assert "Submission ID:" in data["message"]
 
     # Verify we have exactly 5 submissions
     submissions = db_session.exec(
