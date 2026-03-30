@@ -11,7 +11,7 @@ function Leaderboards() {
   const [leagues, setLeagues] = useState([]);
 
   // Get API URL from environment
-  const apiUrl = process.env.REACT_APP_AGENT_API_URL;
+  const apiUrl = import.meta.env.VITE_AGENT_API_URL;
 
   useEffect(() => {
     fetchPublishedResults();

@@ -11,7 +11,7 @@ const PublishedResults = () => {
   const [error, setError] = useState(null);
 
   // Use the environment API URL
-  const apiUrl = process.env.REACT_APP_AGENT_API_URL;
+  const apiUrl = import.meta.env.VITE_AGENT_API_URL;
 
   useEffect(() => {
     if (!publishLink) {
