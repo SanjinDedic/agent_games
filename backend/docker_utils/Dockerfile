@@ -9,12 +9,16 @@ RUN apk add --no-cache gcc musl-dev postgresql-dev
 
 # Install dependencies (cached layer)
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project --no-dev
+ARG BUILD_ENV=production
+RUN if [ "$BUILD_ENV" = "test" ]; then \
+      uv sync --frozen --no-install-project --group test; \
+    else \
+      uv sync --frozen --no-install-project --no-dev; \
+    fi
 
 # Stage 2: Runtime stage
 FROM python:3.14-alpine
 
-# Set working directory
 WORKDIR /agent_games
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -22,8 +26,12 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/agent_games
 ENV PATH="/agent_games/.venv/bin:$PATH"
 
-# Install curl for healthchecks and libpq for psycopg
-RUN apk add --no-cache curl libpq
+# Copy libpq from builder — no apk add needed for psycopg
+COPY --from=builder /usr/lib/libpq.so* /usr/lib/
+
+# Only install extra packages when needed (e.g. docker-cli for test-runner)
+ARG RUNTIME_PACKAGES=""
+RUN if [ -n "$RUNTIME_PACKAGES" ]; then apk add --no-cache $RUNTIME_PACKAGES; fi
 
 # Create non-root user and group
 RUN addgroup -S apigroup && adduser -S apiuser -G apigroup

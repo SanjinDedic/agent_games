@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+      dockerfile: ./backend/docker_utils/Dockerfile
     # Dev: single-worker uvicorn with hot reload. Production uses the Dockerfile CMD (gunicorn).
     command: uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
     ports:
@@ -23,7 +23,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,7 +37,7 @@ services:
   validator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+      dockerfile: ./backend/docker_utils/Dockerfile
     command: python /agent_games/backend/docker_utils/services/validation_server.py
     ports:
       - "8001:8001"
@@ -50,7 +50,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -64,7 +64,7 @@ services:
   simulator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/api.dockerfile
+      dockerfile: ./backend/docker_utils/Dockerfile
     command: python /agent_games/backend/docker_utils/services/simulation_server.py
     ports:
       - "8002:8002"
@@ -77,7 +77,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -125,7 +125,10 @@ services:
   test-runner:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/dockerfiles/test.dockerfile
+      dockerfile: ./backend/docker_utils/Dockerfile
+      args:
+        - BUILD_ENV=test
+        - RUNTIME_PACKAGES=docker-cli
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1

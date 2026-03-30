@@ -7,13 +7,13 @@ import os
 CONTAINERS = {
     "validator": {
         "port": "8001:8001",
-        "dockerfile": "docker/dockerfiles/validator.dockerfile",
+        "dockerfile": "docker_utils/Dockerfile",
         "name": "validator",
         "service_file": "docker/services/validation_server.py",
     },
     "simulator": {
         "port": "8002:8002",
-        "dockerfile": "docker/dockerfiles/simulator.dockerfile",
+        "dockerfile": "docker_utils/Dockerfile",
         "name": "simulator",
         "service_file": "docker/services/simulation_server.py",
     },
