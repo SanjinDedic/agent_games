@@ -4,10 +4,10 @@ A multi-game agent simulation platform where students and teams submit code agen
 
 ## Frontend
 
-![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react&logoColor=white)
-![Redux](https://img.shields.io/badge/Redux-9.1.2-764ABC?logo=redux&logoColor=white)
-![React Router](https://img.shields.io/badge/React_Router-6.22.3-CA4245?logo=react-router&logoColor=white)
-![Monaco Editor](https://img.shields.io/badge/Monaco_Editor-4.6.0-00B3E6?logo=visual-studio-code&logoColor=white)
+![React](https://img.shields.io/badge/React-19.2.4-61DAFB?logo=react&logoColor=white)
+![Redux](https://img.shields.io/badge/Redux-9.2.0-764ABC?logo=redux&logoColor=white)
+![React Router](https://img.shields.io/badge/React_Router-7.13.2-CA4245?logo=react-router&logoColor=white)
+![Monaco Editor](https://img.shields.io/badge/Monaco_Editor-4.7.0-00B3E6?logo=visual-studio-code&logoColor=white)
 
 ## Backend
 
