@@ -7,18 +7,13 @@ const PLAYER_COLORS = [
     '#EF4444', '#06B6D4', '#EC4899', '#14B8A6',
 ];
 
-const GreedyPigProgressBar = ({ roll, allPlayers }) => {
-    const playerDataMap = {};
-    (roll.players || []).forEach(p => {
-        playerDataMap[p.name] = p;
-    });
-
+const GreedyPigProgressBar = ({ snapshot, allPlayers }) => {
     // Find max value across all players for scaling (at least GOAL)
     let maxVal = GOAL;
     allPlayers.forEach(name => {
-        const pData = playerDataMap[name];
-        if (pData) {
-            const total = pData.banked + (roll.busted ? 0 : pData.unbanked);
+        const s = snapshot[name];
+        if (s) {
+            const total = s.banked + s.unbanked;
             if (total > maxVal) maxVal = total;
         }
     });
@@ -29,12 +24,10 @@ const GreedyPigProgressBar = ({ roll, allPlayers }) => {
         <div className="w-full mt-4 bg-ui-lighter rounded-lg p-4">
             <div className="relative">
                 {allPlayers.map((name, idx) => {
-                    const pData = playerDataMap[name];
-                    const banked = pData?.banked || 0;
-                    const unbanked = roll.busted ? 0 : (pData?.unbanked || 0);
-                    const total = banked + unbanked;
-                    const bankedPercent = (banked / maxVal) * 100;
-                    const unbankedPercent = (unbanked / maxVal) * 100;
+                    const s = snapshot[name] || { banked: 0, unbanked: 0 };
+                    const total = s.banked + s.unbanked;
+                    const bankedPercent = (s.banked / maxVal) * 100;
+                    const unbankedPercent = (s.unbanked / maxVal) * 100;
                     const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
 
                     return (
@@ -50,7 +43,7 @@ const GreedyPigProgressBar = ({ roll, allPlayers }) => {
                                         style={{ width: `${bankedPercent}%`, backgroundColor: color }}
                                     />
                                 )}
-                                {/* Unbanked portion - striped/lighter */}
+                                {/* Unbanked portion - lighter */}
                                 {unbankedPercent > 0 && (
                                     <div
                                         className="absolute top-0 h-full transition-all duration-300 opacity-40"
