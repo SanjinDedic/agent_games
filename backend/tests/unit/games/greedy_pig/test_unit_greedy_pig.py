@@ -50,8 +50,9 @@ def test_game_initialization(test_league):
     assert game.game_over is False
     assert isinstance(game.active_players, list)
     assert isinstance(game.players_banked_this_round, list)
-    assert isinstance(game.game_feedback, str)
-    assert isinstance(game.player_feedback, list)
+    assert isinstance(game.game_feedback, dict)
+    assert game.game_feedback["game"] == "greedy_pig"
+    assert isinstance(game.player_feedback, dict)
     assert isinstance(game.custom_rewards, list)
 
 
@@ -194,8 +195,8 @@ def test_reset(test_game):
     assert test_game.game_over is False
     assert test_game.players[0].banked_money == 0
     assert test_game.players[1].unbanked_money == 0
-    assert test_game.game_feedback == ""
-    assert test_game.player_feedback == []
+    assert test_game.game_feedback == {"game": "greedy_pig", "rounds": []}
+    assert test_game.player_feedback == {}
 
 
 def test_run_simulations(test_game):
@@ -224,6 +225,7 @@ def test_run_single_game_with_feedback(test_game):
     assert "feedback" in result
     assert "player_feedback" in result
     
-    # Check that feedback was collected
-    assert isinstance(result["feedback"], str)
-    assert len(result["feedback"]) > 0
+    # Check that feedback was collected as dict
+    assert isinstance(result["feedback"], dict)
+    assert result["feedback"]["game"] == "greedy_pig"
+    assert len(result["feedback"]["rounds"]) > 0

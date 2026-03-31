@@ -3,6 +3,7 @@ import JsonFeedback from '../types/JsonFeedback';
 import PrisonersFeedback from '../games/prisoners_dilemma/PrisonersFeedback';
 import Lineup4Feedback from '../games/lineup4/Lineup4Feedback';
 import ArenaChampionsFeedback from '../games/arena_champions/ArenaChampionsFeedback';
+import GreedyPigFeedback from '../games/greedy_pig/GreedyPigFeedback';
 
 export const getFeedbackComponent = (feedback) => {
     // Handle game-specific feedback
@@ -14,6 +15,8 @@ export const getFeedbackComponent = (feedback) => {
                 return Lineup4Feedback;
             case 'arena_champions':
                 return ArenaChampionsFeedback;
+            case 'greedy_pig':
+                return GreedyPigFeedback;
             default:
                 return JsonFeedback;
         }

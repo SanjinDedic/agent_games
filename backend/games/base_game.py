@@ -1,3 +1,4 @@
+import copy
 import importlib
 import logging
 from abc import ABC
@@ -61,7 +62,7 @@ class BaseGame(ABC):
             if hasattr(validation_module, "players"):
                 # Only load if players list is empty
                 if not self.players:
-                    self.players = validation_module.players.copy()
+                    self.players = copy.deepcopy(validation_module.players)
                     self.scores = {str(player.name): 0 for player in self.players}
                 logger.info(
                     f"Successfully loaded {len(self.players)} validation players for {game_name}"

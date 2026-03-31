@@ -157,7 +157,7 @@ const Lineup4Feedback = ({ feedback }) => {
                     <span className="text-ui-dark">vs</span>
                     <span className={getPlayerColor(currentMatchData, 2)}>{player2}</span>
                 </h2>
-                <div className="text-lg">
+                <div className="text-lg min-h-[1.75rem]">
                     {gameOver ? (
                         <div className="text-success font-semibold">
                             Winner: {winner}
