@@ -285,6 +285,7 @@ def make_decision(self, game_state):
 
     def run_single_game_with_feedback(self, custom_rewards=None):
         """Run a single game with feedback"""
+        import copy
         # Enable feedback for this run
         self.verbose = True
         self.collect_player_feedback = True
@@ -292,10 +293,17 @@ def make_decision(self, game_state):
         # Run the game
         results = self.play_game(custom_rewards)
 
+        # Deep copy feedback so subsequent reset/simulations can't mutate it
+        feedback = copy.deepcopy(self.game_feedback)
+        player_feedback = copy.deepcopy(self.player_feedback)
+
+        # Turn off verbose so run_simulations doesn't waste time building feedback
+        self.verbose = False
+
         return {
             "results": results,
-            "feedback": self.game_feedback,  # Now a dict
-            "player_feedback": self.player_feedback,
+            "feedback": feedback,
+            "player_feedback": player_feedback,
         }
 
     def run_simulations(self, num_simulations, league, custom_rewards=None):
