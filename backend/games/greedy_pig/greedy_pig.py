@@ -156,6 +156,10 @@ def make_decision(self, game_state):
                     player.reset_unbanked_money()
 
                 if self.verbose:
+                    roll_data["all_players"] = {
+                        p.name: {"banked": p.banked_money, "unbanked": p.unbanked_money}
+                        for p in self.players
+                    }
                     round_data["rolls"].append(roll_data)
                 break
 
@@ -191,6 +195,10 @@ def make_decision(self, game_state):
                     roll_data["players"].append(player_roll_data)
 
             if self.verbose:
+                roll_data["all_players"] = {
+                    p.name: {"banked": p.banked_money, "unbanked": p.unbanked_money}
+                    for p in self.players
+                }
                 round_data["rolls"].append(roll_data)
 
             for player in self.active_players:
