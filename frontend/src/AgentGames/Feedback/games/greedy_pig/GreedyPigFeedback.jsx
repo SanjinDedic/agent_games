@@ -1,49 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import GreedyPigRoundView from './GreedyPigRoundView';
 import GreedyPigProgressBar from './GreedyPigProgressBar';
 import GreedyPigPlayerFeedback from './GreedyPigPlayerFeedback';
-
-/**
- * Build a flat list of snapshots (one per roll) with every player's
- * banked/unbanked at that point in time, by scanning all rounds/rolls.
- */
-const buildSnapshots = (rounds, allPlayers) => {
-    const snapshots = [];
-    // running banked totals – persists across rounds
-    const lastKnownBanked = {};
-    allPlayers.forEach(name => { lastKnownBanked[name] = 0; });
-
-    for (const round of rounds) {
-        for (const roll of round.rolls) {
-            const playerDataMap = {};
-            (roll.players || []).forEach(p => { playerDataMap[p.name] = p; });
-
-            const snapshot = {};
-            allPlayers.forEach(name => {
-                const pData = playerDataMap[name];
-                if (pData) {
-                    // Player is active in this roll
-                    if (roll.busted) {
-                        // Bust: unbanked goes to 0, banked stays
-                        snapshot[name] = { banked: pData.banked, unbanked: 0 };
-                    } else if (pData.action === 'bank') {
-                        // After banking: banked is updated, unbanked is 0
-                        snapshot[name] = { banked: pData.banked, unbanked: 0 };
-                    } else {
-                        snapshot[name] = { banked: pData.banked, unbanked: pData.unbanked };
-                    }
-                    lastKnownBanked[name] = pData.banked;
-                } else {
-                    // Player already banked in an earlier roll this round,
-                    // or was eliminated — show their last known banked amount
-                    snapshot[name] = { banked: lastKnownBanked[name], unbanked: 0 };
-                }
-            });
-            snapshots.push(snapshot);
-        }
-    }
-    return snapshots;
-};
 
 const GreedyPigFeedback = ({ feedback }) => {
     const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
@@ -61,11 +19,6 @@ const GreedyPigFeedback = ({ feedback }) => {
             setPlayers(Array.from(uniquePlayers).sort());
         }
     }, [feedback]);
-
-    const snapshots = useMemo(
-        () => buildSnapshots(feedback?.rounds || [], players),
-        [feedback, players]
-    );
 
     if (!feedback?.rounds || feedback.rounds.length === 0) {
         return <div className="text-ui-dark">No game data available</div>;
@@ -110,8 +63,6 @@ const GreedyPigFeedback = ({ feedback }) => {
         ?.filter(p => p.player_feedback && p.player_feedback.length > 0)
         || [];
 
-    const currentSnapshot = snapshots[globalRollIndex] || {};
-
     return (
         <div className="bg-white p-6 rounded-lg shadow-lg">
             <div className="mb-4 text-center">
@@ -134,7 +85,7 @@ const GreedyPigFeedback = ({ feedback }) => {
             {currentRoll && (
                 <>
                     <GreedyPigRoundView roll={currentRoll} allPlayers={players} />
-                    <GreedyPigProgressBar snapshot={currentSnapshot} allPlayers={players} />
+                    <GreedyPigProgressBar roll={currentRoll} allPlayers={players} />
                 </>
             )}
 
