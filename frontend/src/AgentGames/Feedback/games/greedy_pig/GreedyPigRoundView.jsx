@@ -66,33 +66,34 @@ const GreedyPigRoundView = ({ roll, allPlayers }) => {
                                 );
                             })}
                         </tr>
-                        {!roll.busted && (
-                            <tr className="bg-white">
-                                <td className="p-3 font-medium text-ui-dark">
-                                    Action
-                                </td>
-                                {allPlayers.map(name => {
-                                    const pData = playerDataMap[name];
-                                    if (!pData) return <td key={name} className="p-3 text-center text-ui">-</td>;
-                                    const action = pData.action;
-                                    return (
-                                        <td key={name} className="p-3 text-center">
-                                            {action === 'bank' ? (
-                                                <span className="inline-block px-3 py-1 rounded-full bg-success-light text-success-hover font-medium text-sm">
-                                                    Bank
-                                                </span>
-                                            ) : action === 'continue' ? (
-                                                <span className="inline-block px-3 py-1 rounded-full bg-primary-light/20 text-primary font-medium text-sm">
-                                                    Continue
-                                                </span>
-                                            ) : (
-                                                <span className="text-ui">-</span>
-                                            )}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        )}
+                        <tr className="bg-white">
+                            <td className="p-3 font-medium text-ui-dark">
+                                Action
+                            </td>
+                            {allPlayers.map(name => {
+                                if (roll.busted) {
+                                    return <td key={name} className="p-3 text-center text-ui">-</td>;
+                                }
+                                const pData = playerDataMap[name];
+                                if (!pData) return <td key={name} className="p-3 text-center text-ui">-</td>;
+                                const action = pData.action;
+                                return (
+                                    <td key={name} className="p-3 text-center">
+                                        {action === 'bank' ? (
+                                            <span className="inline-block px-3 py-1 rounded-full bg-success-light text-success-hover font-medium text-sm">
+                                                Bank
+                                            </span>
+                                        ) : action === 'continue' ? (
+                                            <span className="inline-block px-3 py-1 rounded-full bg-primary-light/20 text-primary font-medium text-sm">
+                                                Continue
+                                            </span>
+                                        ) : (
+                                            <span className="text-ui">-</span>
+                                        )}
+                                    </td>
+                                );
+                            })}
+                        </tr>
                     </tbody>
                 </table>
             </div>
