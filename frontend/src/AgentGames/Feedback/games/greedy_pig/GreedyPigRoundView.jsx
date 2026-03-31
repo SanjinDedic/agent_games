@@ -1,19 +1,15 @@
 import React from 'react';
 
-const GreedyPigRoundView = ({ roll, allPlayers, selectedPlayer }) => {
+const GreedyPigRoundView = ({ roll, allPlayers }) => {
     const playersInRoll = roll.players || [];
-    const displayPlayers = selectedPlayer === 'all'
-        ? allPlayers
-        : [selectedPlayer];
 
-    // Build a lookup from the roll data
     const playerDataMap = {};
     playersInRoll.forEach(p => {
         playerDataMap[p.name] = p;
     });
 
     return (
-        <div className="max-w-[700px] mx-auto">
+        <div className="w-full">
             <div className="overflow-x-auto bg-ui-lighter rounded-lg">
                 <table className="w-full border-collapse">
                     <thead>
@@ -25,7 +21,7 @@ const GreedyPigRoundView = ({ roll, allPlayers, selectedPlayer }) => {
                                     <span>Dice: <span className="font-bold">{roll.dice_value}</span></span>
                                 )}
                             </th>
-                            {displayPlayers.map(name => (
+                            {allPlayers.map(name => (
                                 <th key={name} className="p-3 text-center font-semibold border-b border-ui-light">
                                     {name}
                                 </th>
@@ -37,7 +33,7 @@ const GreedyPigRoundView = ({ roll, allPlayers, selectedPlayer }) => {
                             <td className="p-3 font-medium text-ui-dark border-b border-ui-light/30">
                                 Unbanked
                             </td>
-                            {displayPlayers.map(name => {
+                            {allPlayers.map(name => {
                                 const pData = playerDataMap[name];
                                 if (!pData) return <td key={name} className="p-3 text-center border-b border-ui-light/30 text-ui">-</td>;
                                 const lost = roll.busted && pData.lost_money;
@@ -56,11 +52,11 @@ const GreedyPigRoundView = ({ roll, allPlayers, selectedPlayer }) => {
                                 );
                             })}
                         </tr>
-                        <tr className={displayPlayers.length % 2 === 0 ? 'bg-ui-lighter' : 'bg-white'}>
+                        <tr className="bg-ui-lighter">
                             <td className="p-3 font-medium text-ui-dark border-b border-ui-light/30">
                                 Banked
                             </td>
-                            {displayPlayers.map(name => {
+                            {allPlayers.map(name => {
                                 const pData = playerDataMap[name];
                                 if (!pData) return <td key={name} className="p-3 text-center border-b border-ui-light/30 text-ui">-</td>;
                                 return (
@@ -75,7 +71,7 @@ const GreedyPigRoundView = ({ roll, allPlayers, selectedPlayer }) => {
                                 <td className="p-3 font-medium text-ui-dark">
                                     Action
                                 </td>
-                                {displayPlayers.map(name => {
+                                {allPlayers.map(name => {
                                     const pData = playerDataMap[name];
                                     if (!pData) return <td key={name} className="p-3 text-center text-ui">-</td>;
                                     const action = pData.action;

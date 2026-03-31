@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import GreedyPigRoundView from './GreedyPigRoundView';
+import GreedyPigProgressBar from './GreedyPigProgressBar';
 import GreedyPigPlayerFeedback from './GreedyPigPlayerFeedback';
 
 const GreedyPigFeedback = ({ feedback }) => {
-    const [selectedPlayer, setSelectedPlayer] = useState('all');
     const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
     const [currentRollIndex, setCurrentRollIndex] = useState(0);
     const [players, setPlayers] = useState([]);
@@ -31,7 +31,6 @@ const GreedyPigFeedback = ({ feedback }) => {
 
     const totalRolls = rounds.reduce((sum, r) => sum + r.rolls.length, 0);
 
-    // Calculate global roll index for display
     let globalRollIndex = 0;
     for (let i = 0; i < currentRoundIndex; i++) {
         globalRollIndex += rounds[i].rolls.length;
@@ -60,28 +59,12 @@ const GreedyPigFeedback = ({ feedback }) => {
     const isFirst = currentRoundIndex === 0 && currentRollIndex === 0;
     const isLast = currentRoundIndex === rounds.length - 1 && currentRollIndex === rolls.length - 1;
 
-    // Get player feedback for current roll
     const currentPlayerFeedback = currentRoll?.players
-        ?.filter(p => selectedPlayer === 'all' || p.name === selectedPlayer)
         ?.filter(p => p.player_feedback && p.player_feedback.length > 0)
         || [];
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-lg">
-            <div className="mb-6">
-                <label className="block text-ui-dark font-medium mb-2">Filter by Player</label>
-                <select
-                    value={selectedPlayer}
-                    onChange={(e) => setSelectedPlayer(e.target.value)}
-                    className="w-full p-3 border border-ui-light rounded-lg bg-white text-ui-dark"
-                >
-                    <option value="all">All Players</option>
-                    {players.map(player => (
-                        <option key={player} value={player}>{player}</option>
-                    ))}
-                </select>
-            </div>
-
             <div className="mb-4 text-center">
                 <h2 className="text-xl font-bold text-ui-dark">
                     Round {currentRound.round_no}
@@ -100,11 +83,10 @@ const GreedyPigFeedback = ({ feedback }) => {
             </div>
 
             {currentRoll && (
-                <GreedyPigRoundView
-                    roll={currentRoll}
-                    allPlayers={players}
-                    selectedPlayer={selectedPlayer}
-                />
+                <>
+                    <GreedyPigRoundView roll={currentRoll} allPlayers={players} />
+                    <GreedyPigProgressBar roll={currentRoll} allPlayers={players} />
+                </>
             )}
 
             <div className="flex justify-center items-center gap-6 mt-6">
