@@ -228,6 +228,38 @@ def get_latest_submissions_for_league(
         raise
 
 
+def get_all_submissions_for_league(
+    session: Session, league_id: int
+) -> Dict[str, list]:
+    """Get all submissions for all teams in a league, ordered by timestamp"""
+    try:
+        teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
+
+        result = {}
+        for team in teams:
+            submissions = session.exec(
+                select(Submission)
+                .where(Submission.team_id == team.id)
+                .order_by(Submission.timestamp.asc())
+            ).all()
+
+            result[team.name] = [
+                {
+                    "code": sub.code,
+                    "timestamp": sub.timestamp.isoformat(),
+                    "id": sub.id,
+                }
+                for sub in submissions
+            ]
+
+        logger.info(f"Found submissions for {len(result)} teams in league {league_id}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error getting all league submissions: {str(e)}")
+        raise
+
+
 def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[str]]:
     """Get latest submission for a specific team"""
     try:

@@ -26,6 +26,7 @@ from backend.routes.user.user_db import (
     create_team_and_assign_to_league,
     get_all_leagues,
     get_all_published_results,
+    get_all_submissions_for_league,
     get_latest_submissions_for_league,
     get_league_by_signup_token,
     get_published_result,
@@ -284,6 +285,28 @@ async def get_league_submissions(
         )
     except Exception as e:
         logger.error(f"Error retrieving submissions: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve submissions: {str(e)}"
+        )
+
+
+@user_router.get("/get-all-league-submissions/{league_id}", response_model=ResponseModel)
+@verify_any_role
+async def get_all_league_submissions(
+    league_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get all submissions for all teams in a league with timestamps"""
+    try:
+        submissions = get_all_submissions_for_league(session, league_id)
+        return ResponseModel(
+            status="success",
+            message="All submissions retrieved successfully",
+            data=submissions,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving all submissions: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to retrieve submissions: {str(e)}"
         )
