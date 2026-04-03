@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from backend.config import get_service_url
+from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
@@ -299,11 +300,13 @@ async def get_all_league_submissions(
 ):
     """Get all submissions for all teams in a league with timestamps"""
     try:
+        league = session.get(League, league_id)
+        league_name = league.name if league else None
         submissions = get_all_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="All submissions retrieved successfully",
-            data=submissions,
+            data={"league_name": league_name, "teams": submissions},
         )
     except Exception as e:
         logger.error(f"Error retrieving all submissions: {e}")

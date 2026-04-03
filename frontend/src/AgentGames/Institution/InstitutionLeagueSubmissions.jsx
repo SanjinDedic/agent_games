@@ -17,6 +17,7 @@ function InstitutionLeagueSubmissions() {
 
   // submissions: { teamName: [{ code, timestamp, id }, ...] }
   const [submissions, setSubmissions] = useState({});
+  const [leagueName, setLeagueName] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [submissionIndex, setSubmissionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,8 @@ function InstitutionLeagueSubmissions() {
         });
         const data = await resp.json();
         if (data.status === "success") {
-          const map = data.data || {};
+          const map = data.data?.teams || {};
+          setLeagueName(data.data?.league_name || "");
           setSubmissions(map);
           const firstTeam = Object.keys(map).sort()[0] || "";
           setSelectedTeam(firstTeam);
@@ -106,7 +108,9 @@ function InstitutionLeagueSubmissions() {
       <div className="max-w-[1800px] mx-auto px-6 pt-20 pb-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-ui-dark">League Submissions</h1>
+          <h1 className="text-2xl font-bold text-ui-dark">
+            League Submissions{leagueName ? `: ${leagueName}` : ""}
+          </h1>
           <div className="flex items-center gap-2 text-ui">
             <span className="text-sm">League ID:</span>
             <span className="text-sm font-mono px-2 py-1 bg-white rounded border border-ui-light">
