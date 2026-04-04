@@ -19,7 +19,8 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://postgres:local_pw@postgres:5432/agent_games}
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     env_file:
-      - .aws.env
+      - path: .aws.env
+        required: false
     depends_on:
       validator:
         condition: service_healthy
