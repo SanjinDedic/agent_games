@@ -177,3 +177,4 @@ backend/games/arena_champions/validation_players.py
 .kamal/secrets
 
 docs/
+seed_prod.py
