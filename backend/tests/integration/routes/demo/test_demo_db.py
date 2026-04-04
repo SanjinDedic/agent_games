@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.config import DEMO_TOKEN_EXPIRY
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import DemoUser, League, Team
 from backend.routes.demo.demo_db import (
     assign_user_to_demo_league,

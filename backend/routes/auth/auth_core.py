@@ -1,18 +1,21 @@
 import base64
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
 from typing import Callable, List, Union
 
-import pytz
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY, create_access_token
+from backend.routes.auth.auth_config import (
+    ALGORITHM,
+    AUSTRALIA_SYDNEY_TZ,
+    SECRET_KEY,
+    create_access_token,
+    create_service_token,
+)
 
 logger = logging.getLogger(__name__)
-
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
@@ -24,16 +27,6 @@ ROLE_AI_AGENT = "ai_agent"
 ROLE_SERVICE = "service"
 
 ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT, ROLE_SERVICE]
-
-
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    expire = datetime.now(AUSTRALIA_SYDNEY_TZ) + (
-        expires_delta if expires_delta else timedelta(minutes=60)
-    )
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
 
 def verify_role(allowed_roles: Union[str, List[str]]):
@@ -84,14 +77,6 @@ verify_non_admin = verify_role([ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT])
 
 # Verification for all roles
 verify_any_role = verify_role(ALL_ROLES)
-
-
-def create_service_token() -> str:
-    """Create a long-lived JWT token for service-to-service communication"""
-    service_data = {"sub": "service", "role": ROLE_SERVICE}
-    # Create a token that expires far in the future (e.g., 1 year)
-    expires = datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365)
-    return create_access_token(service_data, timedelta(days=365))
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
