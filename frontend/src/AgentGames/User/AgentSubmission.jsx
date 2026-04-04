@@ -90,7 +90,8 @@ function AgentSubmission() {
     };
 
     loadInitialData();
-  }, [navigate, dispatch, isAuthenticated, currentUser, currentLeague]); // Removed API functions from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load game instructions and starter code
   const loadInstructions = async (gameOverride = null) => {

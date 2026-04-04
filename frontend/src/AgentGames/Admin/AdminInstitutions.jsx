@@ -6,6 +6,7 @@ import { checkTokenExpiry } from '../../slices/authSlice';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
+import { authFetch } from '../../utils/authFetch';
 
 function AdminInstitutions() {
   const navigate = useNavigate();
@@ -32,7 +33,8 @@ function AdminInstitutions() {
     if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
       navigate('/Admin');
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetchInstitutions();
@@ -40,7 +42,7 @@ function AdminInstitutions() {
 
   const fetchInstitutions = () => {
     setIsLoading(true);
-    fetch(`${apiUrl}/admin/get-all-institutions`, {
+    authFetch(`${apiUrl}/admin/get-all-institutions`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
@@ -87,7 +89,7 @@ function AdminInstitutions() {
     }
 
     setIsLoading(true);
-    fetch(`${apiUrl}/admin/institution-create`, {
+    authFetch(`${apiUrl}/admin/institution-create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +126,7 @@ function AdminInstitutions() {
   const handleDeleteInstitution = (id, name) => {
     if (window.confirm(`Are you sure you want to delete institution "${name}"? This will delete all associated teams and leagues.`)) {
       setIsLoading(true);
-      fetch(`${apiUrl}/admin/institution-delete`, {
+      authFetch(`${apiUrl}/admin/institution-delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -152,7 +154,7 @@ function AdminInstitutions() {
 
   const toggleDockerAccess = (institutionId, enable) => {
     setIsLoading(true);
-    fetch(`${apiUrl}/admin/toggle-docker-access`, {
+    authFetch(`${apiUrl}/admin/toggle-docker-access`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

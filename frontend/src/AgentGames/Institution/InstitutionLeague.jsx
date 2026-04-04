@@ -24,7 +24,8 @@ function InstitutionLeague() {
     ) {
       navigate("/Institution");
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle unauthorized access
   const handleUnauthorized = () => {

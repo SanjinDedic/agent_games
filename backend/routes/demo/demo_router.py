@@ -6,9 +6,8 @@ import pytz
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from backend.config import DEMO_TOKEN_EXPIRY
 from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.auth.auth_config import create_access_token
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES, create_access_token
 from backend.database.db_session import get_db
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
 from backend.routes.demo.demo_models import DemoLaunchRequestWithUser
@@ -42,13 +41,13 @@ async def launch_demo(
         # Create a new demo user with the provided username
         demo_user = create_demo_user(session, username, email)
 
-        # Create a token valid for DEMO_TOKEN_EXPIRY minutes
-        expires_delta = timedelta(minutes=DEMO_TOKEN_EXPIRY)
+        # Create a token valid for DEMO_TOKEN_EXPIRY_MINUTES minutes
+        expires_delta = timedelta(minutes=DEMO_TOKEN_EXPIRY_MINUTES)
         token_data = {
             "sub": demo_user.name,
             "role": "student",
             "is_demo": True,
-            "exp_time": DEMO_TOKEN_EXPIRY,
+            "exp_time": DEMO_TOKEN_EXPIRY_MINUTES,
         }
         access_token = create_access_token(token_data, expires_delta)
 
@@ -57,12 +56,12 @@ async def launch_demo(
 
         return ResponseModel(
             status="success",
-            message=f"Demo access granted for {DEMO_TOKEN_EXPIRY} minutes",
+            message=f"Demo access granted for {DEMO_TOKEN_EXPIRY_MINUTES} minutes",
             data={
                 "access_token": access_token,
                 "token_type": "bearer",
                 "username": demo_user.name,
-                "expires_in_minutes": DEMO_TOKEN_EXPIRY,
+                "expires_in_minutes": DEMO_TOKEN_EXPIRY_MINUTES,
                 "expires_at": (
                     datetime.now(AUSTRALIA_SYDNEY_TZ) + expires_delta
                 ).isoformat(),

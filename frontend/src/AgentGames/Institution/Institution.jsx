@@ -24,7 +24,8 @@ function Institution() {
         navigate('/AdminTeam');
       }
     }
-  }, [navigate, isAuthenticated, currentUser, dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

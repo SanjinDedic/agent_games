@@ -5,8 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.config import DEMO_TOKEN_EXPIRY
-from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
+from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ, DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import DemoUser, League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
@@ -21,9 +20,9 @@ def demo_token() -> str:
             "sub": "test_demo_user",
             "role": "student",
             "is_demo": True,
-            "exp_time": DEMO_TOKEN_EXPIRY,
+            "exp_time": DEMO_TOKEN_EXPIRY_MINUTES,
         },
-        expires_delta=timedelta(minutes=DEMO_TOKEN_EXPIRY),
+        expires_delta=timedelta(minutes=DEMO_TOKEN_EXPIRY_MINUTES),
     )
 
 

@@ -12,10 +12,7 @@ function AgentGamesNavbar() {
   const dispatch = useDispatch();
 
   const adminRoutes = [
-    "/AdminLeague",
-    "/AdminLeagueSimulation",
     "/AdminDockerStatus",
-    "/AdminDemoUsers",
     "/AdminInstitutions",
   ];
   const institutionRoutes = [
@@ -59,20 +56,9 @@ function AgentGamesNavbar() {
                 <Link to="/AdminInstitutions" className={navLinkClasses}>
                   Institutions
                 </Link>
-                <Link to="/AdminLeague" className={navLinkClasses}>
-                  League Management
-                </Link>
-                <Link to="/AdminLeagueSimulation" className={navLinkClasses}>
-                  League Simulation
-                </Link>
                 <Link to="/AdminDockerStatus" className={navLinkClasses}>
                   Service Status
                 </Link>
-                {/*
-                <Link to="/AdminDemoUsers" className={navLinkClasses}>
-                  Demo Users
-                </Link>
-                */}
               </>
             ) : isInstitutionRoute ? (
               // Institution navigation links

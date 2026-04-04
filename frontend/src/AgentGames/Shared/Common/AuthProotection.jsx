@@ -19,7 +19,8 @@ const AuthProtection = ({
     if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole) || tokenExpired) {
       navigate(redirectTo);
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser, requiredRole, redirectTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // If not authenticated or wrong role, don't render children
   if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole)) {

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTeams, addTeam, removeTeam } from '../../slices/teamsSlice';
+import { authFetch } from '../../utils/authFetch';
 import { checkTokenExpiry } from '../../slices/authSlice';
 
 function InstitutionTeam() {
@@ -23,11 +24,12 @@ function InstitutionTeam() {
     if (!isAuthenticated || currentUser.role !== "institution" || tokenExpired) {
       navigate('/Institution');
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${apiUrl}/institution/get-all-teams`, {
+    authFetch(`${apiUrl}/institution/get-all-teams`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
@@ -63,7 +65,7 @@ function InstitutionTeam() {
       return;
     }
 
-    fetch(`${apiUrl}/institution/team-create`, {
+    authFetch(`${apiUrl}/institution/team-create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -94,7 +96,7 @@ function InstitutionTeam() {
 
   const handleDelete = (id, name) => {
     if (window.confirm(`Are you sure you want to delete team "${name}"?`)) {
-      fetch(`${apiUrl}/institution/delete-team`, {
+      authFetch(`${apiUrl}/institution/delete-team`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

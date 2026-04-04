@@ -19,7 +19,8 @@ function Admin() {
     if (isAuthenticated && !tokenExpired && currentUser.role === "admin") {
       navigate("/AdminInstitutions");
     }
-  }, [navigate, isAuthenticated, currentUser, dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,7 +63,7 @@ function Admin() {
             role: decoded.role,
           })
         );
-        navigate("/AdminTeam");
+        navigate("/AdminInstitutions");
       } else if (data.status === "failed") {
         setErrorMessage(data.message);
       }

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlmodel import Session
 
-from backend.config import DEMO_TOKEN_EXPIRY
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_session import get_db_engine
 from backend.routes.demo.demo_db import (
     cleanup_expired_demo_users,
@@ -47,11 +47,11 @@ class DemoCleanupThread(threading.Thread):
         with Session(engine) as session:
             # Clean up old submissions
             submissions_deleted = cleanup_old_demo_submissions(
-                session, DEMO_TOKEN_EXPIRY
+                session, DEMO_TOKEN_EXPIRY_MINUTES
             )
 
             # Clean up expired demo users
-            users_deleted = cleanup_expired_demo_users(session, DEMO_TOKEN_EXPIRY)
+            users_deleted = cleanup_expired_demo_users(session, DEMO_TOKEN_EXPIRY_MINUTES)
 
             logger.info(
                 f"Demo cleanup complete. Removed {submissions_deleted} old submissions and {users_deleted} expired users"

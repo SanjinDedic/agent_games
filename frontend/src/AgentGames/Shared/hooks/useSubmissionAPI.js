@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { authFetch } from '../../../utils/authFetch';
 
 /**
  * Hook for handling code submission-related API calls
@@ -17,7 +18,7 @@ export const useSubmissionAPI = () => {
    */
   const getLatestSubmission = useCallback(async () => {
     try {
-      const response = await fetch(`${apiUrl}/user/get-team-submission`, {
+      const response = await authFetch(`${apiUrl}/user/get-team-submission`, {
         headers: { 
           'Authorization': `Bearer ${accessToken}` 
         },
@@ -105,7 +106,7 @@ export const useSubmissionAPI = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${apiUrl}/user/submit-agent`, {
+      const response = await authFetch(`${apiUrl}/user/submit-agent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

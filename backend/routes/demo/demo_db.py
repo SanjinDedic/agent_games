@@ -7,7 +7,7 @@ from typing import List, Tuple
 import pytz
 from sqlmodel import Session, select
 
-from backend.config import DEMO_TOKEN_EXPIRY
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import (
     DemoUser,
     League,
@@ -189,7 +189,7 @@ def assign_user_to_demo_league(session: Session, user_id: int, league_id: int) -
 
 
 def cleanup_old_demo_submissions(
-    session: Session, age_minutes: int = DEMO_TOKEN_EXPIRY
+    session: Session, age_minutes: int = DEMO_TOKEN_EXPIRY_MINUTES
 ):
     """Delete all submissions from demo users older than the specified age"""
     cutoff_time = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=age_minutes)
@@ -221,7 +221,7 @@ def cleanup_old_demo_submissions(
     return count
 
 
-def cleanup_expired_demo_users(session: Session, age_minutes: int = DEMO_TOKEN_EXPIRY):
+def cleanup_expired_demo_users(session: Session, age_minutes: int = DEMO_TOKEN_EXPIRY_MINUTES):
     """Delete demo users older than the specified age"""
     cutoff_time = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=age_minutes)
 

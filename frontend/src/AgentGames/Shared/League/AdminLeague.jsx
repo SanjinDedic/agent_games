@@ -20,7 +20,8 @@ function AdminLeague() {
     if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
       navigate('/Admin');
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle unauthorized access
   const handleUnauthorized = () => {

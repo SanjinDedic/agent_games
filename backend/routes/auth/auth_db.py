@@ -6,7 +6,13 @@ import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import Admin, AgentAPIKey, Institution, Team, TeamType
-from backend.routes.auth.auth_core import create_access_token
+from backend.routes.auth.auth_config import (
+    ADMIN_TOKEN_EXPIRY_MINUTES,
+    AGENT_TOKEN_EXPIRY_DAYS,
+    INSTITUTION_TOKEN_EXPIRY_MINUTES,
+    TEAM_TOKEN_EXPIRY_MINUTES,
+    create_access_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +47,8 @@ def get_team_token(session: Session, team_name: str, team_password: str):
     if team.institution_id:
         token_data["institution_id"] = team.institution_id
 
-    access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(
-        data=token_data, expires_delta=access_token_expires
+        data=token_data, expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES)
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -56,9 +61,9 @@ def get_admin_token(session: Session, username: str, password: str):
     if not admin or not admin.verify_password(password):
         raise InvalidCredentialsError("Invalid credentials")
 
-    access_token_expires = timedelta(minutes=20)
     access_token = create_access_token(
-        data={"sub": "admin", "role": "admin"}, expires_delta=access_token_expires
+        data={"sub": "admin", "role": "admin"},
+        expires_delta=timedelta(minutes=ADMIN_TOKEN_EXPIRY_MINUTES),
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -94,14 +99,13 @@ def get_institution_token(session: Session, institution_name: str, password: str
         session.commit()
         raise InvalidCredentialsError("Institution subscription has expired")
 
-    access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(
         data={
             "sub": institution_name,
             "role": "institution",
             "institution_id": institution.id,
         },
-        expires_delta=access_token_expires,
+        expires_delta=timedelta(minutes=INSTITUTION_TOKEN_EXPIRY_MINUTES),
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -141,11 +145,9 @@ def verify_agent_api_key(session: Session, api_key: str):
         if team.institution_id:
             token_data["institution_id"] = team.institution_id
 
-        # Create long-lived token for agent
-        access_token_expires = timedelta(days=30)
         access_token = create_access_token(
             data=token_data,
-            expires_delta=access_token_expires,
+            expires_delta=timedelta(days=AGENT_TOKEN_EXPIRY_DAYS),
         )
 
         return {"access_token": access_token, "token_type": "bearer"}

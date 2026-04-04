@@ -95,8 +95,6 @@ API_URL = get_service_url("api")
 # This is kept for backwards compatibility
 DOCKER_API_URL = API_URL
 
-DEMO_TOKEN_EXPIRY = 60  # minutes
-
 # Set a default SECRET_KEY for tests if not available in environment
 # In production, this should always be overridden by the actual secret key
 # from environment vars

@@ -9,7 +9,7 @@ from backend.config import get_service_url
 from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
+from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ, TEAM_TOKEN_EXPIRY_MINUTES, create_access_token
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_student,
@@ -17,7 +17,6 @@ from backend.routes.auth.auth_core import (
     verify_any_role,
 )
 from backend.database.db_session import get_db
-from backend.routes.auth.auth_db import create_access_token
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
@@ -377,10 +376,9 @@ async def direct_league_signup(
 
         # Generate authentication token for the new team
         # This allows automatic login after signup
-        access_token_expires = timedelta(minutes=60)
         access_token = create_access_token(
             data={"sub": team.name, "role": "student"},
-            expires_delta=access_token_expires,
+            expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES),
         )
 
         return ResponseModel(
