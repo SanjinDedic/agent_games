@@ -32,6 +32,16 @@ class RateLimitExceededError(Exception):
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
+def get_institution_names(session: Session):
+    """Get list of active institution names for the login selector"""
+    institutions = session.exec(
+        select(Institution)
+        .where(Institution.subscription_active == True)
+        .where(Institution.name != "Demo Institution")
+    ).all()
+    return [inst.name for inst in institutions]
+
+
 def get_team_token(session: Session, team_name: str, team_password: str):
     """Get authentication token for team login"""
     team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
