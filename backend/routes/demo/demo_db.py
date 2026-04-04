@@ -7,7 +7,7 @@ from typing import List, Tuple
 import pytz
 from sqlmodel import Session, select
 
-from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES_MINUTES
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import (
     DemoUser,
     League,

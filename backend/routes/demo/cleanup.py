@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlmodel import Session
 
-from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES_MINUTES
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_session import get_db_engine
 from backend.routes.demo.demo_db import (
     cleanup_expired_demo_users,
