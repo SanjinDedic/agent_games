@@ -52,55 +52,45 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
             f"League with name '{league_data['name']}' already exists for this institution"
         )
 
-    try:
-        # Validate game name
-        GameFactory.get_game_class(league_data["game"])
+    # Validate game name
+    GameFactory.get_game_class(league_data["game"])
 
-        # Generate unique signup token
-        signup_token = secrets.token_urlsafe(16)
+    # Generate unique signup token
+    signup_token = secrets.token_urlsafe(16)
 
-        # Create the league
-        league = League(
-            name=league_data["name"],
-            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-            expiry_date=(
-                datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24)
-            ),  # Default 24 hour expiry
-            game=league_data["game"],
-            institution_id=institution_id,
-            league_type=LeagueType.INSTITUTION,
-            signup_link=signup_token,
-        )
+    # Create the league
+    league = League(
+        name=league_data["name"],
+        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        expiry_date=(
+            datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24)
+        ),  # Default 24 hour expiry
+        game=league_data["game"],
+        institution_id=institution_id,
+        league_type=LeagueType.INSTITUTION,
+        signup_link=signup_token,
+    )
 
-        session.add(league)
-        session.flush()
-        session.commit()
-        return {
-            "league_id": league.id,
-            "name": league.name,
-            "signup_token": signup_token,
-        }
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error creating league: {e}")
-        raise
+    session.add(league)
+    session.flush()
+    session.commit()
+    return {
+        "league_id": league.id,
+        "name": league.name,
+        "signup_token": signup_token,
+    }
 
 
 def create_team(session: Session, team_data, institution_id: int) -> Dict:
     """Create a new team for an institution"""
     try:
-        # Validate team data
-        if not team_data.name or not team_data.password:
-            raise TeamError("Team name and password are required")
-
         # Check for existing team within this institution
         existing_team = session.exec(
             select(Team)
             .where(Team.name == team_data.name)
             .where(Team.institution_id == institution_id)
         ).first()
-        
+
         if existing_team:
             raise TeamError(f"Team with name '{team_data.name}' already exists in this institution")
 
@@ -110,7 +100,7 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
             .where(League.name == "unassigned")
             .where(League.institution_id == institution_id)
         ).first()
-        
+
         if not unassigned_league:
             # Create an unassigned league for this institution if it doesn't exist
             unassigned_league = League(
@@ -142,17 +132,13 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
 
         return {"team_id": team.id, "name": team.name, "school": team.school_name}
 
-    except TeamError as e:
+    except TeamError:
         session.rollback()
         raise
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Database integrity error creating team: {e}")
         raise TeamError("Unable to create team due to data constraints")
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Unexpected error creating team: {e}")
-        raise TeamError(f"An unexpected error occurred creating the team: {str(e)}")
 
 
 def delete_team(session: Session, team_id: int, institution_id: int) -> str:
@@ -166,45 +152,36 @@ def delete_team(session: Session, team_id: int, institution_id: int) -> str:
     if team.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to delete this team")
 
-    try:
-        # Delete associated submissions first
-        session.exec(delete(Submission).where(Submission.team_id == team.id))
+    # Delete associated submissions first
+    session.exec(delete(Submission).where(Submission.team_id == team.id))
 
-        # Delete all result items
-        session.exec(
-            delete(SimulationResultItem).where(SimulationResultItem.team_id == team_id)
-        )
+    # Delete all result items
+    session.exec(
+        delete(SimulationResultItem).where(SimulationResultItem.team_id == team_id)
+    )
 
-        session.delete(team)
-        session.commit()
+    session.delete(team)
+    session.commit()
 
-        return f"Team {team.name} deleted successfully"
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error deleting team: {e}")
-        raise
+    return f"Team {team.name} deleted successfully"
 
 
 def get_all_teams(session: Session, institution_id: int) -> Dict:
     """Get all teams for an institution"""
-    try:
-        teams = session.exec(
-            select(Team).where(Team.institution_id == institution_id)
-        ).all()
-        return {
-            "teams": [
-                {
-                    "id": team.id,
-                    "name": team.name,
-                    "school": team.school_name,
-                    "league": team.league.name if team.league else None,
-                }
-                for team in teams
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Error retrieving teams: {e}")
-        raise
+    teams = session.exec(
+        select(Team).where(Team.institution_id == institution_id)
+    ).all()
+    return {
+        "teams": [
+            {
+                "id": team.id,
+                "name": team.name,
+                "school": team.school_name,
+                "league": team.league.name if team.league else None,
+            }
+            for team in teams
+        ]
+    }
 
 
 def get_league_by_id(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> League:
@@ -284,17 +261,12 @@ def get_all_league_results(session: Session, league_name: str, institution_id: i
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found in your institution")
 
-    try:
-        results = []
-        for sim in league.simulation_results:
-            result = process_simulation_results(sim, league_name)
-            results.append(result)
+    results = []
+    for sim in league.simulation_results:
+        result = process_simulation_results(sim, league_name)
+        results.append(result)
 
-        return {"results": sorted(results, key=lambda x: x["id"], reverse=True)}
-
-    except Exception as e:
-        logger.error(f"Error retrieving league results: {e}")
-        raise
+    return {"results": sorted(results, key=lambda x: x["id"], reverse=True)}
 
 
 def publish_sim_results(
@@ -325,39 +297,33 @@ def publish_sim_results(
     if simulation.league_id != league.id:
         raise InstitutionAccessError("You don't have permission to publish this simulation result")
 
-    try:
-        # Generate a unique publish link if not already set
-        if not simulation.publish_link:
-            simulation.publish_link = secrets.token_urlsafe(16)
+    # Generate a unique publish link if not already set
+    if not simulation.publish_link:
+        simulation.publish_link = secrets.token_urlsafe(16)
 
-        # Set the simulation as published
-        simulation.published = True
+    # Set the simulation as published
+    simulation.published = True
 
-        if feedback is not None:
-            if isinstance(feedback, str):
-                simulation.feedback_str = feedback
-                simulation.feedback_json = None
-            else:
-                simulation.feedback_str = None
-                simulation.feedback_json = json.dumps(feedback)
+    if feedback is not None:
+        if isinstance(feedback, str):
+            simulation.feedback_str = feedback
+            simulation.feedback_json = None
+        else:
+            simulation.feedback_str = None
+            simulation.feedback_json = json.dumps(feedback)
 
-        session.add(simulation)
-        session.commit()
+    session.add(simulation)
+    session.commit()
 
-        return (
-            f"Results published successfully for league '{league_name}'",
-            {
-                "sim_id": simulation.id,
-                "league_name": league_name,
-                "published": True,
-                "publish_link": simulation.publish_link,
-            },
-        )
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error publishing results: {e}")
-        raise
+    return (
+        f"Results published successfully for league '{league_name}'",
+        {
+            "sim_id": simulation.id,
+            "league_name": league_name,
+            "published": True,
+            "publish_link": simulation.publish_link,
+        },
+    )
 
 
 def update_expiry_date(
@@ -372,16 +338,10 @@ def update_expiry_date(
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found in your institution")
 
-    try:
-        league.expiry_date = expiry_date
-        session.add(league)
-        session.commit()
-        return f"Expiry date updated successfully for league '{league_name}'"
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error updating expiry date: {e}")
-        raise
+    league.expiry_date = expiry_date
+    session.add(league)
+    session.commit()
+    return f"Expiry date updated successfully for league '{league_name}'"
 
 
 def assign_team_to_league(session: Session, team_id: int, league_id: int, institution_id: int, is_admin: bool = False) -> str:
@@ -402,32 +362,20 @@ def assign_team_to_league(session: Session, team_id: int, league_id: int, instit
     if not is_admin and league.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to assign teams to this league")
 
-    try:
-        team.league_id = league.id
-        session.add(team)
-        session.commit()
-        return f"Team '{team.name}' assigned to league '{league.name}'"
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error assigning team to league: {e}")
-        raise
+    team.league_id = league.id
+    session.add(team)
+    session.commit()
+    return f"Team '{team.name}' assigned to league '{league.name}'"
 
 
 def get_unassigned_league(session: Session, institution_id: int) -> League:
-    """Fetch the 'unassigned' league for an institution, creating it if missing."""
-    try:
-        unassigned_league = session.exec(
-            select(League)
-            .where(League.name == "unassigned")
-            .where(League.institution_id == institution_id)
-        ).first()
-
-        session.add(unassigned_league)
-        session.flush()
-        return unassigned_league
-    except Exception as e:
-        logger.error(f"Error fetching unassigned league: {e}")
-        raise
+    """Fetch the 'unassigned' league for an institution."""
+    unassigned_league = session.exec(
+        select(League)
+        .where(League.name == "unassigned")
+        .where(League.institution_id == institution_id)
+    ).first()
+    return unassigned_league
 
 
 def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
@@ -439,46 +387,32 @@ def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
     if team.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to modify this team")
 
-    try:
-        unassigned_league = get_unassigned_league(session, institution_id)
-        team.league_id = unassigned_league.id
-        session.add(team)
-        session.commit()
-        return f"Team '{team.name}' moved to 'unassigned'"
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error unassigning team: {e}")
-        raise
+    unassigned_league = get_unassigned_league(session, institution_id)
+    team.league_id = unassigned_league.id
+    session.add(team)
+    session.commit()
+    return f"Team '{team.name}' moved to 'unassigned'"
 
 
 def generate_signup_link(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> Dict:
     """Generate a new signup link for a league"""
-    try:
-        # Get the league
-        league = session.get(League, league_id)
-        if not league:
-            raise LeagueNotFoundError(f"League with ID {league_id} not found")
+    league = session.get(League, league_id)
+    if not league:
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-        # Check if the league belongs to this institution (admin bypasses)
-        if not is_admin and league.institution_id != institution_id:
-            raise InstitutionAccessError(
-                "You don't have permission to access this league"
-            )
+    # Check if the league belongs to this institution (admin bypasses)
+    if not is_admin and league.institution_id != institution_id:
+        raise InstitutionAccessError(
+            "You don't have permission to access this league"
+        )
 
-        # Generate a new signup token
-        signup_token = secrets.token_urlsafe(16)
-        league.signup_link = signup_token
-        session.add(league)
-        session.commit()
+    # Generate a new signup token
+    signup_token = secrets.token_urlsafe(16)
+    league.signup_link = signup_token
+    session.add(league)
+    session.commit()
 
-        return {"signup_token": signup_token, "league_name": league.name}
-    except (LeagueNotFoundError, InstitutionAccessError) as e:
-        # Re-raise these specific exceptions to be caught by the router
-        raise
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error generating signup link: {e}")
-        raise
+    return {"signup_token": signup_token, "league_name": league.name}
 
 
 def delete_league(session: Session, league_name: str, institution_id: int, is_admin: bool = False) -> str:
@@ -519,43 +453,37 @@ def delete_league(session: Session, league_name: str, institution_id: int, is_ad
         session.add(unassigned_league)
         session.flush()  # Get the ID for the new league
 
-    try:
-        # Get all teams in the league
-        teams = session.exec(select(Team).where(Team.league_id == league.id)).all()
-        team_count = len(teams)
+    # Get all teams in the league
+    teams = session.exec(select(Team).where(Team.league_id == league.id)).all()
+    team_count = len(teams)
 
-        # Get simulation results for this league
-        sim_results = session.exec(
-            select(SimulationResult).where(SimulationResult.league_id == league.id)
-        ).all()
-        # Delete all simulation result items for simulation results in this league
-        for sim_result in sim_results:
-            session.exec(
-                delete(SimulationResultItem).where(
-                    SimulationResultItem.simulation_result_id == sim_result.id
-                )
-            )
-
+    # Get simulation results for this league
+    sim_results = session.exec(
+        select(SimulationResult).where(SimulationResult.league_id == league.id)
+    ).all()
+    # Delete all simulation result items for simulation results in this league
+    for sim_result in sim_results:
         session.exec(
-            delete(SimulationResult).where(SimulationResult.league_id == league.id)
+            delete(SimulationResultItem).where(
+                SimulationResultItem.simulation_result_id == sim_result.id
+            )
         )
-        # Delete all submissions from teams in this league and move teams to unassigned league
-        for team in teams:
-            # Delete team's submissions
-            session.exec(delete(Submission).where(Submission.team_id == team.id))
 
-            # Move team to unassigned league
-            team.league_id = unassigned_league.id
-            session.add(team)
+    session.exec(
+        delete(SimulationResult).where(SimulationResult.league_id == league.id)
+    )
+    # Delete all submissions from teams in this league and move teams to unassigned league
+    for team in teams:
+        # Delete team's submissions
+        session.exec(delete(Submission).where(Submission.team_id == team.id))
 
-        session.commit()
-        # Delete the league
-        session.delete(league)
-        session.commit()
+        # Move team to unassigned league
+        team.league_id = unassigned_league.id
+        session.add(team)
 
-        return f"League '{league_name}' deleted and {team_count} teams moved to the unassigned league"
+    session.commit()
+    # Delete the league
+    session.delete(league)
+    session.commit()
 
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error deleting league: {e}")
-        raise
+    return f"League '{league_name}' deleted and {team_count} teams moved to the unassigned league"
