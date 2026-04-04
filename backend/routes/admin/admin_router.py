@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from backend.config import get_service_url
 from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.admin.admin_backup import create_backup, list_backups, restore_backup
 from backend.routes.admin.admin_db import (
     create_agent_team,
     create_api_key,
@@ -23,6 +24,7 @@ from backend.routes.admin.admin_models import (
     CreateInstitution,
     DeleteInstitution,
     InstitutionUpdate,
+    RestoreBackup,
     ToggleDockerAccess,
 )
 from backend.routes.auth.auth_core import get_current_user, verify_admin_role
@@ -205,4 +207,66 @@ async def delete_all_demo_teams_and_submissions(
     except Exception as e:
         return ErrorResponseModel(
             status="error", message=f"Failed to delete demo users: {str(e)}"
+        )
+
+
+# Database backup endpoints
+@admin_router.post("/backup-database", response_model=ResponseModel)
+@verify_admin_role
+async def backup_database_endpoint(
+    current_user: dict = Depends(get_current_user),
+):
+    """Create a pg_dump backup and upload to DigitalOcean Spaces"""
+    try:
+        result = create_backup()
+        return ResponseModel(
+            status="success",
+            message=f"Backup created: {result['filename']}",
+            data=result,
+        )
+    except Exception as e:
+        logger.error(f"Error creating backup: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Backup failed: {str(e)}"
+        )
+
+
+@admin_router.get("/list-backups", response_model=ResponseModel)
+@verify_admin_role
+async def list_backups_endpoint(
+    current_user: dict = Depends(get_current_user),
+):
+    """List all database backups in DigitalOcean Spaces"""
+    try:
+        backups = list_backups()
+        return ResponseModel(
+            status="success",
+            message=f"Found {len(backups)} backup(s)",
+            data={"backups": backups},
+        )
+    except Exception as e:
+        logger.error(f"Error listing backups: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to list backups: {str(e)}"
+        )
+
+
+@admin_router.post("/restore-database", response_model=ResponseModel)
+@verify_admin_role
+async def restore_database_endpoint(
+    request: RestoreBackup,
+    current_user: dict = Depends(get_current_user),
+):
+    """Restore the database from an S3 backup"""
+    try:
+        result = restore_backup(request.s3_key)
+        return ResponseModel(
+            status="success",
+            message=f"Database restored from {result['filename']}",
+            data=result,
+        )
+    except Exception as e:
+        logger.error(f"Error restoring backup: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Restore failed: {str(e)}"
         )

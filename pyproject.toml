@@ -5,6 +5,7 @@ description = "Agent Games Backend"
 requires-python = ">=3.14"
 dependencies = [
     "bcrypt>=5.0.0",
+    "boto3>=1.35.0",
     "docker>=7.1.0",
     "email-validator>=2.3.0",
     "fastapi>=0.135.0",

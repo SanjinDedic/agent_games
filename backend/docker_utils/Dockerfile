@@ -29,7 +29,7 @@ ENV PATH="/agent_games/.venv/bin:$PATH"
 # Copy libpq from builder — no apk add needed for psycopg
 COPY --from=builder /usr/lib/libpq.so* /usr/lib/
 
-# Only install extra packages when needed (e.g. docker-cli for test-runner)
+# Only install extra packages when needed (e.g. postgresql18-client for api, docker-cli for test-runner)
 ARG RUNTIME_PACKAGES=""
 RUN if [ -n "$RUNTIME_PACKAGES" ]; then apk add --no-cache $RUNTIME_PACKAGES; fi
 
