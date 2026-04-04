@@ -185,7 +185,34 @@ def get_all_leagues(session: Session):
                 "game": league.game,
                 "created_date": league.created_date,
                 "expiry_date": league.expiry_date,
-                "signup_link": league.signup_link,  # Make sure to include this
+                "signup_link": league.signup_link,
+            }
+            for league in leagues
+        ]
+    }
+
+
+def get_leagues_for_user(session: Session, role: str, institution_id: Optional[int]):
+    """Get leagues scoped to the user's institution. Admin and Admin Institution (id=1) see all."""
+    query = select(League).where(League.deleted_date == None)
+
+    if role != "admin" and institution_id != 1:
+        if institution_id is not None:
+            query = query.where(League.institution_id == institution_id)
+        else:
+            return {"leagues": []}
+
+    leagues = session.exec(query).all()
+
+    return {
+        "leagues": [
+            {
+                "id": league.id,
+                "name": league.name,
+                "game": league.game,
+                "created_date": league.created_date,
+                "expiry_date": league.expiry_date,
+                "signup_link": league.signup_link,
             }
             for league in leagues
         ]

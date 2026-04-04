@@ -25,6 +25,7 @@ from backend.routes.user.user_db import (
     assign_team_to_league,
     create_team_and_assign_to_league,
     get_all_leagues,
+    get_leagues_for_user,
     get_all_published_results,
     get_all_submissions_for_league,
     get_latest_submissions_for_league,
@@ -254,8 +255,12 @@ async def get_leagues_endpoint(
     logger.info(f"Current user data: {current_user}")
 
     try:
-        # Reuse existing admin function
-        leagues = get_all_leagues(session)
+        role = current_user.get("role")
+        institution_id = current_user.get("institution_id")
+        if role == "admin":
+            institution_id = 1
+
+        leagues = get_leagues_for_user(session, role, institution_id)
         return ResponseModel(
             status="success",
             message="Leagues retrieved successfully",
