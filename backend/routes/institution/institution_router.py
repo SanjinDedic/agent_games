@@ -59,6 +59,16 @@ class InstitutionAccessError(Exception):
     pass
 
 
+def _resolve_institution(current_user: dict) -> tuple[int, bool]:
+    """Extract institution_id and is_admin from the current user token.
+    Admin role falls back to institution_id=1. Admin Institution (id=1) is also treated as admin."""
+    if current_user["role"] == "admin":
+        return 1, True
+    institution_id = current_user.get("institution_id")
+    is_admin = institution_id == 1
+    return institution_id, is_admin
+
+
 @institution_router.post("/league-create", response_model=ResponseModel)
 @verify_admin_or_institution
 async def create_league_endpoint(
@@ -68,7 +78,7 @@ async def create_league_endpoint(
 ):
     """Create a new league for the institution"""
     try:
-        institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
@@ -144,10 +154,7 @@ async def get_teams_endpoint(
 ):
     """Get all teams for the institution"""
     try:
-        if current_user["role"] == "admin":
-            institution_id = 1
-        else:
-            institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
@@ -173,20 +180,19 @@ async def run_simulation_endpoint(
 ):
     """Run a simulation for a league owned by the institution"""
     try:
-        if current_user["role"] == "admin":
-            institution_id = 1
-        else:
-            institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
-        # Get the league using the ID
-        league = get_league_by_id(session, simulation_config.league_id, institution_id)
+        # Get the league using the ID (admin bypasses ownership check)
+        league = get_league_by_id(session, simulation_config.league_id, institution_id, is_admin=is_admin)
 
         # Check if institution has Docker access
-        institution = session.get(Institution, institution_id)
+        # For admin managing another institution's league, check the league's owning institution
+        check_institution_id = league.institution_id if is_admin else institution_id
+        institution = session.get(Institution, check_institution_id)
         if not institution.docker_access:
             return ErrorResponseModel(
                 status="error",
@@ -235,6 +241,7 @@ async def run_simulation_endpoint(
                         feedback_json=(
                             json.dumps(feedback) if isinstance(feedback, dict) else None
                         ),
+                        is_admin=is_admin,
                     )
                 except Exception as e:
                     logger.error(f"Error saving simulation results: {str(e)}")
@@ -281,22 +288,19 @@ async def run_simulation_endpoint(
 @institution_router.post("/get-all-league-results", response_model=ResponseModel)
 @verify_admin_or_institution
 async def get_league_results_endpoint(
-    league: LeagueName,  # Change from LeagueSignUp to LeagueName
+    league: LeagueName,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Get all results for a specific league owned by the institution"""
     try:
-        if current_user["role"] == "admin":
-            institution_id = 1
-        else:
-            institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
-        results = get_all_league_results(session, league.name, institution_id)
+        results = get_all_league_results(session, league.name, institution_id, is_admin=is_admin)
         return ResponseModel(
             status="success",
             message="League results retrieved successfully",
@@ -318,14 +322,15 @@ async def publish_results_endpoint(
 ):
     """Publish simulation results for a league owned by the institution"""
     try:
-        institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
         msg, data = publish_sim_results(
-            session, results.league_name, results.id, institution_id, results.feedback
+            session, results.league_name, results.id, institution_id, results.feedback,
+            is_admin=is_admin,
         )
         return ResponseModel(status="success", message=msg, data=data)
     except Exception as e:
@@ -344,16 +349,13 @@ async def update_expiry_endpoint(
 ):
     """Update league expiry date for a league owned by the institution"""
     try:
-        if current_user["role"] == "admin":
-            institution_id = 1
-        else:
-            institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
-        msg = update_expiry_date(session, expiry.league, expiry.date, institution_id)
+        msg = update_expiry_date(session, expiry.league, expiry.date, institution_id, is_admin=is_admin)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error updating expiry date: {e}")
@@ -371,14 +373,15 @@ async def assign_team_endpoint(
 ):
     """Assign a team to a league within the institution"""
     try:
-        institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
         msg = assign_team_to_league(
-            session, assignment.team_id, assignment.league_id, institution_id
+            session, assignment.team_id, assignment.league_id, institution_id,
+            is_admin=is_admin,
         )
         return ResponseModel(status="success", message=msg)
     except Exception as e:
@@ -397,12 +400,7 @@ async def generate_signup_link_endpoint(
 ):
     """Generate a signup link for a league"""
     try:
-        # Handle both admin and institution roles
-        if current_user["role"] == "admin":
-            institution_id = 1
-        else:
-            institution_id = current_user.get("institution_id")
-
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
@@ -423,7 +421,7 @@ async def generate_signup_link_endpoint(
             )
 
         try:
-            result = generate_signup_link(session, league_id, institution_id)
+            result = generate_signup_link(session, league_id, institution_id, is_admin=is_admin)
             return ResponseModel(
                 status="success",
                 message=f"Signup link generated for league {result['league_name']}",
@@ -460,13 +458,13 @@ async def delete_league_endpoint(
 ):
     """Delete a league and move all teams to the unassigned league"""
     try:
-        institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
-        msg = delete_league(session, league.name, institution_id)
+        msg = delete_league(session, league.name, institution_id, is_admin=is_admin)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error deleting league: {e}")
@@ -484,11 +482,7 @@ async def unassign_team_endpoint(
 ):
     """Move a team to the institution's 'unassigned' league without relying on client-provided league id."""
     try:
-        # Determine institution scope
-        if current_user["role"] == "admin":
-            institution_id = 1
-        else:
-            institution_id = current_user.get("institution_id")
+        institution_id, is_admin = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"

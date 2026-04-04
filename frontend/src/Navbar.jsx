@@ -12,6 +12,7 @@ function AgentGamesNavbar() {
   const dispatch = useDispatch();
 
   const adminRoutes = [
+    "/AdminBackup",
     "/AdminDockerStatus",
     "/AdminInstitutions",
   ];
@@ -58,6 +59,9 @@ function AgentGamesNavbar() {
                 </Link>
                 <Link to="/AdminDockerStatus" className={navLinkClasses}>
                   Service Status
+                </Link>
+                <Link to="/AdminBackup" className={navLinkClasses}>
+                  Backups
                 </Link>
               </>
             ) : isInstitutionRoute ? (

@@ -9,6 +9,7 @@ from backend.routes.auth.auth_db import (
     InvalidCredentialsError,
     get_admin_token,
     get_institution_token,
+    get_institution_names,
     get_team_token,
     verify_agent_api_key,
 )
@@ -22,6 +23,19 @@ from backend.routes.auth.auth_models import (
 logger = logging.getLogger(__name__)
 
 auth_router = APIRouter()
+
+
+@auth_router.get("/institutions", response_model=ResponseModel)
+def list_institutions(session: Session = Depends(get_db)):
+    """
+    Public endpoint to list institution names for the login selector
+    """
+    try:
+        names = get_institution_names(session)
+        return ResponseModel(status="success", message="Institutions retrieved", data={"institutions": names})
+    except Exception as e:
+        logger.error(f"Error listing institutions: {str(e)}")
+        return ResponseModel(status="failed", message="Failed to retrieve institutions")
 
 
 @auth_router.post("/admin-login", response_model=ResponseModel)

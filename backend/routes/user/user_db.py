@@ -185,7 +185,34 @@ def get_all_leagues(session: Session):
                 "game": league.game,
                 "created_date": league.created_date,
                 "expiry_date": league.expiry_date,
-                "signup_link": league.signup_link,  # Make sure to include this
+                "signup_link": league.signup_link,
+            }
+            for league in leagues
+        ]
+    }
+
+
+def get_leagues_for_user(session: Session, role: str, institution_id: Optional[int]):
+    """Get leagues scoped to the user's institution. Admin and Admin Institution (id=1) see all."""
+    query = select(League).where(League.deleted_date == None)
+
+    if role != "admin" and institution_id != 1:
+        if institution_id is not None:
+            query = query.where(League.institution_id == institution_id)
+        else:
+            return {"leagues": []}
+
+    leagues = session.exec(query).all()
+
+    return {
+        "leagues": [
+            {
+                "id": league.id,
+                "name": league.name,
+                "game": league.game,
+                "created_date": league.created_date,
+                "expiry_date": league.expiry_date,
+                "signup_link": league.signup_link,
             }
             for league in leagues
         ]
@@ -203,87 +230,69 @@ def get_latest_submissions_for_league(
     session: Session, league_id: int
 ) -> Dict[str, str]:
     """Get latest submissions for all teams in a league"""
-    try:
-        # First get all teams in the league
-        teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
+    teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
 
-        submissions = {}
-        for team in teams:
-            # Get latest submission for each team
-            latest_submission = session.exec(
-                select(Submission)
-                .where(Submission.team_id == team.id)
-                .order_by(Submission.timestamp.desc())
-                .limit(1)
-            ).first()
-
-            if latest_submission:
-                submissions[team.name] = latest_submission.code
-
-        logger.info(f"Found {len(submissions)} submissions for league {league_id}")
-        return submissions
-
-    except Exception as e:
-        logger.error(f"Error getting league submissions: {str(e)}")
-        raise
-
-
-def get_all_submissions_for_league(
-    session: Session, league_id: int
-) -> Dict[str, list]:
-    """Get all submissions for all teams in a league, ordered by timestamp"""
-    try:
-        teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
-
-        result = {}
-        for team in teams:
-            submissions = session.exec(
-                select(Submission)
-                .where(Submission.team_id == team.id)
-                .order_by(Submission.timestamp.asc())
-            ).all()
-
-            result[team.name] = [
-                {
-                    "code": sub.code,
-                    "timestamp": sub.timestamp.isoformat(),
-                    "id": sub.id,
-                }
-                for sub in submissions
-            ]
-
-        logger.info(f"Found submissions for {len(result)} teams in league {league_id}")
-        return result
-
-    except Exception as e:
-        logger.error(f"Error getting all league submissions: {str(e)}")
-        raise
-
-
-def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[str]]:
-    """Get latest submission for a specific team"""
-    try:
-        # Get team first
-        team = session.exec(select(Team).where(Team.name == team_name)).first()
-
-        if not team:
-            logger.warning(f"Team not found: {team_name}")
-            return {"code": None}
-
-        # Get latest submission
-        submission = session.exec(
+    submissions = {}
+    for team in teams:
+        # Get latest submission for each team
+        latest_submission = session.exec(
             select(Submission)
             .where(Submission.team_id == team.id)
             .order_by(Submission.timestamp.desc())
             .limit(1)
         ).first()
 
-        # Return dictionary with code
-        return {"code": submission.code if submission else None}
+        if latest_submission:
+            submissions[team.name] = latest_submission.code
 
-    except Exception as e:
-        logger.error(f"Error getting team submission: {str(e)}")
-        raise
+    logger.info(f"Found {len(submissions)} submissions for league {league_id}")
+    return submissions
+
+
+def get_all_submissions_for_league(
+    session: Session, league_id: int
+) -> Dict[str, list]:
+    """Get all submissions for all teams in a league, ordered by timestamp"""
+    teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
+
+    result = {}
+    for team in teams:
+        submissions = session.exec(
+            select(Submission)
+            .where(Submission.team_id == team.id)
+            .order_by(Submission.timestamp.asc())
+        ).all()
+
+        result[team.name] = [
+            {
+                "code": sub.code,
+                "timestamp": sub.timestamp.isoformat(),
+                "id": sub.id,
+            }
+            for sub in submissions
+        ]
+
+    logger.info(f"Found submissions for {len(result)} teams in league {league_id}")
+    return result
+
+
+def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[str]]:
+    """Get latest submission for a specific team"""
+    team = session.exec(select(Team).where(Team.name == team_name)).first()
+
+    if not team:
+        logger.warning(f"Team not found: {team_name}")
+        return {"code": None}
+
+    # Get latest submission
+    submission = session.exec(
+        select(Submission)
+        .where(Submission.team_id == team.id)
+        .order_by(Submission.timestamp.desc())
+        .limit(1)
+    ).first()
+
+    return {"code": submission.code if submission else None}
 
 
 def get_league_by_signup_token(session: Session, signup_token: str) -> League:

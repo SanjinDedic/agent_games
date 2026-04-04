@@ -263,7 +263,7 @@ def test_agent_api_key_validation(
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "failed"
-    assert "error" in data["message"].lower()
+    assert "invalid" in data["message"].lower()
 
     # Test case 3: Inactive API key
     setup_api_key.is_active = False
@@ -274,7 +274,7 @@ def test_agent_api_key_validation(
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "failed"
-    assert "error" in data["message"].lower()
+    assert "invalid" in data["message"].lower()
 
 
 def test_agent_rate_limiting(

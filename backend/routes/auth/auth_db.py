@@ -32,6 +32,16 @@ class RateLimitExceededError(Exception):
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
+def get_institution_names(session: Session):
+    """Get list of active institution names for the login selector"""
+    institutions = session.exec(
+        select(Institution)
+        .where(Institution.subscription_active == True)
+        .where(Institution.name != "Demo Institution")
+    ).all()
+    return [inst.name for inst in institutions]
+
+
 def get_team_token(session: Session, team_name: str, team_password: str):
     """Get authentication token for team login"""
     team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
@@ -113,45 +123,40 @@ def get_institution_token(session: Session, institution_name: str, password: str
 
 def verify_agent_api_key(session: Session, api_key: str):
     """Verify agent API key and return token"""
-    try:
-        # Find the API key record
-        api_key_record = session.exec(
-            select(AgentAPIKey).where(
-                AgentAPIKey.key == api_key, AgentAPIKey.is_active == True
-            )
-        ).one_or_none()
+    # Find the API key record
+    api_key_record = session.exec(
+        select(AgentAPIKey).where(
+            AgentAPIKey.key == api_key, AgentAPIKey.is_active == True
+        )
+    ).one_or_none()
 
-        if not api_key_record:
-            raise InvalidCredentialsError("Invalid or inactive API key")
+    if not api_key_record:
+        raise InvalidCredentialsError("Invalid or inactive API key")
 
-        # Get associated team
-        team = api_key_record.team
-        if not team or team.team_type != TeamType.AGENT:
-            raise InvalidCredentialsError(
-                "API key not associated with a valid agent team"
-            )
-
-        # Update last used timestamp
-        api_key_record.last_used = datetime.now(AUSTRALIA_SYDNEY_TZ)
-        session.commit()
-
-        # Create token data with institution_id if present
-        token_data = {
-            "sub": team.name,
-            "role": "ai_agent",
-            "team_name": team.name,
-        }
-
-        if team.institution_id:
-            token_data["institution_id"] = team.institution_id
-
-        access_token = create_access_token(
-            data=token_data,
-            expires_delta=timedelta(days=AGENT_TOKEN_EXPIRY_DAYS),
+    # Get associated team
+    team = api_key_record.team
+    if not team or team.team_type != TeamType.AGENT:
+        raise InvalidCredentialsError(
+            "API key not associated with a valid agent team"
         )
 
-        return {"access_token": access_token, "token_type": "bearer"}
+    # Update last used timestamp
+    api_key_record.last_used = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    session.commit()
 
-    except Exception as e:
-        logger.error(f"Error verifying agent API key: {str(e)}")
-        raise InvalidCredentialsError("Error verifying API key")
+    # Create token data with institution_id if present
+    token_data = {
+        "sub": team.name,
+        "role": "ai_agent",
+        "team_name": team.name,
+    }
+
+    if team.institution_id:
+        token_data["institution_id"] = team.institution_id
+
+    access_token = create_access_token(
+        data=token_data,
+        expires_delta=timedelta(days=AGENT_TOKEN_EXPIRY_DAYS),
+    )
+
+    return {"access_token": access_token, "token_type": "bearer"}

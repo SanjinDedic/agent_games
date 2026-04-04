@@ -14,6 +14,7 @@ import Leaderboards from "./AgentGames/Leaderboards";
 import Admin from "./AgentGames/Admin/Admin";
 import AdminLeague from "./AgentGames/Admin/AdminLeague";
 import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
+import AdminBackup from "./AgentGames/Admin/AdminBackup";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import StyleGuide from "./StyleGuide";
 import PublishedResults from "./AgentGames/PublishedResults";
@@ -63,6 +64,7 @@ function App() {
           />
           <Route path="AdminInstitutions" element={<AdminInstitutions />} />
           {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
+          <Route path="AdminBackup" element={<AdminBackup />} />
           <Route path="AdminDockerStatus" element={<DockerStatus />} />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />

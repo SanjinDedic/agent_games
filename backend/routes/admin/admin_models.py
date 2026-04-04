@@ -62,6 +62,12 @@ class CreateAgentTeam(BaseModel):
         return v.strip()
 
 
+class RestoreBackup(BaseModel):
+    """Model for restoring a database backup"""
+
+    s3_key: str
+
+
 class CreateAgentAPIKey(BaseModel):
     """Model for creating an API key"""
 
