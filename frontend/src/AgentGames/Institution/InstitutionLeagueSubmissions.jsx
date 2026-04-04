@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { checkTokenExpiry } from "../../slices/authSlice";
+import { authFetch } from "../../utils/authFetch";
 
 function InstitutionLeagueSubmissions() {
   const { leagueId } = useParams();
@@ -32,13 +33,14 @@ function InstitutionLeagueSubmissions() {
   const selectedCode = currentSubmission?.code || "";
   const totalSubmissions = teamSubmissions.length;
 
-  // Guard: require institution role
+  // Guard: require institution role (mount-only to avoid loop on logout)
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || tokenExpired || currentUser.role !== "institution") {
       navigate("/Institution");
     }
-  }, [dispatch, isAuthenticated, currentUser, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch all submissions for league
   useEffect(() => {
@@ -47,7 +49,7 @@ function InstitutionLeagueSubmissions() {
       try {
         setLoading(true);
         setError("");
-        const resp = await fetch(`${apiUrl}/user/get-all-league-submissions/${leagueId}`, {
+        const resp = await authFetch(`${apiUrl}/user/get-all-league-submissions/${leagueId}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },

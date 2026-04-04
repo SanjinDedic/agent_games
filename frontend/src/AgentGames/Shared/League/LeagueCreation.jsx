@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
+import { authFetch } from "../../../utils/authFetch";
 
 const LeagueCreation = () => {
   const token = useSelector((state) => state.auth.token);
@@ -20,7 +21,7 @@ const LeagueCreation = () => {
 
   const fetchGames = async () => {
     try {
-      const response = await fetch(`${apiUrl}/user/get-available-games`, {
+      const response = await authFetch(`${apiUrl}/user/get-available-games`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -96,7 +97,7 @@ const LeagueCreation = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${apiUrl}/institution/league-create`, {
+      const response = await authFetch(`${apiUrl}/institution/league-create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

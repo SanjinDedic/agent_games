@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useSelector, useDispatch } from 'react-redux';
 import { setTeams } from '../../../slices/teamsSlice';
 import useLeagueAPI from '../hooks/useLeagueAPI';
+import { authFetch } from '../../../utils/authFetch';
 
 /**
  * Shared component for managing teams in a league
@@ -71,7 +72,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
   const fetchAllTeams = async () => {
     setIsLoadingTeams(true);
     try {
-      const response = await fetch(`${apiUrl}/institution/get-all-teams`, {
+      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

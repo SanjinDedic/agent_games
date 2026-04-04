@@ -24,7 +24,8 @@ function AgentLogin() {
     if (isAuthenticated && !tokenExpired && currentUser.role === "student") {
       navigate("/AgentLeagueSignUp");
     }
-  }, [navigate, dispatch, isAuthenticated, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     setTeam((prev) => ({

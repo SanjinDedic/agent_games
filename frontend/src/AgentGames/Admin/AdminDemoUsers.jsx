@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment-timezone';
 import { checkTokenExpiry } from '../../slices/authSlice';
 import DemoUserCard from './DemoUserCard';
+import { authFetch } from '../../utils/authFetch';
 
 /**
  * Renders the admin demo users management interface.
@@ -35,13 +36,14 @@ function AdminDemoUsers() {
         }
 
         fetchDemoUsers();
-    }, [navigate, dispatch, isAuthenticated, currentUser]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Fetch all demo users
     const fetchDemoUsers = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${apiUrl}/admin/get_all_demo_users`, {
+            const response = await authFetch(`${apiUrl}/admin/get_all_demo_users`, {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`
                 }
@@ -80,7 +82,7 @@ function AdminDemoUsers() {
 
       setIsDeletingAll(true);
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${apiUrl}/admin/delete_demo_teams_and_subs`,
           {
             method: "POST",
@@ -124,7 +126,7 @@ function AdminDemoUsers() {
       }
 
       try {
-        const response = await fetch(`${apiUrl}/admin/delete-team`, {
+        const response = await authFetch(`${apiUrl}/admin/delete-team`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -6,6 +6,7 @@ import moment from 'moment-timezone';
 import { useNavigate } from 'react-router-dom';
 
 // Import Redux actions
+import { authFetch } from '../../../utils/authFetch';
 import {
   setLeagues,
   setCurrentSimulation,
@@ -55,7 +56,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
   // Fetch all leagues
   const fetchLeagues = async () => {
     try {
-      const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
+      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -78,7 +79,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
   // Fetch league results
   const fetchLeagueResults = async () => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${apiUrl}/institution/get-all-league-results`,
         {
           method: "POST",

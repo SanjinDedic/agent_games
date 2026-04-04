@@ -32,10 +32,9 @@ function AgentLeagueSignUp() {
       return;
     }
 
-    // Only load leagues once when component mounts
-    // Don't include fetchUserLeagues in dependency array
     fetchUserLeagues();
-  }, [navigate, dispatch, isAuthenticated, currentUser]); // Removed fetchUserLeagues from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCheckboxChange = (event) => {
     // Set the current league by name

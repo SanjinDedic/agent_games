@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { setLeagues } from '../../../slices/leaguesSlice';
+import { authFetch } from '../../../utils/authFetch';
 
 /**
  * Hook for handling league-related API calls
@@ -40,7 +41,7 @@ export const useLeagueAPI = (userRole) => {
   const fetchUserLeagues = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
+      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -76,7 +77,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${apiUrl}/user/league-assign`, {
+      const response = await authFetch(`${apiUrl}/user/league-assign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +113,7 @@ export const useLeagueAPI = (userRole) => {
     
     try {
       // Both admin and institution use the same endpoint
-      const response = await fetch(`${apiUrl}/institution/run-simulation`, {
+      const response = await authFetch(`${apiUrl}/institution/run-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -162,7 +163,7 @@ export const useLeagueAPI = (userRole) => {
     
     try {
       // Both admin and institution use the same endpoint
-      const response = await fetch(`${apiUrl}/institution/league-create`, {
+      const response = await authFetch(`${apiUrl}/institution/league-create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +200,7 @@ export const useLeagueAPI = (userRole) => {
       //set publishData.feedback to none
       publishData.feedback = undefined
 
-      const response = await fetch(`${apiUrl}/institution/publish-results`, {
+      const response = await authFetch(`${apiUrl}/institution/publish-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -236,7 +237,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${apiUrl}/institution/update-expiry-date`, {
+      const response = await authFetch(`${apiUrl}/institution/update-expiry-date`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -273,7 +274,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${apiUrl}/institution/assign-team-to-league`, {
+      const response = await authFetch(`${apiUrl}/institution/assign-team-to-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +310,7 @@ export const useLeagueAPI = (userRole) => {
   const unassignTeam = useCallback(async (teamId) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${apiUrl}/institution/unassign-team`, {
+      const response = await authFetch(`${apiUrl}/institution/unassign-team`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -343,7 +344,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${apiUrl}/institution/delete-league`, {
+      const response = await authFetch(`${apiUrl}/institution/delete-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

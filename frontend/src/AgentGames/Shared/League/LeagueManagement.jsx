@@ -8,6 +8,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 // Import sub-components (to be implemented)
 import LeagueTeams from './LeagueTeams';
+import { authFetch } from '../../../utils/authFetch';
 import LeagueSimulation from './LeagueSimulation';
 import LeagueCreation from './LeagueCreation';
 import LeaguePublish from './LeaguePublish';
@@ -65,7 +66,7 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
   // Fetch all leagues
   const fetchLeagues = async () => {
     try {
-      const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
+      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -88,7 +89,7 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
   // Fetch league results
   const fetchLeagueResults = async () => {
     try {
-      const response = await fetch(`${apiUrl}/institution/get-all-league-results`, {
+      const response = await authFetch(`${apiUrl}/institution/get-all-league-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

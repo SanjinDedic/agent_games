@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { checkTokenExpiry } from '../../slices/authSlice';
+import { authFetch } from '../../utils/authFetch';
 
 function DockerStatus() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ function DockerStatus() {
   const [isLoading, setIsLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
 
+  // Auth guard (mount-only to avoid loop on logout)
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (
@@ -26,7 +28,11 @@ function DockerStatus() {
     ) {
       navigate("/Admin");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Fetch status and auto-refresh
+  useEffect(() => {
     fetchServiceStatus();
 
     let intervalId;
@@ -41,12 +47,12 @@ function DockerStatus() {
         clearInterval(intervalId);
       }
     };
-  }, [navigate, autoRefresh]);
+  }, [autoRefresh]);
 
   const fetchServiceStatus = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${apiUrl}/diagnostics/status`, {
+      const response = await authFetch(`${apiUrl}/diagnostics/status`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 

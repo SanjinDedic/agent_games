@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Import Redux actions 
 import { setLeagues, updateExpiryDate } from "../../../slices/leaguesSlice";
+import { authFetch } from '../../../utils/authFetch';
 
 // Import shared components
 import LeagueTeams from './LeagueTeams';
@@ -57,7 +58,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   // Fetch all leagues
   const fetchLeagues = async () => {
     try {
-      const response = await fetch(`${apiUrl}/user/get-all-leagues`, {
+      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -83,7 +84,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
 
     setIsLoadingSignupLink(true);
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${apiUrl}/institution/generate-signup-link`,
         {
           method: "POST",
