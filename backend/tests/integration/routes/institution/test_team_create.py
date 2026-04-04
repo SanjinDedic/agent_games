@@ -156,3 +156,48 @@ def test_team_create_failures(client, institution_setup, db_session):
         },
     )
     assert response.status_code == 403
+
+
+def test_team_create_global_duplicate(client, institution_setup, db_session):
+    """Team name that exists in another institution triggers IntegrityError → TeamError."""
+    institution, _, headers = institution_setup
+
+    # Create a team in this institution
+    response = client.post(
+        "/institution/team-create",
+        headers=headers,
+        json={"name": "globally_unique_team", "password": "pass", "school_name": "School A"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+
+    # Create another institution
+    other = Institution(
+        name="other_inst_for_dup_test",
+        contact_person="Other",
+        contact_email="other@test.com",
+        created_date=datetime.now(),
+        subscription_active=True,
+        subscription_expiry=datetime.now() + timedelta(days=30),
+        docker_access=True,
+        password_hash="hash",
+    )
+    db_session.add(other)
+    db_session.commit()
+    db_session.refresh(other)
+
+    other_token = create_access_token(
+        data={"sub": other.name, "role": "institution", "institution_id": other.id},
+        expires_delta=timedelta(minutes=30),
+    )
+
+    # Try creating team with same name in different institution — hits DB unique constraint
+    response = client.post(
+        "/institution/team-create",
+        headers={"Authorization": f"Bearer {other_token}"},
+        json={"name": "globally_unique_team", "password": "pass", "school_name": "School B"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "error"
+    assert "data constraints" in data["message"].lower() or "already exists" in data["message"].lower()

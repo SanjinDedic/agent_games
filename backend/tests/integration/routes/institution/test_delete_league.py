@@ -232,3 +232,109 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         json={"name": league.name},
     )
     assert response.status_code == 403
+
+
+def test_delete_league_creates_unassigned_if_missing(client, db_session):
+    """When deleting a league, if 'unassigned' league doesn't exist, it gets auto-created."""
+    from backend.database.db_models import (
+        SimulationResult,
+        SimulationResultItem,
+        Submission,
+    )
+
+    # Create institution WITHOUT an unassigned league
+    inst = Institution(
+        name="no_unassigned_inst",
+        contact_person="Test",
+        contact_email="test@test.com",
+        created_date=datetime.now(),
+        subscription_active=True,
+        subscription_expiry=datetime.now() + timedelta(days=30),
+        docker_access=True,
+        password_hash="hash",
+    )
+    db_session.add(inst)
+    db_session.commit()
+    db_session.refresh(inst)
+
+    # Verify no unassigned league exists
+    unassigned = db_session.exec(
+        select(League)
+        .where(League.name == "unassigned")
+        .where(League.institution_id == inst.id)
+    ).first()
+    assert unassigned is None
+
+    # Create a league with a team and simulation results
+    league = League(
+        name="league_to_delete_no_unassigned",
+        created_date=datetime.now(),
+        expiry_date=datetime.now() + timedelta(days=7),
+        game="greedy_pig",
+        institution_id=inst.id,
+    )
+    db_session.add(league)
+    db_session.commit()
+    db_session.refresh(league)
+
+    team = Team(
+        name="team_in_no_unassigned",
+        school_name="School",
+        password_hash="hash",
+        league_id=league.id,
+        institution_id=inst.id,
+    )
+    db_session.add(team)
+    db_session.commit()
+    db_session.refresh(team)
+
+    # Add submission
+    db_session.add(Submission(code="# test", timestamp=datetime.now(), team_id=team.id))
+
+    # Add simulation result with items
+    sim = SimulationResult(
+        league_id=league.id,
+        timestamp=datetime.now(),
+        num_simulations=5,
+        custom_rewards="[10,8,6]",
+    )
+    db_session.add(sim)
+    db_session.commit()
+    db_session.refresh(sim)
+
+    db_session.add(SimulationResultItem(
+        simulation_result_id=sim.id, team_id=team.id, score=50
+    ))
+    db_session.commit()
+
+    token = create_access_token(
+        data={"sub": inst.name, "role": "institution", "institution_id": inst.id},
+        expires_delta=timedelta(minutes=30),
+    )
+
+    # Delete the league
+    resp = client.post(
+        "/institution/delete-league",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"name": "league_to_delete_no_unassigned"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "success"
+
+    # Verify unassigned league was auto-created
+    unassigned = db_session.exec(
+        select(League)
+        .where(League.name == "unassigned")
+        .where(League.institution_id == inst.id)
+    ).first()
+    assert unassigned is not None
+
+    # Team was moved to the new unassigned league
+    db_session.refresh(team)
+    assert team.league_id == unassigned.id
+
+    # Sim results and items were cleaned up
+    remaining_sim = db_session.exec(
+        select(SimulationResult).where(SimulationResult.league_id == league.id)
+    ).first()
+    assert remaining_sim is None
