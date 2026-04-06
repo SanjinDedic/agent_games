@@ -177,6 +177,20 @@ class AgentAPIKey(SQLModel, table=True):
     is_active: bool = Field(default=True)
 
 
+class AIProviderKey(SQLModel, table=True):
+    """Stores API keys for external AI providers (OpenAI, etc.)"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    provider: str = Field(unique=True, index=True)  # e.g. "openai"
+    api_key: str = Field(sa_column=Column(Text()))
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
+
+
 class DemoUser(SQLModel, table=True):
     """Model for demo users with tracking information"""
 
