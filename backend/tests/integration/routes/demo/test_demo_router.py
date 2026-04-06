@@ -171,3 +171,26 @@ def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):
     )
     assert response.status_code == 200
     assert response.json()["status"] == "success"
+
+
+def test_demo_token_includes_institution_id(client: TestClient, db_session: Session):
+    """Test that demo token includes institution_id so demo users can see demo leagues"""
+    from jose import jwt
+    from backend.routes.auth.auth_config import SECRET_KEY, ALGORITHM
+
+    response = client.post("/demo/launch_demo")
+    assert response.status_code == 200
+    token = response.json()["data"]["access_token"]
+
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    assert "institution_id" in payload, "Demo token must include institution_id"
+    assert payload["institution_id"] is not None
+
+    # Verify demo user can actually see demo leagues via the endpoint
+    leagues_response = client.get(
+        "/user/get-all-leagues",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert leagues_response.status_code == 200
+    leagues = leagues_response.json()["data"]["leagues"]
+    assert len(leagues) > 0, "Demo user should see demo leagues"
