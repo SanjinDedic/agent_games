@@ -47,6 +47,7 @@ async def launch_demo(
             "sub": demo_user.name,
             "role": "student",
             "is_demo": True,
+            "institution_id": demo_user.institution_id,
             "exp_time": DEMO_TOKEN_EXPIRY_MINUTES,
         }
         access_token = create_access_token(token_data, expires_delta)
