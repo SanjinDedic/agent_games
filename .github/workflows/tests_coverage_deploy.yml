@@ -1,11 +1,22 @@
-name: Tests and Coverage
+name: Test and Deploy
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'pyproject.toml'
+      - 'docker-compose.yml'
+      - 'docker-compose.test.yml'
+      - 'config/deploy.yml'
+      - '.github/workflows/**'
   pull_request:
     branches: [main]
-    paths: ['backend/**', 'pyproject.toml', 'docker-compose.yml', 'docker-compose.test.yml']
+    paths:
+      - 'backend/**'
+      - 'pyproject.toml'
+      - 'docker-compose.yml'
+      - 'docker-compose.test.yml'
   workflow_dispatch:
 
 concurrency:
@@ -13,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  test-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,9 +33,12 @@ jobs:
     - name: Ensure validation files exist for tests
       env:
         LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
+        ARENA_VALIDATION_PLAYERS: ${{ secrets.ARENA_VALIDATION_PLAYERS }}
       run: |
         mkdir -p backend/games/lineup4
         echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
+        mkdir -p backend/games/arena_champions
+        echo "$ARENA_VALIDATION_PLAYERS" | base64 -d > backend/games/arena_champions/validation_players.py
 
     - name: Run tests with coverage
       run: |
@@ -40,6 +54,61 @@ jobs:
         flags: backend
         fail_ci_if_error: true
 
-    - name: Cleanup
+    - name: Cleanup test containers
       if: always()
       run: docker compose -f docker-compose.yml -f docker-compose.test.yml down --volumes
+
+    # --- Deploy (only on push to main) ---
+    - name: Set up Ruby
+      if: github.event_name == 'push'
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+
+    - name: Install Kamal
+      if: github.event_name == 'push'
+      run: gem install kamal -v 2.11.0
+
+    - name: Set up SSH agent
+      if: github.event_name == 'push'
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy with Kamal
+      if: github.event_name == 'push'
+      env:
+        KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        INSTITUTION_PASSWORD: ${{ secrets.INSTITUTION_PASSWORD }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
+        ARENA_VALIDATION_PLAYERS: ${{ secrets.ARENA_VALIDATION_PLAYERS }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: ap-southeast-2
+        AWS_S3_BUCKET: agent-games-backups
+      run: |
+        mkdir -p .kamal
+        cat > .kamal/secrets <<EOF
+        KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD
+        SECRET_KEY=$SECRET_KEY
+        ADMIN_PASSWORD=$ADMIN_PASSWORD
+        INSTITUTION_PASSWORD=$INSTITUTION_PASSWORD
+        POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+        DATABASE_URL=$DATABASE_URL
+        LINEUP4_VALIDATION_PLAYERS=$LINEUP4_VALIDATION_PLAYERS
+        ARENA_VALIDATION_PLAYERS=$ARENA_VALIDATION_PLAYERS
+        AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+        AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+        AWS_REGION=$AWS_REGION
+        AWS_S3_BUCKET=$AWS_S3_BUCKET
+        EOF
+        kamal deploy
+
+    - name: Healthcheck
+      if: github.event_name == 'push'
+      run: |
+        curl -fsS https://api.agentgames.io/health >/dev/null && echo "Healthcheck OK" || (echo "Healthcheck FAILED" && exit 1)
