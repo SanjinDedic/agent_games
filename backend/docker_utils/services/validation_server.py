@@ -30,7 +30,17 @@ ALLOWED_MODULES = {
     "player": None,
 }
 
-RISKY_FUNCTIONS = [
+RISKY_NAMES = [
+    "setattr",
+    "getattr",
+    "hasattr",
+    "vars",
+    "dir",
+    "globals",
+    "locals",
+    "help",
+    "type",
+    "object",
     "eval",
     "exec",
     "open",
@@ -41,7 +51,9 @@ RISKY_FUNCTIONS = [
     "sys",
     "subprocess",
     "importlib",
+    "super",
     "__import__",
+    "__builtins__"
 ]
 
 
@@ -63,9 +75,10 @@ class ValidationResponse(BaseModel):
 class CodeValidator(ast.NodeVisitor):
     """AST visitor for validating code safety"""
 
-    def __init__(self):
+    def __init__(self, dissallowed):
         self.safe = True
         self.error_message = None
+        self.dissallowed = dissallowed
 
     def visit_Import(self, node):
         for alias in node.names:
@@ -85,11 +98,41 @@ class CodeValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node):
-        if isinstance(node.func, ast.Name) and node.func.id in RISKY_FUNCTIONS:
+        if self._is_super_init(node):
+            return
+
+        if isinstance(node.func, ast.Name) and node.func.id in RISKY_NAMES:
             self.safe = False
             self.error_message = f"Unauthorized function call: {node.func.id}"
             return
         self.generic_visit(node)
+
+    def visit_Name(self, node):
+        if node.id in RISKY_NAMES:
+            self.safe = False
+            self.error_message = f"Unauthorized access: {node.id}"
+            return
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node):
+        if (node.attr.startswith('__') and node.attr.endswith('__')) or (node.attr in self.dissallowed and isinstance(node.ctx, ast.Store)):
+            self.safe = False
+            self.error_message = f"Unauthorized access: {node.attr}"
+            return
+        self.generic_visit(node)
+
+    def _is_super_init(self, node: ast.Call) -> bool:
+        if not isinstance(node.func, ast.Attribute): return False
+        if node.func.attr != '__init__': return False
+        if not isinstance(node.func.value, ast.Call): return False
+        super_call = node.func.value
+        if not isinstance(super_call.func, ast.Name): return False
+        if super_call.func.id != 'super': return False
+
+        for i in node.args:
+            self.generic_visit(i)
+
+        return True
 
     def _is_allowed_import(self, module: str, submodule: str = None) -> bool:
         parts = module.split(".")
@@ -103,14 +146,14 @@ class CodeValidator(ast.NodeVisitor):
         return submodule in current if submodule else True
 
 
-def validate_code(code: str) -> Tuple[bool, Optional[str]]:
+def validate_code(code: str, dissallowed: list[str]) -> Tuple[bool, Optional[str]]:
     """Validate code safety using AST analysis"""
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
         return False, f"Syntax error in code: {str(e)}"
 
-    validator = CodeValidator()
+    validator = CodeValidator(dissallowed)
     validator.visit(tree)
     return validator.safe, validator.error_message
 
@@ -125,8 +168,11 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
     """Validate submitted code and run test simulation"""
     logger.info(f"Received validation request for team {request.team_name}")
     try:
+        # Find dissallowed attributes for this game
+        dissallowed = GameFactory.get_disallowed_attrs(request.game_name)
+
         # Code validation remains the same
-        is_safe, error_message = validate_code(request.code)
+        is_safe, error_message = validate_code(request.code, dissallowed)
         if not is_safe:
             return ValidationResponse(
                 status="error", message=f"Agent code is not safe: {error_message}"
