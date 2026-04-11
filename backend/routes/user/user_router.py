@@ -12,12 +12,19 @@ from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ, TEAM_TOKEN_EXPIRY_MINUTES, create_access_token
 from backend.routes.auth.auth_core import (
     get_current_user,
+    verify_admin_or_institution,
     verify_admin_or_student,
     verify_ai_agent_service_or_student,
     verify_any_role,
 )
 from backend.database.db_session import get_db
+from backend.routes.institution.institution_db import (
+    InstitutionAccessError,
+    LeagueNotFoundError,
+    get_league_by_id,
+)
 from backend.routes.institution.institution_models import LeagueName
+from backend.routes.institution.institution_router import _resolve_institution
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
@@ -296,21 +303,45 @@ async def get_league_submissions(
 
 
 @user_router.get("/get-all-league-submissions/{league_id}", response_model=ResponseModel)
-@verify_any_role
+@verify_admin_or_institution
 async def get_all_league_submissions(
     league_id: int,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Get all submissions for all teams in a league with timestamps"""
+    """Get all submissions for all teams in a league with timestamps.
+
+    Access is restricted to the institution that owns the league (admins
+    bypass the ownership check). Returns 'error' status for leagues the
+    caller does not own or that do not exist — never leaks cross-institution
+    data.
+    """
     try:
-        league = session.get(League, league_id)
-        league_name = league.name if league else None
+        institution_id, is_admin = _resolve_institution(current_user)
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        try:
+            league = get_league_by_id(
+                session, league_id, institution_id, is_admin=is_admin
+            )
+        except LeagueNotFoundError:
+            return ErrorResponseModel(
+                status="error", message=f"League {league_id} not found"
+            )
+        except InstitutionAccessError:
+            return ErrorResponseModel(
+                status="error",
+                message="You don't have permission to access this league",
+            )
+
         submissions = get_all_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="All submissions retrieved successfully",
-            data={"league_name": league_name, "teams": submissions},
+            data={"league_name": league.name, "teams": submissions},
         )
     except Exception as e:
         logger.error(f"Error retrieving all submissions: {e}")
