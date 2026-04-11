@@ -1,10 +1,10 @@
 import logging
 from datetime import UTC, datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from sqlmodel import Session, select
 
-from backend.database.db_models import AIProviderKey
+from backend.database.db_models import AIProviderKey, Submission, Team
 
 logger = logging.getLogger(__name__)
 
@@ -52,3 +52,35 @@ def get_stored_key(session: Session, provider: str) -> Optional[str]:
         select(AIProviderKey).where(AIProviderKey.provider == provider)
     ).first()
     return row.api_key if row else None
+
+
+# --- Plagiarism assessment helpers ---
+
+
+def get_team_submissions_ordered(
+    session: Session, team_id: int
+) -> List[Submission]:
+    """Return all submissions for a team in ascending timestamp order."""
+    return list(
+        session.exec(
+            select(Submission)
+            .where(Submission.team_id == team_id)
+            .order_by(Submission.timestamp.asc())
+        ).all()
+    )
+
+
+def get_team_in_league(
+    session: Session, team_name: str, league_id: int
+) -> Optional[Team]:
+    """Look up a team by name; return None if not found or not in that league.
+
+    Team names are globally unique (see db_models.Team), so looking up by name
+    alone is unambiguous — but we still enforce the league membership as an
+    authorization guard, so a caller can only assess teams inside a league they
+    legitimately have access to.
+    """
+    team = session.exec(select(Team).where(Team.name == team_name)).first()
+    if not team or team.league_id != league_id:
+        return None
+    return team

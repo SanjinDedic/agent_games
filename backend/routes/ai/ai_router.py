@@ -6,9 +6,35 @@ from sqlmodel import Session
 
 from backend.database.db_session import get_db
 from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.ai.ai_db import get_api_keys, get_stored_key, update_api_key
-from backend.routes.ai.ai_models import UpdateAPIKeysRequest, ValidateAPIKeyRequest
-from backend.routes.auth.auth_core import get_current_user, verify_admin_role
+from backend.routes.ai.ai_db import (
+    get_api_keys,
+    get_stored_key,
+    get_team_in_league,
+    update_api_key,
+)
+from backend.routes.ai.ai_models import (
+    PlagiarismRequest,
+    UpdateAPIKeysRequest,
+    ValidateAPIKeyRequest,
+)
+from backend.routes.ai.plagiarism_service import (
+    LLMResponseError,
+    NoApiKeyError,
+    NoSubmissionsError,
+    PayloadTooLargeError,
+    assess_team_for_plagiarism,
+)
+from backend.routes.auth.auth_core import (
+    get_current_user,
+    verify_admin_or_institution,
+    verify_admin_role,
+)
+from backend.routes.institution.institution_db import (
+    InstitutionAccessError,
+    LeagueNotFoundError,
+    get_league_by_id,
+)
+from backend.routes.institution.institution_router import _resolve_institution
 
 logger = logging.getLogger(__name__)
 
@@ -120,4 +146,83 @@ async def validate_api_key_endpoint(
     except Exception as e:
         return ErrorResponseModel(
             status="error", message=f"Error validating API key: {str(e)}"
+        )
+
+
+@ai_router.post("/assess-plagiarism", response_model=ResponseModel)
+@verify_admin_or_institution
+async def assess_plagiarism_endpoint(
+    request: PlagiarismRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Run plagiarism + AI-generation assessment against a team's submission history."""
+    try:
+        institution_id, is_admin = _resolve_institution(current_user)
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        # Verify caller owns this league (admin bypasses ownership check).
+        try:
+            get_league_by_id(
+                session, request.league_id, institution_id, is_admin=is_admin
+            )
+        except LeagueNotFoundError:
+            return ErrorResponseModel(
+                status="error", message=f"League {request.league_id} not found"
+            )
+        except InstitutionAccessError:
+            return ErrorResponseModel(
+                status="error",
+                message="You don't have permission to access this league",
+            )
+
+        # Verify the team exists and belongs to that league.
+        team = get_team_in_league(session, request.team_name, request.league_id)
+        if not team:
+            return ErrorResponseModel(
+                status="error",
+                message=(
+                    f"Team '{request.team_name}' not found in league "
+                    f"{request.league_id}"
+                ),
+            )
+
+        # Audit log.
+        logger.info(
+            "Plagiarism assessment: caller=%s role=%s team=%s league_id=%s",
+            current_user.get("team_name"),
+            current_user.get("role"),
+            team.name,
+            request.league_id,
+        )
+
+        report = await assess_team_for_plagiarism(session, team, request.league_id)
+        return ResponseModel(
+            status="success",
+            message="Assessment complete",
+            data=report.model_dump(),
+        )
+    except NoApiKeyError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except NoSubmissionsError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except PayloadTooLargeError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except LLMResponseError as e:
+        logger.error("LLM response error in plagiarism assessment: %s", e)
+        return ErrorResponseModel(
+            status="error",
+            message=f"AI provider returned malformed response: {e}",
+        )
+    except httpx.TimeoutException:
+        return ErrorResponseModel(
+            status="error", message="AI provider request timed out"
+        )
+    except Exception as e:
+        logger.exception("Unexpected error in plagiarism assessment")
+        return ErrorResponseModel(
+            status="error", message=f"Internal error: {str(e)}"
         )

@@ -3,8 +3,31 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
+import { toast } from "react-toastify";
 import { checkTokenExpiry } from "../../slices/authSlice";
 import { authFetch } from "../../utils/authFetch";
+
+const verdictColor = (verdict) => {
+  switch (verdict) {
+    case "organic":
+    case "unlikely":
+    case "low":
+      return "text-green-600";
+    case "suspicious":
+    case "possible":
+    case "medium":
+      return "text-yellow-600";
+    case "clearly_copied":
+    case "likely":
+    case "highly_likely":
+    case "high":
+      return "text-red-600";
+    case "not_applicable":
+      return "text-gray-500";
+    default:
+      return "text-ui-dark";
+  }
+};
 
 function InstitutionLeagueSubmissions() {
   const { leagueId } = useParams();
@@ -23,6 +46,8 @@ function InstitutionLeagueSubmissions() {
   const [submissionIndex, setSubmissionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [assessing, setAssessing] = useState(false);
+  const [report, setReport] = useState(null);
 
   const teamList = useMemo(() => {
     return Object.keys(submissions).sort((a, b) => a.localeCompare(b));
@@ -90,6 +115,40 @@ function InstitutionLeagueSubmissions() {
 
   const handleNext = () => {
     if (submissionIndex < totalSubmissions - 1) setSubmissionIndex(submissionIndex + 1);
+  };
+
+  const handleAssessPlagiarism = async () => {
+    if (!selectedTeam || !leagueId) return;
+    const proceed = window.confirm(
+      `This will send ${selectedTeam}'s code submissions to OpenAI for analysis. Continue?`
+    );
+    if (!proceed) return;
+
+    setAssessing(true);
+    setReport(null);
+    try {
+      const resp = await authFetch(`${apiUrl}/ai/assess-plagiarism`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          league_id: Number(leagueId),
+          team_name: selectedTeam,
+        }),
+      });
+      const data = await resp.json();
+      if (data.status === "success") {
+        setReport(data.data);
+      } else {
+        toast.error(data.message || "Assessment failed");
+      }
+    } catch (e) {
+      toast.error("Network error running assessment");
+    } finally {
+      setAssessing(false);
+    }
   };
 
   const formatTimestamp = (ts) => {
@@ -188,7 +247,18 @@ function InstitutionLeagueSubmissions() {
 
             {/* Right: Team list */}
             <div className="w-full lg:w-1/2 bg-white rounded-lg shadow p-4 overflow-y-auto">
-              <h2 className="text-lg font-semibold text-ui-dark mb-3">Teams</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-ui-dark">Teams</h2>
+                {selectedTeam && (
+                  <button
+                    onClick={handleAssessPlagiarism}
+                    disabled={assessing}
+                    className="px-3 py-1 text-sm rounded bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
+                  >
+                    {assessing ? "Assessing..." : `Assess ${selectedTeam}`}
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {teamList.map((team) => {
                   const subs = submissions[team] || [];
@@ -215,6 +285,103 @@ function InstitutionLeagueSubmissions() {
           </div>
         )}
       </div>
+
+      {/* Plagiarism assessment modal */}
+      {report && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6"
+          onClick={() => setReport(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-ui-dark">
+                  Assessment: {report.team_name}
+                </h3>
+                <div className="text-sm text-ui mt-1">
+                  {report.submission_count_analyzed} of{" "}
+                  {report.submission_count_total} submissions analyzed
+                  {report.sampled && " (sampled)"} · model: {report.model_used}
+                </div>
+              </div>
+              <button
+                onClick={() => setReport(null)}
+                className="text-ui hover:text-ui-dark text-2xl leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="font-semibold text-ui-dark mb-1">
+                Progression:{" "}
+                <span className={verdictColor(report.verdict.progression_verdict)}>
+                  {report.verdict.progression_verdict}
+                </span>
+              </div>
+              <p className="text-sm text-ui-dark whitespace-pre-wrap">
+                {report.verdict.progression_reasoning}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <div className="font-semibold text-ui-dark mb-1">
+                AI-generated:{" "}
+                <span className={verdictColor(report.verdict.ai_generation_verdict)}>
+                  {report.verdict.ai_generation_verdict}
+                </span>
+              </div>
+              <p className="text-sm text-ui-dark whitespace-pre-wrap">
+                {report.verdict.ai_generation_reasoning}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <div className="font-semibold text-ui-dark">
+                Overall concern:{" "}
+                <span className={verdictColor(report.verdict.overall_concern_level)}>
+                  {report.verdict.overall_concern_level}
+                </span>
+              </div>
+            </div>
+
+            {report.verdict.specific_flags &&
+              report.verdict.specific_flags.length > 0 && (
+                <div className="mb-4">
+                  <div className="font-semibold text-ui-dark mb-1">Flags:</div>
+                  <ul className="list-disc ml-5 text-sm text-ui-dark">
+                    {report.verdict.specific_flags.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            <details className="mt-4 text-xs">
+              <summary className="cursor-pointer font-semibold text-ui-dark">
+                Raw metrics
+              </summary>
+              <pre className="bg-gray-100 p-3 mt-2 rounded overflow-x-auto text-[11px]">
+                {"Per-submission metrics:\n"}
+                {JSON.stringify(report.submission_metrics, null, 2)}
+                {"\n\nPairwise metrics:\n"}
+                {JSON.stringify(report.pairwise_metrics, null, 2)}
+              </pre>
+            </details>
+
+            <button
+              onClick={() => setReport(null)}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary-hover transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
