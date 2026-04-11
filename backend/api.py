@@ -13,7 +13,7 @@ from backend.routes.demo.demo_router import demo_router
 from backend.routes.diagnostics.diagnostics_router import diagnostics_router
 from backend.routes.institution.institution_router import institution_router
 from backend.routes.user.user_router import user_router
-from sqlmodel import Session, text
+from sqlmodel import SQLModel, Session, text
 
 from backend.database.db_session import get_db_engine
 from backend.docker_utils.init_db import initialize_database
@@ -53,6 +53,8 @@ def check_database_status():
                     )
                     logger.warning("=" * 60)
             else:
+                # Ensure any new tables are created (create_all is idempotent)
+                SQLModel.metadata.create_all(engine)
                 logger.warning("=" * 60)
                 logger.warning("✅ DATABASE PROPERLY INITIALIZED")
                 logger.warning("=" * 60)
