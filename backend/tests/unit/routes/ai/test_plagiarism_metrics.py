@@ -11,8 +11,11 @@ from backend.routes.ai.plagiarism_metrics import (
     MAX_SUBMISSION_CHARS,
     _normalize_code,
     classify_typing_speed,
+    compute_complexity_jump,
     compute_pairwise_metrics,
     compute_submission_metrics,
+    compute_template_similarity,
+    count_ast_constructs,
     select_submissions_for_analysis,
     truncate_code,
 )
@@ -268,3 +271,162 @@ def test_normalize_converts_tabs_to_spaces():
     code = "def foo():\n\treturn 1\n"
     normalized = _normalize_code(code)
     assert "\t" not in normalized
+
+
+# --- compute_template_similarity ---
+
+
+def test_template_similarity_identical():
+    tpl = "def foo():\n    return 1\n"
+    assert compute_template_similarity(tpl, tpl) == 1.0
+
+
+def test_template_similarity_completely_different():
+    tpl = "def foo():\n    return 1\n"
+    code = "class Banana:\n    def peel(self, x, y, z):\n        return x * y + z\n"
+    sim = compute_template_similarity(code, tpl)
+    assert sim < 0.5
+
+
+def test_template_similarity_cosmetic_changes_still_high():
+    tpl = "def foo():\n    return 1\n"
+    code = "def foo():  # modified\n    return 1  # same logic\n"
+    sim = compute_template_similarity(code, tpl)
+    assert sim == 1.0  # comments stripped + trailing whitespace stripped
+
+
+def test_template_similarity_empty_template_returns_zero():
+    assert compute_template_similarity("anything", "") == 0.0
+
+
+# --- count_ast_constructs ---
+
+
+def test_ast_constructs_simple_class():
+    code = "class Foo:\n    def bar(self):\n        pass\n"
+    counts = count_ast_constructs(code)
+    assert counts["ClassDef"] == 1
+    assert counts["FunctionDef"] == 1
+    assert counts["structural_total"] == 2
+    assert counts["total"] >= 2
+
+
+def test_ast_constructs_with_comprehension_and_import():
+    code = "import os\nfrom sys import path\nx = [i for i in range(10)]\n"
+    counts = count_ast_constructs(code)
+    assert counts["Import"] == 1
+    assert counts["ImportFrom"] == 1
+    assert counts["ListComp"] == 1
+    assert counts["structural_total"] == 3
+
+
+def test_ast_constructs_counts_logic_nodes():
+    """If/For/While/Compare are now counted as logic constructs."""
+    code = "def foo(x):\n    if x > 5:\n        for i in range(x):\n            pass\n"
+    counts = count_ast_constructs(code)
+    assert counts["FunctionDef"] == 1
+    assert counts.get("If", 0) >= 1
+    assert counts.get("For", 0) >= 1
+    assert counts.get("Compare", 0) >= 1
+    assert counts["logic_total"] >= 3
+    assert counts["total"] == counts["structural_total"] + counts["logic_total"]
+
+
+def test_ast_constructs_with_try_except():
+    code = "try:\n    pass\nexcept:\n    pass\n"
+    counts = count_ast_constructs(code)
+    assert counts.get("Try", 0) >= 1
+    assert counts["total"] >= 1
+
+
+def test_ast_constructs_syntax_error_returns_zero():
+    code = "def foo( broken"
+    counts = count_ast_constructs(code)
+    assert counts["total"] == 0
+    assert counts["structural_total"] == 0
+    assert counts["logic_total"] == 0
+
+
+def test_ast_constructs_empty_code():
+    counts = count_ast_constructs("")
+    assert counts["total"] == 0
+
+
+def test_ast_constructs_with_decorators():
+    code = "@staticmethod\ndef foo():\n    pass\n"
+    counts = count_ast_constructs(code)
+    assert counts.get("Decorator", 0) == 1
+    assert counts.get("FunctionDef", 0) == 1
+
+
+def test_ast_greedy_pig_progression_detected():
+    """Two greedy pig submissions that differ only in logic should show a delta."""
+    simple = (
+        "from games.greedy_pig.player import Player\n"
+        "import random\n\n"
+        "class CustomPlayer(Player):\n"
+        "    def make_decision(self, game_state):\n"
+        "        return random.choice(['continue', 'bank'])\n"
+    )
+    complex_code = (
+        "from games.greedy_pig.player import Player\n"
+        "import random\n\n"
+        "class CustomPlayer(Player):\n"
+        "    def make_decision(self, game_state):\n"
+        "        my_unbanked = game_state['unbanked_money'][self.name]\n"
+        "        if my_unbanked > 20:\n"
+        "            return 'bank'\n"
+        "        elif my_unbanked > 10 and self.my_rank(game_state) <= 2:\n"
+        "            return 'bank'\n"
+        "        return 'continue'\n"
+    )
+    simple_counts = count_ast_constructs(simple)
+    complex_counts = count_ast_constructs(complex_code)
+    assert complex_counts["total"] > simple_counts["total"]
+    assert complex_counts["logic_total"] > simple_counts["logic_total"]
+
+
+# --- compute_complexity_jump ---
+
+
+def test_complexity_jump_normal():
+    prev = {"total": 6, "structural_total": 3, "logic_total": 3, "FunctionDef": 2, "ClassDef": 1, "If": 2, "Compare": 1}
+    new = {"total": 8, "structural_total": 3, "logic_total": 5, "FunctionDef": 2, "ClassDef": 1, "If": 3, "Compare": 2}
+    result = compute_complexity_jump(prev, new)
+    assert result["complexity_jump_flag"] == "normal"
+    assert result["constructs_added"] == 2
+
+
+def test_complexity_jump_suspicious_many_new_types():
+    prev = {"total": 4, "structural_total": 4, "logic_total": 0, "FunctionDef": 2, "ClassDef": 1, "Import": 1}
+    new = {"total": 14, "structural_total": 5, "logic_total": 9,
+           "FunctionDef": 2, "ClassDef": 1, "Import": 1, "ListComp": 1,
+           "If": 3, "For": 2, "Compare": 3, "BoolOp": 1}
+    result = compute_complexity_jump(prev, new)
+    # 10 constructs added, 5 new types → suspicious or highly_suspicious
+    assert result["complexity_jump_flag"] in ("suspicious", "highly_suspicious")
+    assert len(result["new_construct_types"]) >= 4
+
+
+def test_complexity_jump_highly_suspicious_triple():
+    prev = {"total": 5, "structural_total": 3, "logic_total": 2}
+    new = {"total": 16, "structural_total": 6, "logic_total": 10}
+    result = compute_complexity_jump(prev, new)
+    assert result["complexity_jump_flag"] == "highly_suspicious"
+
+
+def test_complexity_jump_highly_suspicious_from_low_to_high():
+    prev = {"total": 4, "structural_total": 4, "logic_total": 0}
+    new = {"total": 15, "structural_total": 5, "logic_total": 10}
+    result = compute_complexity_jump(prev, new)
+    assert result["complexity_jump_flag"] == "highly_suspicious"
+
+
+def test_complexity_jump_decrease_is_normal():
+    prev = {"total": 15, "structural_total": 5, "logic_total": 10}
+    new = {"total": 6, "structural_total": 3, "logic_total": 3}
+    result = compute_complexity_jump(prev, new)
+    assert result["complexity_jump_flag"] == "normal"
+    assert result["constructs_added"] == 0
+
+

@@ -32,9 +32,13 @@ from backend.routes.ai.ai_models import (
     PlagiarismVerdict,
     SubmissionMetrics,
 )
+from backend.games.game_factory import GameFactory
 from backend.routes.ai.plagiarism_metrics import (
+    compute_complexity_jump,
     compute_pairwise_metrics,
     compute_submission_metrics,
+    compute_template_similarity,
+    count_ast_constructs,
     select_submissions_for_analysis,
     truncate_code,
 )
@@ -51,6 +55,7 @@ MAX_ANALYZED_SUBMISSIONS = 10
 
 def _summarize_deterministic_flags(
     pair_metrics: List[PairwiseMetrics],
+    sub_metrics: "List[SubmissionMetrics] | None" = None,
 ) -> tuple[str, List[str]]:
     """Collapse per-pair deterministic flags into a report-level concern level.
 
@@ -58,7 +63,9 @@ def _summarize_deterministic_flags(
     """
     concern_level = "none"
     summary: List[str] = []
+
     for pm in pair_metrics:
+        # Typing speed flags.
         if pm.deterministic_flag == "likely_plagiarism":
             concern_level = "likely_plagiarism"
             summary.append(
@@ -74,6 +81,35 @@ def _summarize_deterministic_flags(
                 f"{pm.chars_added_per_second} chars/sec (>"
                 f"4) — probably plagiarising"
             )
+
+        # Complexity jump flags.
+        if pm.complexity_jump_flag == "highly_suspicious":
+            if concern_level == "none":
+                concern_level = "probable_plagiarism"
+            summary.append(
+                f"submission_{pm.from_index + 1} → submission_{pm.to_index + 1}: "
+                f"AST constructs jumped {pm.constructs_added} "
+                f"(new types: {', '.join(pm.new_construct_types) or 'none'}) "
+                f"— highly suspicious complexity jump"
+            )
+        elif pm.complexity_jump_flag == "suspicious":
+            if concern_level == "none":
+                concern_level = "probable_plagiarism"
+            summary.append(
+                f"submission_{pm.from_index + 1} → submission_{pm.to_index + 1}: "
+                f"AST constructs added: {pm.constructs_added} "
+                f"— suspicious complexity jump"
+            )
+
+    # Template similarity: flag if first submission is already very different.
+    if sub_metrics and sub_metrics[0].template_similarity is not None:
+        first_sim = sub_metrics[0].template_similarity
+        if first_sim < 0.3:
+            summary.append(
+                f"First submission is only {first_sim:.0%} similar to the "
+                f"starter template — started with non-template code"
+            )
+
     return concern_level, summary
 
 
@@ -103,8 +139,18 @@ class LLMResponseError(PlagiarismServiceError):
 # --- Public API ---
 
 
+def _get_template_code(game_name: str) -> Optional[str]:
+    """Safely retrieve the starter template for a game. Returns None on failure."""
+    try:
+        game_class = GameFactory.get_game_class(game_name)
+        template = getattr(game_class, "starter_code", None)
+        return template.strip() if template else None
+    except (ValueError, Exception):
+        return None
+
+
 async def assess_team_for_plagiarism(
-    session: Session, team: Team, league_id: int
+    session: Session, team: Team, league_id: int, game_name: str = ""
 ) -> PlagiarismReport:
     """Run the full assessment pipeline for a team.
 
@@ -119,13 +165,25 @@ async def assess_team_for_plagiarism(
         all_subs, max_count=MAX_ANALYZED_SUBMISSIONS
     )
 
+    # Retrieve the game template for similarity comparison.
+    template_code = _get_template_code(game_name) if game_name else None
+
     # Build anonymized LLM payload + per-submission metrics + total size check.
     anon_payload = []
     sub_metrics: List[SubmissionMetrics] = []
+    ast_counts_per_sub: list[dict] = []
     total_payload_chars = 0
     for idx, sub in enumerate(sampled_subs):
         truncated_code_str, was_truncated = truncate_code(sub.code)
         per = compute_submission_metrics(sub.code)
+        tpl_sim = (
+            compute_template_similarity(sub.code, template_code)
+            if template_code
+            else None
+        )
+        ast_counts = count_ast_constructs(sub.code)
+        ast_counts_per_sub.append(ast_counts)
+
         sub_metrics.append(
             SubmissionMetrics(
                 index=idx,
@@ -135,6 +193,8 @@ async def assess_team_for_plagiarism(
                 normalized_chars=per["normalized_chars"],
                 line_count=per["line_count"],
                 truncated=was_truncated,
+                template_similarity=tpl_sim,
+                ast_construct_count=ast_counts.get("total", 0),
             )
         )
         total_payload_chars += len(truncated_code_str)
@@ -161,10 +221,22 @@ async def assess_team_for_plagiarism(
             sampled_subs[i].code,
             sampled_subs[i].timestamp,
         )
-        pair_metrics.append(PairwiseMetrics(from_index=i - 1, to_index=i, **pm))
+        cj = compute_complexity_jump(ast_counts_per_sub[i - 1], ast_counts_per_sub[i])
+        pair_metrics.append(
+            PairwiseMetrics(
+                from_index=i - 1,
+                to_index=i,
+                **pm,
+                complexity_jump_flag=cj["complexity_jump_flag"],
+                constructs_added=cj["constructs_added"],
+                new_construct_types=cj["new_construct_types"],
+            )
+        )
 
     # Deterministic summary — computed locally, independent of the LLM.
-    concern_level, flag_summary = _summarize_deterministic_flags(pair_metrics)
+    concern_level, flag_summary = _summarize_deterministic_flags(
+        pair_metrics, sub_metrics
+    )
 
     # LLM call — separate branches for single vs multi-submission.
     # Flag summary is passed as extra context so the LLM is aware of it.

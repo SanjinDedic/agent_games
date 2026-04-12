@@ -3,10 +3,11 @@
 No DB, no HTTP. Unit-testable in isolation.
 """
 
+import ast
 import re
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Strips `# ...` comments but only after a non-escape character. Simple heuristic;
 # avoids the overhead of a full Python parser. Good enough for structural compare.
@@ -158,3 +159,146 @@ def truncate_code(code: str, max_chars: int = MAX_SUBMISSION_CHARS) -> Tuple[str
         code[:max_chars] + f"\n# ... truncated, {omitted} chars omitted ...\n"
     )
     return truncated, True
+
+
+# ---------------------------------------------------------------------------
+# Template similarity — compare a submission to the game's starter template
+# ---------------------------------------------------------------------------
+
+
+def compute_template_similarity(code: str, template_code: str) -> float:
+    """Normalized similarity between a submission and its game's starter template.
+
+    Uses the normalized (comments-stripped, whitespace-collapsed) form so that
+    cosmetic-only changes don't inflate the "distance from template" score.
+    Returns a float in [0.0, 1.0] where 1.0 = identical to template.
+    """
+    if not template_code:
+        return 0.0
+    norm_code = _normalize_code(code)
+    norm_template = _normalize_code(template_code)
+    return round(
+        SequenceMatcher(None, norm_template, norm_code, autojunk=False).ratio(),
+        4,
+    )
+
+
+# ---------------------------------------------------------------------------
+# AST complexity — count Python constructs to detect sophistication jumps
+# ---------------------------------------------------------------------------
+
+# Node types we count as "structural constructs" (classes, functions, imports).
+_STRUCTURAL_TYPES = (
+    ast.ClassDef,
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.Import,
+    ast.ImportFrom,
+    ast.ListComp,
+    ast.SetComp,
+    ast.DictComp,
+    ast.GeneratorExp,
+    ast.Try,
+    ast.Lambda,
+    ast.With,
+    ast.AsyncWith,
+)
+
+# Node types that indicate logic complexity inside functions.
+# These change when a student modifies decision logic even if the
+# overall class/function skeleton stays the same.
+_LOGIC_TYPES = (
+    ast.If,
+    ast.For,
+    ast.While,
+    ast.BoolOp,      # `and` / `or` expressions
+    ast.Compare,      # comparisons like `x > 5`
+    ast.IfExp,        # ternary: `a if cond else b`
+    ast.Attribute,    # `self.something` / `game_state["key"]`
+    ast.Subscript,    # indexing: `game_state["key"]`
+)
+
+
+def count_ast_constructs(code: str) -> Dict[str, int]:
+    """Parse Python code and count both structural and logic constructs.
+
+    Returns a dict with per-type counts plus "structural_total",
+    "logic_total", and "total" (sum of both). If the code fails to parse,
+    returns all zeros.
+    """
+    counts: Dict[str, int] = {}
+    structural = 0
+    logic = 0
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return {"structural_total": 0, "logic_total": 0, "total": 0}
+
+    for node in ast.walk(tree):
+        for construct_type in _STRUCTURAL_TYPES:
+            if isinstance(node, construct_type):
+                name = construct_type.__name__
+                counts[name] = counts.get(name, 0) + 1
+                structural += 1
+                break
+        else:
+            for logic_type in _LOGIC_TYPES:
+                if isinstance(node, logic_type):
+                    name = logic_type.__name__
+                    counts[name] = counts.get(name, 0) + 1
+                    logic += 1
+                    break
+
+    # Count decorators.
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            decorator_count = len(node.decorator_list)
+            if decorator_count:
+                counts["Decorator"] = counts.get("Decorator", 0) + decorator_count
+                structural += decorator_count
+
+    counts["structural_total"] = structural
+    counts["logic_total"] = logic
+    counts["total"] = structural + logic
+    return counts
+
+
+def compute_complexity_jump(
+    prev_constructs: Dict[str, int], new_constructs: Dict[str, int]
+) -> Dict:
+    """Compute the change in AST constructs between two consecutive submissions.
+
+    Uses the combined total (structural + logic) so that adding if/for/while
+    inside an existing function skeleton is still detected as a complexity jump.
+    """
+    prev_total = prev_constructs.get("total", 0)
+    new_total = new_constructs.get("total", 0)
+    constructs_added = max(0, new_total - prev_total)
+
+    # Find construct types that are new (didn't exist in prev at all).
+    new_types = []
+    for key, count in new_constructs.items():
+        if key in ("total", "structural_total", "logic_total"):
+            continue
+        if count > 0 and prev_constructs.get(key, 0) == 0:
+            new_types.append(key)
+
+    # Heuristic thresholds (now against combined total which is larger).
+    if prev_total <= 4 and new_total >= 15:
+        flag = "highly_suspicious"
+    elif prev_total > 0 and new_total >= prev_total * 3:
+        flag = "highly_suspicious"
+    elif constructs_added >= 8 or len(new_types) >= 4:
+        flag = "suspicious"
+    else:
+        flag = "normal"
+
+    return {
+        "prev_total": prev_total,
+        "new_total": new_total,
+        "constructs_added": constructs_added,
+        "new_construct_types": sorted(new_types),
+        "complexity_jump_flag": flag,
+    }
+
+

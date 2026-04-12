@@ -166,7 +166,7 @@ async def assess_plagiarism_endpoint(
 
         # Verify caller owns this league (admin bypasses ownership check).
         try:
-            get_league_by_id(
+            league = get_league_by_id(
                 session, request.league_id, institution_id, is_admin=is_admin
             )
         except LeagueNotFoundError:
@@ -199,7 +199,9 @@ async def assess_plagiarism_endpoint(
             request.league_id,
         )
 
-        report = await assess_team_for_plagiarism(session, team, request.league_id)
+        report = await assess_team_for_plagiarism(
+            session, team, request.league_id, game_name=league.game
+        )
         return ResponseModel(
             status="success",
             message="Assessment complete",

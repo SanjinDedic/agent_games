@@ -523,8 +523,9 @@ def test_assess_deterministic_flag_over_likely_threshold(
     assert data["status"] == "success"
     report = data["data"]
     assert report["deterministic_concern_level"] == "likely_plagiarism"
-    assert len(report["deterministic_flag_summary"]) == 1
-    assert "most likely plagiarising" in report["deterministic_flag_summary"][0]
+    assert any(
+        "most likely plagiarising" in f for f in report["deterministic_flag_summary"]
+    )
     # And it should also be on the per-pair metric.
     assert report["pairwise_metrics"][0]["deterministic_flag"] == "likely_plagiarism"
     assert report["pairwise_metrics"][0]["chars_added_per_second"] is not None
@@ -571,10 +572,10 @@ def test_assess_deterministic_flag_between_4_and_6(
 
 
 @patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
-def test_assess_normal_speed_no_deterministic_flag(
+def test_assess_normal_typing_speed_flag(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
-    """Default institution_setup fixture uses 5-minute gaps → well under threshold."""
+    """Default institution_setup fixture uses 5-minute gaps → typing-speed flag is normal."""
     institution, league, team, headers = institution_setup
     mock_client_cls.return_value = _mock_openai_client(
         _llm_envelope(_valid_llm_verdict_json())
@@ -587,9 +588,11 @@ def test_assess_normal_speed_no_deterministic_flag(
     )
     data = response.json()
     report = data["data"]
-    assert report["deterministic_concern_level"] == "none"
-    assert report["deterministic_flag_summary"] == []
+    # Typing speed is normal even though other flags (template, comments) may fire.
     assert report["pairwise_metrics"][0]["deterministic_flag"] == "normal"
+    assert not any(
+        "chars/sec" in f for f in report["deterministic_flag_summary"]
+    )
 
 
 @patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
@@ -628,6 +631,70 @@ def test_assess_deterministic_summary_sent_to_llm(
     user_msg_content = outbound_json["messages"][1]["content"]
     assert "deterministic_flag_summary" in user_msg_content
     assert "most likely plagiarising" in user_msg_content
+
+
+@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+def test_assess_template_similarity_present(
+    mock_client_cls, client, institution_setup, stored_openai_key
+):
+    """Submissions in a greedy_pig league should have template_similarity computed."""
+    institution, league, team, headers = institution_setup
+    mock_client_cls.return_value = _mock_openai_client(
+        _llm_envelope(_valid_llm_verdict_json())
+    )
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_name": team.name},
+    )
+    report = response.json()["data"]
+    # greedy_pig league → template available → similarity is a float.
+    for sm in report["submission_metrics"]:
+        assert sm["template_similarity"] is not None
+        assert 0.0 <= sm["template_similarity"] <= 1.0
+
+
+@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+def test_assess_ast_construct_counts(
+    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+):
+    """AST construct counts should increase when code grows more complex."""
+    institution, league, team, headers = institution_setup
+    from sqlmodel import select
+    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
+        db_session.delete(s)
+    db_session.commit()
+
+    base = datetime.now(timezone.utc)
+    simple = "def foo():\n    return 1\n"
+    complex_code = (
+        "import os\nfrom sys import path\n"
+        "class Foo:\n"
+        "    def bar(self):\n        pass\n"
+        "    def baz(self):\n        return [i for i in range(10)]\n"
+    )
+    db_session.add(Submission(code=simple, timestamp=base, team_id=team.id))
+    db_session.add(
+        Submission(code=complex_code, timestamp=base + timedelta(hours=1), team_id=team.id)
+    )
+    db_session.commit()
+
+    mock_client_cls.return_value = _mock_openai_client(
+        _llm_envelope(_valid_llm_verdict_json())
+    )
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_name": team.name},
+    )
+    report = response.json()["data"]
+    assert report["submission_metrics"][0]["ast_construct_count"] == 1  # just FunctionDef
+    assert report["submission_metrics"][1]["ast_construct_count"] >= 5  # imports + class + funcs + comprehension
+    pm = report["pairwise_metrics"][0]
+    assert pm["constructs_added"] >= 4
+    assert pm["complexity_jump_flag"] in ("suspicious", "highly_suspicious")
 
 
 def test_assess_admin_can_assess_any_league(
