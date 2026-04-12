@@ -6,7 +6,7 @@ No DB, no HTTP. Unit-testable in isolation.
 import re
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 # Strips `# ...` comments but only after a non-escape character. Simple heuristic;
 # avoids the overhead of a full Python parser. Good enough for structural compare.
@@ -14,6 +14,29 @@ _COMMENT_RE = re.compile(r"#.*$", re.MULTILINE)
 _BLANK_LINE_RE = re.compile(r"\n\s*\n", re.MULTILINE)
 
 MAX_SUBMISSION_CHARS = 8000
+
+# Deterministic typing-speed thresholds. These are computed independently of
+# any LLM call and surface as a hard heuristic signal in the PlagiarismReport.
+# A fast human typist sustains ~1.5-2.5 chars/sec of raw code; anything above
+# 4/sec sustained is either pasted or AI-generated.
+CPS_PROBABLE_THRESHOLD = 4.0  # strictly greater → probable_plagiarism
+CPS_LIKELY_THRESHOLD = 6.0    # strictly greater → likely_plagiarism
+
+
+def classify_typing_speed(cps: Optional[float]) -> str:
+    """Classify a chars-per-second value into a deterministic flag.
+
+    Returns one of: "normal", "probable_plagiarism", "likely_plagiarism".
+    None input (e.g. zero elapsed time) returns "normal" — we don't want to
+    punish same-second edits that could just be a second save.
+    """
+    if cps is None:
+        return "normal"
+    if cps > CPS_LIKELY_THRESHOLD:
+        return "likely_plagiarism"
+    if cps > CPS_PROBABLE_THRESHOLD:
+        return "probable_plagiarism"
+    return "normal"
 
 
 def _normalize_code(code: str) -> str:
@@ -77,17 +100,25 @@ def compute_pairwise_metrics(
     elapsed_sec = max(0.0, (_to_utc(new_ts) - _to_utc(prev_ts)).total_seconds())
 
     if elapsed_sec > 0:
-        chars_added_per_minute: float | None = round(chars_added / (elapsed_sec / 60), 2)
+        chars_added_per_minute: Optional[float] = round(
+            chars_added / (elapsed_sec / 60), 2
+        )
+        chars_added_per_second: Optional[float] = round(chars_added / elapsed_sec, 3)
     else:
         chars_added_per_minute = None
+        chars_added_per_second = None
+
+    deterministic_flag = classify_typing_speed(chars_added_per_second)
 
     return {
         "elapsed_seconds": round(elapsed_sec, 1),
         "chars_added": chars_added,
         "chars_removed": chars_removed,
         "chars_added_per_minute": chars_added_per_minute,
+        "chars_added_per_second": chars_added_per_second,
         "raw_similarity": round(raw_matcher.ratio(), 4),
         "normalized_similarity": round(norm_matcher.ratio(), 4),
+        "deterministic_flag": deterministic_flag,
     }
 
 

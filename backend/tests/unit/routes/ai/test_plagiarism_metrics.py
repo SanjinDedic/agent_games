@@ -6,8 +6,11 @@ from types import SimpleNamespace
 import pytest
 
 from backend.routes.ai.plagiarism_metrics import (
+    CPS_LIKELY_THRESHOLD,
+    CPS_PROBABLE_THRESHOLD,
     MAX_SUBMISSION_CHARS,
     _normalize_code,
+    classify_typing_speed,
     compute_pairwise_metrics,
     compute_submission_metrics,
     select_submissions_for_analysis,
@@ -105,6 +108,63 @@ def test_naive_datetime_treated_as_utc():
     naive_new = datetime(2026, 1, 1, 12, 1, 0)
     pm = compute_pairwise_metrics("a", naive_prev, "ab", naive_new)
     assert pm["elapsed_seconds"] == 60.0
+
+
+# --- classify_typing_speed (deterministic threshold) ---
+
+
+def test_classify_speed_none_is_normal():
+    assert classify_typing_speed(None) == "normal"
+
+
+def test_classify_speed_zero_is_normal():
+    assert classify_typing_speed(0.0) == "normal"
+
+
+def test_classify_speed_below_probable_threshold_is_normal():
+    assert classify_typing_speed(3.9) == "normal"
+    assert classify_typing_speed(CPS_PROBABLE_THRESHOLD) == "normal"  # exactly 4 → normal
+
+
+def test_classify_speed_above_probable_is_probable():
+    assert classify_typing_speed(4.1) == "probable_plagiarism"
+    assert classify_typing_speed(5.999) == "probable_plagiarism"
+    assert classify_typing_speed(CPS_LIKELY_THRESHOLD) == "probable_plagiarism"  # exactly 6 → probable
+
+
+def test_classify_speed_above_likely_is_likely():
+    assert classify_typing_speed(6.01) == "likely_plagiarism"
+    assert classify_typing_speed(100.0) == "likely_plagiarism"
+
+
+# --- compute_pairwise_metrics deterministic flag integration ---
+
+
+def test_pairwise_flag_normal_below_threshold():
+    # 60 chars in 60 seconds = 1 char/sec → normal
+    pm = compute_pairwise_metrics("", T0, "x" * 60, T0 + timedelta(seconds=60))
+    assert pm["chars_added_per_second"] == 1.0
+    assert pm["deterministic_flag"] == "normal"
+
+
+def test_pairwise_flag_probable_between_4_and_6():
+    # 500 chars in 100 seconds = 5 chars/sec → probable
+    pm = compute_pairwise_metrics("", T0, "x" * 500, T0 + timedelta(seconds=100))
+    assert pm["chars_added_per_second"] == 5.0
+    assert pm["deterministic_flag"] == "probable_plagiarism"
+
+
+def test_pairwise_flag_likely_above_6():
+    # 1000 chars in 100 seconds = 10 chars/sec → likely
+    pm = compute_pairwise_metrics("", T0, "x" * 1000, T0 + timedelta(seconds=100))
+    assert pm["chars_added_per_second"] == 10.0
+    assert pm["deterministic_flag"] == "likely_plagiarism"
+
+
+def test_pairwise_cps_none_when_elapsed_zero():
+    pm = compute_pairwise_metrics("a", T0, "abcdefghij", T0)
+    assert pm["chars_added_per_second"] is None
+    assert pm["deterministic_flag"] == "normal"
 
 
 # --- truncate_code ---

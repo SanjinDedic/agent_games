@@ -49,6 +49,34 @@ REQUEST_TIMEOUT = 60.0
 MAX_ANALYZED_SUBMISSIONS = 10
 
 
+def _summarize_deterministic_flags(
+    pair_metrics: List[PairwiseMetrics],
+) -> tuple[str, List[str]]:
+    """Collapse per-pair deterministic flags into a report-level concern level.
+
+    Returns (concern_level, human_readable_summary_lines).
+    """
+    concern_level = "none"
+    summary: List[str] = []
+    for pm in pair_metrics:
+        if pm.deterministic_flag == "likely_plagiarism":
+            concern_level = "likely_plagiarism"
+            summary.append(
+                f"submission_{pm.from_index + 1} → submission_{pm.to_index + 1}: "
+                f"{pm.chars_added_per_second} chars/sec (>"
+                f"6) — most likely plagiarising"
+            )
+        elif pm.deterministic_flag == "probable_plagiarism":
+            if concern_level != "likely_plagiarism":
+                concern_level = "probable_plagiarism"
+            summary.append(
+                f"submission_{pm.from_index + 1} → submission_{pm.to_index + 1}: "
+                f"{pm.chars_added_per_second} chars/sec (>"
+                f"4) — probably plagiarising"
+            )
+    return concern_level, summary
+
+
 # --- Error taxonomy ---
 
 
@@ -135,12 +163,16 @@ async def assess_team_for_plagiarism(
         )
         pair_metrics.append(PairwiseMetrics(from_index=i - 1, to_index=i, **pm))
 
+    # Deterministic summary — computed locally, independent of the LLM.
+    concern_level, flag_summary = _summarize_deterministic_flags(pair_metrics)
+
     # LLM call — separate branches for single vs multi-submission.
+    # Flag summary is passed as extra context so the LLM is aware of it.
     if len(sampled_subs) == 1:
         verdict = await _call_llm_single_submission(session, anon_payload, sub_metrics)
     else:
         verdict = await _call_llm_full_assessment(
-            session, anon_payload, sub_metrics, pair_metrics
+            session, anon_payload, sub_metrics, pair_metrics, flag_summary
         )
 
     return PlagiarismReport(
@@ -151,6 +183,8 @@ async def assess_team_for_plagiarism(
         sampled=was_sampled,
         submission_metrics=sub_metrics,
         pairwise_metrics=pair_metrics,
+        deterministic_concern_level=concern_level,
+        deterministic_flag_summary=flag_summary,
         verdict=verdict,
         model_used=MODEL_NAME,
         generated_at=datetime.now(timezone.utc).isoformat(),
@@ -213,6 +247,7 @@ async def _call_llm_full_assessment(
     anon_payload: list,
     sub_metrics: List[SubmissionMetrics],
     pair_metrics: List[PairwiseMetrics],
+    deterministic_flag_summary: List[str],
 ) -> PlagiarismVerdict:
     api_key = get_stored_key(session, "openai")
     if not api_key:
@@ -222,12 +257,16 @@ async def _call_llm_full_assessment(
         {
             "task": (
                 "Assess these anonymized submissions for organic progression "
-                "and AI-generated code. Return JSON matching the schema in "
-                "the system prompt."
+                "and AI-generated code. Note: the deterministic_flag_summary "
+                "below is a hard heuristic already computed by the backend "
+                "(based on chars-per-second typing speed) — incorporate it "
+                "into your reasoning but do not echo it verbatim. Return JSON "
+                "matching the schema in the system prompt."
             ),
             "submissions": anon_payload,
             "per_submission_metrics": [m.model_dump() for m in sub_metrics],
             "pairwise_metrics": [m.model_dump() for m in pair_metrics],
+            "deterministic_flag_summary": deterministic_flag_summary,
         },
         indent=2,
     )

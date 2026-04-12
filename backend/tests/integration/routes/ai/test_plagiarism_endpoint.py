@@ -486,6 +486,150 @@ def test_assess_anonymization_strips_team_name(
     assert "submission_1" in serialized
 
 
+@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+def test_assess_deterministic_flag_over_likely_threshold(
+    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+):
+    """A submission delta exceeding 6 chars/sec should be flagged as likely_plagiarism
+    regardless of the LLM verdict, and must be included in deterministic_flag_summary."""
+    institution, league, team, headers = institution_setup
+    # Wipe existing submissions and create a pair: 2000 chars added in 10 seconds = 200 cps.
+    from sqlmodel import select
+    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
+        db_session.delete(s)
+    db_session.commit()
+
+    base = datetime.now(timezone.utc)
+    db_session.add(Submission(code="x", timestamp=base, team_id=team.id))
+    db_session.add(
+        Submission(
+            code="y" * 2000,
+            timestamp=base + timedelta(seconds=10),
+            team_id=team.id,
+        )
+    )
+    db_session.commit()
+
+    mock_client_cls.return_value = _mock_openai_client(
+        _llm_envelope(_valid_llm_verdict_json())
+    )
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_name": team.name},
+    )
+    data = response.json()
+    assert data["status"] == "success"
+    report = data["data"]
+    assert report["deterministic_concern_level"] == "likely_plagiarism"
+    assert len(report["deterministic_flag_summary"]) == 1
+    assert "most likely plagiarising" in report["deterministic_flag_summary"][0]
+    # And it should also be on the per-pair metric.
+    assert report["pairwise_metrics"][0]["deterministic_flag"] == "likely_plagiarism"
+    assert report["pairwise_metrics"][0]["chars_added_per_second"] is not None
+
+
+@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+def test_assess_deterministic_flag_between_4_and_6(
+    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+):
+    """Delta in the probable-plagiarism range (4 < cps <= 6)."""
+    institution, league, team, headers = institution_setup
+    from sqlmodel import select
+    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
+        db_session.delete(s)
+    db_session.commit()
+
+    base = datetime.now(timezone.utc)
+    # 500 chars in 100 seconds = 5 cps → probable
+    db_session.add(Submission(code="x", timestamp=base, team_id=team.id))
+    db_session.add(
+        Submission(
+            code="y" * 500,
+            timestamp=base + timedelta(seconds=100),
+            team_id=team.id,
+        )
+    )
+    db_session.commit()
+
+    mock_client_cls.return_value = _mock_openai_client(
+        _llm_envelope(_valid_llm_verdict_json())
+    )
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_name": team.name},
+    )
+    data = response.json()
+    assert data["status"] == "success"
+    report = data["data"]
+    assert report["deterministic_concern_level"] == "probable_plagiarism"
+    assert "probably plagiarising" in report["deterministic_flag_summary"][0]
+    assert report["pairwise_metrics"][0]["deterministic_flag"] == "probable_plagiarism"
+
+
+@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+def test_assess_normal_speed_no_deterministic_flag(
+    mock_client_cls, client, institution_setup, stored_openai_key
+):
+    """Default institution_setup fixture uses 5-minute gaps → well under threshold."""
+    institution, league, team, headers = institution_setup
+    mock_client_cls.return_value = _mock_openai_client(
+        _llm_envelope(_valid_llm_verdict_json())
+    )
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_name": team.name},
+    )
+    data = response.json()
+    report = data["data"]
+    assert report["deterministic_concern_level"] == "none"
+    assert report["deterministic_flag_summary"] == []
+    assert report["pairwise_metrics"][0]["deterministic_flag"] == "normal"
+
+
+@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+def test_assess_deterministic_summary_sent_to_llm(
+    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+):
+    """The deterministic_flag_summary must be included in the outbound LLM payload."""
+    institution, league, team, headers = institution_setup
+    from sqlmodel import select
+    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
+        db_session.delete(s)
+    db_session.commit()
+
+    base = datetime.now(timezone.utc)
+    db_session.add(Submission(code="x", timestamp=base, team_id=team.id))
+    db_session.add(
+        Submission(
+            code="y" * 2000,
+            timestamp=base + timedelta(seconds=10),
+            team_id=team.id,
+        )
+    )
+    db_session.commit()
+
+    mock_client = _mock_openai_client(_llm_envelope(_valid_llm_verdict_json()))
+    mock_client_cls.return_value = mock_client
+
+    client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_name": team.name},
+    )
+    call_args = mock_client.post.call_args
+    outbound_json = call_args.kwargs.get("json") or call_args.args[1]
+    # User message is the second element; parse its JSON content to inspect.
+    user_msg_content = outbound_json["messages"][1]["content"]
+    assert "deterministic_flag_summary" in user_msg_content
+    assert "most likely plagiarising" in user_msg_content
+
+
 def test_assess_admin_can_assess_any_league(
     client, institution_setup, stored_openai_key
 ):

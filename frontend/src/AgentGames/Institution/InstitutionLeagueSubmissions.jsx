@@ -12,21 +12,30 @@ const verdictColor = (verdict) => {
     case "organic":
     case "unlikely":
     case "low":
+    case "none":
       return "text-green-600";
     case "suspicious":
     case "possible":
     case "medium":
+    case "probable_plagiarism":
       return "text-yellow-600";
     case "clearly_copied":
     case "likely":
     case "highly_likely":
     case "high":
+    case "likely_plagiarism":
       return "text-red-600";
     case "not_applicable":
       return "text-gray-500";
     default:
       return "text-ui-dark";
   }
+};
+
+const formatDeterministicLabel = (level) => {
+  if (level === "likely_plagiarism") return "most likely plagiarising";
+  if (level === "probable_plagiarism") return "probably plagiarising";
+  return "normal typing speed";
 };
 
 function InstitutionLeagueSubmissions() {
@@ -314,6 +323,36 @@ function InstitutionLeagueSubmissions() {
               >
                 ×
               </button>
+            </div>
+
+            {/* Deterministic heuristic (computed locally, independent of the LLM). */}
+            <div
+              className={`mb-4 p-3 rounded border ${
+                report.deterministic_concern_level === "likely_plagiarism"
+                  ? "border-red-300 bg-red-50"
+                  : report.deterministic_concern_level === "probable_plagiarism"
+                  ? "border-yellow-300 bg-yellow-50"
+                  : "border-green-300 bg-green-50"
+              }`}
+            >
+              <div className="font-semibold text-ui-dark mb-1">
+                Typing-speed heuristic:{" "}
+                <span className={verdictColor(report.deterministic_concern_level)}>
+                  {formatDeterministicLabel(report.deterministic_concern_level)}
+                </span>
+              </div>
+              {report.deterministic_flag_summary &&
+              report.deterministic_flag_summary.length > 0 ? (
+                <ul className="list-disc ml-5 text-sm text-ui-dark">
+                  {report.deterministic_flag_summary.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-ui-dark">
+                  All submission deltas are within normal typing speed (≤ 4 chars/sec).
+                </p>
+              )}
             </div>
 
             <div className="mb-4">

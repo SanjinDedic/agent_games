@@ -53,8 +53,14 @@ class PairwiseMetrics(BaseModel):
     chars_added: int
     chars_removed: int
     chars_added_per_minute: Optional[float] = None  # None when elapsed_seconds == 0
+    chars_added_per_second: Optional[float] = None  # None when elapsed_seconds == 0
     raw_similarity: float = Field(..., ge=0.0, le=1.0)
     normalized_similarity: float = Field(..., ge=0.0, le=1.0)
+    # Hard deterministic heuristic, independent of the LLM verdict.
+    # "normal" | "probable_plagiarism" | "likely_plagiarism".
+    deterministic_flag: Literal[
+        "normal", "probable_plagiarism", "likely_plagiarism"
+    ] = "normal"
 
 
 class PlagiarismVerdict(BaseModel):
@@ -82,6 +88,13 @@ class PlagiarismReport(BaseModel):
     sampled: bool
     submission_metrics: List[SubmissionMetrics]
     pairwise_metrics: List[PairwiseMetrics]
+    # Report-level deterministic summary, derived from pairwise_metrics. The
+    # concern level is the worst of any pairwise flag; the list contains one
+    # human-readable line per over-threshold pair.
+    deterministic_concern_level: Literal[
+        "none", "probable_plagiarism", "likely_plagiarism"
+    ] = "none"
+    deterministic_flag_summary: List[str] = Field(default_factory=list)
     verdict: PlagiarismVerdict
     model_used: str
     generated_at: str  # ISO-8601
