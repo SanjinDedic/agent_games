@@ -6,6 +6,7 @@ import gamesReducer from './slices/gamesSlice.js';
 import rankingsReducer from './slices/rankingsSlice';
 import settingsReducer from './slices/settingsSlice';
 import feedbackReducer from './slices/feedbackSlice';
+import supportReducer from './slices/supportSlice';
 
 const saveState = (state) => {
   try {
@@ -40,6 +41,7 @@ export const store = configureStore({
     rankings: rankingsReducer,
     settings: settingsReducer,
     feedback: feedbackReducer,
+    support: supportReducer,
   },
   preloadedState: persistedState,
 });
