@@ -26,9 +26,20 @@ from backend.routes.admin.admin_models import (
     InstitutionUpdate,
     RestoreBackup,
     ToggleDockerAccess,
+    UpdateSupportTicket,
 )
 from backend.routes.auth.auth_core import get_current_user, verify_admin_role
 from backend.database.db_session import get_db
+from backend.database.db_models import (
+    SupportTicketStatus,
+    SupportTicketSubmitterType,
+)
+from backend.routes.support.support_db import (
+    SupportError,
+    delete_ticket,
+    list_tickets,
+    update_ticket,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -269,4 +280,112 @@ async def restore_database_endpoint(
         logger.error(f"Error restoring backup: {e}")
         return ErrorResponseModel(
             status="error", message=f"Restore failed: {str(e)}"
+        )
+
+
+# Support ticket management endpoints
+@admin_router.get("/support-tickets", response_model=ResponseModel)
+@verify_admin_role
+async def list_support_tickets_endpoint(
+    submitter_type: str = "all",
+    status: str | None = None,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """List support tickets, optionally filtered by submitter type and status."""
+    try:
+        submitter_filter = None
+        if submitter_type != "all":
+            try:
+                submitter_filter = SupportTicketSubmitterType(submitter_type)
+            except ValueError:
+                return ErrorResponseModel(
+                    status="error", message=f"Invalid submitter_type: {submitter_type}"
+                )
+
+        status_filter = None
+        if status:
+            try:
+                status_filter = SupportTicketStatus(status)
+            except ValueError:
+                return ErrorResponseModel(
+                    status="error", message=f"Invalid status: {status}"
+                )
+
+        tickets = list_tickets(
+            session,
+            submitter_type=submitter_filter,
+            status=status_filter,
+        )
+        return ResponseModel(
+            status="success",
+            message=f"Found {len(tickets)} ticket(s)",
+            data={"tickets": [t.model_dump(mode="json") for t in tickets]},
+        )
+    except Exception as e:
+        logger.error(f"Error listing support tickets: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to list tickets: {str(e)}"
+        )
+
+
+@admin_router.post("/support-ticket-update", response_model=ResponseModel)
+@verify_admin_role
+async def update_support_ticket_endpoint(
+    request: UpdateSupportTicket,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Update a support ticket's status and/or admin note."""
+    try:
+        status_enum = None
+        if request.status is not None:
+            try:
+                status_enum = SupportTicketStatus(request.status)
+            except ValueError:
+                return ErrorResponseModel(
+                    status="error", message=f"Invalid status: {request.status}"
+                )
+
+        updated = update_ticket(
+            session,
+            ticket_id=request.ticket_id,
+            status=status_enum,
+            admin_note=request.admin_note,
+        )
+        return ResponseModel(
+            status="success",
+            message="Ticket updated",
+            data={"ticket": updated.model_dump(mode="json")},
+        )
+    except SupportError as exc:
+        return ErrorResponseModel(status="error", message=str(exc))
+    except Exception as e:
+        logger.error(f"Error updating support ticket: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to update ticket: {str(e)}"
+        )
+
+
+@admin_router.delete("/support-ticket/{ticket_id}", response_model=ResponseModel)
+@verify_admin_role
+async def delete_support_ticket_endpoint(
+    ticket_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Delete a support ticket and any associated S3 attachments."""
+    try:
+        result = delete_ticket(session, ticket_id)
+        return ResponseModel(
+            status="success",
+            message="Ticket deleted",
+            data=result,
+        )
+    except SupportError as exc:
+        return ErrorResponseModel(status="error", message=str(exc))
+    except Exception as e:
+        logger.error(f"Error deleting support ticket: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to delete ticket: {str(e)}"
         )
