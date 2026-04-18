@@ -29,6 +29,7 @@ import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 // import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
+import SupportButton from "./AgentGames/Support/SupportButton";
 
 function App() {
   const dispatch = useDispatch();
@@ -105,6 +106,8 @@ function App() {
         >
           i
         </button>
+
+        <SupportButton />
       </div>
     </BrowserRouter>
   );
