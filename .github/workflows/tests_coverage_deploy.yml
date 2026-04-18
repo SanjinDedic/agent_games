@@ -21,7 +21,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test-and-deploy:
@@ -75,7 +75,7 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Deploy with Kamal
+    - name: Write Kamal secrets file
       if: github.event_name == 'push'
       env:
         KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
@@ -106,7 +106,14 @@ jobs:
         AWS_REGION=$AWS_REGION
         AWS_S3_BUCKET=$AWS_S3_BUCKET
         EOF
-        kamal deploy
+
+    - name: Deploy with Kamal
+      if: github.event_name == 'push'
+      run: kamal deploy
+
+    - name: Release kamal lock if deploy was interrupted
+      if: github.event_name == 'push' && (cancelled() || failure())
+      run: kamal lock release || true
 
     - name: Healthcheck
       if: github.event_name == 'push'
