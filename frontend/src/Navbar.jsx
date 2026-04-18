@@ -16,6 +16,7 @@ function AgentGamesNavbar() {
     "/AdminDockerStatus",
     "/AdminInstitutions",
     "/AdminAPIKeys",
+    "/AdminUserSupport",
   ];
   const institutionRoutes = [
     "/InstitutionTeam",
@@ -66,6 +67,9 @@ function AgentGamesNavbar() {
                 </Link>
                 <Link to="/AdminAPIKeys" className={navLinkClasses}>
                   API Keys
+                </Link>
+                <Link to="/AdminUserSupport" className={navLinkClasses}>
+                  User Support
                 </Link>
               </>
             ) : isInstitutionRoute ? (

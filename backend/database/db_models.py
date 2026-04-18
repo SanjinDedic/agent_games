@@ -198,3 +198,61 @@ class DemoUser(SQLModel, table=True):
     username: str = Field(index=True)  # Original username provided by user
     email: str | None = None  # Optional email provided by user
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+
+
+class SupportTicketCategory(str, PyEnum):
+    BUG = "bug"
+    SUPPORT = "support"
+    FEEDBACK = "feedback"
+
+
+class SupportTicketStatus(str, PyEnum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+
+
+class SupportTicketSubmitterType(str, PyEnum):
+    TEAM = "team"
+    INSTITUTION = "institution"
+
+
+class SupportTicket(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    category: SupportTicketCategory
+    subject: str
+    description: str = Field(sa_column=Column(Text()))
+    status: SupportTicketStatus = Field(default=SupportTicketStatus.OPEN, index=True)
+    admin_note: Optional[str] = Field(default=None, sa_column=Column(Text()))
+    submitter_type: SupportTicketSubmitterType = Field(index=True)
+    team_id: Optional[int] = Field(default=None, foreign_key="team.id", index=True)
+    institution_id: Optional[int] = Field(
+        default=None, foreign_key="institution.id", index=True
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
+
+    team: Optional["Team"] = Relationship()
+    institution: Optional["Institution"] = Relationship()
+    attachments: List["SupportTicketAttachment"] = Relationship(
+        back_populates="ticket",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class SupportTicketAttachment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="supportticket.id", index=True)
+    s3_key: str
+    content_type: str
+    size_bytes: int
+    original_filename: str
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+    )
+
+    ticket: SupportTicket = Relationship(back_populates="attachments")

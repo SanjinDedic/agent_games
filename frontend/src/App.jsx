@@ -29,6 +29,8 @@ import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 // import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
+import SupportButton from "./AgentGames/Support/SupportButton";
+import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
 
 function App() {
   const dispatch = useDispatch();
@@ -68,6 +70,7 @@ function App() {
           <Route path="AdminBackup" element={<AdminBackup />} />
           <Route path="AdminDockerStatus" element={<DockerStatus />} />
           <Route path="AdminAPIKeys" element={<AdminAPIKeys />} />
+          <Route path="AdminUserSupport" element={<AdminUserSupport />} />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
           <Route path="InstitutionLeague" element={<InstitutionLeague />} />
@@ -105,6 +108,8 @@ function App() {
         >
           i
         </button>
+
+        <SupportButton />
       </div>
     </BrowserRouter>
   );
