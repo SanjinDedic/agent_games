@@ -1,6 +1,7 @@
 import React from 'react';
 
 const GOAL = 100;
+const SCALE_MAX = 105;
 
 const PLAYER_COLORS = [
     '#2563EB', '#10B981', '#8B5CF6', '#F59E0B',
@@ -10,16 +11,7 @@ const PLAYER_COLORS = [
 const GreedyPigProgressBar = ({ roll, allPlayers }) => {
     const states = roll.all_players || {};
 
-    let maxVal = GOAL;
-    allPlayers.forEach(name => {
-        const s = states[name];
-        if (s) {
-            const total = s.banked + s.unbanked;
-            if (total > maxVal) maxVal = total;
-        }
-    });
-
-    const goalPercent = (GOAL / maxVal) * 100;
+    const goalPercent = (GOAL / SCALE_MAX) * 100;
 
     return (
         <div className="w-full mt-4 bg-ui-lighter rounded-lg p-4">
@@ -27,8 +19,13 @@ const GreedyPigProgressBar = ({ roll, allPlayers }) => {
                 {allPlayers.map((name, idx) => {
                     const s = states[name] || { banked: 0, unbanked: 0 };
                     const total = s.banked + s.unbanked;
-                    const bankedPercent = (s.banked / maxVal) * 100;
-                    const unbankedPercent = (s.unbanked / maxVal) * 100;
+                    const clampedBanked = Math.min(s.banked, SCALE_MAX);
+                    const clampedUnbanked = Math.max(
+                        0,
+                        Math.min(s.unbanked, SCALE_MAX - clampedBanked)
+                    );
+                    const bankedPercent = (clampedBanked / SCALE_MAX) * 100;
+                    const unbankedPercent = (clampedUnbanked / SCALE_MAX) * 100;
                     const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
 
                     return (

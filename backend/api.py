@@ -7,12 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.models_api import ResponseModel
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
+from backend.routes.ai.ai_router import ai_router
 from backend.routes.auth.auth_router import auth_router
 from backend.routes.demo.demo_router import demo_router
 from backend.routes.diagnostics.diagnostics_router import diagnostics_router
 from backend.routes.institution.institution_router import institution_router
 from backend.routes.user.user_router import user_router
-from sqlmodel import Session, text
+from sqlmodel import SQLModel, Session, text
 
 from backend.database.db_session import get_db_engine
 from backend.docker_utils.init_db import initialize_database
@@ -52,6 +53,8 @@ def check_database_status():
                     )
                     logger.warning("=" * 60)
             else:
+                # Ensure any new tables are created (create_all is idempotent)
+                SQLModel.metadata.create_all(engine)
                 logger.warning("=" * 60)
                 logger.warning("✅ DATABASE PROPERLY INITIALIZED")
                 logger.warning("=" * 60)
@@ -121,6 +124,7 @@ app.include_router(institution_router, prefix="/institution", tags=["Institution
 app.include_router(user_router, prefix="/user", tags=["User Operations"])
 app.include_router(agent_router, prefix="/agent", tags=["Agent Operations"])
 app.include_router(demo_router, prefix="/demo", tags=["Demo Operations"])
+app.include_router(ai_router, prefix="/ai", tags=["AI Configuration"])
 app.include_router(diagnostics_router, prefix="/diagnostics", tags=["Diagnostics"])
 
 

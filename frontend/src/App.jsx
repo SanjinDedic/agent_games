@@ -16,6 +16,7 @@ import AdminLeague from "./AgentGames/Admin/AdminLeague";
 import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
 import AdminBackup from "./AgentGames/Admin/AdminBackup";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
+import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import StyleGuide from "./StyleGuide";
 import PublishedResults from "./AgentGames/PublishedResults";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -66,6 +67,7 @@ function App() {
           {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
           <Route path="AdminBackup" element={<AdminBackup />} />
           <Route path="AdminDockerStatus" element={<DockerStatus />} />
+          <Route path="AdminAPIKeys" element={<AdminAPIKeys />} />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
           <Route path="InstitutionLeague" element={<InstitutionLeague />} />
