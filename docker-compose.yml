@@ -152,6 +152,7 @@ services:
     volumes:
       - ./backend:/agent_games/backend
       - /var/run/docker.sock:/var/run/docker.sock
+    command: pytest backend/tests/ -v
     scale: 0
 
 volumes:
