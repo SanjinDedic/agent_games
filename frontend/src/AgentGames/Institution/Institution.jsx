@@ -21,7 +21,7 @@ function Institution() {
       if (currentUser.role === "institution") {
         navigate('/InstitutionTeam');
       } else if (currentUser.role === "admin") {
-        navigate('/AdminTeam');
+        navigate('/AdminInstitutions');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
