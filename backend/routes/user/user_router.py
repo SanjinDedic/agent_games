@@ -45,10 +45,17 @@ from backend.routes.user.user_db import (
 )
 from backend.routes.user.user_models import (
     DirectLeagueSignup,
+    DirectSchoolLeagueSignup,
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
 )
+from backend.routes.user.team_naming import (
+    create_school_team,
+    next_available_team_name,
+    sanitize_school_name,
+)
+from backend.schools.providers import SchoolsProviderError, get_schools_provider
 from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
@@ -450,21 +457,116 @@ async def get_league_by_token(
                 status="error", message="Invalid signup link or league not found"
             )
 
+        data = {
+            "id": league.id,
+            "name": league.name,
+            "game": league.game,
+            "created_date": league.created_date,
+            "expiry_date": league.expiry_date,
+            "school_league": league.school_league,
+        }
+
+        if league.school_league:
+            try:
+                provider = get_schools_provider(league)
+                schools = provider.list_schools() if provider else []
+            except SchoolsProviderError as e:
+                logger.error(f"Schools provider error for league {league.id}: {e}")
+                schools = []
+            data["schools"] = schools
+            # Advisory preview; real name is assigned server-side at signup.
+            data["team_name_previews"] = {
+                s: next_available_team_name(session, sanitize_school_name(s))
+                for s in schools
+                if sanitize_school_name(s)
+            }
+
         return ResponseModel(
             status="success",
             message="League information retrieved successfully",
-            data={
-                "id": league.id,
-                "name": league.name,
-                "game": league.game,
-                "created_date": league.created_date,
-                "expiry_date": league.expiry_date,
-            },
+            data=data,
         )
     except Exception as e:
         logger.error(f"Error retrieving league by token: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to retrieve league information: {str(e)}"
+        )
+
+
+@user_router.post("/direct-school-league-signup", response_model=ResponseModel)
+async def direct_school_league_signup(
+    signup: DirectSchoolLeagueSignup,
+    session: Session = Depends(get_db),
+):
+    """Create a team in a school league using the server-assigned team name."""
+    try:
+        league = get_league_by_signup_token(session, signup.signup_token)
+
+        if not league:
+            return ErrorResponseModel(
+                status="error", message="Invalid signup link or league not found"
+            )
+
+        if not league.school_league:
+            return ErrorResponseModel(
+                status="error", message="This league is not a school league"
+            )
+
+        now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+        expiry_date = league.expiry_date
+        if expiry_date.tzinfo is None:
+            expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
+        if expiry_date < now:
+            return ErrorResponseModel(
+                status="error",
+                message="This league has expired and is no longer accepting new teams",
+            )
+
+        try:
+            provider = get_schools_provider(league)
+        except SchoolsProviderError as e:
+            return ErrorResponseModel(
+                status="error", message=f"School list unavailable: {str(e)}"
+            )
+
+        allowed = set(provider.list_schools()) if provider else set()
+        if signup.school_name not in allowed:
+            return ErrorResponseModel(
+                status="error",
+                message=(
+                    f"School '{signup.school_name}' is not in this league's "
+                    "allowed list"
+                ),
+            )
+
+        team = create_school_team(
+            session, league.id, signup.school_name, signup.password
+        )
+
+        access_token = create_access_token(
+            data={"sub": team.name, "role": "student"},
+            expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES),
+        )
+
+        return ResponseModel(
+            status="success",
+            message=(
+                f"Team '{team.name}' created and assigned to league "
+                f"'{league.name}' successfully!"
+            ),
+            data={
+                "team_id": team.id,
+                "team_name": team.name,
+                "league_id": league.id,
+                "league_name": league.name,
+                "access_token": access_token,
+                "token_type": "bearer",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error in direct school-league signup: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to complete signup: {str(e)}"
         )
 
 

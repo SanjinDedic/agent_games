@@ -178,3 +178,7 @@ backend/games/arena_champions/validation_players.py
 
 docs/
 seed_prod.py
+
+# Binary assets hosted on S3, not committed
+frontend/public/videos/*.mp4
+frontend/public/about/

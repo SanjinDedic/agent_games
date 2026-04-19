@@ -142,6 +142,9 @@ function AgentGamesNavbar() {
                 <Link to="/Leaderboards" className={navLinkClasses}>
                   Leaderboards
                 </Link>
+                <Link to="/About" className={navLinkClasses}>
+                  About
+                </Link>
                 <Link to="/AgentLogin" className={navLinkClasses}>
                   Player Login
                 </Link>

@@ -109,7 +109,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - VITE_ASSETS_URL=${VITE_ASSETS_URL:-http://localhost:9000/agent-games-assets}
+      - VITE_ASSETS_URL=${VITE_ASSETS_URL:-https://agent-games-assets.s3.ap-southeast-2.amazonaws.com}
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -121,16 +121,9 @@ services:
     image: minio/minio:latest
     entrypoint: /bin/sh
     command: >
-      -c "mkdir -p /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/images
-      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/logos
-      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/institution
+      -c "mkdir -p /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/institution
       /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/user &&
-      minio server /data --console-address ':9001' &
-      MINIO_PID=$$! &&
-      until mc alias set local http://localhost:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD >/dev/null 2>&1; do sleep 1; done &&
-      mc anonymous set download local/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/images >/dev/null 2>&1 || true &&
-      mc anonymous set download local/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/logos >/dev/null 2>&1 || true &&
-      wait $$MINIO_PID"
+      exec minio server /data --console-address ':9001'"
     ports:
       - "9000:9000"
       - "9001:9001"

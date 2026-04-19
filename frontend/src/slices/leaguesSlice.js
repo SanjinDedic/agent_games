@@ -25,6 +25,7 @@ const leaguesSlice = createSlice({
         name: league.name,
         signup_link: league.signup_link,
         institution_name: league.institution_name ?? null,
+        school_league: league.school_league ?? false,
       }));
       const existing = state.currentLeague
         ? state.list.find(l => l.name === state.currentLeague.name)
@@ -47,6 +48,7 @@ const leaguesSlice = createSlice({
         name: league.name,
         signup_link: league.signup_link,
         institution_name: league.institution_name ?? null,
+        school_league: league.school_league ?? false,
       });
     },
     updateExpiryDate: (state, action) => {

@@ -14,10 +14,13 @@ const LeagueCreation = () => {
     leagueName: "",
     gameName: "",
     selectedDate: null,
+    schoolLeague: false,
+    schoolsText: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [signupUrl, setSignupUrl] = useState("");
+  const [createdSchoolLeague, setCreatedSchoolLeague] = useState(false);
 
   const fetchGames = async () => {
     try {
@@ -59,14 +62,20 @@ const LeagueCreation = () => {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setLeagueInfo((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     }));
     setError("");
     setSignupUrl(""); // Clear previous signup URL when form changes
   };
+
+  const parseSchools = (text) =>
+    text
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
   const handleDateChange = (date) => {
     setLeagueInfo((prev) => ({
@@ -86,6 +95,14 @@ const LeagueCreation = () => {
     if (!leagueInfo.gameName) {
       setError("Game selection is required");
       return false;
+    }
+
+    if (leagueInfo.schoolLeague) {
+      const schools = parseSchools(leagueInfo.schoolsText);
+      if (schools.length === 0) {
+        setError("Add at least one school (one per line)");
+        return false;
+      }
     }
 
     return true;
@@ -109,6 +126,10 @@ const LeagueCreation = () => {
           expiry_date: leagueInfo.selectedDate
             ? leagueInfo.selectedDate.toISOString()
             : undefined,
+          school_league: leagueInfo.schoolLeague,
+          schools: leagueInfo.schoolLeague
+            ? parseSchools(leagueInfo.schoolsText)
+            : [],
         }),
       });
 
@@ -123,6 +144,7 @@ const LeagueCreation = () => {
           const baseUrl = `${window.location.protocol}//${window.location.host}`;
           const signupPath = `/TeamSignup/${data.data.signup_token}`;
           setSignupUrl(`${baseUrl}${signupPath}`);
+          setCreatedSchoolLeague(Boolean(data.data.school_league));
         }
 
         // Reset form after successful creation
@@ -130,6 +152,8 @@ const LeagueCreation = () => {
           leagueName: "",
           gameName: games[0] || "",
           selectedDate: null,
+          schoolLeague: false,
+          schoolsText: "",
         });
       } else {
         setError(data.message || "Failed to create league");
@@ -182,6 +206,43 @@ const LeagueCreation = () => {
           ))}
         </select>
       </div>
+
+      <div className="mb-4 flex items-center">
+        <input
+          type="checkbox"
+          id="schoolLeague"
+          name="schoolLeague"
+          checked={leagueInfo.schoolLeague}
+          onChange={handleChange}
+          className="mr-2"
+        />
+        <label htmlFor="schoolLeague" className="text-ui-dark">
+          School league (students pick their school from a dropdown; team names
+          auto-generated; no email, no password recovery)
+        </label>
+      </div>
+
+      {leagueInfo.schoolLeague && (
+        <div className="mb-4">
+          <label htmlFor="schoolsText" className="block text-ui-dark mb-1">
+            Schools (one per line)
+          </label>
+          <textarea
+            id="schoolsText"
+            name="schoolsText"
+            rows={6}
+            value={leagueInfo.schoolsText}
+            onChange={handleChange}
+            className="w-full p-2 border border-ui-light rounded font-mono text-sm"
+            placeholder={"Willetton SHS\nPerth Modern\nApplecross SHS"}
+          />
+          <p className="text-sm text-ui mt-1">
+            Students will pick from this list at signup. At least one school is
+            required. Remind students to save their passwords &mdash; there is
+            no recovery.
+          </p>
+        </div>
+      )}
 
       <div className="mb-4">
         <label htmlFor="expiryDate" className="block text-ui-dark mb-1">
@@ -259,6 +320,13 @@ const LeagueCreation = () => {
             Teams who use this link will be directly assigned to this league
             upon signup.
           </p>
+          {createdSchoolLeague && (
+            <p className="mt-2 text-sm text-danger font-medium">
+              School league: tell students to save their passwords. There is no
+              recovery &mdash; if they lose it they will need to sign up again
+              under a new team number.
+            </p>
+          )}
         </div>
       )}
     </div>

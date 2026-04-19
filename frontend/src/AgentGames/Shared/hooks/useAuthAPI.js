@@ -106,10 +106,61 @@ export const useAuthAPI = () => {
     }
   }, [apiUrl, dispatch]);
   
+  // Direct school-league signup — server assigns the team name
+  const directSchoolSignup = useCallback(async (leagueToken, schoolName, password) => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/user/direct-school-league-signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          signup_token: leagueToken,
+          school_name: schoolName,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        const decoded = jwtDecode(data.data.access_token);
+
+        dispatch(loginAction({
+          token: data.data.access_token,
+          name: data.data.team_name,
+          role: 'student',
+          exp: decoded.exp,
+          is_demo: false
+        }));
+
+        dispatch(setCurrentTeam(data.data.team_name));
+
+        toast.success(data.message || 'Signed up successfully!');
+
+        return {
+          success: true,
+          leagueId: data.data.league_id,
+          teamName: data.data.team_name
+        };
+      } else {
+        return { success: false, error: data.message || 'Failed to sign up' };
+      }
+    } catch (error) {
+      console.error('Error during school signup:', error);
+      return { success: false, error: "Network error during signup" };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, dispatch]);
+
   return {
     isLoading,
     teamLogin,
-    directSignup
+    directSignup,
+    directSchoolSignup
   };
 };
 

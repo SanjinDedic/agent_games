@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { setCurrentLeague, setLeagues } from '../../slices/leaguesSlice';
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
+import DirectSchoolLeagueSignup from "./DirectSchoolLeagueSignup";
 
 function DirectLeagueSignup() {
   const navigate = useNavigate();
@@ -107,6 +108,12 @@ function DirectLeagueSignup() {
           </h1>
 
           {leagueInfo ? (
+            leagueInfo.school_league ? (
+              <DirectSchoolLeagueSignup
+                leagueToken={leagueToken}
+                leagueInfo={leagueInfo}
+              />
+            ) : (
             <>
               <div className="mb-6 bg-blue-100 p-4 rounded-lg">
                 <h2 className="text-lg font-semibold text-blue-700">
@@ -202,6 +209,7 @@ function DirectLeagueSignup() {
                 </p>
               </div>
             </>
+            )
           ) : error ? (
             <div className="text-center text-red-600 p-4">
               <p>{error}</p>
