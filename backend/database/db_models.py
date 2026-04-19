@@ -3,7 +3,7 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 import bcrypt as _bcrypt
-from sqlalchemy import Column, DateTime, String, Text
+from sqlalchemy import JSON, Column, DateTime, String, Text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
 
@@ -63,6 +63,11 @@ class League(SQLModel, table=True):
     game: str
     league_type: LeagueType = Field(default=LeagueType.STUDENT)
     is_demo: bool = Field(default=False)
+    school_league: bool = Field(default=False)
+    schools_config: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
     # New field for institution relationship
     institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
