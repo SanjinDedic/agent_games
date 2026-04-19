@@ -22,7 +22,7 @@ services:
       - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-minioadmin}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-minioadmin}
-      - AWS_S3_ASSETS_BUCKET=${AWS_S3_ASSETS_BUCKET:-assets}
+      - AWS_S3_ASSETS_BUCKET=${AWS_S3_ASSETS_BUCKET:-agent-games-assets}
     env_file:
       - path: .aws.env
         required: false
@@ -42,6 +42,7 @@ services:
       start_period: 40s
     volumes:
       - ./backend:/agent_games/backend
+      - ./frontend/public:/agent_games/frontend/public:ro
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -106,6 +107,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - REACT_APP_ASSETS_URL=${REACT_APP_ASSETS_URL:-http://localhost:9000/agent-games-assets}
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -117,15 +119,15 @@ services:
     image: minio/minio:latest
     entrypoint: /bin/sh
     command: >
-      -c "mkdir -p /data/${AWS_S3_ASSETS_BUCKET:-assets}/images
-      /data/${AWS_S3_ASSETS_BUCKET:-assets}/logos
-      /data/${AWS_S3_ASSETS_BUCKET:-assets}/support/institution
-      /data/${AWS_S3_ASSETS_BUCKET:-assets}/support/user &&
+      -c "mkdir -p /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/images
+      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/logos
+      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/institution
+      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/user &&
       minio server /data --console-address ':9001' &
       MINIO_PID=$$! &&
       until mc alias set local http://localhost:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD >/dev/null 2>&1; do sleep 1; done &&
-      mc anonymous set download local/${AWS_S3_ASSETS_BUCKET:-assets}/images >/dev/null 2>&1 || true &&
-      mc anonymous set download local/${AWS_S3_ASSETS_BUCKET:-assets}/logos >/dev/null 2>&1 || true &&
+      mc anonymous set download local/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/images >/dev/null 2>&1 || true &&
+      mc anonymous set download local/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/logos >/dev/null 2>&1 || true &&
       wait $$MINIO_PID"
     ports:
       - "9000:9000"

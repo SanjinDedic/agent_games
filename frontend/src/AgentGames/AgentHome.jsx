@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { imageUrl } from '../config/assets';
+
 const Homepage = () => {
   return (
     <div className="min-h-screen bg-ui-lighter pt-12">
@@ -134,7 +136,7 @@ const Homepage = () => {
             <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
               <div className="mb-4 rounded overflow-hidden">
                 <img
-                  src="games/greedy_pig.png"
+                  src={imageUrl('games/greedy_pig.png')}
                   alt="Greedy Pig game"
                   className="w-full h-48 object-cover"
                 />
@@ -157,7 +159,7 @@ const Homepage = () => {
             <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
               <div className="mb-4 rounded overflow-hidden">
                 <img
-                  src="games/prisoners_dilemma.png"
+                  src={imageUrl('games/prisoners_dilemma.png')}
                   alt="Prisoner's Dilemma game"
                   className="w-full h-48 object-cover"
                 />
@@ -181,7 +183,7 @@ const Homepage = () => {
             <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
               <div className="mb-4 rounded overflow-hidden">
                 <img
-                  src="games/lineup4.png"
+                  src={imageUrl('games/lineup4.png')}
                   alt="Lineup4 game"
                   className="w-full h-48 object-cover"
                 />
