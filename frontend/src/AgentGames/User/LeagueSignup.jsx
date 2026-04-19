@@ -82,7 +82,7 @@ function AgentLeagueSignUp() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-ui-lighter p-6 rounded-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-ui-lighter p-6 rounded-lg max-h-[304px] overflow-y-auto">
             {displayLeagues.length > 0 ? (
               displayLeagues.map((league) => (
                 <label
