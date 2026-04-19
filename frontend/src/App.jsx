@@ -27,6 +27,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { toggleTooltips } from "./slices/settingsSlice";
 import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
+import About from './AgentGames/About';
 // import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
 import SupportButton from "./AgentGames/Support/SupportButton";
@@ -52,6 +53,7 @@ function App() {
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />
           <Route path="Leaderboards" element={<Leaderboards />} />
+          <Route path="About" element={<About />} />
           <Route
             path="/TeamSignup/:leagueToken"
             element={<DirectLeagueSignup />}
