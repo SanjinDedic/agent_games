@@ -6,11 +6,13 @@ import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
+from backend.database.db_models import SupportTicketSubmitterType
+
 logger = logging.getLogger(__name__)
 
 
-def get_support_bucket() -> str:
-    return os.environ.get("AWS_S3_SUPPORT_BUCKET", "agent-games-support-attachments")
+def get_assets_bucket() -> str:
+    return os.environ.get("AWS_S3_ASSETS_BUCKET", "assets")
 
 
 def _build_client(endpoint: str | None):
@@ -49,13 +51,26 @@ def _get_presign_client():
     return _build_client(public)
 
 
+def _submitter_folder(submitter_type: SupportTicketSubmitterType) -> str:
+    return (
+        "institution"
+        if submitter_type == SupportTicketSubmitterType.INSTITUTION
+        else "user"
+    )
+
+
 def upload_attachment(
-    file_bytes: bytes, content_type: str, ticket_id: int, idx: int
+    file_bytes: bytes,
+    content_type: str,
+    ticket_id: int,
+    idx: int,
+    submitter_type: SupportTicketSubmitterType,
 ) -> str:
-    """Upload one image to the support bucket and return its S3 key."""
-    s3_key = f"tickets/{ticket_id}/{uuid4().hex}_{idx}"
+    """Upload one image to the assets bucket and return its S3 key."""
+    folder = _submitter_folder(submitter_type)
+    s3_key = f"support/{folder}/{ticket_id}/{uuid4().hex}_{idx}"
     _get_s3_client().put_object(
-        Bucket=get_support_bucket(),
+        Bucket=get_assets_bucket(),
         Key=s3_key,
         Body=file_bytes,
         ContentType=content_type,
@@ -66,7 +81,7 @@ def upload_attachment(
 def delete_attachment(s3_key: str) -> None:
     """Best-effort delete — swallows errors for rollback scenarios."""
     try:
-        _get_s3_client().delete_object(Bucket=get_support_bucket(), Key=s3_key)
+        _get_s3_client().delete_object(Bucket=get_assets_bucket(), Key=s3_key)
     except ClientError as exc:
         logger.warning(f"Failed to delete s3 object {s3_key}: {exc}")
 
@@ -75,6 +90,6 @@ def presign_attachment(s3_key: str, expires: int = 900) -> str:
     """Generate a short-lived presigned GET URL for the admin view."""
     return _get_presign_client().generate_presigned_url(
         "get_object",
-        Params={"Bucket": get_support_bucket(), "Key": s3_key},
+        Params={"Bucket": get_assets_bucket(), "Key": s3_key},
         ExpiresIn=expires,
     )

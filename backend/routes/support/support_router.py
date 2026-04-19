@@ -130,7 +130,11 @@ async def create_ticket_endpoint(
         try:
             for idx, payload in enumerate(file_payloads):
                 s3_key = upload_attachment(
-                    payload["bytes"], payload["content_type"], ticket.id, idx
+                    payload["bytes"],
+                    payload["content_type"],
+                    ticket.id,
+                    idx,
+                    submitter_type,
                 )
                 uploaded_keys.append(s3_key)
                 add_attachment(

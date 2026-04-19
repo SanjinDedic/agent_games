@@ -237,7 +237,7 @@ def test_s3_failure_rolls_back_and_cleans_up(
 
     from backend.database.db_models import SupportTicket, SupportTicketAttachment
 
-    def _upload(bytes_, ct, tid, idx):
+    def _upload(bytes_, ct, tid, idx, submitter_type):
         if idx == 0:
             return f"tickets/{tid}/ok_0"
         raise RuntimeError("s3 down")
