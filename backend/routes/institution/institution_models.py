@@ -1,7 +1,8 @@
+import re
 from datetime import datetime
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from backend.utils import get_games_names
 
@@ -13,6 +14,8 @@ class LeagueSignUp(BaseModel):
 
     name: str
     game: str
+    school_league: bool = False
+    schools: List[str] = []
 
     @field_validator("name")
     def validate_name(cls, v):
@@ -26,6 +29,27 @@ class LeagueSignUp(BaseModel):
         if v not in valid_games:
             raise ValueError(f"Game must be one of: {', '.join(valid_games)}")
         return v
+
+    @field_validator("schools")
+    def dedupe_and_strip(cls, v):
+        seen, out = set(), []
+        for s in v:
+            s2 = (s or "").strip()
+            if not s2 or s2 in seen:
+                continue
+            if not re.sub(r"[^A-Za-z0-9]", "", s2):
+                raise ValueError(
+                    f"School name '{s2}' must contain at least one alphanumeric character"
+                )
+            seen.add(s2)
+            out.append(s2)
+        return out
+
+    @model_validator(mode="after")
+    def require_schools_when_school_league(self):
+        if self.school_league and not self.schools:
+            raise ValueError("A school league must include at least one school")
+        return self
 
 
 class TeamSignup(BaseModel):

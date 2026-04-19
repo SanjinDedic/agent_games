@@ -58,6 +58,14 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
     # Generate unique signup token
     signup_token = secrets.token_urlsafe(16)
 
+    school_league = bool(league_data.get("school_league", False))
+    schools_config = None
+    if school_league:
+        schools_config = {
+            "source": "static",
+            "schools": list(league_data.get("schools", [])),
+        }
+
     # Create the league
     league = League(
         name=league_data["name"],
@@ -69,6 +77,8 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
         institution_id=institution_id,
         league_type=LeagueType.INSTITUTION,
         signup_link=signup_token,
+        school_league=school_league,
+        schools_config=schools_config,
     )
 
     session.add(league)
@@ -78,6 +88,7 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
         "league_id": league.id,
         "name": league.name,
         "signup_token": signup_token,
+        "school_league": school_league,
     }
 
 

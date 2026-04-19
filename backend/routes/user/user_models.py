@@ -46,3 +46,21 @@ class DirectLeagueSignup(BaseModel):
         if not v.strip():
             raise ValueError("Field cannot be empty")
         return v.strip()
+
+
+class DirectSchoolLeagueSignup(BaseModel):
+    """Model for direct team signup for a school league.
+
+    Team name is server-generated from the selected school + counter — not
+    supplied by the client. No email; password is the only credential.
+    """
+
+    signup_token: str
+    school_name: str
+    password: str
+
+    @field_validator("signup_token", "school_name", "password")
+    def validate_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Field cannot be empty")
+        return v.strip()
