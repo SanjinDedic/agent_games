@@ -213,6 +213,7 @@ def get_leagues_for_user(session: Session, role: str, institution_id: Optional[i
                 "created_date": league.created_date,
                 "expiry_date": league.expiry_date,
                 "signup_link": league.signup_link,
+                "institution_name": league.institution.name if league.institution else None,
             }
             for league in leagues
         ]

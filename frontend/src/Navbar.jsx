@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from './slices/authSlice';
@@ -28,6 +28,43 @@ function AgentGamesNavbar() {
   const isInstitutionRoute = institutionRoutes.includes(location.pathname);
   const currentUser = useSelector((state) => state.auth.currentUser);
   const userRole = currentUser?.role || "";
+
+  const [repoStats, setRepoStats] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem("github:SanjinDedic/agent_games");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("https://api.github.com/repos/SanjinDedic/agent_games")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        if (cancelled) return;
+        const stats = {
+          stars: data.stargazers_count,
+          forks: data.forks_count,
+        };
+        setRepoStats(stats);
+        try {
+          sessionStorage.setItem(
+            "github:SanjinDedic/agent_games",
+            JSON.stringify(stats)
+          );
+        } catch {
+          /* ignore quota errors */
+        }
+      })
+      .catch(() => {
+        /* keep cached/null values on failure */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -136,8 +173,8 @@ function AgentGamesNavbar() {
                   SanjinDedic/agent_games
                 </span>
                 <ul className="flex text-xs space-x-3">
-                  <li>★ 12</li>
-                  <li>🍴 3</li>
+                  <li>★ {repoStats?.stars ?? "…"}</li>
+                  <li>🍴 {repoStats?.forks ?? "…"}</li>
                 </ul>
               </div>
             </a>

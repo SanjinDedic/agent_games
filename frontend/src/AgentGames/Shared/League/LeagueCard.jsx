@@ -10,12 +10,12 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
   };
   
   return (
-    <div 
+    <div
       onClick={() => onSelect(league.name)}
       className={`
-        p-3 rounded-lg border cursor-pointer transition-all h-[80px] flex flex-col justify-between
-        ${isSelected 
-          ? 'border-primary bg-primary-light/20' 
+        p-3 rounded-lg border cursor-pointer transition-all flex flex-col justify-between
+        ${isSelected
+          ? 'border-primary bg-primary-light/20'
           : 'border-ui-light hover:border-primary-light bg-white'}
       `}
     >
@@ -23,11 +23,11 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-success' : 'bg-danger'}`}></div>
-            <h3 className="font-medium truncate max-w-[150px]">{league.name}</h3>
+            <h3 className="font-medium truncate">{league.name}</h3>
           </div>
           <div className="text-xs text-ui mt-1">Game: {league.game}</div>
         </div>
-        <button 
+        <button
           onClick={handleDelete}
           className="p-1 rounded-full hover:bg-danger hover:text-white transition-colors"
           title="Delete league"
@@ -41,6 +41,11 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
           <span className="text-primary">{teamCount}</span> teams
         </div>
       </div>
+      {league.institution_name && (
+        <div className="text-xs text-primary-dark mt-1 truncate">
+          {league.institution_name}
+        </div>
+      )}
     </div>
   );
 };

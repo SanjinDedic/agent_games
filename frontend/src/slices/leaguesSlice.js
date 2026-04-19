@@ -24,9 +24,17 @@ const leaguesSlice = createSlice({
         id: league.id,
         name: league.name,
         signup_link: league.signup_link,
+        institution_name: league.institution_name ?? null,
       }));
-      if (action.payload.length > 0) {
+      const existing = state.currentLeague
+        ? state.list.find(l => l.name === state.currentLeague.name)
+        : null;
+      if (existing) {
+        state.currentLeague = existing;
+      } else if (state.list.length > 0) {
         state.currentLeague = state.list[0];
+      } else {
+        state.currentLeague = null;
       }
     },
     addLeague: (state, action) => {
@@ -38,6 +46,7 @@ const leaguesSlice = createSlice({
         id: league.id,
         name: league.name,
         signup_link: league.signup_link,
+        institution_name: league.institution_name ?? null,
       });
     },
     updateExpiryDate: (state, action) => {

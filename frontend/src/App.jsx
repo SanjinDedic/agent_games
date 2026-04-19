@@ -110,6 +110,15 @@ function App() {
         </button>
 
         <SupportButton />
+
+        <a
+          href="https://github.com/SanjinDedic"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-2 left-3 text-xs text-ui/60 hover:text-ui transition-colors duration-200 z-40"
+        >
+          Agent Games by Sanjin Dedic
+        </a>
       </div>
     </BrowserRouter>
   );
