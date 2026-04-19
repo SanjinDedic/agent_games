@@ -78,8 +78,8 @@ const LeagueCardList = ({ userRole }) => {
   });
   
   return (
-    <div className="h-[252px] overflow-y-auto overflow-x-hidden pr-2">
-      <div className="grid grid-cols-2 gap-2 pb-1">
+    <div className="h-[440px] overflow-y-auto overflow-x-hidden pr-2">
+      <div className="grid grid-cols-1 gap-2 pb-1">
         {sortedLeagues.map((league) => (
           <LeagueCard
             key={league.id}
