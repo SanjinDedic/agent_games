@@ -109,7 +109,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - REACT_APP_ASSETS_URL=${REACT_APP_ASSETS_URL:-http://localhost:9000/agent-games-assets}
+      - VITE_ASSETS_URL=${VITE_ASSETS_URL:-http://localhost:9000/agent-games-assets}
     volumes:
       - ./frontend:/app
       - /app/node_modules
