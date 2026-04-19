@@ -61,11 +61,16 @@ env:
     VALIDATOR_URL: http://validator:8001
     SIMULATOR_URL: http://simulator:8002
     DB_ENVIRONMENT: production
+    AWS_REGION: ap-southeast-2
+    AWS_S3_BUCKET: agent-games-backups
+    AWS_S3_ASSETS_BUCKET: agent-games-assets
   secret:
     - SECRET_KEY
     - DATABASE_URL
     - ADMIN_PASSWORD
     - INSTITUTION_PASSWORD
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
 
 accessories:
   postgres:
@@ -87,7 +92,7 @@ accessories:
       - data:/var/lib/postgresql/data
 
 aliases:
-  shell: app exec --interactive --reuse "bash"
+  shell: app exec --interactive --reuse "sh"
   logs: app logs --tail 100 --follow
   health: app exec --reuse "curl -f http://localhost:8000/health"
   db: accessory exec --interactive postgres "psql -U postgres -d agent_games"
