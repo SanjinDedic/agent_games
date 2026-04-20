@@ -19,10 +19,6 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
   const [error, setError] = useState("");
 
   const schools = leagueInfo?.schools || [];
-  const previews = leagueInfo?.team_name_previews || {};
-  const teamNamePreview = formData.schoolName
-    ? previews[formData.schoolName]
-    : "";
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -114,16 +110,6 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
             ))}
           </select>
         </div>
-
-        {teamNamePreview && (
-          <div className="bg-blue-50 p-3 rounded text-sm">
-            Your team name will be:{" "}
-            <strong className="font-mono">{teamNamePreview}</strong>
-            <span className="text-ui ml-2">
-              (the number may change if others sign up first)
-            </span>
-          </div>
-        )}
 
         <div>
           <label htmlFor="password" className="block text-ui-dark mb-1">

@@ -113,7 +113,7 @@ def expired_school_league_fixture(db_session: Session) -> dict:
     return {"league": league, "signup_token": token}
 
 
-def test_league_info_includes_schools_and_previews(client, school_league_fixture):
+def test_league_info_includes_schools(client, school_league_fixture):
     resp = client.get(f"/user/league-info/{school_league_fixture['signup_token']}")
     assert resp.status_code == 200
     data = resp.json()
@@ -121,8 +121,6 @@ def test_league_info_includes_schools_and_previews(client, school_league_fixture
     payload = data["data"]
     assert payload["school_league"] is True
     assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
-    assert payload["team_name_previews"]["Willetton SHS"] == "WillettonSHS1"
-    assert payload["team_name_previews"]["Perth Modern"] == "PerthModern1"
 
 
 def test_league_info_non_school_omits_schools(client, non_school_league_fixture):
@@ -133,7 +131,6 @@ def test_league_info_non_school_omits_schools(client, non_school_league_fixture)
     payload = resp.json()["data"]
     assert payload["school_league"] is False
     assert "schools" not in payload
-    assert "team_name_previews" not in payload
 
 
 def test_direct_school_signup_happy_path(client, school_league_fixture, db_session):
