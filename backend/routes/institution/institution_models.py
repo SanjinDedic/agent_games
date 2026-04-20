@@ -16,6 +16,7 @@ class LeagueSignUp(BaseModel):
     game: str
     school_league: bool = False
     schools: List[str] = []
+    sheet_url: Optional[str] = None
 
     @field_validator("name")
     def validate_name(cls, v):
@@ -45,10 +46,23 @@ class LeagueSignUp(BaseModel):
             out.append(s2)
         return out
 
+    @field_validator("sheet_url")
+    def strip_sheet_url(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        return v or None
+
     @model_validator(mode="after")
-    def require_schools_when_school_league(self):
-        if self.school_league and not self.schools:
-            raise ValueError("A school league must include at least one school")
+    def school_source_rules(self):
+        if not self.school_league:
+            return self
+        has_static = bool(self.schools)
+        has_sheet = bool(self.sheet_url)
+        if has_static == has_sheet:
+            raise ValueError(
+                "A school league must have exactly one source: schools list OR sheet_url"
+            )
         return self
 
 

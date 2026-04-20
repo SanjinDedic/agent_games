@@ -12,6 +12,8 @@ from backend.database.db_models import (Institution, League, LeagueType,
                                         SimulationResult, SimulationResultItem,
                                         Submission, Team, TeamType)
 from backend.games.game_factory import GameFactory
+from backend.schools.providers import (GoogleSheetsSchoolsProvider,
+                                       SchoolsProviderError)
 from backend.utils import process_simulation_results
 
 logger = logging.getLogger(__name__)
@@ -61,10 +63,28 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
     school_league = bool(league_data.get("school_league", False))
     schools_config = None
     if school_league:
-        schools_config = {
-            "source": "static",
-            "schools": list(league_data.get("schools", [])),
-        }
+        sheet_url = (league_data.get("sheet_url") or "").strip() or None
+        if sheet_url:
+            # Validate upfront: fetch once so teachers see config errors now,
+            # not at student-signup time.
+            try:
+                schools = GoogleSheetsSchoolsProvider(sheet_url).list_schools()
+            except SchoolsProviderError as e:
+                raise LeagueExistsError(
+                    f"Could not read the Google Sheet: {e}"
+                )
+            if not schools:
+                raise LeagueExistsError(
+                    "The Google Sheet returned an empty list. Ensure sharing "
+                    "is set to 'Anyone with the link - Viewer' and that column "
+                    "A contains school names below a header row."
+                )
+            schools_config = {"source": "google_sheets", "sheet_url": sheet_url}
+        else:
+            schools_config = {
+                "source": "static",
+                "schools": list(league_data.get("schools", [])),
+            }
 
     # Create the league
     league = League(
