@@ -15,12 +15,16 @@ const LeagueCreation = () => {
     gameName: "",
     selectedDate: null,
     schoolLeague: false,
+    schoolsSource: "static",
     schoolsText: "",
+    sheetUrl: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [signupUrl, setSignupUrl] = useState("");
   const [createdSchoolLeague, setCreatedSchoolLeague] = useState(false);
+
+  const SHEETS_URL_RE = /\/spreadsheets\/d\/[a-zA-Z0-9_-]+/;
 
   const fetchGames = async () => {
     try {
@@ -98,10 +102,24 @@ const LeagueCreation = () => {
     }
 
     if (leagueInfo.schoolLeague) {
-      const schools = parseSchools(leagueInfo.schoolsText);
-      if (schools.length === 0) {
-        setError("Add at least one school (one per line)");
-        return false;
+      if (leagueInfo.schoolsSource === "sheet") {
+        const url = leagueInfo.sheetUrl.trim();
+        if (!url) {
+          setError("Enter a Google Sheet URL");
+          return false;
+        }
+        if (!SHEETS_URL_RE.test(url)) {
+          setError(
+            "That doesn't look like a Google Sheets URL (expected /spreadsheets/d/...)."
+          );
+          return false;
+        }
+      } else {
+        const schools = parseSchools(leagueInfo.schoolsText);
+        if (schools.length === 0) {
+          setError("Add at least one school (one per line)");
+          return false;
+        }
       }
     }
 
@@ -127,9 +145,14 @@ const LeagueCreation = () => {
             ? leagueInfo.selectedDate.toISOString()
             : undefined,
           school_league: leagueInfo.schoolLeague,
-          schools: leagueInfo.schoolLeague
-            ? parseSchools(leagueInfo.schoolsText)
-            : [],
+          schools:
+            leagueInfo.schoolLeague && leagueInfo.schoolsSource === "static"
+              ? parseSchools(leagueInfo.schoolsText)
+              : [],
+          sheet_url:
+            leagueInfo.schoolLeague && leagueInfo.schoolsSource === "sheet"
+              ? leagueInfo.sheetUrl.trim()
+              : null,
         }),
       });
 
@@ -153,7 +176,9 @@ const LeagueCreation = () => {
           gameName: games[0] || "",
           selectedDate: null,
           schoolLeague: false,
+          schoolsSource: "static",
           schoolsText: "",
+          sheetUrl: "",
         });
       } else {
         setError(data.message || "Failed to create league");
@@ -223,23 +248,76 @@ const LeagueCreation = () => {
       </div>
 
       {leagueInfo.schoolLeague && (
-        <div className="mb-4">
-          <label htmlFor="schoolsText" className="block text-ui-dark mb-1">
-            Schools (one per line)
-          </label>
-          <textarea
-            id="schoolsText"
-            name="schoolsText"
-            rows={6}
-            value={leagueInfo.schoolsText}
-            onChange={handleChange}
-            className="w-full p-2 border border-ui-light rounded font-mono text-sm"
-            placeholder={"Willetton SHS\nPerth Modern\nApplecross SHS"}
-          />
-          <p className="text-sm text-ui mt-1">
-            Students will pick from this list at signup. At least one school is
-            required. Remind students to save their passwords &mdash; there is
-            no recovery.
+        <div className="mb-4 border border-ui-light rounded p-3">
+          <div className="mb-3 flex gap-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="schoolsSource"
+                value="static"
+                checked={leagueInfo.schoolsSource === "static"}
+                onChange={handleChange}
+                className="mr-2"
+              />
+              Paste list
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="schoolsSource"
+                value="sheet"
+                checked={leagueInfo.schoolsSource === "sheet"}
+                onChange={handleChange}
+                className="mr-2"
+              />
+              Google Sheet URL
+            </label>
+          </div>
+
+          {leagueInfo.schoolsSource === "static" ? (
+            <>
+              <label htmlFor="schoolsText" className="block text-ui-dark mb-1">
+                Schools (one per line)
+              </label>
+              <textarea
+                id="schoolsText"
+                name="schoolsText"
+                rows={6}
+                value={leagueInfo.schoolsText}
+                onChange={handleChange}
+                className="w-full p-2 border border-ui-light rounded font-mono text-sm"
+                placeholder={"Willetton SHS\nPerth Modern\nApplecross SHS"}
+              />
+              <p className="text-sm text-ui mt-1">
+                Students will pick from this list at signup. At least one
+                school is required.
+              </p>
+            </>
+          ) : (
+            <>
+              <label htmlFor="sheetUrl" className="block text-ui-dark mb-1">
+                Google Sheet URL
+              </label>
+              <input
+                id="sheetUrl"
+                name="sheetUrl"
+                type="text"
+                value={leagueInfo.sheetUrl}
+                onChange={handleChange}
+                className="w-full p-2 border border-ui-light rounded font-mono text-sm"
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+              />
+              <p className="text-sm text-ui mt-1">
+                Share the sheet as <strong>Anyone with the link &mdash; Viewer</strong>.
+                Put school names in column A; the first row is treated as a
+                header. The list refreshes automatically every 5 minutes.
+              </p>
+            </>
+          )}
+
+          <p className="text-sm text-ui mt-3">
+            Remind students to save their passwords &mdash; there is no
+            recovery.
           </p>
         </div>
       )}
