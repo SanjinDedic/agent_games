@@ -186,6 +186,14 @@ class GameFactory:
         # ... other games ...
         else:
             raise ValueError(f"Unknown game: {game_name}")
+
+    @staticmethod
+    def get_disallowed_attrs(game_name):
+        if game_name == "alpha_guess":
+            return ['name', 'feedback']  # List of attributes the players can't modify use this to prevent players from cheating
+        # ... other games ...
+        else:
+            raise ValueError(f"Unknown game: {game_name}")
 ```
 
 ## 5. Docker Container Rebuild
