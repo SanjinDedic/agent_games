@@ -35,7 +35,7 @@ class StaticSchoolsProvider:
         return list(self._schools)
 
 
-def _to_csv_export_url(sheet_url: str) -> str:
+def to_csv_export_url(sheet_url: str) -> str:
     """Translate any Google Sheets URL into the CSV export URL for its gid (or gid=0)."""
     m = _SHEET_ID_RE.search(sheet_url)
     if not m:
@@ -62,7 +62,7 @@ class GoogleSheetsSchoolsProvider:
         self._url = sheet_url
 
     def list_schools(self) -> List[str]:
-        csv_url = _to_csv_export_url(self._url)
+        csv_url = to_csv_export_url(self._url)
         try:
             resp = httpx.get(csv_url, timeout=5.0, follow_redirects=True)
             resp.raise_for_status()

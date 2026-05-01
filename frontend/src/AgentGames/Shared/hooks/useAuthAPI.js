@@ -14,7 +14,7 @@ export const useAuthAPI = () => {
   // Team login - for regular login flow
   const teamLogin = useCallback(async (username, password) => {
     setIsLoading(true);
-    
+
     try {
       const response = await fetch(`${apiUrl}/auth/team-login`, {
         method: 'POST',
@@ -23,12 +23,12 @@ export const useAuthAPI = () => {
         },
         body: JSON.stringify({ name: username, password: password }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === "success") {
         const decoded = jwtDecode(data.data.access_token);
-        
+
         // Handle login state
         dispatch(loginAction({
           token: data.data.access_token,
@@ -37,10 +37,10 @@ export const useAuthAPI = () => {
           exp: decoded.exp,
           is_demo: false,
         }));
-        
+
         // Set current team
         dispatch(setCurrentTeam(username));
-        
+
         return { success: true };
       } else {
         return { success: false, error: data.message };
@@ -52,115 +52,81 @@ export const useAuthAPI = () => {
       setIsLoading(false);
     }
   }, [apiUrl, dispatch]);
-  
-  // Direct signup - for token-based signup flow
-  const directSignup = useCallback(async (teamName, password, leagueToken, leagueInfo, schoolName) => {
+
+  // Shared dispatcher for both signup endpoints. Both responses carry the
+  // canonical team name in data.team_name (server-assigned for school
+  // leagues, echoed for the classic flow), so the auth state setup is
+  // identical.
+  const dispatchSignup = useCallback(async (endpoint, body) => {
     setIsLoading(true);
-    
+
     try {
-      const response = await fetch(`${apiUrl}/user/direct-league-signup`, {
+      const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          team_name: teamName,
-          password: password,
-          signup_token: leagueToken,
-          school_name: schoolName
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === 'success') {
-        // Decode token to get expiration
         const decoded = jwtDecode(data.data.access_token);
-        
-        // Handle auth state
+        const teamName = data.data.team_name;
+
         dispatch(loginAction({
           token: data.data.access_token,
           name: teamName,
           role: 'student',
           exp: decoded.exp,
-          is_demo: false
+          is_demo: false,
         }));
-        
-        // Set current team
         dispatch(setCurrentTeam(teamName));
-        
-        toast.success(data.message || 'Signed up successfully!');
-        
-        return { 
-          success: true, 
-          leagueId: data.data.league_id 
-        };
-      } else {
-        return { success: false, error: data.message || 'Failed to sign up' };
-      }
-    } catch (error) {
-      console.error('Error during signup:', error);
-      return { success: false, error: "Network error during signup" };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiUrl, dispatch]);
-  
-  // Direct school-league signup — server assigns the team name
-  const directSchoolSignup = useCallback(async (leagueToken, schoolName, password) => {
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`${apiUrl}/user/direct-school-league-signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          signup_token: leagueToken,
-          school_name: schoolName,
-          password: password
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        const decoded = jwtDecode(data.data.access_token);
-
-        dispatch(loginAction({
-          token: data.data.access_token,
-          name: data.data.team_name,
-          role: 'student',
-          exp: decoded.exp,
-          is_demo: false
-        }));
-
-        dispatch(setCurrentTeam(data.data.team_name));
 
         toast.success(data.message || 'Signed up successfully!');
 
         return {
           success: true,
           leagueId: data.data.league_id,
-          teamName: data.data.team_name
+          teamName,
         };
-      } else {
-        return { success: false, error: data.message || 'Failed to sign up' };
       }
+      return { success: false, error: data.message || 'Failed to sign up' };
     } catch (error) {
-      console.error('Error during school signup:', error);
-      return { success: false, error: "Network error during signup" };
+      console.error('Error during signup:', error);
+      return { success: false, error: 'Network error during signup' };
     } finally {
       setIsLoading(false);
     }
   }, [apiUrl, dispatch]);
 
+  // Classic (free-text) signup flow
+  const directSignup = useCallback(
+    (teamName, password, leagueToken, schoolName) =>
+      dispatchSignup('/user/direct-league-signup', {
+        team_name: teamName,
+        password,
+        signup_token: leagueToken,
+        school_name: schoolName,
+      }),
+    [dispatchSignup],
+  );
+
+  // School-league signup flow — server assigns the team name
+  const directSchoolSignup = useCallback(
+    (leagueToken, schoolName, password) =>
+      dispatchSignup('/user/direct-school-league-signup', {
+        signup_token: leagueToken,
+        school_name: schoolName,
+        password,
+      }),
+    [dispatchSignup],
+  );
+
   return {
     isLoading,
     teamLogin,
     directSignup,
-    directSchoolSignup
+    directSchoolSignup,
   };
 };
 

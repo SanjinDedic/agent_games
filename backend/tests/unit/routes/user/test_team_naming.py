@@ -85,7 +85,11 @@ def test_next_available_team_name_empty_sanitized_raises(db_session: Session):
 
 
 def test_create_school_team_integrity_retry(db_session: Session, monkeypatch):
-    """If the first commit hits IntegrityError, the counter advances and a second commit succeeds."""
+    """The retry loop survives an IntegrityError on commit and the next
+    attempt succeeds. (Under a real race, re-querying after rollback would
+    surface the competing row and naturally pick the next number — that
+    behavior is covered by test_next_available_team_name_with_gaps.)
+    """
     now = datetime.now(AUSTRALIA_SYDNEY_TZ)
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
@@ -116,7 +120,7 @@ def test_create_school_team_integrity_retry(db_session: Session, monkeypatch):
     monkeypatch.setattr(Session, "commit", flaky_commit)
 
     team = create_school_team(db_session, league.id, "Willetton", "pw")
-    assert team.name == "Willetton2"
+    assert team.name == "Willetton1"
     assert calls["n"] >= 2
 
 

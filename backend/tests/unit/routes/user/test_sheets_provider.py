@@ -8,25 +8,25 @@ import pytest
 from backend.schools.providers import (
     GoogleSheetsSchoolsProvider,
     SchoolsProviderError,
-    _to_csv_export_url,
+    to_csv_export_url,
 )
 
 
-def test_to_csv_export_url_with_gid():
+def testto_csv_export_url_with_gid():
     url = "https://docs.google.com/spreadsheets/d/abc_ID-123/edit#gid=456"
-    assert _to_csv_export_url(url) == (
+    assert to_csv_export_url(url) == (
         "https://docs.google.com/spreadsheets/d/abc_ID-123/export?format=csv&gid=456"
     )
 
 
-def test_to_csv_export_url_without_gid_defaults_to_zero():
+def testto_csv_export_url_without_gid_defaults_to_zero():
     url = "https://docs.google.com/spreadsheets/d/abc_ID-123/edit"
-    assert _to_csv_export_url(url).endswith("gid=0")
+    assert to_csv_export_url(url).endswith("gid=0")
 
 
-def test_to_csv_export_url_rejects_non_sheets_url():
+def testto_csv_export_url_rejects_non_sheets_url():
     with pytest.raises(SchoolsProviderError):
-        _to_csv_export_url("https://example.com/spreadsheets/not-here")
+        to_csv_export_url("https://example.com/spreadsheets/not-here")
 
 
 def _ok(text: str) -> MagicMock:
