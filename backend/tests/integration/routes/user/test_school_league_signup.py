@@ -17,7 +17,6 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
-from backend.schools import providers as providers_module
 
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
@@ -333,14 +332,6 @@ def _mock_csv_response(csv_text: str) -> MagicMock:
     resp.text = csv_text
     resp.raise_for_status = MagicMock(return_value=None)
     return resp
-
-
-@pytest.fixture(autouse=True)
-def clear_sheets_cache():
-    """Keep the module-level cache isolated between tests."""
-    providers_module._SHEET_CACHE.clear()
-    yield
-    providers_module._SHEET_CACHE.clear()
 
 
 def test_sheet_backed_league_info_and_signup(

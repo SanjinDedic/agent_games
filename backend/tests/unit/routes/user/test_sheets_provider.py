@@ -5,19 +5,11 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from backend.schools import providers as providers_module
 from backend.schools.providers import (
     GoogleSheetsSchoolsProvider,
     SchoolsProviderError,
     _to_csv_export_url,
 )
-
-
-@pytest.fixture(autouse=True)
-def clear_cache():
-    providers_module._SHEET_CACHE.clear()
-    yield
-    providers_module._SHEET_CACHE.clear()
 
 
 def test_to_csv_export_url_with_gid():
@@ -63,20 +55,7 @@ def test_list_schools_empty_sheet_returns_empty_list():
         assert provider.list_schools() == []
 
 
-def test_list_schools_caches_within_ttl():
-    csv_text = "School\nA\nB\n"
-    provider = GoogleSheetsSchoolsProvider(
-        "https://docs.google.com/spreadsheets/d/abc/edit",
-        ttl_seconds=60,
-    )
-    with patch("backend.schools.providers.httpx.get", return_value=_ok(csv_text)) as g:
-        provider.list_schools()
-        provider.list_schools()
-        provider.list_schools()
-    assert g.call_count == 1
-
-
-def test_list_schools_network_error_with_no_cache_raises():
+def test_list_schools_network_error_raises():
     provider = GoogleSheetsSchoolsProvider(
         "https://docs.google.com/spreadsheets/d/abc/edit"
     )
@@ -86,22 +65,6 @@ def test_list_schools_network_error_with_no_cache_raises():
     ):
         with pytest.raises(SchoolsProviderError):
             provider.list_schools()
-
-
-def test_list_schools_network_error_serves_stale_cache():
-    """When a previous fetch succeeded, a later failure must not break signup."""
-    provider = GoogleSheetsSchoolsProvider(
-        "https://docs.google.com/spreadsheets/d/abc/edit",
-        ttl_seconds=0,  # force next call past the TTL so it attempts refetch
-    )
-    with patch("backend.schools.providers.httpx.get", return_value=_ok("School\nA\nB\n")):
-        assert provider.list_schools() == ["A", "B"]
-    with patch(
-        "backend.schools.providers.httpx.get",
-        side_effect=httpx.ConnectError("net"),
-    ):
-        # Should fall back to the cached list instead of raising
-        assert provider.list_schools() == ["A", "B"]
 
 
 def test_list_schools_ignores_blank_rows_and_trims():
