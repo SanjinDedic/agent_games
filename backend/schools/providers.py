@@ -8,6 +8,11 @@ from typing import Dict, List, Optional, Protocol, Tuple
 import httpx
 
 from backend.database.db_models import League
+from backend.schools.config import (
+    GoogleSheetsSchoolsConfig,
+    StaticSchoolsConfig,
+    parse_schools_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +77,7 @@ class GoogleSheetsSchoolsProvider:
         try:
             resp = httpx.get(csv_url, timeout=5.0, follow_redirects=True)
             resp.raise_for_status()
-        except Exception as e:
+        except httpx.HTTPError as e:
             logger.warning("Sheets fetch failed for %s: %s", csv_url, e)
             if cached:
                 return list(cached[1])
@@ -92,10 +97,12 @@ class GoogleSheetsSchoolsProvider:
 def get_schools_provider(league: League) -> Optional[SchoolsProvider]:
     if not league.school_league:
         return None
-    cfg = league.schools_config or {}
-    source = cfg.get("source", "static")
-    if source == "static":
-        return StaticSchoolsProvider(cfg.get("schools", []))
-    if source == "google_sheets":
-        return GoogleSheetsSchoolsProvider(cfg["sheet_url"])
-    raise SchoolsProviderError(f"Unknown schools source: {source}")
+    try:
+        cfg = parse_schools_config(league.schools_config or {})
+    except Exception as e:
+        raise SchoolsProviderError(f"Invalid schools_config: {e}")
+    if isinstance(cfg, StaticSchoolsConfig):
+        return StaticSchoolsProvider(cfg.schools)
+    if isinstance(cfg, GoogleSheetsSchoolsConfig):
+        return GoogleSheetsSchoolsProvider(cfg.sheet_url)
+    raise SchoolsProviderError(f"Unknown schools source: {cfg!r}")

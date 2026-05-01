@@ -1,22 +1,20 @@
 import logging
-import re
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from backend.database.db_models import League, Team, TeamType
+from backend.schools.naming import sanitize_school_name
+
+__all__ = [
+    "MAX_COLLISION_RETRIES",
+    "create_school_team",
+    "next_available_team_name",
+    "sanitize_school_name",
+]
 
 logger = logging.getLogger(__name__)
 MAX_COLLISION_RETRIES = 10
-
-
-def sanitize_school_name(s: str) -> str:
-    """Strip all non-alphanumerics; preserve casing.
-
-    'Willetton SHS!' -> 'WillettonSHS'. Accents/non-ASCII are stripped (e.g.
-    'École' -> 'cole'); callers that need Unicode should pre-normalize.
-    """
-    return re.sub(r"[^A-Za-z0-9]", "", s or "")
 
 
 def next_available_team_name(session: Session, sanitized: str, start: int = 1) -> str:

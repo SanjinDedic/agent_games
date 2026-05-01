@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from backend.schools import providers as providers_module
@@ -79,7 +80,10 @@ def test_list_schools_network_error_with_no_cache_raises():
     provider = GoogleSheetsSchoolsProvider(
         "https://docs.google.com/spreadsheets/d/abc/edit"
     )
-    with patch("backend.schools.providers.httpx.get", side_effect=RuntimeError("net")):
+    with patch(
+        "backend.schools.providers.httpx.get",
+        side_effect=httpx.ConnectError("net"),
+    ):
         with pytest.raises(SchoolsProviderError):
             provider.list_schools()
 
@@ -92,7 +96,10 @@ def test_list_schools_network_error_serves_stale_cache():
     )
     with patch("backend.schools.providers.httpx.get", return_value=_ok("School\nA\nB\n")):
         assert provider.list_schools() == ["A", "B"]
-    with patch("backend.schools.providers.httpx.get", side_effect=RuntimeError("net")):
+    with patch(
+        "backend.schools.providers.httpx.get",
+        side_effect=httpx.ConnectError("net"),
+    ):
         # Should fall back to the cached list instead of raising
         assert provider.list_schools() == ["A", "B"]
 

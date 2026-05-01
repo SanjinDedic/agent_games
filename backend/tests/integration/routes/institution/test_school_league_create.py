@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from sqlmodel import Session, select
 
@@ -246,7 +247,7 @@ def test_school_league_rejects_empty_sheet(client, institution_headers):
 def test_school_league_rejects_unreachable_sheet(client, institution_headers):
     with patch(
         "backend.schools.providers.httpx.get",
-        side_effect=RuntimeError("boom"),
+        side_effect=httpx.ConnectError("boom"),
     ):
         resp = client.post(
             "/institution/league-create",

@@ -2,7 +2,7 @@ import json
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Dict, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import pytz
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +12,9 @@ from backend.database.db_models import (Institution, League, LeagueType,
                                         SimulationResult, SimulationResultItem,
                                         Submission, Team, TeamType)
 from backend.games.game_factory import GameFactory
+from backend.routes.institution.institution_models import LeagueSignUp
+from backend.schools.config import (GoogleSheetsSchoolsConfig,
+                                    StaticSchoolsConfig)
 from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
 from backend.utils import process_simulation_results
@@ -40,64 +43,75 @@ class InstitutionAccessError(Exception):
     pass
 
 
-def create_league(session: Session, league_data, institution_id: int) -> Dict:
+class SchoolsConfigError(Exception):
+    """Raised when a school league's schools_config is invalid or unreachable."""
+    pass
+
+
+def _build_schools_config(
+    league_data: LeagueSignUp,
+) -> Optional[Union[StaticSchoolsConfig, GoogleSheetsSchoolsConfig]]:
+    """Translate the validated LeagueSignUp into a typed schools_config.
+
+    Sheet-backed configs are validated upfront (one fetch) so configuration
+    errors surface at create time, not at student-signup time.
+    """
+    if not league_data.school_league:
+        return None
+    if league_data.sheet_url:
+        try:
+            schools = GoogleSheetsSchoolsProvider(league_data.sheet_url).list_schools()
+        except SchoolsProviderError as e:
+            raise SchoolsConfigError(f"Could not read the Google Sheet: {e}")
+        if not schools:
+            raise SchoolsConfigError(
+                "The Google Sheet returned an empty list. Ensure sharing "
+                "is set to 'Anyone with the link - Viewer' and that column "
+                "A contains school names below a header row."
+            )
+        return GoogleSheetsSchoolsConfig(sheet_url=league_data.sheet_url)
+    return StaticSchoolsConfig(schools=list(league_data.schools))
+
+
+def create_league(
+    session: Session, league_data: LeagueSignUp, institution_id: int
+) -> Dict:
     """Create a new league for an institution"""
     # Check if the institution has a league with this name already
     existing_league = session.exec(
         select(League)
-        .where(League.name == league_data["name"])
+        .where(League.name == league_data.name)
         .where(League.institution_id == institution_id)
     ).first()
 
     if existing_league:
         raise LeagueExistsError(
-            f"League with name '{league_data['name']}' already exists for this institution"
+            f"League with name '{league_data.name}' already exists for this institution"
         )
 
     # Validate game name
-    GameFactory.get_game_class(league_data["game"])
+    GameFactory.get_game_class(league_data.game)
+
+    schools_config_model = _build_schools_config(league_data)
+    schools_config = (
+        schools_config_model.model_dump() if schools_config_model else None
+    )
 
     # Generate unique signup token
     signup_token = secrets.token_urlsafe(16)
 
-    school_league = bool(league_data.get("school_league", False))
-    schools_config = None
-    if school_league:
-        sheet_url = (league_data.get("sheet_url") or "").strip() or None
-        if sheet_url:
-            # Validate upfront: fetch once so teachers see config errors now,
-            # not at student-signup time.
-            try:
-                schools = GoogleSheetsSchoolsProvider(sheet_url).list_schools()
-            except SchoolsProviderError as e:
-                raise LeagueExistsError(
-                    f"Could not read the Google Sheet: {e}"
-                )
-            if not schools:
-                raise LeagueExistsError(
-                    "The Google Sheet returned an empty list. Ensure sharing "
-                    "is set to 'Anyone with the link - Viewer' and that column "
-                    "A contains school names below a header row."
-                )
-            schools_config = {"source": "google_sheets", "sheet_url": sheet_url}
-        else:
-            schools_config = {
-                "source": "static",
-                "schools": list(league_data.get("schools", [])),
-            }
-
     # Create the league
     league = League(
-        name=league_data["name"],
+        name=league_data.name,
         created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
         expiry_date=(
             datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24)
         ),  # Default 24 hour expiry
-        game=league_data["game"],
+        game=league_data.game,
         institution_id=institution_id,
         league_type=LeagueType.INSTITUTION,
         signup_link=signup_token,
-        school_league=school_league,
+        school_league=league_data.school_league,
         schools_config=schools_config,
     )
 
@@ -108,7 +122,7 @@ def create_league(session: Session, league_data, institution_id: int) -> Dict:
         "league_id": league.id,
         "name": league.name,
         "signup_token": signup_token,
-        "school_league": school_league,
+        "school_league": league_data.school_league,
     }
 
 

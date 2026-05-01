@@ -1,9 +1,9 @@
-import re
 from datetime import datetime
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from backend.schools.naming import sanitize_school_name
 from backend.utils import get_games_names
 
 import pytz
@@ -38,7 +38,7 @@ class LeagueSignUp(BaseModel):
             s2 = (s or "").strip()
             if not s2 or s2 in seen:
                 continue
-            if not re.sub(r"[^A-Za-z0-9]", "", s2):
+            if not sanitize_school_name(s2):
                 raise ValueError(
                     f"School name '{s2}' must contain at least one alphanumeric character"
                 )
