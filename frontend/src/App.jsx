@@ -19,7 +19,7 @@ import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import StyleGuide from "./StyleGuide";
 import PublishedResults from "./AgentGames/PublishedResults";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React from "react";
 import { useDispatch } from "react-redux";
 import { ToastContainer } from "react-toastify";
@@ -113,16 +113,26 @@ function App() {
 
         <SupportButton />
 
-        <a
-          href="https://github.com/SanjinDedic"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-2 left-3 text-xs text-ui/60 hover:text-ui transition-colors duration-200 z-40"
-        >
-          Agent Games by Sanjin Dedic
-        </a>
+        <CreditLink />
       </div>
     </BrowserRouter>
+  );
+}
+
+function CreditLink() {
+  const { pathname } = useLocation();
+  const hideOn = [/^\/AgentSubmission\b/, /^\/InstitutionLeagueSubmissions\//];
+  if (hideOn.some((re) => re.test(pathname))) return null;
+
+  return (
+    <a
+      href="https://github.com/SanjinDedic"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-2 left-3 text-xs text-ui/60 hover:text-ui transition-colors duration-200 z-40"
+    >
+      Agent Games by Sanjin Dedic
+    </a>
   );
 }
 
