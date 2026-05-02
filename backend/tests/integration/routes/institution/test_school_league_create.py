@@ -1,7 +1,9 @@
 """Tests for POST /institution/league-create with school_league flag."""
 
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from sqlmodel import Session, select
 
@@ -67,7 +69,7 @@ def test_school_league_create_success(client, institution_headers, db_session):
     }
 
 
-def test_school_league_requires_schools(client, institution_headers):
+def test_school_league_requires_a_source(client, institution_headers):
     resp = client.post(
         "/institution/league-create",
         headers=institution_headers,
@@ -79,7 +81,7 @@ def test_school_league_requires_schools(client, institution_headers):
         },
     )
     assert resp.status_code == 422
-    assert "at least one school" in str(resp.json()).lower()
+    assert "exactly one source" in str(resp.json()).lower()
 
 
 def test_non_school_league_ignores_schools(client, institution_headers, db_session):
@@ -152,3 +154,129 @@ def test_default_school_league_false(client, institution_headers, db_session):
     ).first()
     assert league.school_league is False
     assert league.schools_config is None
+
+
+def _mock_csv_response(csv_text: str) -> MagicMock:
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = csv_text
+    resp.raise_for_status = MagicMock(return_value=None)
+    return resp
+
+
+def test_school_league_create_with_sheet_url(client, institution_headers, db_session):
+    csv_text = "School\nWilletton SHS\nPerth Modern\n"
+    with patch(
+        "backend.schools.providers.httpx.get",
+        return_value=_mock_csv_response(csv_text),
+    ):
+        resp = client.post(
+            "/institution/league-create",
+            headers=institution_headers,
+            json={
+                "name": "sheet_backed_league",
+                "game": "greedy_pig",
+                "school_league": True,
+                "sheet_url": "https://docs.google.com/spreadsheets/d/abc123/edit#gid=0",
+            },
+        )
+    assert resp.status_code == 200, resp.json()
+    assert resp.json()["status"] == "success"
+    league = db_session.exec(
+        select(League).where(League.name == "sheet_backed_league")
+    ).first()
+    assert league.school_league is True
+    assert league.schools_config == {
+        "source": "google_sheets",
+        "sheet_url": "https://docs.google.com/spreadsheets/d/abc123/edit#gid=0",
+    }
+
+
+def test_school_league_rejects_both_sheet_and_static(client, institution_headers):
+    resp = client.post(
+        "/institution/league-create",
+        headers=institution_headers,
+        json={
+            "name": "both_sources",
+            "game": "greedy_pig",
+            "school_league": True,
+            "schools": ["Willetton"],
+            "sheet_url": "https://docs.google.com/spreadsheets/d/abc/edit",
+        },
+    )
+    assert resp.status_code == 422
+    assert "exactly one source" in str(resp.json()).lower()
+
+
+def test_school_league_rejects_neither_source(client, institution_headers):
+    resp = client.post(
+        "/institution/league-create",
+        headers=institution_headers,
+        json={
+            "name": "no_source",
+            "game": "greedy_pig",
+            "school_league": True,
+        },
+    )
+    assert resp.status_code == 422
+    assert "exactly one source" in str(resp.json()).lower()
+
+
+def test_school_league_rejects_empty_sheet(client, institution_headers):
+    csv_text = "School\n"  # header only, no data rows
+    with patch(
+        "backend.schools.providers.httpx.get",
+        return_value=_mock_csv_response(csv_text),
+    ):
+        resp = client.post(
+            "/institution/league-create",
+            headers=institution_headers,
+            json={
+                "name": "empty_sheet_league",
+                "game": "greedy_pig",
+                "school_league": True,
+                "sheet_url": "https://docs.google.com/spreadsheets/d/empty/edit",
+            },
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "error"
+    assert "empty list" in body["message"].lower()
+
+
+def test_school_league_rejects_unreachable_sheet(client, institution_headers):
+    with patch(
+        "backend.schools.providers.httpx.get",
+        side_effect=httpx.ConnectError("boom"),
+    ):
+        resp = client.post(
+            "/institution/league-create",
+            headers=institution_headers,
+            json={
+                "name": "unreachable_sheet_league",
+                "game": "greedy_pig",
+                "school_league": True,
+                "sheet_url": "https://docs.google.com/spreadsheets/d/unreachable/edit",
+            },
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "error"
+    assert "could not read the google sheet" in body["message"].lower()
+
+
+def test_school_league_rejects_non_sheets_url(client, institution_headers):
+    resp = client.post(
+        "/institution/league-create",
+        headers=institution_headers,
+        json={
+            "name": "bad_url_league",
+            "game": "greedy_pig",
+            "school_league": True,
+            "sheet_url": "https://example.com/some-random-page",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "error"
+    assert "google sheets url" in body["message"].lower()

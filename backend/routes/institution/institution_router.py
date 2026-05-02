@@ -84,7 +84,7 @@ async def create_league_endpoint(
                 status="error", message="Institution ID not found in token"
             )
 
-        data = create_league(session, league.model_dump(), institution_id)
+        data = create_league(session, league, institution_id)
 
         return ResponseModel(
             status="success", message="League created successfully", data=data

@@ -34,12 +34,15 @@ class GameName(BaseModel):
 
 
 class DirectLeagueSignup(BaseModel):
-    """Model for direct team signup with league token"""
+    """Classic (non-curated) team signup: client-chosen team_name and free-text
+    school_name. School-league signups (curated dropdown, server-assigned team
+    name) use DirectSchoolLeagueSignup instead.
+    """
 
     team_name: str
     password: str
     signup_token: str
-    school_name: str = ""  # Add school_name field with default empty string
+    school_name: str = ""
 
     @field_validator("team_name", "password")
     def validate_not_empty(cls, v):

@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytz
@@ -113,7 +114,7 @@ def expired_school_league_fixture(db_session: Session) -> dict:
     return {"league": league, "signup_token": token}
 
 
-def test_league_info_includes_schools_and_previews(client, school_league_fixture):
+def test_league_info_includes_schools(client, school_league_fixture):
     resp = client.get(f"/user/league-info/{school_league_fixture['signup_token']}")
     assert resp.status_code == 200
     data = resp.json()
@@ -121,8 +122,6 @@ def test_league_info_includes_schools_and_previews(client, school_league_fixture
     payload = data["data"]
     assert payload["school_league"] is True
     assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
-    assert payload["team_name_previews"]["Willetton SHS"] == "WillettonSHS1"
-    assert payload["team_name_previews"]["Perth Modern"] == "PerthModern1"
 
 
 def test_league_info_non_school_omits_schools(client, non_school_league_fixture):
@@ -133,7 +132,6 @@ def test_league_info_non_school_omits_schools(client, non_school_league_fixture)
     payload = resp.json()["data"]
     assert payload["school_league"] is False
     assert "schools" not in payload
-    assert "team_name_previews" not in payload
 
 
 def test_direct_school_signup_happy_path(client, school_league_fixture, db_session):
@@ -297,3 +295,91 @@ def test_direct_league_signup_still_works_for_non_school_league(
     ).first()
     assert team is not None
     assert team.school_name == "Any School"
+
+
+@pytest.fixture
+def sheet_backed_league_fixture(db_session: Session) -> dict:
+    """A school league whose schools_config points at a Google Sheet URL."""
+    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    institution = db_session.exec(
+        select(Institution).where(Institution.name == "Admin Institution")
+    ).first()
+
+    token = secrets.token_urlsafe(16)
+    league = League(
+        name="sheet_backed_signup_league",
+        created_date=now,
+        expiry_date=now + timedelta(days=7),
+        game="greedy_pig",
+        institution_id=institution.id,
+        league_type=LeagueType.INSTITUTION,
+        signup_link=token,
+        school_league=True,
+        schools_config={
+            "source": "google_sheets",
+            "sheet_url": "https://docs.google.com/spreadsheets/d/sheet999/edit#gid=0",
+        },
+    )
+    db_session.add(league)
+    db_session.commit()
+    db_session.refresh(league)
+    return {"league": league, "signup_token": token}
+
+
+def _mock_csv_response(csv_text: str) -> MagicMock:
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = csv_text
+    resp.raise_for_status = MagicMock(return_value=None)
+    return resp
+
+
+def test_sheet_backed_league_info_and_signup(
+    client, sheet_backed_league_fixture, db_session
+):
+    csv_text = "School\nWilletton SHS\nPerth Modern\n"
+    with patch(
+        "backend.schools.providers.httpx.get",
+        return_value=_mock_csv_response(csv_text),
+    ):
+        info = client.get(
+            f"/user/league-info/{sheet_backed_league_fixture['signup_token']}"
+        )
+        assert info.status_code == 200
+        payload = info.json()["data"]
+        assert payload["school_league"] is True
+        assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
+
+        signup = client.post(
+            "/user/direct-school-league-signup",
+            json={
+                "signup_token": sheet_backed_league_fixture["signup_token"],
+                "school_name": "Perth Modern",
+                "password": "pw",
+            },
+        )
+    assert signup.status_code == 200
+    assert signup.json()["status"] == "success"
+    assert signup.json()["data"]["team_name"] == "PerthModern1"
+
+
+def test_sheet_backed_signup_rejects_school_not_in_sheet(
+    client, sheet_backed_league_fixture
+):
+    csv_text = "School\nWilletton SHS\n"
+    with patch(
+        "backend.schools.providers.httpx.get",
+        return_value=_mock_csv_response(csv_text),
+    ):
+        resp = client.post(
+            "/user/direct-school-league-signup",
+            json={
+                "signup_token": sheet_backed_league_fixture["signup_token"],
+                "school_name": "Perth Modern",
+                "password": "pw",
+            },
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "error"
+    assert "not in this league" in body["message"].lower()

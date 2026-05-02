@@ -6,19 +6,18 @@ import { toast } from "react-toastify";
 import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 
-function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
+function DirectClassicSignup({ leagueToken, leagueInfo }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { directSchoolSignup, isLoading } = useAuthAPI();
+  const { directSignup, isLoading } = useAuthAPI();
 
   const [formData, setFormData] = useState({
-    schoolName: "",
+    teamName: "",
     password: "",
     confirmPassword: "",
+    schoolName: "",
   });
   const [error, setError] = useState("");
-
-  const schools = leagueInfo?.schools || [];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -28,12 +27,8 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.schoolName) {
-      setError("Select your school");
-      return;
-    }
-    if (!formData.password) {
-      setError("Password is required");
+    if (!formData.teamName || !formData.password) {
+      setError("All fields are required");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -41,26 +36,28 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
       return;
     }
 
-    const result = await directSchoolSignup(
+    const result = await directSignup(
+      formData.teamName,
+      formData.password,
       leagueToken,
       formData.schoolName,
-      formData.password
     );
 
     if (result.success) {
-      const leagueObject = {
-        id: result.leagueId,
-        name: leagueInfo.name,
-        game: leagueInfo.game,
-        created_date: leagueInfo.created_date,
-        expiry_date: leagueInfo.expiry_date,
-        school_league: true,
-      };
-
-      dispatch(setLeagues([leagueObject]));
+      dispatch(
+        setLeagues([
+          {
+            id: result.leagueId,
+            name: leagueInfo.name,
+            game: leagueInfo.game,
+            created_date: leagueInfo.created_date,
+            expiry_date: leagueInfo.expiry_date,
+          },
+        ]),
+      );
       dispatch(setCurrentLeague(leagueInfo.name));
 
-      toast.success(`Signed up as ${result.teamName}. Save your password!`);
+      toast.success("Signed up and joined league successfully!");
 
       setTimeout(() => {
         navigate("/AgentSubmission");
@@ -79,36 +76,20 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
         <p className="text-gray-700">Game: {leagueInfo.game}</p>
       </div>
 
-      <div
-        className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded"
-        role="alert"
-      >
-        <p className="font-bold">Save your password now.</p>
-        <p className="text-sm mt-1">
-          There is no password recovery. If you lose your password you will
-          need to sign up again and pick the next team number for your school.
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="schoolName" className="block text-ui-dark mb-1">
-            School
+          <label htmlFor="teamName" className="block text-ui-dark mb-1">
+            Team Name
           </label>
-          <select
-            id="schoolName"
-            name="schoolName"
-            value={formData.schoolName}
+          <input
+            type="text"
+            id="teamName"
+            name="teamName"
+            value={formData.teamName}
             onChange={handleChange}
             className="w-full p-2 border border-ui-light rounded"
-          >
-            <option value="">Select your school...</option>
-            {schools.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            placeholder="Choose a team name"
+          />
         </div>
 
         <div>
@@ -141,6 +122,21 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
           />
         </div>
 
+        <div>
+          <label htmlFor="schoolName" className="block text-ui-dark mb-1">
+            School Name
+          </label>
+          <input
+            type="text"
+            id="schoolName"
+            name="schoolName"
+            value={formData.schoolName}
+            onChange={handleChange}
+            className="w-full p-2 border border-ui-light rounded"
+            placeholder="Enter your school name in full"
+          />
+        </div>
+
         {error && <div className="text-red-600">{error}</div>}
 
         <button
@@ -164,4 +160,4 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
   );
 }
 
-export default DirectSchoolLeagueSignup;
+export default DirectClassicSignup;
