@@ -7,6 +7,7 @@ servers:
     hosts:
       - api.agentgames.io
     options:
+      hostname: api
       memory: 400m
       pids-limit: 50
 
