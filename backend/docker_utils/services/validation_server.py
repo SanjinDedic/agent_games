@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Universal hard cap for agent validation (single game + simulations).
+VALIDATION_TIMEOUT_SECONDS = 5
+
 # Security configuration
 ALLOWED_MODULES = {
     "random": None,
@@ -164,7 +167,7 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
 
         try:
             # Run in thread pool with timeout
-            async with asyncio.timeout(15):
+            async with asyncio.timeout(VALIDATION_TIMEOUT_SECONDS):
                 feedback_result = await asyncio.to_thread(
                     game_instance.run_single_game_with_feedback, request.custom_rewards
                 )
@@ -178,7 +181,11 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
         except TimeoutError:
             return ValidationResponse(
                 status="error",
-                message="Operation timed out - agent may be too slow or stuck in a loop",
+                message=(
+                    f"Your agent consumes too much time - validation did not "
+                    f"finish within {VALIDATION_TIMEOUT_SECONDS} seconds. "
+                    f"The agent may be too slow or stuck in a loop."
+                ),
             )
         except Exception as e:
             logger.error(f"Error during simulation: {str(e)}")
