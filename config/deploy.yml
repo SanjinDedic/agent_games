@@ -52,6 +52,8 @@ builder:
   arch: amd64
   dockerfile: backend/docker_utils/Dockerfile
   context: .
+  args:
+    RUNTIME_PACKAGES: postgresql18-client
 
 env:
   clear:
