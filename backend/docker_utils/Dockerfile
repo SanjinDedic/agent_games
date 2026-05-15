@@ -4,7 +4,7 @@ FROM python:3.14-alpine AS builder
 WORKDIR /agent_games
 
 # Install uv and build dependencies for compiled packages
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+RUN pip install --no-cache-dir uv
 RUN apk add --no-cache gcc musl-dev postgresql-dev
 
 # Install dependencies (cached layer)
