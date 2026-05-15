@@ -131,11 +131,9 @@ function AgentGamesNavbar() {
                 <Link to="/" className={navLinkClasses}>
                   Home
                 </Link>
-                {/*
                 <Link to="/Demo" className={navLinkClasses}>
                   Demo
-                </Link>
-                */}
+                </Link>                
                 <Link to="/Institution" className={navLinkClasses}>
                   Institutions
                 </Link>
