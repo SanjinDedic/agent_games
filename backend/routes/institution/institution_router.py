@@ -215,7 +215,7 @@ async def run_simulation_endpoint(
                         "custom_rewards": simulation_config.custom_rewards,
                         "player_feedback": True,
                     },
-                    timeout=60.0,
+                    timeout=300.0,
                 )
 
                 if response.status_code != 200:
