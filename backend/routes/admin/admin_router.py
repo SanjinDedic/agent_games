@@ -8,17 +8,20 @@ from backend.config import get_service_url
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.admin.admin_backup import create_backup, list_backups, restore_backup
 from backend.routes.admin.admin_db import (
+    clear_institution_data,
     create_agent_team,
     create_api_key,
     create_institution,
     delete_all_demo_teams_and_subs,
     delete_institution,
+    export_institution_data,
     get_all_demo_users,
     get_all_institutions,
     toggle_institution_docker_access,
     update_institution,
 )
 from backend.routes.admin.admin_models import (
+    ClearInstitutionData,
     CreateAgentAPIKey,
     CreateAgentTeam,
     CreateInstitution,
@@ -102,6 +105,52 @@ async def delete_institution_endpoint(
         logger.error(f"Error deleting institution: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to delete institution: {str(e)}"
+        )
+
+
+@admin_router.post("/institution-clear-data", response_model=ResponseModel)
+@verify_admin_role
+async def clear_institution_data_endpoint(
+    request: ClearInstitutionData,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Clear all teams/leagues/submissions/results for an institution while keeping
+    the institution row and its auto-created 'unassigned' league."""
+    try:
+        counts = clear_institution_data(session, request.id)
+        msg = (
+            f"Cleared institution data: {counts['teams_deleted']} team(s), "
+            f"{counts['leagues_deleted']} league(s), "
+            f"{counts['tickets_deleted']} ticket(s) removed"
+        )
+        return ResponseModel(status="success", message=msg, data=counts)
+    except Exception as e:
+        logger.error(f"Error clearing institution data: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to clear institution data: {str(e)}"
+        )
+
+
+@admin_router.get("/institution-export/{institution_id}", response_model=ResponseModel)
+@verify_admin_role
+async def export_institution_endpoint(
+    institution_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Return a JSON dump of every record belonging to one institution."""
+    try:
+        dump = export_institution_data(session, institution_id)
+        return ResponseModel(
+            status="success",
+            message=f"Exported data for institution {institution_id}",
+            data=dump,
+        )
+    except Exception as e:
+        logger.error(f"Error exporting institution: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to export institution: {str(e)}"
         )
 
 

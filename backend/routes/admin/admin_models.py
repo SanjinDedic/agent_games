@@ -42,6 +42,12 @@ class DeleteInstitution(BaseModel):
     id: int
 
 
+class ClearInstitutionData(BaseModel):
+    """Model for clearing all teams/leagues/data for an institution while keeping the institution row."""
+
+    id: int
+
+
 class ToggleDockerAccess(BaseModel):
     """Model for toggling Docker access for an institution"""
 

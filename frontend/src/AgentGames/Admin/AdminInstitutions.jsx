@@ -6,6 +6,7 @@ import { checkTokenExpiry } from '../../slices/authSlice';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
+import { saveAs } from 'file-saver';
 import { authFetch } from '../../utils/authFetch';
 
 function AdminInstitutions() {
@@ -150,6 +151,72 @@ function AdminInstitutions() {
           setIsLoading(false);
         });
     }
+  };
+
+  const handleExportInstitution = (id, name) => {
+    setIsLoading(true);
+    authFetch(`${apiUrl}/admin/institution-export/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          const blob = new Blob(
+            [JSON.stringify(data.data, null, 2)],
+            { type: 'application/json' }
+          );
+          const safeName = name.replace(/[^a-zA-Z0-9-_]+/g, '_');
+          const dateStr = moment().format('YYYY-MM-DD');
+          saveAs(blob, `${safeName}-export-${dateStr}.json`);
+          toast.success('Institution data exported');
+        } else {
+          toast.error(data.message || 'Failed to export institution');
+        }
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error exporting institution:', error);
+        toast.error('Error connecting to server');
+        setIsLoading(false);
+      });
+  };
+
+  const handleClearInstitution = (id, name) => {
+    const typed = window.prompt(
+      `This will permanently delete every team, league (except "unassigned"), submission, simulation result, agent API key, and support ticket for "${name}".\n\nType the institution name exactly to confirm:`
+    );
+    if (typed === null) return;
+    if (typed !== name) {
+      toast.error('Confirmation text did not match — nothing was cleared');
+      return;
+    }
+
+    setIsLoading(true);
+    authFetch(`${apiUrl}/admin/institution-clear-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ id }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          toast.success(data.message || 'Institution data cleared');
+          fetchInstitutions();
+        } else {
+          toast.error(data.message || 'Failed to clear institution data');
+        }
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error clearing institution data:', error);
+        toast.error('Error connecting to server');
+        setIsLoading(false);
+      });
   };
 
   const toggleDockerAccess = (institutionId, enable) => {
@@ -347,15 +414,35 @@ function AdminInstitutions() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <button
-                                onClick={() => handleDeleteInstitution(institution.id, institution.name)}
-                                className="text-danger hover:text-danger-hover"
-                                title="Delete Institution"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                              </button>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => handleExportInstitution(institution.id, institution.name)}
+                                  className="text-primary hover:text-primary-hover"
+                                  title="Export Data (JSON)"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm6.293-12.707a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V13a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414-1.414l4-4z" clipRule="evenodd" transform="rotate(180 10 10)" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleClearInstitution(institution.id, institution.name)}
+                                  className="text-notice-orange hover:text-danger"
+                                  title="Clear All Data (keeps institution)"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l6.518 11.59c.75 1.335-.213 2.98-1.742 2.98H3.482c-1.53 0-2.493-1.645-1.743-2.98L8.257 3.1zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteInstitution(institution.id, institution.name)}
+                                  className="text-danger hover:text-danger-hover"
+                                  title="Delete Institution"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v3a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
