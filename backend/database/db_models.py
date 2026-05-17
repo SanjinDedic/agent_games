@@ -128,6 +128,7 @@ class Submission(SQLModel, table=True):
     code: str = Field(sa_column=Column(Text()))  # Use Text for potentially long code
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     team_id: int = Field(default=None, foreign_key="team.id", nullable=True)
+    duration_ms: Optional[float] = Field(default=None)
     team: Team = Relationship(back_populates="submissions")
 
 
