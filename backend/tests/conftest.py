@@ -107,12 +107,32 @@ def db_engine():
         logger.info("Test database created successfully")
         engine = create_engine(database_url)
 
+    # Drop any leftover tables and ENUM types from a prior crashed teardown before
+    # recreating the schema. SQLAlchemy create_all does not honor checkfirst for PG
+    # named types, so a stale type from a previous run causes a duplicate-key
+    # UniqueViolation on pg_type. Tables must be dropped before the types so the
+    # CASCADE does not strip columns referencing them.
+    _ENUM_TYPES = (
+        "teamtype",
+        "leaguetype",
+        "supportticketcategory",
+        "supportticketstatus",
+        "supportticketsubmittertype",
+    )
+    SQLModel.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        for type_name in _ENUM_TYPES:
+            conn.execute(text(f"DROP TYPE IF EXISTS {type_name}"))
+
     # Create all tables
     SQLModel.metadata.create_all(engine)
     yield engine
 
     # Clean up: drop all tables but keep the database
     SQLModel.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        for type_name in _ENUM_TYPES:
+            conn.execute(text(f"DROP TYPE IF EXISTS {type_name}"))
     engine.dispose()
 
 @pytest.fixture
