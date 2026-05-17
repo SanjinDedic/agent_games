@@ -231,6 +231,12 @@ function InstitutionLeagueSubmissions() {
     });
   };
 
+  const formatDuration = (ms) => {
+    if (ms == null) return "n/a";
+    if (ms < 1000) return `${Math.round(ms)} ms`;
+    return `${(ms / 1000).toFixed(2)} s`;
+  };
+
   return (
     <div className="min-h-screen bg-ui-lighter">
       <div className="max-w-[1800px] mx-auto px-6 pt-20 pb-8">
@@ -295,6 +301,9 @@ function InstitutionLeagueSubmissions() {
                     <span className="text-xs text-gray-500">
                       {formatTimestamp(currentSubmission?.timestamp)}
                     </span>
+                    <span className="text-xs text-gray-500">
+                      Sim duration: {formatDuration(currentSubmission?.duration_ms)}
+                    </span>
                   </div>
 
                   <button
@@ -329,6 +338,8 @@ function InstitutionLeagueSubmissions() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {teamList.map((team) => {
                   const subs = submissions[team] || [];
+                  const latestDuration =
+                    subs.length > 0 ? subs[subs.length - 1].duration_ms : null;
                   return (
                     <button
                       key={team}
@@ -344,6 +355,11 @@ function InstitutionLeagueSubmissions() {
                       <div className="text-xs opacity-75">
                         {subs.length} submission{subs.length !== 1 ? "s" : ""}
                       </div>
+                      {subs.length > 0 && (
+                        <div className="text-xs opacity-75">
+                          Latest sim: {formatDuration(latestDuration)}
+                        </div>
+                      )}
                     </button>
                   );
                 })}

@@ -1,6 +1,7 @@
 import ast
 import asyncio
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -61,6 +62,7 @@ class ValidationResponse(BaseModel):
     message: Optional[str] = None
     feedback: Union[str, Dict, None] = None
     simulation_results: Optional[Dict[str, Any]] = None
+    duration_ms: Optional[float] = None
 
 
 class CodeValidator(ast.NodeVisitor):
@@ -165,8 +167,10 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
                 status="error", message=f"Error adding player: {str(e)}"
             )
 
+        duration_ms: Optional[float] = None
         try:
             # Run in thread pool with timeout
+            t0 = time.perf_counter()
             async with asyncio.timeout(VALIDATION_TIMEOUT_SECONDS):
                 feedback_result = await asyncio.to_thread(
                     game_instance.run_single_game_with_feedback, request.custom_rewards
@@ -178,6 +182,7 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
                     test_league,
                     request.custom_rewards,
                 )
+            duration_ms = (time.perf_counter() - t0) * 1000
         except TimeoutError:
             return ValidationResponse(
                 status="error",
@@ -197,6 +202,7 @@ async def validate_submission(request: ValidationRequest) -> ValidationResponse:
             status="success",
             feedback=feedback_result.get("feedback"),
             simulation_results=simulation_results,
+            duration_ms=duration_ms,
         )
 
     except Exception as e:

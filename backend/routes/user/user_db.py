@@ -67,12 +67,18 @@ def allow_submission(session: Session, team_id: int) -> bool:
     return True
 
 
-def save_submission(session: Session, code: str, team_id: int) -> int:
+def save_submission(
+    session: Session,
+    code: str,
+    team_id: int,
+    duration_ms: Optional[float] = None,
+) -> int:
     """Save a code submission"""
     db_submission = Submission(
         code=code,
         timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
         team_id=team_id,
+        duration_ms=duration_ms,
     )
     session.add(db_submission)
     session.commit()
@@ -269,6 +275,7 @@ def get_all_submissions_for_league(
                 "code": sub.code,
                 "timestamp": sub.timestamp.isoformat(),
                 "id": sub.id,
+                "duration_ms": sub.duration_ms,
             }
             for sub in submissions
         ]

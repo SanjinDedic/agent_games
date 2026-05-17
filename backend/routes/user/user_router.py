@@ -131,7 +131,10 @@ async def submit_agent(
         )
 
     try:
-        submission_id = save_submission(session, submission.code, team.id)
+        duration_ms = validation_result.get("duration_ms")
+        submission_id = save_submission(
+            session, submission.code, team.id, duration_ms=duration_ms
+        )
         return ResponseModel(
             status="success",
             message=f"Code submitted successfully. Submission ID: {submission_id}",
@@ -139,6 +142,7 @@ async def submit_agent(
                 "team_name": team_name,
                 "results": validation_result.get("simulation_results"),
                 "feedback": validation_result.get("feedback"),
+                "duration_ms": duration_ms,
             },
         )
     except Exception as e:
