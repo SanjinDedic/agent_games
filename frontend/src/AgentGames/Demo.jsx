@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 import { login } from '../slices/authSlice';
+import { featuredGames } from './Feedback/games';
 
 function Demo() {
     const navigate = useNavigate();
@@ -139,18 +140,12 @@ function Demo() {
                         <div className="bg-ui-lighter p-6 rounded-lg">
                             <h2 className="text-xl font-semibold text-ui-dark mb-4">Available Demo Games:</h2>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-white p-4 rounded shadow">
-                                    <h3 className="font-medium text-lg">Greedy Pig</h3>
-                                    <p className="text-sm text-ui">A risk/reward dice game. When do you bank your points?</p>
-                                </div>
-                                <div className="bg-white p-4 rounded shadow">
-                                    <h3 className="font-medium text-lg">Prisoner's Dilemma</h3>
-                                    <p className="text-sm text-ui">The classic cooperation vs. betrayal game theory problem.</p>
-                                </div>
-                                <div className="bg-white p-4 rounded shadow">
-                                    <h3 className="font-medium text-lg">Lineup4</h3>
-                                    <p className="text-sm text-ui">The strategic game of connecting four pieces in a row.</p>
-                                </div>
+                                {featuredGames.map((game) => (
+                                    <div key={game.name} className="bg-white p-4 rounded shadow">
+                                        <h3 className="font-medium text-lg">{game.displayName}</h3>
+                                        <p className="text-sm text-ui">{game.shortDescription || game.description}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 

@@ -1,28 +1,14 @@
 import MarkdownFeedback from '../types/MarkdownFeedback';
 import JsonFeedback from '../types/JsonFeedback';
-import PrisonersFeedback from '../games/prisoners_dilemma/PrisonersFeedback';
-import Lineup4Feedback from '../games/lineup4/Lineup4Feedback';
-import ArenaChampionsFeedback from '../games/arena_champions/ArenaChampionsFeedback';
-import GreedyPigFeedback from '../games/greedy_pig/GreedyPigFeedback';
+import { getGame } from '../games';
 
 export const getFeedbackComponent = (feedback) => {
-    // Handle game-specific feedback
     if (typeof feedback === 'object' && feedback?.game) {
-        switch (feedback.game) {
-            case 'prisoners_dilemma':
-                return PrisonersFeedback;
-            case 'lineup4':
-                return Lineup4Feedback;
-            case 'arena_champions':
-                return ArenaChampionsFeedback;
-            case 'greedy_pig':
-                return GreedyPigFeedback;
-            default:
-                return JsonFeedback;
-        }
+        const game = getGame(feedback.game);
+        if (game?.Feedback) return game.Feedback;
+        return JsonFeedback;
     }
 
-    // Handle generic feedback types
     if (typeof feedback === 'string') {
         return MarkdownFeedback;
     }
