@@ -42,7 +42,30 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
-GAMES = ["greedy_pig", "prisoners_dilemma", "lineup4", "arena_champions"]
+
+
+def _discover_games(games_dir):
+    """Scan backend/games/ for valid game folders.
+
+    A folder counts as a game when it contains all three required files:
+    player.py, <folder_name>.py, validation_players.py.
+    """
+    if not os.path.isdir(games_dir):
+        return []
+    games = []
+    for entry in sorted(os.listdir(games_dir)):
+        game_dir = os.path.join(games_dir, entry)
+        if not os.path.isdir(game_dir):
+            continue
+        if entry.startswith("_") or entry.startswith("."):
+            continue
+        required = ["player.py", f"{entry}.py", "validation_players.py"]
+        if all(os.path.isfile(os.path.join(game_dir, f)) for f in required):
+            games.append(entry)
+    return games
+
+
+GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 
 
 def get_service_url(service_name, endpoint=None):

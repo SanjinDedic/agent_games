@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { imageUrl } from '../config/assets';
+import { featuredGames } from './Feedback/games';
 
 const Homepage = () => {
   return (
@@ -132,75 +133,29 @@ const Homepage = () => {
             Featured Games
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Game 1 */}
-            <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
-              <div className="mb-4 rounded overflow-hidden">
-                <img
-                  src={imageUrl('games/greedy_pig.png')}
-                  alt="Greedy Pig game"
-                  className="w-full h-48 object-cover"
-                />
+            {featuredGames.map((game) => (
+              <div
+                key={game.name}
+                className="bg-ui-lighter p-6 rounded-lg shadow-md"
+              >
+                <div className="mb-4 rounded overflow-hidden">
+                  <img
+                    src={imageUrl(game.thumbnail)}
+                    alt={`${game.displayName} game`}
+                    className="w-full h-48 object-cover"
+                  />
+                </div>
+                <h3 className="text-xl font-semibold text-ui-dark mb-2">
+                  {game.displayName}
+                </h3>
+                <p className="text-ui mb-4">{game.description}</p>
+                <a href={`/Demo?game=${game.name}`}>
+                  <span className="text-primary font-medium hover:text-primary-hover">
+                    Try it →
+                  </span>
+                </a>
               </div>
-              <h3 className="text-xl font-semibold text-ui-dark mb-2">
-                Greedy Pig
-              </h3>
-              <p className="text-ui mb-4">
-                A strategic game of risk and reward where players must decide
-                when to bank their points or continue rolling.
-              </p>
-              <a href="/Demo?game=greedy_pig">
-                <span className="text-primary font-medium hover:text-primary-hover">
-                  Try it →
-                </span>
-              </a>
-            </div>
-
-            {/* Game 2 */}
-            <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
-              <div className="mb-4 rounded overflow-hidden">
-                <img
-                  src={imageUrl('games/prisoners_dilemma.png')}
-                  alt="Prisoner's Dilemma game"
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-ui-dark mb-2">
-                Prisoner's Dilemma
-              </h3>
-              <p className="text-ui mb-4">
-                Classic game theory scenario where players must choose to
-                cooperate or defect, balancing individual vs. collective
-                benefit.
-              </p>
-              <a href="/Demo?game=prisoners_dilemma">
-                <span className="text-primary font-medium hover:text-primary-hover">
-                  Try it →
-                </span>
-              </a>
-            </div>
-
-            {/* Game 3 */}
-            <div className="bg-ui-lighter p-6 rounded-lg shadow-md">
-              <div className="mb-4 rounded overflow-hidden">
-                <img
-                  src={imageUrl('games/lineup4.png')}
-                  alt="Lineup4 game"
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-ui-dark mb-2">
-                Lineup4
-              </h3>
-              <p className="text-ui mb-4">
-                Program an agent to play the classic Connect Four game,
-                requiring spatial reasoning and forward planning.
-              </p>
-              <a href="/Demo?game=lineup4">
-                <span className="text-primary font-medium hover:text-primary-hover">
-                  Try it →
-                </span>
-              </a>
-            </div>
+            ))}
           </div>
         </div>
       </section>

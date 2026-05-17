@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  list: ['Greedy Pig'],
+  list: [],
   currentGame: null,
 };
 
