@@ -2,6 +2,8 @@
 
 A multi-game agent simulation platform where students and teams submit code agents that compete in game simulations.
 
+> **Adding a new game?** See **[backend/games/README.md](backend/games/README.md)** — drop 3 files in `backend/games/<name>/` and 1 manifest folder in `frontend/src/AgentGames/Feedback/games/<name>/`. Auto-discovered on both sides.
+
 ## Frontend
 
 ![React](https://img.shields.io/badge/React-19.2.4-61DAFB?logo=react&logoColor=white)
@@ -63,6 +65,12 @@ DATABASE_URL=postgresql+psycopg://postgres:<real password>@postgres:5432/agent_g
 ```
 
 Remove the `command:` line from the `api` service in `docker-compose.yml` to switch from dev uvicorn to gunicorn with 3 workers.
+
+## Adding a New Game
+
+Games are auto-discovered from `backend/games/*/` and `frontend/src/AgentGames/Feedback/games/*/`. Drop the required files, restart services, and the new game lights up across the API, validator, simulator, league dropdown, homepage, demo, and feedback rendering — no edits to factories, registries, or config.
+
+**Full walkthrough:** [backend/games/README.md](backend/games/README.md)
 
 ## Service Management
 
