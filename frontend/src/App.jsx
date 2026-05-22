@@ -21,10 +21,8 @@ import StyleGuide from "./StyleGuide";
 import PublishedResults from "./AgentGames/PublishedResults";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React from "react";
-import { useDispatch } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { toggleTooltips } from "./slices/settingsSlice";
 import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
@@ -34,12 +32,6 @@ import SupportButton from "./AgentGames/Support/SupportButton";
 import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
 
 function App() {
-  const dispatch = useDispatch();
-
-  const toggleState = () => {
-    dispatch(toggleTooltips());
-  };
-
   return (
     <BrowserRouter>
       <div className="App">
@@ -101,15 +93,6 @@ function App() {
           pauseOnHover
           theme="light"
         />
-
-        <button
-          onClick={toggleState}
-          className="fixed bottom-4 right-4 w-10 h-10 bg-primary hover:bg-primary-hover text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light"
-          title="Toggle tooltips"
-          aria-label="Toggle tooltips"
-        >
-          i
-        </button>
 
         <SupportButton />
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkTokenExpiry } from "../../slices/authSlice";
-import UserTooltip from "../Shared/Utilities/UserTooltips";
 import InstructionPopup from "../Shared/Utilities/InstructionPopup";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 
@@ -163,20 +162,13 @@ function AgentLogin() {
                 />
               </div>
 
-              <UserTooltip
-                title="&#9888;&#65039; INFO <br />Enter your login details provided by your teacher or school and then login."
-                arrow
-                disableFocusListener
-                disableTouchListener
+              <button
+                onClick={handleLogin}
+                disabled={isLoading}
+                className="w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200 disabled:bg-ui-light disabled:cursor-not-allowed"
               >
-                <button
-                  onClick={handleLogin}
-                  disabled={isLoading}
-                  className="w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200 disabled:bg-ui-light disabled:cursor-not-allowed"
-                >
-                  {isLoading ? "Logging in..." : "Login"}
-                </button>
-              </UserTooltip>
+                {isLoading ? "Logging in..." : "Login"}
+              </button>
 
               {errorMessage && (
                 <p className="text-lg text-danger text-center">{errorMessage}</p>

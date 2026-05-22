@@ -2,18 +2,12 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   agentApiUrl: import.meta.env.VITE_AGENT_API_URL,
-  showTooltips: false,
 };
 
 const settingsSlice = createSlice({
   name: 'settings',
   initialState,
-  reducers: {
-    toggleTooltips: (state) => {
-      state.showTooltips = !state.showTooltips;
-    },
-  },
+  reducers: {},
 });
 
-export const { toggleTooltips } = settingsSlice.actions;
 export default settingsSlice.reducer;

@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
-import UserTooltip from "../Shared/Utilities/UserTooltips";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
 import { checkTokenExpiry } from "../../slices/authSlice";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
@@ -121,23 +120,16 @@ function AgentLeagueSignUp() {
           </div>
 
           <div className="mt-8">
-            <UserTooltip
-              title="⚠️ INFO <br />Please Select the required or current league for code submission"
-              arrow
-              disableFocusListener
-              disableTouchListener
+            <button
+              onClick={handleSignUp}
+              disabled={isLoading || !currentLeague}
+              className={`w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover
+                       rounded-lg transition-colors duration-200
+                       shadow-md hover:shadow-lg
+                       disabled:bg-ui-light disabled:cursor-not-allowed`}
             >
-              <button
-                onClick={handleSignUp}
-                disabled={isLoading || !currentLeague}
-                className={`w-full py-3 px-4 text-lg font-medium text-white bg-primary hover:bg-primary-hover
-                         rounded-lg transition-colors duration-200
-                         shadow-md hover:shadow-lg
-                         disabled:bg-ui-light disabled:cursor-not-allowed`}
-              >
-                {isLoading ? "Joining..." : "Join League"}
-              </button>
-            </UserTooltip>
+              {isLoading ? "Joining..." : "Join League"}
+            </button>
           </div>
         </div>
       </div>
