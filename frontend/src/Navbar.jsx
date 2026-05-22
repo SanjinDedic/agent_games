@@ -1,33 +1,61 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from './slices/authSlice';
 import { clearTeam } from './slices/teamsSlice';
 import { clearResults, clearLeagues } from './slices/leaguesSlice';
 import { Button } from './components/ui';
 
+const NAV_LINKS_BY_ROLE = {
+  admin: [
+    { to: "/AdminInstitutions", label: "Institutions" },
+    { to: "/AdminDockerStatus", label: "Service Status" },
+    { to: "/AdminBackup", label: "Backups" },
+    { to: "/AdminAPIKeys", label: "API Keys" },
+    { to: "/AdminUserSupport", label: "User Support" },
+  ],
+  institution: [
+    { to: "/InstitutionTeam", label: "Team Section" },
+    { to: "/InstitutionLeague", label: "League Management" },
+    { to: "/InstitutionLeagueSimulation", label: "League Simulation" },
+  ],
+  team: [
+    { to: "/", label: "Home" },
+    { to: "/Leaderboards", label: "Leaderboards" },
+    { to: "/About", label: "About" },
+  ],
+  demo: [
+    { to: "/", label: "Home" },
+    { to: "/About", label: "About" },
+  ],
+  public: [
+    { to: "/", label: "Home" },
+    { to: "/Demo", label: "Demo" },
+    { to: "/Institution", label: "Institutions" },
+    { to: "/Leaderboards", label: "Leaderboards" },
+    { to: "/About", label: "About" },
+    { to: "/AgentLogin", label: "Player Login" },
+  ],
+};
+
+function resolveNavGroup(currentUser, isAuthenticated) {
+  if (!isAuthenticated) return "public";
+  const role = currentUser?.role;
+  if (role === "admin") return "admin";
+  if (role === "institution") return "institution";
+  if (role === "student") return currentUser?.is_demo ? "demo" : "team";
+  return "public";
+}
+
 function AgentGamesNavbar() {
-  const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const adminRoutes = [
-    "/AdminBackup",
-    "/AdminDockerStatus",
-    "/AdminInstitutions",
-    "/AdminAPIKeys",
-    "/AdminUserSupport",
-  ];
-  const institutionRoutes = [
-    "/InstitutionTeam",
-    "/InstitutionLeague",
-    "/InstitutionLeagueSimulation",
-  ];
-  
-  const isAdminRoute = adminRoutes.includes(location.pathname);
-  const isInstitutionRoute = institutionRoutes.includes(location.pathname);
   const currentUser = useSelector((state) => state.auth.currentUser);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const userRole = currentUser?.role || "";
+  const navGroup = resolveNavGroup(currentUser, isAuthenticated);
+  const navLinks = NAV_LINKS_BY_ROLE[navGroup];
 
   const [repoStats, setRepoStats] = useState(() => {
     try {
@@ -90,64 +118,11 @@ function AgentGamesNavbar() {
         <div className="flex justify-between items-center">
           {/* Left side - Navigation links evenly spaced */}
           <div className="flex-1 flex items-center justify-around">
-            {isAdminRoute ? (
-              // Admin navigation links
-              <>
-                <Link to="/AdminInstitutions" className={navLinkClasses}>
-                  Institutions
-                </Link>
-                <Link to="/AdminDockerStatus" className={navLinkClasses}>
-                  Service Status
-                </Link>
-                <Link to="/AdminBackup" className={navLinkClasses}>
-                  Backups
-                </Link>
-                <Link to="/AdminAPIKeys" className={navLinkClasses}>
-                  API Keys
-                </Link>
-                <Link to="/AdminUserSupport" className={navLinkClasses}>
-                  User Support
-                </Link>
-              </>
-            ) : isInstitutionRoute ? (
-              // Institution navigation links
-              <>
-                <Link to="/InstitutionTeam" className={navLinkClasses}>
-                  Team Section
-                </Link>
-                <Link to="/InstitutionLeague" className={navLinkClasses}>
-                  League Management
-                </Link>
-                <Link
-                  to="/InstitutionLeagueSimulation"
-                  className={navLinkClasses}
-                >
-                  League Simulation
-                </Link>
-              </>
-            ) : (
-              // Public navigation links
-              <>
-                <Link to="/" className={navLinkClasses}>
-                  Home
-                </Link>
-                <Link to="/Demo" className={navLinkClasses}>
-                  Demo
-                </Link>                
-                <Link to="/Institution" className={navLinkClasses}>
-                  Institutions
-                </Link>
-                <Link to="/Leaderboards" className={navLinkClasses}>
-                  Leaderboards
-                </Link>
-                <Link to="/About" className={navLinkClasses}>
-                  About
-                </Link>
-                <Link to="/AgentLogin" className={navLinkClasses}>
-                  Player Login
-                </Link>
-              </>
-            )}
+            {navLinks.map((link) => (
+              <Link key={link.to} to={link.to} className={navLinkClasses}>
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           {/* Right side - GitHub info and logout */}
@@ -180,10 +155,8 @@ function AgentGamesNavbar() {
               </div>
             </a>
 
-            {/* Logout Button based on user role */}
-            {(isAdminRoute ||
-              isInstitutionRoute ||
-              currentUser?.role === "student") && (
+            {/* Logout Button for any authenticated user */}
+            {isAuthenticated && (
               <Button variant="danger" onClick={handleLogout} className="ml-4">
                 Logout
               </Button>
