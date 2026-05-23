@@ -1,29 +1,6 @@
 """Integration tests for backup API endpoints — testing auth/routing with mocked backup functions."""
 
-from datetime import timedelta
 from unittest.mock import patch
-
-import pytest
-
-from backend.routes.auth.auth_core import create_access_token
-
-
-@pytest.fixture
-def admin_headers() -> dict:
-    token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture
-def student_headers() -> dict:
-    token = create_access_token(
-        data={"sub": "student", "role": "student"},
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
 
 
 @patch("backend.routes.admin.admin_router.create_backup")

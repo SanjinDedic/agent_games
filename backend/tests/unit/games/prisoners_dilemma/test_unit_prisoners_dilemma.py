@@ -252,22 +252,22 @@ def test_add_player_feedback(test_game):
     """Test adding player feedback during a game"""
     player1 = test_game.players[0]
     player2 = test_game.players[1]
-    
+
     # Add feedback to a player
     player1.add_feedback("Test feedback message")
-    
+
     # Call the add_player_feedback method
     test_game.add_player_feedback(player1, 1, player2.name)
-    
+
     # Check that feedback was recorded
     p1_name = str(player1.name)
     p2_name = str(player2.name)
-    
+
     assert p1_name in test_game.player_feedback
     assert len(test_game.player_feedback[p1_name]) == 1
     assert test_game.player_feedback[p1_name][0]["round"] == 1
     assert test_game.player_feedback[p1_name][0]["opponent"] == p2_name
     assert "Test feedback message" in test_game.player_feedback[p1_name][0]["messages"]
-    
+
     # Player's feedback list should be emptied
     assert player1.feedback == []
