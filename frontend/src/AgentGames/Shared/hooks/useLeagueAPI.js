@@ -105,6 +105,25 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken]);
   
   /**
+   * Fetch current team's league + institution info
+   */
+  const fetchTeamInfo = useCallback(async () => {
+    try {
+      const response = await authFetch(`${apiUrl}/user/get-team-info`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        return { success: true, data: data.data };
+      }
+      return { success: false, error: data.message };
+    } catch (error) {
+      console.error('Error fetching team info:', error);
+      return { success: false, error: 'Network error' };
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
    * Run a simulation for the specified league
    */
   const runSimulation = useCallback(async (params) => {
@@ -376,6 +395,7 @@ export const useLeagueAPI = (userRole) => {
     isLoading,
     getLeagueInfo,
     fetchUserLeagues,
+    fetchTeamInfo,
     assignToLeague,
     runSimulation,
     createLeague,

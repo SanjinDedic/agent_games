@@ -7,6 +7,7 @@ import { setCurrentLeague } from "../../slices/leaguesSlice";
 import CodeEditor from "./CodeEditor";
 import CombinedFooter from "./CombinedFooter";
 import FeedbackDisplay from "./FeedbackDisplay";
+import MySubmissionsModal from "./MySubmissionsModal";
 import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
@@ -22,6 +23,9 @@ function AgentSubmission() {
   const [shouldCollapseInstructions, setShouldCollapseInstructions] =
     useState(false);
   const [isLoadingLeagueInfo, setIsLoadingLeagueInfo] = useState(false);
+  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
+  const [submissionHistory, setSubmissionHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const editorRef = useRef(null);
 
   // Redux hooks
@@ -34,6 +38,7 @@ function AgentSubmission() {
   // Custom API hooks
   const {
     getLatestSubmission,
+    getTeamSubmissions,
     getGameInstructions,
     submitCode,
     isLoading: isSubmitting,
@@ -54,12 +59,14 @@ function AgentSubmission() {
 
     const loadInitialData = async () => {
       // Load the latest submission
+      let hadSubmission = false;
       const submissionResult = await getLatestSubmission();
       if (submissionResult.success) {
         if (submissionResult.hasSubmission) {
           setLastSubmission(submissionResult.code);
           setCode(submissionResult.code);
           setHasLastSubmission(true);
+          hadSubmission = true;
         } else {
           setHasLastSubmission(false);
         }
@@ -79,13 +86,13 @@ function AgentSubmission() {
 
           if (league && league.game) {
             dispatch(setCurrentLeague(league.name));
-            await loadInstructions(league.game);
+            await loadInstructions(league.game, hadSubmission);
           }
         }
       }
       // If we already have the game info, load instructions directly
       else if (currentLeague && currentLeague.game) {
-        await loadInstructions(currentLeague.game);
+        await loadInstructions(currentLeague.game, hadSubmission);
       }
     };
 
@@ -94,7 +101,7 @@ function AgentSubmission() {
   }, []);
 
   // Load game instructions and starter code
-  const loadInstructions = async (gameOverride = null) => {
+  const loadInstructions = async (gameOverride = null, hasSubmissionOverride = null) => {
     const gameToUse = gameOverride || (currentLeague && currentLeague.game);
     if (!gameToUse) return;
 
@@ -105,7 +112,8 @@ function AgentSubmission() {
 
       if (result.starterCode) {
         setStarterCode(result.starterCode);
-        if (!hasLastSubmission) {
+        const hasSub = hasSubmissionOverride !== null ? hasSubmissionOverride : hasLastSubmission;
+        if (!hasSub) {
           setCode(result.starterCode);
         }
       }
@@ -146,6 +154,30 @@ function AgentSubmission() {
       toast.success("Loaded last submission");
     } else {
       toast.error("No previous submission found");
+    }
+  };
+
+  // Open submissions modal and load history
+  const handleShowSubmissions = async () => {
+    setSubmissionsModalOpen(true);
+    setIsLoadingHistory(true);
+    const result = await getTeamSubmissions();
+    setIsLoadingHistory(false);
+    if (result.success) {
+      setSubmissionHistory(result.submissions);
+    } else {
+      toast.error(result.error || "Failed to load submissions");
+      setSubmissionHistory([]);
+    }
+  };
+
+  // Load a specific past submission into the editor
+  const handleSelectSubmission = (sub) => {
+    if (editorRef.current && sub?.code != null) {
+      editorRef.current.setValue(sub.code);
+      setCode(sub.code);
+      setSubmissionsModalOpen(false);
+      toast.success("Submission loaded into editor");
     }
   };
 
@@ -206,9 +238,18 @@ function AgentSubmission() {
         onSubmit={handleSubmit}
         onLoadLast={handleLoadLastSubmission}
         onReset={handleReset}
+        onShowSubmissions={handleShowSubmissions}
         isLoading={isLoading}
         hasLastSubmission={hasLastSubmission}
         hasStarterCode={!!starterCode}
+      />
+
+      <MySubmissionsModal
+        isOpen={submissionsModalOpen}
+        onClose={() => setSubmissionsModalOpen(false)}
+        submissions={submissionHistory}
+        isLoading={isLoadingHistory}
+        onSelect={handleSelectSubmission}
       />
     </div>
   );

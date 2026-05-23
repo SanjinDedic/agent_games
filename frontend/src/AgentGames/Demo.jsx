@@ -48,13 +48,13 @@ function Demo() {
     const validateInputs = () => {
         const newErrors = {};
 
-        // Username validation (alphanumeric, max 10 chars)
+        // Team name validation (alphanumeric, max 10 chars)
         if (!username.trim()) {
-            newErrors.username = 'Username is required';
+            newErrors.username = 'Team name is required';
         } else if (username.length > 10) {
-            newErrors.username = 'Username must be 10 characters or less';
+            newErrors.username = 'Team name must be 10 characters or less';
         } else if (!/^[a-zA-Z0-9]+$/.test(username)) {
-            newErrors.username = 'Username must be alphanumeric';
+            newErrors.username = 'Team name must be alphanumeric';
         }
 
         // Email validation (optional)
@@ -155,13 +155,13 @@ function Demo() {
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-ui-dark mb-2">
-                                        Username <span className="text-danger">*</span>
+                                        Team Name <span className="text-danger">*</span>
                                     </label>
                                     <input
                                         type="text"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        placeholder="Enter a username (max 10 chars)"
+                                        placeholder="Enter a team name (max 10 chars)"
                                         className={`w-full p-3 rounded-lg border ${errors.username ? 'border-danger' : 'border-ui-light'}`}
                                         maxLength={10}
                                     />

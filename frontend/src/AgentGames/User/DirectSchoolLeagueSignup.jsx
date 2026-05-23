@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 
 import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
+import CredentialsModal from "../Shared/Utilities/CredentialsModal";
 
 function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [assignedTeamName, setAssignedTeamName] = useState(null);
 
   const schools = leagueInfo?.schools || [];
 
@@ -60,14 +62,15 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
       dispatch(setLeagues([leagueObject]));
       dispatch(setCurrentLeague(leagueInfo.name));
 
-      toast.success(`Signed up as ${result.teamName}. Save your password!`);
-
-      setTimeout(() => {
-        navigate("/AgentSubmission");
-      }, 300);
+      setAssignedTeamName(result.teamName);
     } else {
       setError(result.error || "Failed to sign up");
     }
+  };
+
+  const handleDismissModal = () => {
+    toast.success(`Signed up as ${assignedTeamName}.`);
+    navigate("/AgentSubmission");
   };
 
   return (
@@ -160,6 +163,14 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
           </a>
         </p>
       </div>
+
+      {assignedTeamName && (
+        <CredentialsModal
+          teamName={assignedTeamName}
+          password={formData.password}
+          onDismiss={handleDismissModal}
+        />
+      )}
     </>
   );
 }

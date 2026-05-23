@@ -48,6 +48,39 @@ export const useSubmissionAPI = () => {
   }, [apiUrl, accessToken]);
   
   /**
+   * Get full submission history for current team
+   */
+  const getTeamSubmissions = useCallback(async () => {
+    try {
+      const response = await authFetch(`${apiUrl}/user/get-team-submissions`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.status === "success" && data.data && Array.isArray(data.data.submissions)) {
+        return {
+          success: true,
+          submissions: data.data.submissions,
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || "Failed to load submissions",
+        };
+      }
+    } catch (error) {
+      console.error("Error loading submission history:", error);
+      return {
+        success: false,
+        error: "Network error while loading submissions",
+      };
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
    * Get game instructions and starter code
    */
   const getGameInstructions = useCallback(async (gameName) => {
@@ -145,6 +178,7 @@ export const useSubmissionAPI = () => {
   return {
     isLoading,
     getLatestSubmission,
+    getTeamSubmissions,
     getGameInstructions,
     submitCode
   };

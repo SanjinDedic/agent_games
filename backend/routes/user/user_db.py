@@ -303,6 +303,30 @@ def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[
     return {"code": submission.code if submission else None}
 
 
+def get_team_submission_history(session: Session, team_name: str) -> list:
+    """Get full submission history for a team, newest first."""
+    team = session.exec(select(Team).where(Team.name == team_name)).first()
+    if not team:
+        logger.warning(f"Team not found: {team_name}")
+        return []
+
+    submissions = session.exec(
+        select(Submission)
+        .where(Submission.team_id == team.id)
+        .order_by(Submission.timestamp.desc())
+    ).all()
+
+    return [
+        {
+            "id": sub.id,
+            "code": sub.code,
+            "timestamp": sub.timestamp.isoformat(),
+            "duration_ms": sub.duration_ms,
+        }
+        for sub in submissions
+    ]
+
+
 def get_league_by_signup_token(session: Session, signup_token: str) -> League:
     """Get a league by its signup token"""
     league = session.exec(

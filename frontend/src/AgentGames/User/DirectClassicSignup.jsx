@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 
 import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
+import CredentialsModal from "../Shared/Utilities/CredentialsModal";
 
 function DirectClassicSignup({ leagueToken, leagueInfo }) {
   const navigate = useNavigate();
@@ -18,13 +19,14 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
     schoolName: "",
   });
   const [error, setError] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError("");
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     if (!formData.teamName || !formData.password) {
@@ -35,6 +37,12 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
       setError("Passwords do not match");
       return;
     }
+
+    setShowModal(true);
+  };
+
+  const handleConfirmSignup = async () => {
+    setShowModal(false);
 
     const result = await directSignup(
       formData.teamName,
@@ -156,6 +164,14 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
           </a>
         </p>
       </div>
+
+      {showModal && (
+        <CredentialsModal
+          teamName={formData.teamName}
+          password={formData.password}
+          onDismiss={handleConfirmSignup}
+        />
+      )}
     </>
   );
 }
