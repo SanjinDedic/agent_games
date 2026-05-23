@@ -36,29 +36,27 @@ const LeagueCardList = ({ userRole }) => {
     dispatch(setCurrentLeague(leagueName));
   };
   
-  // Handle league deletion
-  const handleDeleteLeague = async (leagueName) => {
-    if (leagueName.toLowerCase() === "unassigned") {
+  const handleDeleteLeague = async (league) => {
+    if (league.name.toLowerCase() === "unassigned") {
       toast.error("Cannot delete the 'unassigned' league");
       return;
     }
-    
-    if (!window.confirm(`Are you sure you want to delete league "${leagueName}"? All teams will be moved to the unassigned league.`)) {
+
+    if (!window.confirm(`Are you sure you want to delete league "${league.name}"? All teams will be moved to the unassigned league.`)) {
       return;
     }
-    
+
     setIsDeleting(true);
     try {
-      const result = await deleteLeague(leagueName);
+      const result = await deleteLeague(league.id);
       if (result.success) {
-        if (currentLeague?.name === leagueName && leagues.length > 0) {
-          // Select another league if the current one is deleted
-          const nextLeague = leagues.find(l => l.name !== leagueName);
+        if (currentLeague?.name === league.name && leagues.length > 0) {
+          const nextLeague = leagues.find(l => l.name !== league.name);
           if (nextLeague) {
             dispatch(setCurrentLeague(nextLeague.name));
           }
         }
-        toast.success(`League "${leagueName}" deleted successfully`);
+        toast.success(`League "${league.name}" deleted successfully`);
       }
     } catch (error) {
       toast.error(`Failed to delete league: ${error.message}`);

@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { setLeagues } from '../../../slices/leaguesSlice';
+import { selectToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
 /**
@@ -13,7 +14,7 @@ import { authFetch } from '../../../utils/authFetch';
 export const useLeagueAPI = (userRole) => {
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
+  const accessToken = useSelector(selectToken);
   const [isLoading, setIsLoading] = useState(false);
   
   /**
@@ -68,14 +69,14 @@ export const useLeagueAPI = (userRole) => {
   /**
    * Assign current user to a league
    */
-  const assignToLeague = useCallback(async (leagueName) => {
-    if (!leagueName) {
+  const assignToLeague = useCallback(async (leagueId) => {
+    if (!leagueId) {
       toast.error("League not selected");
       return { success: false, error: "League not selected" };
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const response = await authFetch(`${apiUrl}/user/league-assign`, {
         method: "POST",
@@ -83,7 +84,7 @@ export const useLeagueAPI = (userRole) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ name: leagueName }),
+        body: JSON.stringify({ league_id: leagueId }),
       });
       
       const data = await response.json();
@@ -252,9 +253,9 @@ export const useLeagueAPI = (userRole) => {
   /**
    * Update league expiry date
    */
-  const updateExpiryDate = useCallback(async (leagueName, expiryDate) => {
+  const updateExpiryDate = useCallback(async (leagueId, expiryDate) => {
     setIsLoading(true);
-    
+
     try {
       const response = await authFetch(`${apiUrl}/institution/update-expiry-date`, {
         method: 'POST',
@@ -262,9 +263,9 @@ export const useLeagueAPI = (userRole) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           date: expiryDate,
-          league: leagueName 
+          league_id: leagueId,
         }),
       });
       
@@ -359,9 +360,9 @@ export const useLeagueAPI = (userRole) => {
   /**
    * Delete a league
    */
-  const deleteLeague = useCallback(async (leagueName) => {
+  const deleteLeague = useCallback(async (leagueId) => {
     setIsLoading(true);
-    
+
     try {
       const response = await authFetch(`${apiUrl}/institution/delete-league`, {
         method: 'POST',
@@ -369,7 +370,7 @@ export const useLeagueAPI = (userRole) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ name: leagueName }),
+        body: JSON.stringify({ league_id: leagueId }),
       });
       
       const data = await response.json();

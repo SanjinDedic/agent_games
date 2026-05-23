@@ -83,7 +83,7 @@ def test_publish_results_success(client, publish_setup, db_session):
         "/institution/publish-results",
         headers=headers,
         json={
-            "league_name": league.name,
+            "league_id": league.id,
             "id": sim_results[0].id,
             "feedback": "Test string feedback",
         },
@@ -110,7 +110,7 @@ def test_publish_results_success(client, publish_setup, db_session):
         "/institution/publish-results",
         headers=headers,
         json={
-            "league_name": league.name,
+            "league_id": league.id,
             "id": sim_results[1].id,
             "feedback": json_feedback,
         },
@@ -132,7 +132,7 @@ def test_publish_results_success(client, publish_setup, db_session):
         "/institution/publish-results",
         headers=headers,
         json={
-            "league_name": league.name,
+            "league_id": league.id,
             "id": sim_results[0].id,
         },
     )
@@ -150,7 +150,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
         "/institution/publish-results",
         headers=headers,
         json={
-            "league_name": "non_existent_league",
+            "league_id": 99999,
             "id": sim_results[0].id,
         },
     )
@@ -164,7 +164,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
         "/institution/publish-results",
         headers=headers,
         json={
-            "league_name": league.name,
+            "league_id": league.id,
             "id": 99999,
         },
     )
@@ -214,7 +214,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
         "/institution/publish-results",
         headers=headers,
         json={
-            "league_name": other_league.name,
+            "league_id": other_league.id,
             "id": other_result.id,
         },
     )
@@ -226,7 +226,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
     response = client.post(
         "/institution/publish-results",
         json={
-            "league_name": league.name,
+            "league_id": league.id,
             "id": sim_results[0].id,
         },
     )
@@ -241,7 +241,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
         "/institution/publish-results",
         headers={"Authorization": f"Bearer {wrong_token}"},
         json={
-            "league_name": league.name,
+            "league_id": league.id,
             "id": sim_results[0].id,
         },
     )

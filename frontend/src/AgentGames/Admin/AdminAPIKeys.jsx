@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { checkTokenExpiry } from '../../slices/authSlice';
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectToken,
+} from '../../slices/authSlice';
 import { authFetch } from '../../utils/authFetch';
 
 const providers = [
@@ -19,9 +24,9 @@ function AdminAPIKeys() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const accessToken = useSelector(selectToken);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const [keys, setKeys] = useState({
     openai_api_key: '',

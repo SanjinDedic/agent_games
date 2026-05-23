@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from 'react-toastify';
 import { useSelector, useDispatch } from 'react-redux';
 import { setTeams } from '../../../slices/teamsSlice';
+import { selectToken } from '../../../slices/authSlice';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 import { authFetch } from '../../../utils/authFetch';
 
@@ -18,7 +19,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
     const teams = useSelector((state) => state.teams.list);
     const leagues = useSelector((state) => state.leagues.list);
     const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-    const accessToken = useSelector((state) => state.auth.token);
+    const accessToken = useSelector(selectToken);
 
     const [filteredTeams, setFilteredTeams] = useState([]);
     const [assignTeamId, setAssignTeamId] = useState("");

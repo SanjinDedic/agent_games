@@ -86,14 +86,12 @@ def save_submission(
 
 
 def assign_team_to_league(
-    session: Session, team_id: int, league_name: str, is_demo: bool
+    session: Session, team_id: int, league_id: int, is_demo: bool
 ) -> str:
     """Assign a team to a league"""
-    league = session.exec(
-        select(League).where(League.name == league_name)
-    ).one_or_none()
+    league = session.get(League, league_id)
     if not league:
-        raise LeagueNotFoundError(f"League '{league_name}' not found")
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
     if is_demo and not league.is_demo:
         raise ValueError("Demo users can only join demo leagues")
@@ -199,10 +197,10 @@ def get_all_leagues(session: Session):
 
 
 def get_leagues_for_user(session: Session, role: str, institution_id: Optional[int]):
-    """Get leagues scoped to the user's institution. Admin and Admin Institution (id=1) see all."""
+    """Get leagues scoped to the user's institution. Admin sees all."""
     query = select(League).where(League.deleted_date == None)
 
-    if role != "admin" and institution_id != 1:
+    if role != "admin":
         if institution_id is not None:
             query = query.where(League.institution_id == institution_id)
         else:

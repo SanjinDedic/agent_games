@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, checkTokenExpiry } from '../../slices/authSlice';
-import { jwtDecode } from 'jwt-decode';
+import {
+  setToken,
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+} from '../../slices/authSlice';
 
 function Institution() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   
   const [institution, setInstitution] = useState({ name: '', password: '' });
   const [errorMessage, setErrorMessage] = useState('');
@@ -60,13 +64,7 @@ function Institution() {
 
       const data = await response.json();
       if (data.status === "success") {
-        const decoded = jwtDecode(data.data.access_token);
-        dispatch(login({
-          token: data.data.access_token,
-          name: decoded.sub,
-          role: decoded.role,
-          institution_id: decoded.institution_id
-        }));
+        dispatch(setToken(data.data.access_token));
         navigate("/InstitutionTeam");
       } else if (data.status === "failed") {
         setErrorMessage(data.message);

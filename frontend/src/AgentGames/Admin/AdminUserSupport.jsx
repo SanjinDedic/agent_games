@@ -3,7 +3,12 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment-timezone';
-import { checkTokenExpiry } from '../../slices/authSlice';
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectToken,
+} from '../../slices/authSlice';
 import { authFetch } from '../../utils/authFetch';
 
 const SUBMITTER_TABS = [
@@ -28,9 +33,9 @@ function AdminUserSupport() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const accessToken = useSelector(selectToken);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const [submitterTab, setSubmitterTab] = useState('team');
   const [statusFilter, setStatusFilter] = useState('all');

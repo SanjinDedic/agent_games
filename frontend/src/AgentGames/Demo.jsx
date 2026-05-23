@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
-import { login } from '../slices/authSlice';
+import { setToken } from '../slices/authSlice';
 import { featuredGames } from './Feedback/games';
 
 function Demo() {
@@ -87,17 +87,9 @@ function Demo() {
             const data = await response.json();
 
             if (data.status === 'success') {
-                // Store demo user data
                 const demoData = data.data;
 
-                // Login with temporary demo credentials
-                dispatch(login({
-                    token: demoData.access_token,
-                    name: demoData.username,
-                    role: 'student',
-                    is_demo: true,
-                    exp: moment(demoData.expires_at).unix()
-                }));
+                dispatch(setToken(demoData.access_token));
 
                 toast.success(`Demo started! You have ${demoData.expires_in_minutes} minutes to explore.`);
                 navigate('/AgentLeagueSignUp');

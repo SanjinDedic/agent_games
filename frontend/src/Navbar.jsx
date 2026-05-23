@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from './slices/authSlice';
+import {
+  logout,
+  selectCurrentUser,
+  selectIsAuthenticated,
+} from './slices/authSlice';
 import { clearTeam } from './slices/teamsSlice';
 import { clearResults, clearLeagues } from './slices/leaguesSlice';
 import { Button } from './components/ui';
@@ -53,8 +57,8 @@ function AgentGamesNavbar() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const userRole = currentUser?.role || "";
   const navGroup = resolveNavGroup(currentUser, isAuthenticated);
   const navLinks = NAV_LINKS_BY_ROLE[navGroup];

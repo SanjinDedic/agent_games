@@ -2,7 +2,11 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { checkTokenExpiry } from '../../../slices/authSlice';
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+} from '../../../slices/authSlice';
 
 const AuthProtection = ({
   children,
@@ -11,8 +15,8 @@ const AuthProtection = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());

@@ -107,7 +107,7 @@ def test_league_assign_success(
     # Test case 1: Basic league assignment
     response = client.post(
         "/user/league-assign",
-        json={"name": "comp_test"},
+        json={"league_id": setup_leagues["comp_test"].id},
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -129,7 +129,7 @@ def test_league_assign_success(
 
     response = client.post(
         "/user/league-assign",
-        json={"name": "pd_test"},
+        json={"league_id": setup_leagues["pd_test"].id},
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -150,7 +150,7 @@ def test_league_assign_exceptions(
     # Test case 1: Assign to non-existent league
     response = client.post(
         "/user/league-assign",
-        json={"name": "non_existent_league"},
+        json={"league_id": 99999},
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -163,22 +163,22 @@ def test_league_assign_exceptions(
     assert team.league.name == "unassigned"
 
     # Test case 2: Unauthorized access (no token)
-    response = client.post("/user/league-assign", json={"name": "comp_test"})
+    response = client.post("/user/league-assign", json={"league_id": 1})
     assert response.status_code == 401
 
     # Test case 3: Invalid token
     invalid_token = "invalid.token.here"
     response = client.post(
         "/user/league-assign",
-        json={"name": "comp_test"},
+        json={"league_id": 1},
         headers={"Authorization": f"Bearer {invalid_token}"},
     )
     assert response.status_code == 401
 
-    # Test case 4: Empty league name
+    # Test case 4: Missing league_id field
     response = client.post(
         "/user/league-assign",
-        json={"name": ""},
+        json={},
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 422

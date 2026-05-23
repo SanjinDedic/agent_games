@@ -33,7 +33,7 @@ from backend.routes.institution.institution_db import (
 from backend.routes.institution.institution_models import (
     ExpiryDate,
     LeagueDelete,
-    LeagueName,
+    LeagueIdRef,
     LeagueResults,
     LeagueSignUp,
     SimulationConfig,
@@ -60,10 +60,9 @@ class InstitutionAccessError(Exception):
 
 
 def _resolve_institution(current_user: dict) -> tuple[int, bool]:
-    """Extract institution_id and is_admin from the current user token.
-    Admin tokens carry institution_id=1; Admin Institution (id=1) is also treated as admin."""
+    """Extract institution_id and is_admin from the current user token."""
     institution_id = current_user.get("institution_id")
-    is_admin = current_user["role"] == "admin" or institution_id == 1
+    is_admin = current_user["role"] == "admin"
     return institution_id, is_admin
 
 
@@ -286,7 +285,7 @@ async def run_simulation_endpoint(
 @institution_router.post("/get-all-league-results", response_model=ResponseModel)
 @verify_admin_or_institution
 async def get_league_results_endpoint(
-    league: LeagueName,
+    league: LeagueIdRef,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
@@ -298,7 +297,7 @@ async def get_league_results_endpoint(
                 status="error", message="Institution ID not found in token"
             )
 
-        results = get_all_league_results(session, league.name, institution_id, is_admin=is_admin)
+        results = get_all_league_results(session, league.league_id, institution_id, is_admin=is_admin)
         return ResponseModel(
             status="success",
             message="League results retrieved successfully",
@@ -327,7 +326,7 @@ async def publish_results_endpoint(
             )
 
         msg, data = publish_sim_results(
-            session, results.league_name, results.id, institution_id, results.feedback,
+            session, results.league_id, results.id, institution_id, results.feedback,
             is_admin=is_admin,
         )
         return ResponseModel(status="success", message=msg, data=data)
@@ -353,7 +352,7 @@ async def update_expiry_endpoint(
                 status="error", message="Institution ID not found in token"
             )
 
-        msg = update_expiry_date(session, expiry.league, expiry.date, institution_id, is_admin=is_admin)
+        msg = update_expiry_date(session, expiry.league_id, expiry.date, institution_id, is_admin=is_admin)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error updating expiry date: {e}")
@@ -462,7 +461,7 @@ async def delete_league_endpoint(
                 status="error", message="Institution ID not found in token"
             )
 
-        msg = delete_league(session, league.name, institution_id, is_admin=is_admin)
+        msg = delete_league(session, league.league_id, institution_id, is_admin=is_admin)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error deleting league: {e}")

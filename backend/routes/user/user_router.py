@@ -170,13 +170,13 @@ async def assign_team_to_league_endpoint(
         )
     team_name = current_user["team_name"]
     is_demo = current_user["is_demo"]
-    logger.info(f'Team Name "{team_name} about to assign to league "{league.name}"')
+    logger.info(f'Team Name "{team_name}" about to assign to league_id={league.league_id}')
     try:
-        msg = assign_team_to_league(session, team_id, league.name, is_demo)
+        msg = assign_team_to_league(session, team_id, league.league_id, is_demo)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(
-            f'Error assigning team "{team_name}" to league "{league.name}": {str(e)}'
+            f'Error assigning team "{team_name}" to league_id={league.league_id}: {str(e)}'
         )
         return ErrorResponseModel(
             status="error",
@@ -281,8 +281,6 @@ async def get_leagues_endpoint(
     try:
         role = current_user.get("role")
         institution_id = current_user.get("institution_id")
-        if role == "admin":
-            institution_id = 1
 
         leagues = get_leagues_for_user(session, role, institution_id)
         return ResponseModel(

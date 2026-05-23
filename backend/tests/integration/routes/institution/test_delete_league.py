@@ -103,7 +103,7 @@ def test_delete_league_success(client, delete_league_setup, db_session):
     response = client.post(
         "/institution/delete-league",
         headers=headers,
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -133,7 +133,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     response = client.post(
         "/institution/delete-league",
         headers=headers,
-        json={"name": "non_existent_league"},
+        json={"league_id": 99999},
     )
     assert response.status_code == 200  # API returns 200 with error status
     data = response.json()
@@ -163,7 +163,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     response = client.post(
         "/institution/delete-league",
         headers=headers,
-        json={"name": "unassigned"},
+        json={"league_id": unassigned_league.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -200,27 +200,27 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     response = client.post(
         "/institution/delete-league",
         headers=other_headers,
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "error"
     
-    # Test case 4: Invalid league name format
+    # Test case 4: Missing league_id field
     response = client.post(
         "/institution/delete-league",
         headers=headers,
-        json={"name": ""},
+        json={},
     )
     assert response.status_code == 422
-    
+
     # Test case 5: Unauthorized access (no token)
     response = client.post(
         "/institution/delete-league",
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 401
-    
+
     # Test case 6: Wrong role token
     wrong_token = create_access_token(
         data={"sub": "wrong", "role": "student"},
@@ -229,7 +229,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     response = client.post(
         "/institution/delete-league",
         headers={"Authorization": f"Bearer {wrong_token}"},
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 403
 
@@ -316,7 +316,7 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
     resp = client.post(
         "/institution/delete-league",
         headers={"Authorization": f"Bearer {token}"},
-        json={"name": "league_to_delete_no_unassigned"},
+        json={"league_id": league.id},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"

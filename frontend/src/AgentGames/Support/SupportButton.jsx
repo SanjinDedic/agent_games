@@ -1,14 +1,15 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { openSupportDialog } from '../../slices/supportSlice';
+import { selectIsAuthenticated, selectRole } from '../../slices/authSlice';
 import SupportDialog from './SupportDialog';
 
 const ALLOWED_ROLES = ['student', 'institution'];
 
 function SupportButton() {
   const dispatch = useDispatch();
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const role = useSelector((state) => state.auth.currentUser?.role);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const role = useSelector(selectRole);
 
   if (!isAuthenticated || !ALLOWED_ROLES.includes(role)) {
     return null;

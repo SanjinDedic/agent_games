@@ -296,19 +296,15 @@ def save_simulation_results(
     return simulation_result
 
 
-def get_all_league_results(session: Session, league_name: str, institution_id: int, is_admin: bool = False) -> Dict:
+def get_all_league_results(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> Dict:
     """Get all simulation results for a league"""
-    query = select(League).where(League.name == league_name)
-    if not is_admin:
-        query = query.where(League.institution_id == institution_id)
-    league = session.exec(query).first()
-
-    if not league:
-        raise LeagueNotFoundError(f"League '{league_name}' not found in your institution")
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
+        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
 
     results = []
     for sim in league.simulation_results:
-        result = process_simulation_results(sim, league_name)
+        result = process_simulation_results(sim, league.name)
         results.append(result)
 
     return {"results": sorted(results, key=lambda x: x["id"], reverse=True)}
@@ -316,37 +312,27 @@ def get_all_league_results(session: Session, league_name: str, institution_id: i
 
 def publish_sim_results(
     session: Session,
-    league_name: str,
+    league_id: int,
     sim_id: int,
     institution_id: int,
     feedback: Union[str, Dict, None] = None,
     is_admin: bool = False,
 ) -> Tuple[str, Dict]:
     """Publish simulation results"""
-    query = select(League).where(League.name == league_name)
-    if not is_admin:
-        query = query.where(League.institution_id == institution_id)
-    league = session.exec(query).first()
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
+        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
 
-    if not league:
-        raise LeagueNotFoundError(f"League '{league_name}' not found in your institution")
-
-    simulation = session.exec(
-        select(SimulationResult).where(SimulationResult.id == sim_id)
-    ).first()
-
+    simulation = session.get(SimulationResult, sim_id)
     if not simulation:
         raise ValueError(f"Simulation result with ID {sim_id} not found")
 
-    # Verify the simulation belongs to a league in this institution
     if simulation.league_id != league.id:
         raise InstitutionAccessError("You don't have permission to publish this simulation result")
 
-    # Generate a unique publish link if not already set
     if not simulation.publish_link:
         simulation.publish_link = secrets.token_urlsafe(16)
 
-    # Set the simulation as published
     simulation.published = True
 
     if feedback is not None:
@@ -361,10 +347,10 @@ def publish_sim_results(
     session.commit()
 
     return (
-        f"Results published successfully for league '{league_name}'",
+        f"Results published successfully for league '{league.name}'",
         {
             "sim_id": simulation.id,
-            "league_name": league_name,
+            "league_name": league.name,
             "published": True,
             "publish_link": simulation.publish_link,
         },
@@ -372,21 +358,17 @@ def publish_sim_results(
 
 
 def update_expiry_date(
-    session: Session, league_name: str, expiry_date: datetime, institution_id: int, is_admin: bool = False
+    session: Session, league_id: int, expiry_date: datetime, institution_id: int, is_admin: bool = False
 ) -> str:
     """Update league expiry date"""
-    query = select(League).where(League.name == league_name)
-    if not is_admin:
-        query = query.where(League.institution_id == institution_id)
-    league = session.exec(query).first()
-
-    if not league:
-        raise LeagueNotFoundError(f"League '{league_name}' not found in your institution")
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
+        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
 
     league.expiry_date = expiry_date
     session.add(league)
     session.commit()
-    return f"Expiry date updated successfully for league '{league_name}'"
+    return f"Expiry date updated successfully for league '{league.name}'"
 
 
 def assign_team_to_league(session: Session, team_id: int, league_id: int, institution_id: int, is_admin: bool = False) -> str:
@@ -460,20 +442,16 @@ def generate_signup_link(session: Session, league_id: int, institution_id: int, 
     return {"signup_token": signup_token, "league_name": league.name}
 
 
-def delete_league(session: Session, league_name: str, institution_id: int, is_admin: bool = False) -> str:
+def delete_league(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Delete a league and move its teams to the unassigned league"""
-    # Find the league to delete
-    query = select(League).where(League.name == league_name)
-    if not is_admin:
-        query = query.where(League.institution_id == institution_id)
-    league = session.exec(query).first()
-    if not league:
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
         raise LeagueNotFoundError(
-            f"League '{league_name}' not found in your institution"
+            f"League with ID {league_id} not found in your institution"
         )
 
-    # Can't delete the unassigned league
-    if league.name.lower() == "unassigned":
+    league_name = league.name
+    if league_name.lower() == "unassigned":
         raise ValueError("Cannot delete the 'unassigned' league")
 
     # Find the unassigned league for this institution

@@ -4,9 +4,10 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import { authFetch } from "../../../utils/authFetch";
+import { selectToken } from '../../../slices/authSlice';
 
 const LeagueCreation = () => {
-  const token = useSelector((state) => state.auth.token);
+  const token = useSelector(selectToken);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
 
   const [games, setGames] = useState([]);

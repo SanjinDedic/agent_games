@@ -107,7 +107,7 @@ class TeamDelete(BaseModel):
 class LeagueResults(BaseModel):
     """Model for league results"""
 
-    league_name: str
+    league_id: int
     id: int
     feedback: Union[str, dict, None] = None
 
@@ -116,13 +116,7 @@ class ExpiryDate(BaseModel):
     """Model for updating league expiry date"""
 
     date: datetime
-    league: str
-
-    @field_validator("league")
-    def validate_league(cls, v):
-        if not v.strip():
-            raise ValueError("League name cannot be empty")
-        return v.strip()
+    league_id: int
 
     @field_validator("date")
     def validate_date(cls, v):
@@ -146,7 +140,7 @@ class TeamLeagueAssignment(BaseModel):
     league_id: int
 
 class LeagueName(BaseModel):
-    """Model for specifying a league name"""
+    """Model for specifying a league name (public lookup)."""
 
     name: str
 
@@ -155,15 +149,15 @@ class LeagueName(BaseModel):
         if not v.strip():
             raise ValueError("League name cannot be empty")
         return v.strip()
+
+
+class LeagueIdRef(BaseModel):
+    """Model for specifying a league by id (authenticated lookup)."""
+
+    league_id: int
 
 
 class LeagueDelete(BaseModel):
     """Model for league deletion request"""
 
-    name: str
-
-    @field_validator("name")
-    def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError("League name cannot be empty")
-        return v.strip()
+    league_id: int

@@ -142,7 +142,7 @@ def test_assign_team_demo_to_non_demo_league(db_session):
 
     with pytest.raises(ValueError, match="Demo users can only join demo leagues"):
         assign_team_to_league(
-            db_session, demo_team.id, "non_demo_league_test", is_demo=True
+            db_session, demo_team.id, league.id, is_demo=True
         )
 
 
@@ -163,7 +163,7 @@ def test_assign_team_not_found(db_session):
 
     with pytest.raises(TeamNotFoundError):
         assign_team_to_league(
-            db_session, 999999, "assign_target_league", is_demo=False
+            db_session, 999999, league.id, is_demo=False
         )
 
 

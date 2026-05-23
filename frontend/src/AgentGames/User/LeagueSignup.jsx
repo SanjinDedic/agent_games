@@ -3,19 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
-import { checkTokenExpiry } from "../../slices/authSlice";
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectIsDemo,
+} from "../../slices/authSlice";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
 function AgentLeagueSignUp() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
-  const isDemo = useSelector(
-    (state) => state.auth.currentUser?.is_demo || false
-  );
+  const isDemo = useSelector(selectIsDemo);
 
   const { fetchUserLeagues, fetchTeamInfo, assignToLeague, isLoading } = useLeagueAPI();
 
@@ -84,7 +87,7 @@ function AgentLeagueSignUp() {
 
   const handleSignUp = async () => {
     if (!currentLeague) return;
-    const result = await assignToLeague(currentLeague.name);
+    const result = await assignToLeague(currentLeague.id);
     if (result.success) {
       navigate("/AgentSubmission");
     }

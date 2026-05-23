@@ -134,7 +134,7 @@ def test_complete_game_lifecycle(
         assign_response = client.post(
             "/user/league-assign",
             headers=team_headers,
-            json={"name": "integration_league"},
+            json={"league_id": league_id},
         )
         assert assign_response.status_code == 200
         assert assign_response.json()["status"] == "success"
@@ -177,7 +177,7 @@ class CustomPlayer(Player):
         "/institution/publish-results",  # Changed from /admin to /institution
         headers=auth_headers,
         json={
-            "league_name": "integration_league",
+            "league_id": league_id,
             "id": sim_id,
             "feedback": "Integration test simulation results",
         },
@@ -286,7 +286,7 @@ async def test_concurrent_game_operations(
         assign_response = client.post(
             "/user/league-assign",
             headers={"Authorization": f"Bearer {team_token}"},
-            json={"name": "concurrent_league"},
+            json={"league_id": league_id},
         )
         print(f"LEAGUE ASSIGN RESPONSE FOR TEAM {i}")
         print(assign_response.json())
@@ -377,7 +377,7 @@ class CustomPlayer(Player):
             "/institution/publish-results",
             headers=inst_headers,
             json={
-                "league_name": "concurrent_league",
+                "league_id": league_id,
                 "id": sim_id,
                 "feedback": f"Concurrent simulation {sim_id} results",
             },
