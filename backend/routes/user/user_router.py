@@ -36,7 +36,7 @@ from backend.routes.user.user_db import (
     get_latest_submissions_for_league,
     get_league_by_signup_token,
     get_published_result,
-    get_team,
+    get_team_by_id,
     get_team_submission,
     get_team_submission_history,
     save_submission,
@@ -71,8 +71,9 @@ async def submit_agent(
 ):
     """Submit agent code for validation and storage"""
     team_name = current_user["team_name"]
+    team_id = current_user["team_id"]
     try:
-        team = get_team(session, team_name)
+        team = get_team_by_id(session, team_id)
     except TeamNotFoundError:
         return ResponseModel(status="error", message=f"Team '{team_name}' not found")
 
@@ -162,10 +163,16 @@ async def assign_team_to_league_endpoint(
     session: Session = Depends(get_db),
 ):
     """Assign a team to a league"""
+    team_id = current_user.get("team_id")
+    if team_id is None:
+        return ErrorResponseModel(
+            status="error", message="This endpoint requires a team token"
+        )
     team_name = current_user["team_name"]
+    is_demo = current_user["is_demo"]
     logger.info(f'Team Name "{team_name} about to assign to league "{league.name}"')
     try:
-        msg = assign_team_to_league(session, team_name, league.name)
+        msg = assign_team_to_league(session, team_id, league.name, is_demo)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(
@@ -367,9 +374,13 @@ async def get_team_info_endpoint(
     session: Session = Depends(get_db),
 ):
     """Return current team's league and institution info."""
-    team_name = current_user.get("team_name")
+    team_id = current_user.get("team_id")
+    if team_id is None:
+        return ErrorResponseModel(
+            status="error", message="This endpoint requires a team token"
+        )
     try:
-        team = get_team(session, team_name)
+        team = get_team_by_id(session, team_id)
         league = team.league
         institution_name = (
             league.institution.name if league and league.institution else None
@@ -400,9 +411,15 @@ async def get_team_submission_endpoint(
     session: Session = Depends(get_db),
 ):
     """Get latest submission for the current team"""
-    team_name = current_user["team_name"]
+    team_id = current_user.get("team_id")
+    if team_id is None:
+        return ResponseModel(
+            status="error",
+            message="This endpoint requires a team token",
+            data={"code": None},
+        )
     try:
-        submission_data = get_team_submission(session, team_name)
+        submission_data = get_team_submission(session, team_id)
         return ResponseModel(
             status="success",
             message="Submission retrieved successfully",
@@ -424,9 +441,13 @@ async def get_team_submissions_endpoint(
     session: Session = Depends(get_db),
 ):
     """Get full submission history for the current team"""
-    team_name = current_user["team_name"]
+    team_id = current_user.get("team_id")
+    if team_id is None:
+        return ErrorResponseModel(
+            status="error", message="This endpoint requires a team token"
+        )
     try:
-        submissions = get_team_submission_history(session, team_name)
+        submissions = get_team_submission_history(session, team_id)
         return ResponseModel(
             status="success",
             message="Submissions retrieved successfully",

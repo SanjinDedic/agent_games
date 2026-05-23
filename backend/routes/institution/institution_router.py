@@ -61,11 +61,9 @@ class InstitutionAccessError(Exception):
 
 def _resolve_institution(current_user: dict) -> tuple[int, bool]:
     """Extract institution_id and is_admin from the current user token.
-    Admin role falls back to institution_id=1. Admin Institution (id=1) is also treated as admin."""
-    if current_user["role"] == "admin":
-        return 1, True
+    Admin tokens carry institution_id=1; Admin Institution (id=1) is also treated as admin."""
     institution_id = current_user.get("institution_id")
-    is_admin = institution_id == 1
+    is_admin = current_user["role"] == "admin" or institution_id == 1
     return institution_id, is_admin
 
 

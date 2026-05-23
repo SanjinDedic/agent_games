@@ -83,28 +83,31 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     logger.info(f"Attempting to validate token: {token[:20]}...")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        team_name: str = payload.get("sub")
+        sub: str = payload.get("sub")
         user_role: str = payload.get("role")
         exp_timestamp = payload.get("exp")
-        institution_id: int = payload.get("institution_id")
 
-        # Check expiration using timestamp comparison
         current_timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ).timestamp()
         if exp_timestamp is None or current_timestamp > exp_timestamp:
             logger.error("Token has expired")
             raise HTTPException(status_code=401, detail="Token has expired")
 
-        if team_name is None or user_role not in ALL_ROLES:
-            logger.error(
-                f"Invalid token content - team_name: {team_name}, role: {user_role}"
-            )
+        if sub is None or user_role not in ALL_ROLES:
+            logger.error(f"Invalid token content - sub: {sub}, role: {user_role}")
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        user_data = {"team_name": team_name, "role": user_role}
+        user_data = {
+            "role": user_role,
+            "institution_id": payload.get("institution_id"),
+        }
 
-        # Add institution_id if present
-        if institution_id is not None:
-            user_data["institution_id"] = institution_id
+        if user_role in (ROLE_STUDENT, ROLE_AI_AGENT):
+            user_data["team_name"] = sub
+            user_data["team_id"] = payload.get("team_id")
+            user_data["team_type"] = payload.get("team_type")
+            user_data["is_demo"] = payload.get("is_demo", False)
+        elif user_role == ROLE_INSTITUTION:
+            user_data["institution_name"] = sub
 
         return user_data
 

@@ -5,7 +5,8 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
-from backend.routes.user.user_db import get_team
+from backend.routes.user.user_db import get_team_by_id
+from backend.tests.conftest import make_student_token
 
 
 @pytest.fixture
@@ -91,14 +92,7 @@ def setup_unassigned_team(db_session: Session, test_institution: Institution) ->
 @pytest.fixture
 def student_token(setup_unassigned_team: Team) -> str:
     """Create a valid student token for the test team"""
-    return create_access_token(
-        data={
-            "sub": setup_unassigned_team.name,
-            "role": "student",
-            "institution_id": setup_unassigned_team.institution_id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
+    return make_student_token(setup_unassigned_team)
 
 
 def test_league_assign_success(
@@ -122,7 +116,7 @@ def test_league_assign_success(
     assert "assigned to league" in data["message"]
 
     # Verify assignment in database
-    team = get_team(db_session, setup_unassigned_team.name)
+    team = get_team_by_id(db_session, setup_unassigned_team.id)
     assert team.league.name == "comp_test"
 
     # Test case 2: Assign to different league
@@ -144,7 +138,7 @@ def test_league_assign_success(
     assert "assigned to league" in data["message"]
 
     # Verify assignment
-    team = get_team(db_session, setup_unassigned_team.name)
+    team = get_team_by_id(db_session, setup_unassigned_team.id)
     assert team.league.name == "pd_test"
 
 
@@ -165,7 +159,7 @@ def test_league_assign_exceptions(
     assert "not found" in data["message"].lower()
 
     # Verify team remains in original league
-    team = get_team(db_session, setup_unassigned_team.name)
+    team = get_team_by_id(db_session, setup_unassigned_team.id)
     assert team.league.name == "unassigned"
 
     # Test case 2: Unauthorized access (no token)

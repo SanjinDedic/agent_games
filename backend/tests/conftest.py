@@ -242,7 +242,8 @@ def admin_token(db_session: Session) -> str:
     db_session.commit()
 
     return create_access_token(
-        data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(minutes=30)
+        data={"sub": "admin", "role": "admin", "institution_id": 1},
+        expires_delta=timedelta(minutes=30),
     )
 
 
@@ -269,9 +270,48 @@ def team_token(db_session):
     )
     db_session.add(team)
     db_session.commit()
+    db_session.refresh(team)
 
     return create_access_token(
-        data={"sub": team.name, "role": "student"}, expires_delta=timedelta(minutes=30)
+        data={
+            "sub": team.name,
+            "role": "student",
+            "team_id": team.id,
+            "team_type": team.team_type.value,
+            "is_demo": team.is_demo,
+            "institution_id": team.institution_id,
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+
+
+def make_student_token(team: Team, minutes: int = 30) -> str:
+    """Build a student JWT for a persisted Team row (after db_session.refresh)."""
+    return create_access_token(
+        data={
+            "sub": team.name,
+            "role": "student",
+            "team_id": team.id,
+            "team_type": team.team_type.value,
+            "is_demo": team.is_demo,
+            "institution_id": team.institution_id,
+        },
+        expires_delta=timedelta(minutes=minutes),
+    )
+
+
+def make_ai_agent_token(team: Team, minutes: int = 30) -> str:
+    """Build an ai_agent JWT for a persisted Team row."""
+    return create_access_token(
+        data={
+            "sub": team.name,
+            "role": "ai_agent",
+            "team_id": team.id,
+            "team_type": team.team_type.value,
+            "is_demo": team.is_demo,
+            "institution_id": team.institution_id,
+        },
+        expires_delta=timedelta(minutes=minutes),
     )
 
 

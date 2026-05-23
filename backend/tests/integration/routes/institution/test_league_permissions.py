@@ -153,7 +153,7 @@ def two_institutions(db_session: Session) -> dict:
         expires_delta=timedelta(minutes=30),
     )
     admin_token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
+        data={"sub": "admin", "role": "admin", "institution_id": 1},
         expires_delta=timedelta(minutes=30),
     )
     admin_inst_token = create_access_token(

@@ -16,8 +16,6 @@ from backend.routes.support.support_db import (
     SupportError,
     add_attachment,
     create_ticket,
-    resolve_institution_by_token_name,
-    resolve_team_by_token_name,
 )
 from backend.database.db_models import (
     SupportTicketCategory,
@@ -101,15 +99,18 @@ async def create_ticket_endpoint(
             )
 
         role = current_user["role"]
-        token_sub = current_user["team_name"]
         if role == ROLE_STUDENT:
-            team = resolve_team_by_token_name(session, token_sub)
             submitter_type = SupportTicketSubmitterType.TEAM
-            team_id, institution_id = team.id, None
+            team_id, institution_id = current_user.get("team_id"), None
+            if team_id is None:
+                raise HTTPException(status_code=401, detail="Token missing team_id")
         elif role == ROLE_INSTITUTION:
-            inst = resolve_institution_by_token_name(session, token_sub)
             submitter_type = SupportTicketSubmitterType.INSTITUTION
-            team_id, institution_id = None, inst.id
+            team_id, institution_id = None, current_user.get("institution_id")
+            if institution_id is None:
+                raise HTTPException(
+                    status_code=401, detail="Token missing institution_id"
+                )
         else:
             raise HTTPException(
                 status_code=403,

@@ -42,7 +42,14 @@ def resolve_active_league_by_token(
 def team_signup_success_data(team: Team, league: League) -> dict:
     """The response data shape shared by both signup endpoints."""
     access_token = create_access_token(
-        data={"sub": team.name, "role": "student"},
+        data={
+            "sub": team.name,
+            "role": "student",
+            "team_id": team.id,
+            "team_type": team.team_type.value,
+            "is_demo": team.is_demo,
+            "institution_id": team.institution_id,
+        },
         expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES),
     )
     return {

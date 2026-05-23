@@ -52,10 +52,14 @@ def get_team_token(session: Session, team_name: str, team_password: str):
     if not team.verify_password(team_password):
         raise InvalidCredentialsError("Invalid team password")
 
-    # Create token data with institution_id if present
-    token_data = {"sub": team_name, "role": "student"}
-    if team.institution_id:
-        token_data["institution_id"] = team.institution_id
+    token_data = {
+        "sub": team_name,
+        "role": "student",
+        "team_id": team.id,
+        "team_type": team.team_type.value,
+        "is_demo": team.is_demo,
+        "institution_id": team.institution_id,
+    }
 
     access_token = create_access_token(
         data=token_data, expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES)
@@ -72,7 +76,7 @@ def get_admin_token(session: Session, username: str, password: str):
         raise InvalidCredentialsError("Invalid credentials")
 
     access_token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
+        data={"sub": "admin", "role": "admin", "institution_id": 1},
         expires_delta=timedelta(minutes=ADMIN_TOKEN_EXPIRY_MINUTES),
     )
 
@@ -144,15 +148,14 @@ def verify_agent_api_key(session: Session, api_key: str):
     api_key_record.last_used = datetime.now(AUSTRALIA_SYDNEY_TZ)
     session.commit()
 
-    # Create token data with institution_id if present
     token_data = {
         "sub": team.name,
         "role": "ai_agent",
-        "team_name": team.name,
+        "team_id": team.id,
+        "team_type": team.team_type.value,
+        "is_demo": team.is_demo,
+        "institution_id": team.institution_id,
     }
-
-    if team.institution_id:
-        token_data["institution_id"] = team.institution_id
 
     access_token = create_access_token(
         data=token_data,

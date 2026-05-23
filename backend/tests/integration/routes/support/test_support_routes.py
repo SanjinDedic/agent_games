@@ -7,17 +7,15 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import select
 
-from backend.database.db_models import SupportTicket, SupportTicketAttachment
+from backend.database.db_models import SupportTicket, SupportTicketAttachment, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.tests.conftest import make_student_token
 
 
 @pytest.fixture
-def team_headers() -> dict:
-    token = create_access_token(
-        data={"sub": "TeamA", "role": "student"},
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
+def team_headers(db_session) -> dict:
+    team = db_session.exec(select(Team).where(Team.name == "TeamA")).first()
+    return {"Authorization": f"Bearer {make_student_token(team)}"}
 
 
 @pytest.fixture
@@ -266,12 +264,8 @@ def test_s3_failure_rolls_back_and_cleans_up(
     assert db_session.exec(select(SupportTicketAttachment)).all() == []
 
 
-def test_unknown_team_returns_error(client, db_session):
-    """Token refers to a team that no longer exists in the DB → friendly error."""
-    from datetime import timedelta
-
-    from backend.routes.auth.auth_core import create_access_token
-
+def test_token_without_team_id_rejected(client):
+    """Student token lacking team_id is rejected at the route guard."""
     token = create_access_token(
         data={"sub": "GhostTeam", "role": "student"},
         expires_delta=timedelta(minutes=30),
@@ -281,18 +275,11 @@ def test_unknown_team_returns_error(client, db_session):
         headers={"Authorization": f"Bearer {token}"},
         data={"category": "bug", "subject": "x", "description": "y"},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not found" in body["message"].lower()
+    assert resp.status_code == 401
 
 
-def test_unknown_institution_returns_error(client):
-    """Token refers to an institution not in the DB → friendly error."""
-    from datetime import timedelta
-
-    from backend.routes.auth.auth_core import create_access_token
-
+def test_token_without_institution_id_rejected(client):
+    """Institution token lacking institution_id is rejected at the route guard."""
     token = create_access_token(
         data={"sub": "Ghost Institute", "role": "institution"},
         expires_delta=timedelta(minutes=30),
@@ -302,10 +289,7 @@ def test_unknown_institution_returns_error(client):
         headers={"Authorization": f"Bearer {token}"},
         data={"category": "support", "subject": "x", "description": "y"},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not found" in body["message"].lower()
+    assert resp.status_code == 401
 
 
 def test_ai_agent_role_forbidden(client):

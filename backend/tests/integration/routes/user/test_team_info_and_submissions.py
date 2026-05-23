@@ -12,6 +12,7 @@ from sqlmodel import Session, delete, select
 from backend.database.db_models import Institution, League, Submission, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_submission_history
+from backend.tests.conftest import make_student_token
 
 
 @pytest.fixture
@@ -71,10 +72,7 @@ def team(db_session: Session, league_with_institution: League) -> Team:
 
 @pytest.fixture
 def team_token(team: Team) -> str:
-    return create_access_token(
-        data={"sub": team.name, "role": "student"},
-        expires_delta=timedelta(minutes=30),
-    )
+    return make_student_token(team)
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +102,7 @@ def test_get_team_submission_history_returns_newest_first(
     db_session.add_all([s1, s2, s3])
     db_session.commit()
 
-    history = get_team_submission_history(db_session, team.name)
+    history = get_team_submission_history(db_session, team.id)
     assert len(history) == 3
     assert [h["code"] for h in history] == ["newest", "newer", "old"]
     # Field shape
@@ -115,13 +113,13 @@ def test_get_team_submission_history_returns_newest_first(
 
 
 def test_get_team_submission_history_no_team(db_session: Session):
-    assert get_team_submission_history(db_session, "nonexistent_team") == []
+    assert get_team_submission_history(db_session, 999999) == []
 
 
 def test_get_team_submission_history_empty(db_session: Session, team: Team):
     db_session.exec(delete(Submission).where(Submission.team_id == team.id))
     db_session.commit()
-    assert get_team_submission_history(db_session, team.name) == []
+    assert get_team_submission_history(db_session, team.id) == []
 
 
 # ---------------------------------------------------------------------------
@@ -246,8 +244,7 @@ def test_get_team_submissions_unknown_team_returns_empty(client):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["submissions"] == []
+    assert data["status"] == "error"
 
 
 def test_get_team_submissions_unauthorized(client):

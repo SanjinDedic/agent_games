@@ -702,9 +702,8 @@ def test_assess_admin_can_assess_any_league(
 ):
     """Admin token bypasses institution ownership check."""
     institution, league, team, _ = institution_setup
-    # Admin token — no institution_id needed; _resolve_institution returns (1, True)
     admin_token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
+        data={"sub": "admin", "role": "admin", "institution_id": 1},
         expires_delta=timedelta(minutes=30),
     )
     with patch(

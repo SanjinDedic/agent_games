@@ -41,14 +41,14 @@ async def launch_demo(
         # Create a new demo user with the provided username
         demo_user = create_demo_user(session, username, email)
 
-        # Create a token valid for DEMO_TOKEN_EXPIRY_MINUTES minutes
         expires_delta = timedelta(minutes=DEMO_TOKEN_EXPIRY_MINUTES)
         token_data = {
             "sub": demo_user.name,
             "role": "student",
+            "team_id": demo_user.id,
+            "team_type": demo_user.team_type.value,
             "is_demo": True,
             "institution_id": demo_user.institution_id,
-            "exp_time": DEMO_TOKEN_EXPIRY_MINUTES,
         }
         access_token = create_access_token(token_data, expires_delta)
 

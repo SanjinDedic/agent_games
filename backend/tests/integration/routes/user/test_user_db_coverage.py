@@ -141,7 +141,9 @@ def test_assign_team_demo_to_non_demo_league(db_session):
     db_session.commit()
 
     with pytest.raises(ValueError, match="Demo users can only join demo leagues"):
-        assign_team_to_league(db_session, "demo_assign_test", "non_demo_league_test")
+        assign_team_to_league(
+            db_session, demo_team.id, "non_demo_league_test", is_demo=True
+        )
 
 
 def test_assign_team_not_found(db_session):
@@ -160,7 +162,9 @@ def test_assign_team_not_found(db_session):
     db_session.commit()
 
     with pytest.raises(TeamNotFoundError):
-        assign_team_to_league(db_session, "nonexistent_team_xyz", "assign_target_league")
+        assign_team_to_league(
+            db_session, 999999, "assign_target_league", is_demo=False
+        )
 
 
 def test_get_published_result_with_feedback_json(db_session, published_league):

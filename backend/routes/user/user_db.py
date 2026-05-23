@@ -85,7 +85,9 @@ def save_submission(
     return db_submission.id
 
 
-def assign_team_to_league(session: Session, team_name: str, league_name: str) -> str:
+def assign_team_to_league(
+    session: Session, team_id: int, league_name: str, is_demo: bool
+) -> str:
     """Assign a team to a league"""
     league = session.exec(
         select(League).where(League.name == league_name)
@@ -93,14 +95,12 @@ def assign_team_to_league(session: Session, team_name: str, league_name: str) ->
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
 
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
-    if not team:
-        raise TeamNotFoundError(f"Team '{team_name}' not found")
-
-    # Special handling for demo users - only allow them to join demo leagues
-    if team.is_demo and not league.is_demo:
-        # Demo users can only join demo leagues
+    if is_demo and not league.is_demo:
         raise ValueError("Demo users can only join demo leagues")
+
+    team = session.get(Team, team_id)
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
 
     team.league_id = league.id
     session.add(team)
@@ -226,10 +226,10 @@ def get_leagues_for_user(session: Session, role: str, institution_id: Optional[i
     }
 
 
-def get_team(session, team_name):
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+def get_team_by_id(session: Session, team_id: int) -> Team:
+    team = session.get(Team, team_id)
     if not team:
-        raise TeamNotFoundError(f"Team '{team_name}' not found")
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
     return team
 
 
@@ -284,18 +284,11 @@ def get_all_submissions_for_league(
     return result
 
 
-def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[str]]:
+def get_team_submission(session: Session, team_id: int) -> Dict[str, Optional[str]]:
     """Get latest submission for a specific team"""
-    team = session.exec(select(Team).where(Team.name == team_name)).first()
-
-    if not team:
-        logger.warning(f"Team not found: {team_name}")
-        return {"code": None}
-
-    # Get latest submission
     submission = session.exec(
         select(Submission)
-        .where(Submission.team_id == team.id)
+        .where(Submission.team_id == team_id)
         .order_by(Submission.timestamp.desc())
         .limit(1)
     ).first()
@@ -303,16 +296,11 @@ def get_team_submission(session: Session, team_name: str) -> Dict[str, Optional[
     return {"code": submission.code if submission else None}
 
 
-def get_team_submission_history(session: Session, team_name: str) -> list:
+def get_team_submission_history(session: Session, team_id: int) -> list:
     """Get full submission history for a team, newest first."""
-    team = session.exec(select(Team).where(Team.name == team_name)).first()
-    if not team:
-        logger.warning(f"Team not found: {team_name}")
-        return []
-
     submissions = session.exec(
         select(Submission)
-        .where(Submission.team_id == team.id)
+        .where(Submission.team_id == team_id)
         .order_by(Submission.timestamp.desc())
     ).all()
 
