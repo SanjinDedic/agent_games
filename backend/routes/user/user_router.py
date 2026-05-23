@@ -38,6 +38,7 @@ from backend.routes.user.user_db import (
     get_published_result,
     get_team,
     get_team_submission,
+    get_team_submission_history,
     save_submission,
     get_result_by_publish_link,
 )
@@ -359,6 +360,39 @@ async def get_all_league_submissions(
         )
 
 
+@user_router.get("/get-team-info", response_model=ResponseModel)
+@verify_any_role
+async def get_team_info_endpoint(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Return current team's league and institution info."""
+    team_name = current_user.get("team_name")
+    try:
+        team = get_team(session, team_name)
+        league = team.league
+        institution_name = (
+            league.institution.name if league and league.institution else None
+        )
+        return ResponseModel(
+            status="success",
+            message="Team info retrieved",
+            data={
+                "team_name": team.name,
+                "league_id": team.league_id,
+                "league_name": league.name if league else None,
+                "institution_name": institution_name,
+            },
+        )
+    except TeamNotFoundError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+    except Exception as e:
+        logger.error(f"Error retrieving team info: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve team info: {str(e)}"
+        )
+
+
 @user_router.get("/get-team-submission", response_model=ResponseModel)
 @verify_any_role
 async def get_team_submission_endpoint(
@@ -380,6 +414,29 @@ async def get_team_submission_endpoint(
             status="error",
             message=f"Failed to retrieve submission: {str(e)}",
             data={"code": None},
+        )
+
+
+@user_router.get("/get-team-submissions", response_model=ResponseModel)
+@verify_any_role
+async def get_team_submissions_endpoint(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Get full submission history for the current team"""
+    team_name = current_user["team_name"]
+    try:
+        submissions = get_team_submission_history(session, team_name)
+        return ResponseModel(
+            status="success",
+            message="Submissions retrieved successfully",
+            data={"submissions": submissions},
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving submission history: {e}")
+        return ErrorResponseModel(
+            status="error",
+            message=f"Failed to retrieve submissions: {str(e)}",
         )
 
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
@@ -11,19 +11,22 @@ function AgentLeagueSignUp() {
   const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.currentUser);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const accessToken = useSelector((state) => state.auth.token);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
   const isDemo = useSelector(
     (state) => state.auth.currentUser?.is_demo || false
   );
 
-  // Use the league API hook
-  const { fetchUserLeagues, assignToLeague, isLoading } = useLeagueAPI();
+  const { fetchUserLeagues, fetchTeamInfo, assignToLeague, isLoading } = useLeagueAPI();
+
+  const [assignedLeagueId, setAssignedLeagueId] = useState(null);
+  const [assignedLeagueName, setAssignedLeagueName] = useState(null);
+  const [institutionName, setInstitutionName] = useState(null);
+  const [pendingLeague, setPendingLeague] = useState(null);
+  const preselectedRef = useRef(false);
 
   moment.tz.setDefault("Australia/Sydney");
 
-  // Check authentication and load leagues
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
     if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
@@ -32,40 +35,85 @@ function AgentLeagueSignUp() {
     }
 
     fetchUserLeagues();
+
+    (async () => {
+      const result = await fetchTeamInfo();
+      if (result.success && result.data) {
+        setAssignedLeagueId(result.data.league_id);
+        setAssignedLeagueName(result.data.league_name);
+        setInstitutionName(result.data.institution_name);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCheckboxChange = (event) => {
-    // Set the current league by name
-    dispatch(setCurrentLeague(event.target.name));
+  // Pre-select team's currently assigned league once leagues are loaded (one-shot)
+  useEffect(() => {
+    if (preselectedRef.current) return;
+    if (!assignedLeagueId || !allLeagues?.length) return;
+    const match = allLeagues.find((l) => l.id === assignedLeagueId);
+    if (match && match.name.toLowerCase() !== "unassigned") {
+      dispatch(setCurrentLeague(match.name));
+    }
+    preselectedRef.current = true;
+  }, [assignedLeagueId, allLeagues, dispatch]);
+
+  const isAssignedToReal =
+    assignedLeagueName && assignedLeagueName.toLowerCase() !== "unassigned";
+
+  const handleLeagueClick = (league) => {
+    if (
+      isAssignedToReal &&
+      league.id !== assignedLeagueId &&
+      currentLeague?.id !== league.id
+    ) {
+      setPendingLeague(league);
+      return;
+    }
+    dispatch(setCurrentLeague(league.name));
   };
 
-  const handleSignUp = async () => {
-    if (!currentLeague) {
-      return; // Toast is shown by the assignToLeague function
+  const confirmLeagueChange = () => {
+    if (pendingLeague) {
+      dispatch(setCurrentLeague(pendingLeague.name));
+      setPendingLeague(null);
     }
+  };
 
-    // Use the hook to handle league assignment
+  const cancelLeagueChange = () => setPendingLeague(null);
+
+  const handleSignUp = async () => {
+    if (!currentLeague) return;
     const result = await assignToLeague(currentLeague.name);
-
     if (result.success) {
       navigate("/AgentSubmission");
     }
   };
 
-  const displayLeagues = allLeagues.filter((league) =>
-    isDemo
-      ? league.name.toLowerCase().includes("_demo")
-      : !league.name.toLowerCase().includes("_demo")
-  );
+  const displayLeagues = allLeagues
+    .filter((league) => league.name.toLowerCase() !== "unassigned")
+    .filter((league) =>
+      isDemo
+        ? league.name.toLowerCase().includes("_demo")
+        : !league.name.toLowerCase().includes("_demo")
+    );
 
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center bg-ui-lighter">
       <div className="w-full max-w-4xl mx-4">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-ui-dark mb-8 text-center">
+          <h1 className="text-2xl font-bold text-ui-dark mb-2 text-center">
             PICK A LEAGUE TO JOIN
           </h1>
+
+          {isAssignedToReal && (
+            <p className="text-sm text-ui-dark/70 mb-6 text-center">
+              Your team{" "}
+              <span className="font-semibold">{currentUser?.name}</span> is
+              already assigned to{" "}
+              <span className="font-semibold">{assignedLeagueName}</span>.
+            </p>
+          )}
 
           {isDemo && (
             <div className="mb-6 bg-notice-yellowBg border border-notice-yellow rounded-lg p-4">
@@ -97,7 +145,7 @@ function AgentLeagueSignUp() {
                     type="checkbox"
                     name={league.name}
                     checked={currentLeague?.name === league.name}
-                    onChange={handleCheckboxChange}
+                    onChange={() => handleLeagueClick(league)}
                     className="w-5 h-5 mr-4 rounded border-league-text"
                   />
                   <div className="text-white">
@@ -133,6 +181,42 @@ function AgentLeagueSignUp() {
           </div>
         </div>
       </div>
+
+      {pendingLeague && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h2 className="text-xl font-bold text-ui-dark mb-4">
+              Change league?
+            </h2>
+            <p className="text-ui-dark mb-3">
+              <span className="font-semibold">
+                {institutionName || "Your institution"}
+              </span>{" "}
+              assigned you to{" "}
+              <span className="font-semibold">{assignedLeagueName}</span>. Are
+              you sure you want to change leagues?
+            </p>
+            <p className="text-ui-dark mb-6">
+              You may not be competing against teams you are intended to compete
+              against.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={cancelLeagueChange}
+                className="px-4 py-2 rounded-md bg-ui-light hover:bg-ui-light/80 text-ui-dark"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLeagueChange}
+                className="px-4 py-2 rounded-md bg-primary hover:bg-primary-hover text-white"
+              >
+                Yes, change league
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

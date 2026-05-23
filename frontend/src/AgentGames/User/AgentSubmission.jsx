@@ -59,12 +59,14 @@ function AgentSubmission() {
 
     const loadInitialData = async () => {
       // Load the latest submission
+      let hadSubmission = false;
       const submissionResult = await getLatestSubmission();
       if (submissionResult.success) {
         if (submissionResult.hasSubmission) {
           setLastSubmission(submissionResult.code);
           setCode(submissionResult.code);
           setHasLastSubmission(true);
+          hadSubmission = true;
         } else {
           setHasLastSubmission(false);
         }
@@ -84,13 +86,13 @@ function AgentSubmission() {
 
           if (league && league.game) {
             dispatch(setCurrentLeague(league.name));
-            await loadInstructions(league.game);
+            await loadInstructions(league.game, hadSubmission);
           }
         }
       }
       // If we already have the game info, load instructions directly
       else if (currentLeague && currentLeague.game) {
-        await loadInstructions(currentLeague.game);
+        await loadInstructions(currentLeague.game, hadSubmission);
       }
     };
 
@@ -99,7 +101,7 @@ function AgentSubmission() {
   }, []);
 
   // Load game instructions and starter code
-  const loadInstructions = async (gameOverride = null) => {
+  const loadInstructions = async (gameOverride = null, hasSubmissionOverride = null) => {
     const gameToUse = gameOverride || (currentLeague && currentLeague.game);
     if (!gameToUse) return;
 
@@ -110,7 +112,8 @@ function AgentSubmission() {
 
       if (result.starterCode) {
         setStarterCode(result.starterCode);
-        if (!hasLastSubmission) {
+        const hasSub = hasSubmissionOverride !== null ? hasSubmissionOverride : hasLastSubmission;
+        if (!hasSub) {
           setCode(result.starterCode);
         }
       }

@@ -21,11 +21,13 @@ const NAV_LINKS_BY_ROLE = {
   ],
   team: [
     { to: "/", label: "Home" },
+    { to: "/AgentSubmission", label: "Submit Agent" },
     { to: "/Leaderboards", label: "Leaderboards" },
     { to: "/About", label: "About" },
   ],
   demo: [
     { to: "/", label: "Home" },
+    { to: "/AgentSubmission", label: "Submit Agent" },
     { to: "/About", label: "About" },
   ],
   public: [
