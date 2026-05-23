@@ -13,7 +13,11 @@ load_dotenv(os.path.join(project_root, ".env"))
 
 # JWT constants
 ALGORITHM = "HS256"
-SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_tests")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY is not set. Set it in environment variables or .env file."
+    )
 AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 # Token expiry durations
@@ -33,11 +37,6 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     )
     # Store expiration as UTC timestamp
     to_encode.update({"exp": int(expire.timestamp())})
-
-    if SECRET_KEY is None:
-        raise ValueError(
-            "SECRET_KEY is not set. Set it in environment variables or .env file."
-        )
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

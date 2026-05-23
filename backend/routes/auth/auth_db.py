@@ -118,6 +118,7 @@ def get_institution_token(session: Session, institution_name: str, password: str
             "sub": institution_name,
             "role": "institution",
             "institution_id": institution.id,
+            "institution_name": institution_name,
         },
         expires_delta=timedelta(minutes=INSTITUTION_TOKEN_EXPIRY_MINUTES),
     )

@@ -42,7 +42,7 @@ def verify_role(allowed_roles: Union[str, List[str]]):
             if not current_user or not isinstance(current_user, dict):
                 raise HTTPException(status_code=401, detail="Invalid authentication")
 
-            roles = [allowed_roles] if isinstance(allowed_roles, str) else allowed_roles
+            roles = [allowed_roles] if isinstance(allowed_roles, str) else list(allowed_roles)
             roles.append(ROLE_SERVICE)  # Always allow service role
 
             if current_user["role"] not in roles:
