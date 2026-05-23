@@ -7,6 +7,7 @@ import { setCurrentLeague } from "../../slices/leaguesSlice";
 import CodeEditor from "./CodeEditor";
 import CombinedFooter from "./CombinedFooter";
 import FeedbackDisplay from "./FeedbackDisplay";
+import MySubmissionsModal from "./MySubmissionsModal";
 import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
@@ -22,6 +23,9 @@ function AgentSubmission() {
   const [shouldCollapseInstructions, setShouldCollapseInstructions] =
     useState(false);
   const [isLoadingLeagueInfo, setIsLoadingLeagueInfo] = useState(false);
+  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
+  const [submissionHistory, setSubmissionHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const editorRef = useRef(null);
 
   // Redux hooks
@@ -34,6 +38,7 @@ function AgentSubmission() {
   // Custom API hooks
   const {
     getLatestSubmission,
+    getTeamSubmissions,
     getGameInstructions,
     submitCode,
     isLoading: isSubmitting,
@@ -149,6 +154,30 @@ function AgentSubmission() {
     }
   };
 
+  // Open submissions modal and load history
+  const handleShowSubmissions = async () => {
+    setSubmissionsModalOpen(true);
+    setIsLoadingHistory(true);
+    const result = await getTeamSubmissions();
+    setIsLoadingHistory(false);
+    if (result.success) {
+      setSubmissionHistory(result.submissions);
+    } else {
+      toast.error(result.error || "Failed to load submissions");
+      setSubmissionHistory([]);
+    }
+  };
+
+  // Load a specific past submission into the editor
+  const handleSelectSubmission = (sub) => {
+    if (editorRef.current && sub?.code != null) {
+      editorRef.current.setValue(sub.code);
+      setCode(sub.code);
+      setSubmissionsModalOpen(false);
+      toast.success("Submission loaded into editor");
+    }
+  };
+
   // Reset code to starter template
   const handleReset = () => {
     if (starterCode && editorRef.current) {
@@ -206,9 +235,18 @@ function AgentSubmission() {
         onSubmit={handleSubmit}
         onLoadLast={handleLoadLastSubmission}
         onReset={handleReset}
+        onShowSubmissions={handleShowSubmissions}
         isLoading={isLoading}
         hasLastSubmission={hasLastSubmission}
         hasStarterCode={!!starterCode}
+      />
+
+      <MySubmissionsModal
+        isOpen={submissionsModalOpen}
+        onClose={() => setSubmissionsModalOpen(false)}
+        submissions={submissionHistory}
+        isLoading={isLoadingHistory}
+        onSelect={handleSelectSubmission}
       />
     </div>
   );

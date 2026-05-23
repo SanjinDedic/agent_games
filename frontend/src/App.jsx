@@ -23,6 +23,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import "./utils/toastDefaults";
 import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';

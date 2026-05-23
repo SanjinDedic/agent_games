@@ -34,7 +34,7 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/Institution", label: "Institutions" },
     { to: "/Leaderboards", label: "Leaderboards" },
     { to: "/About", label: "About" },
-    { to: "/AgentLogin", label: "Player Login" },
+    { to: "/AgentLogin", label: "Team Login" },
   ],
 };
 

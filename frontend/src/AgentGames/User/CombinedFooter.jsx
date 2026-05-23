@@ -9,6 +9,7 @@ function CombinedFooter({
     onSubmit,
     onLoadLast,
     onReset,
+    onShowSubmissions,
     isLoading,
     hasLastSubmission,
     hasStarterCode
@@ -52,6 +53,14 @@ function CombinedFooter({
               className="py-2 px-4 text-base font-medium text-white bg-notice-orange hover:bg-notice-orange/90 disabled:bg-ui-light rounded transition-colors"
             >
               Reset Code
+            </button>
+
+            <button
+              onClick={onShowSubmissions}
+              disabled={isLoading}
+              className="py-2 px-4 text-base font-medium text-white bg-league-blue hover:bg-league-hover disabled:bg-ui-light rounded transition-colors"
+            >
+              My Submissions
             </button>
 
             {/* Demo mode indicator as a button-like element (temporarily hidden)

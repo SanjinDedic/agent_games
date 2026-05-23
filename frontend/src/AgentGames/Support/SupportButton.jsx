@@ -18,7 +18,7 @@ function SupportButton() {
     <>
       <button
         onClick={() => dispatch(openSupportDialog())}
-        className="fixed bottom-4 right-16 h-10 px-4 bg-success hover:bg-success-hover text-white rounded-full shadow-lg flex items-center justify-center gap-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-success-light z-40"
+        className="fixed bottom-[79px] right-16 h-10 px-4 bg-success/50 hover:bg-success-hover/70 text-white rounded-full shadow-lg flex items-center justify-center gap-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-success-light z-40"
         title="Contact support"
         aria-label="Contact support"
       >
