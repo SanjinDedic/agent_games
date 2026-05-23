@@ -1,51 +1,39 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import moment from "moment-timezone";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAllRankings } from "../slices/rankingsSlice";
 
 function Leaderboards() {
-  const [publishedResults, setPublishedResults] = useState([]);
+  const dispatch = useDispatch();
+  const publishedResults = useSelector((state) => state.rankings.allRankings);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLeague, setSelectedLeague] = useState("all");
-  const [leagues, setLeagues] = useState([]);
 
-  // Get API URL from environment
-  const apiUrl = import.meta.env.VITE_AGENT_API_URL;
+  const leagues = useMemo(
+    () => [...new Set(publishedResults.map((r) => r.league_name))],
+    [publishedResults],
+  );
+
+  const loadResults = async (force = false) => {
+    setIsLoading(true);
+    setError(null);
+    const res = await dispatch(fetchAllRankings({ force }));
+    if (!res.success) {
+      setError(res.error || "Failed to fetch published results");
+      toast.error(res.error || "Failed to fetch published results");
+    }
+    setIsLoading(false);
+  };
 
   useEffect(() => {
-    fetchPublishedResults();
+    loadResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPublishedResults = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `${apiUrl}/user/get-published-results-for-all-leagues`
-      );
-      const data = await response.json();
-
-      if (data.status === "success") {
-        const results = data.data.all_results || [];
-        setPublishedResults(results);
-
-        // Extract unique league names for the filter dropdown
-        const uniqueLeagues = [
-          ...new Set(results.map((result) => result.league_name)),
-        ];
-        setLeagues(uniqueLeagues);
-      } else {
-        setError(data.message || "Failed to fetch published results");
-        toast.error(data.message || "Failed to fetch published results");
-      }
-    } catch (error) {
-      console.error("Error fetching published results:", error);
-      setError("Error connecting to server");
-      toast.error("Error connecting to server");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchPublishedResults = () => loadResults(true);
 
   // Filter results by selected league
   const filteredResults =

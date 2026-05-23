@@ -7,8 +7,8 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useNavigate } from 'react-router-dom';
 
-// Import Redux actions 
-import { setLeagues, updateExpiryDate } from "../../../slices/leaguesSlice";
+// Import Redux actions
+import { updateExpiryDate } from "../../../slices/leaguesSlice";
 import { selectToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
@@ -24,11 +24,11 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
-  
+
   const [signupLink, setSignupLink] = useState("");
   const [showSignupLink, setShowSignupLink] = useState(false);
   const [isLoadingSignupLink, setIsLoadingSignupLink] = useState(false);
-  
+
   // Use the shared API hook
   const {
     fetchUserLeagues,
@@ -40,7 +40,8 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    fetchLeagues();
+    fetchUserLeagues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Check for existing signup links when currentLeague changes
@@ -55,29 +56,6 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
       setSignupLink("");
     }
   }, [currentLeague]);
-
-  // Fetch all leagues
-  const fetchLeagues = async () => {
-    try {
-      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.status === "success") {
-        dispatch(setLeagues(data.data.leagues));
-      } else if (data.status === "failed") {
-        toast.error(data.message);
-      } else if (data.detail === "Invalid token") {
-        onUnauthorized();
-      }
-    } catch (error) {
-      console.error("Error fetching leagues:", error);
-    }
-  };
 
   // Generate signup link for a league
   const generateSignupLink = async (leagueId, leagueName) => {

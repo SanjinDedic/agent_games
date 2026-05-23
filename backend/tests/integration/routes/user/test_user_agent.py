@@ -182,7 +182,7 @@ class CustomPlayer(Player):
 def test_get_league_submissions_success(
     client,
     db_session: Session,
-    student_token: str,
+    auth_headers,
     setup_test_league: League,
     setup_test_team: Team,
 ):
@@ -207,10 +207,10 @@ def test_get_league_submissions_success(
     ).all()
     assert len(submissions) == 2
 
-    # Get league submissions
+    # Get league submissions (admin bypasses ownership)
     response = client.get(
         f"/user/get-league-submissions/{setup_test_league.id}",
-        headers={"Authorization": f"Bearer {student_token}"},
+        headers=auth_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -222,13 +222,13 @@ def test_get_league_submissions_success(
     )  # Should get latest submission
 
 
-def test_get_league_submissions_exceptions(client, student_token: str):
+def test_get_league_submissions_exceptions(client, student_token: str, auth_headers):
     """Test error cases for getting league submissions"""
 
-    # Test case 1: Get submissions for non-existent league
+    # Test case 1: Admin gets empty dict for non-existent league
     response = client.get(
         "/user/get-league-submissions/99999",
-        headers={"Authorization": f"Bearer {student_token}"},
+        headers=auth_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -246,6 +246,13 @@ def test_get_league_submissions_exceptions(client, student_token: str):
         headers={"Authorization": f"Bearer {invalid_token}"},
     )
     assert response.status_code == 401
+
+    # Test case 4: Student role is no longer allowed
+    response = client.get(
+        "/user/get-league-submissions/1",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 403
 
 
 def test_get_team_submission_success(

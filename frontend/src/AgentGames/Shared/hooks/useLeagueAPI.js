@@ -2,8 +2,8 @@
 import { useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import { setLeagues } from '../../../slices/leaguesSlice';
-import { selectToken } from '../../../slices/authSlice';
+import { setLeagues, setResults, clearResults } from '../../../slices/leaguesSlice';
+import { selectToken, setToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
 /**
@@ -88,8 +88,11 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
+
       if (data.status === "success") {
+        if (data.data?.access_token) {
+          dispatch(setToken(data.data.access_token));
+        }
         toast.success(data.message || 'Successfully joined league');
         return { success: true };
       } else {
@@ -103,26 +106,44 @@ export const useLeagueAPI = (userRole) => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
-  
+  }, [apiUrl, accessToken, dispatch]);
+
   /**
-   * Fetch current team's league + institution info
+   * Fetch all simulation results for a league
    */
-  const fetchTeamInfo = useCallback(async () => {
+  const fetchLeagueResults = useCallback(async (leagueId) => {
+    if (!leagueId) return { success: false, error: 'league_id required' };
     try {
-      const response = await authFetch(`${apiUrl}/user/get-team-info`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await authFetch(
+        `${apiUrl}/institution/get-all-league-results`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ league_id: leagueId }),
+        },
+      );
       const data = await response.json();
       if (data.status === 'success') {
-        return { success: true, data: data.data };
+        const results = data.data?.results || [];
+        if (results.length === 0) {
+          dispatch(clearResults());
+          toast.info('No results in the selected League');
+        } else {
+          dispatch(setResults(results));
+        }
+        return { success: true, results };
       }
+      toast.error(data.message || 'Failed to fetch league results');
+      dispatch(clearResults());
       return { success: false, error: data.message };
     } catch (error) {
-      console.error('Error fetching team info:', error);
+      console.error('Error fetching league results:', error);
       return { success: false, error: 'Network error' };
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, dispatch]);
 
   /**
    * Run a simulation for the specified league
@@ -396,15 +417,15 @@ export const useLeagueAPI = (userRole) => {
     isLoading,
     getLeagueInfo,
     fetchUserLeagues,
-    fetchTeamInfo,
+    fetchLeagueResults,
     assignToLeague,
     runSimulation,
     createLeague,
     publishResults,
     updateExpiryDate,
     assignTeamToLeague,
-  unassignTeam,
-    deleteLeague
+    unassignTeam,
+    deleteLeague,
   };
 };
 

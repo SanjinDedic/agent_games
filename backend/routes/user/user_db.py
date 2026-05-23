@@ -256,11 +256,15 @@ def get_latest_submissions_for_league(
 
 def get_all_submissions_for_league(
     session: Session, league_id: int
-) -> Dict[str, list]:
-    """Get all submissions for all teams in a league, ordered by timestamp"""
+) -> Dict[str, Dict]:
+    """Get all submissions for all teams in a league, ordered by timestamp.
+
+    Returns {"teams": {team_name: [submission, ...]}, "team_ids": {team_name: team_id}}.
+    """
     teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
 
-    result = {}
+    by_team = {}
+    team_ids = {}
     for team in teams:
         submissions = session.exec(
             select(Submission)
@@ -268,7 +272,7 @@ def get_all_submissions_for_league(
             .order_by(Submission.timestamp.asc())
         ).all()
 
-        result[team.name] = [
+        by_team[team.name] = [
             {
                 "code": sub.code,
                 "timestamp": sub.timestamp.isoformat(),
@@ -277,9 +281,10 @@ def get_all_submissions_for_league(
             }
             for sub in submissions
         ]
+        team_ids[team.name] = team.id
 
-    logger.info(f"Found submissions for {len(result)} teams in league {league_id}")
-    return result
+    logger.info(f"Found submissions for {len(by_team)} teams in league {league_id}")
+    return {"teams": by_team, "team_ids": team_ids}
 
 
 def get_team_submission(session: Session, team_id: int) -> Dict[str, Optional[str]]:

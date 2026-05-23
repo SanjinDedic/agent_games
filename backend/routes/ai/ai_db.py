@@ -71,16 +71,14 @@ def get_team_submissions_ordered(
 
 
 def get_team_in_league(
-    session: Session, team_name: str, league_id: int
+    session: Session, team_id: int, league_id: int
 ) -> Optional[Team]:
-    """Look up a team by name; return None if not found or not in that league.
+    """Look up a team by id; return None if not found or not in that league.
 
-    Team names are globally unique (see db_models.Team), so looking up by name
-    alone is unambiguous — but we still enforce the league membership as an
-    authorization guard, so a caller can only assess teams inside a league they
-    legitimately have access to.
+    Enforcing league membership as an authorization guard so a caller can only
+    assess teams inside a league they legitimately have access to.
     """
-    team = session.exec(select(Team).where(Team.name == team_name)).first()
+    team = session.get(Team, team_id)
     if not team or team.league_id != league_id:
         return None
     return team

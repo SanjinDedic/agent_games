@@ -35,8 +35,6 @@ const SimulationRunner = ({ league, userRole }) => {
     const result = await runSimulation({
       num_simulations: simulationNumber,
       league_id: league.id,
-      league_name: league.name,
-      game: league.game,
       custom_rewards: rewards,
     });
 

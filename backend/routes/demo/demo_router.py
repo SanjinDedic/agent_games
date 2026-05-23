@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES, create_access_token
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
+from backend.routes.auth.auth_db import mint_team_token
 from backend.database.db_session import get_db
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
 from backend.routes.demo.demo_models import DemoLaunchRequestWithUser
@@ -42,15 +43,7 @@ async def launch_demo(
         demo_user = create_demo_user(session, username, email)
 
         expires_delta = timedelta(minutes=DEMO_TOKEN_EXPIRY_MINUTES)
-        token_data = {
-            "sub": demo_user.name,
-            "role": "student",
-            "team_id": demo_user.id,
-            "team_type": demo_user.team_type.value,
-            "is_demo": True,
-            "institution_id": demo_user.institution_id,
-        }
-        access_token = create_access_token(token_data, expires_delta)
+        access_token = mint_team_token(demo_user, expires_delta=expires_delta)
 
         # Get available games for the demo
         available_games = get_games_names()

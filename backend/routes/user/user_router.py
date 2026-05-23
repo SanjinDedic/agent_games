@@ -15,6 +15,7 @@ from backend.routes.auth.auth_core import (
     verify_ai_agent_service_or_student,
     verify_any_role,
 )
+from backend.routes.auth.auth_db import mint_team_token
 from backend.database.db_session import get_db
 from backend.routes.institution.institution_db import (
     InstitutionAccessError,
@@ -162,7 +163,7 @@ async def assign_team_to_league_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Assign a team to a league"""
+    """Assign a team to a league and return a refreshed token carrying the new league_id."""
     team_id = current_user.get("team_id")
     if team_id is None:
         return ErrorResponseModel(
@@ -173,7 +174,15 @@ async def assign_team_to_league_endpoint(
     logger.info(f'Team Name "{team_name}" about to assign to league_id={league.league_id}')
     try:
         msg = assign_team_to_league(session, team_id, league.league_id, is_demo)
-        return ResponseModel(status="success", message=msg)
+        team = get_team_by_id(session, team_id)
+        role = current_user.get("role", "student")
+        token_role = "ai_agent" if role == "ai_agent" else "student"
+        access_token = mint_team_token(team, role=token_role)
+        return ResponseModel(
+            status="success",
+            message=msg,
+            data={"access_token": access_token, "token_type": "bearer"},
+        )
     except Exception as e:
         logger.error(
             f'Error assigning team "{team_name}" to league_id={league.league_id}: {str(e)}'
@@ -296,13 +305,36 @@ async def get_leagues_endpoint(
 
 
 @user_router.get("/get-league-submissions/{league_id}", response_model=ResponseModel)
-@verify_any_role
+@verify_admin_or_institution
 async def get_league_submissions(
     league_id: int,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Get latest submissions for all teams in a league"""
+    """Get latest submissions for all teams in a league.
+
+    Restricted to the institution that owns the league; admin and the internal
+    service role bypass the ownership check.
+    """
+    role = current_user.get("role")
+    if role not in ("admin", "service"):
+        institution_id, _ = _resolve_institution(current_user)
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+        try:
+            get_league_by_id(session, league_id, institution_id, is_admin=False)
+        except LeagueNotFoundError:
+            return ErrorResponseModel(
+                status="error", message=f"League {league_id} not found"
+            )
+        except InstitutionAccessError:
+            return ErrorResponseModel(
+                status="error",
+                message="You don't have permission to access this league",
+            )
+
     try:
         submissions = get_latest_submissions_for_league(session, league_id)
         return ResponseModel(
@@ -352,53 +384,20 @@ async def get_all_league_submissions(
                 message="You don't have permission to access this league",
             )
 
-        submissions = get_all_submissions_for_league(session, league_id)
+        result = get_all_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="All submissions retrieved successfully",
-            data={"league_name": league.name, "teams": submissions},
+            data={
+                "league_name": league.name,
+                "teams": result["teams"],
+                "team_ids": result["team_ids"],
+            },
         )
     except Exception as e:
         logger.error(f"Error retrieving all submissions: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to retrieve submissions: {str(e)}"
-        )
-
-
-@user_router.get("/get-team-info", response_model=ResponseModel)
-@verify_any_role
-async def get_team_info_endpoint(
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Return current team's league and institution info."""
-    team_id = current_user.get("team_id")
-    if team_id is None:
-        return ErrorResponseModel(
-            status="error", message="This endpoint requires a team token"
-        )
-    try:
-        team = get_team_by_id(session, team_id)
-        league = team.league
-        institution_name = (
-            league.institution.name if league and league.institution else None
-        )
-        return ResponseModel(
-            status="success",
-            message="Team info retrieved",
-            data={
-                "team_name": team.name,
-                "league_id": team.league_id,
-                "league_name": league.name if league else None,
-                "institution_name": institution_name,
-            },
-        )
-    except TeamNotFoundError as e:
-        return ErrorResponseModel(status="error", message=str(e))
-    except Exception as e:
-        logger.error(f"Error retrieving team info: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve team info: {str(e)}"
         )
 
 

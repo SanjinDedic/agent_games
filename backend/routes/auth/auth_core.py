@@ -106,6 +106,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             user_data["team_id"] = payload.get("team_id")
             user_data["team_type"] = payload.get("team_type")
             user_data["is_demo"] = payload.get("is_demo", False)
+            user_data["league_id"] = payload.get("league_id")
         elif user_role == ROLE_INSTITUTION:
             user_data["institution_name"] = sub
 
