@@ -66,40 +66,44 @@ SIMULATOR_URL = "http://simulator:8002" if _IS_DOCKER else "http://localhost:800
 API_URL = "http://api:8000" if _IS_DOCKER else "http://localhost:8000"
 
 
-@pytest.fixture
+_ENUM_TYPES = (
+    "teamtype",
+    "leaguetype",
+    "supportticketcategory",
+    "supportticketstatus",
+    "supportticketsubmittertype",
+)
+
+
+@pytest.fixture(scope="session")
 def db_engine():
-    """Create database engine for testing using the dedicated test database"""
+    """Build schema once per test session; reuse across all tests.
+
+    Per-test isolation is handled by TRUNCATE in db_session, not by
+    dropping/recreating the schema. This avoids a PG ENUM duplicate-key race
+    where SQLAlchemy create_all does not honor checkfirst for named types.
+    """
     database_url = get_database_url()
     logger.info(f"Creating database engine: {database_url}")
 
-    # Create the test database if it doesn't exist
     try:
         engine = create_engine(database_url)
         with engine.connect():
-            pass  # Test connection
+            pass
         logger.info("Test database already exists")
     except Exception as e:
         logger.info(f"Test database doesn't exist, creating it: {e}")
-        # Connect to postgres to create the test database
         base_url = database_url.rsplit("/", 1)[0] + "/postgres"
         admin_engine = create_engine(base_url)
+        db_name = database_url.rsplit("/", 1)[1].split("?")[0]
 
-        # Extract just the database name from the URL
-        db_name = database_url.rsplit("/", 1)[1].split("?")[0]  # Handle query params
-
-        # Use autocommit mode to avoid transaction issues with DDL
         with admin_engine.connect() as conn:
-            # Set autocommit mode
             conn.execution_options(isolation_level="AUTOCOMMIT")
-
-            # Terminate existing connections
             conn.execute(
                 text(
                     f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{db_name}' AND pid <> pg_backend_pid()"
                 )
             )
-
-            # Drop and create database (these commands will run outside transaction)
             conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
             conn.execute(text(f"CREATE DATABASE {db_name}"))
 
@@ -107,42 +111,36 @@ def db_engine():
         logger.info("Test database created successfully")
         engine = create_engine(database_url)
 
-    # Drop any leftover tables and ENUM types from a prior crashed teardown before
-    # recreating the schema. SQLAlchemy create_all does not honor checkfirst for PG
-    # named types, so a stale type from a previous run causes a duplicate-key
-    # UniqueViolation on pg_type. Tables must be dropped before the types so the
-    # CASCADE does not strip columns referencing them.
-    _ENUM_TYPES = (
-        "teamtype",
-        "leaguetype",
-        "supportticketcategory",
-        "supportticketstatus",
-        "supportticketsubmittertype",
-    )
+    # Wipe any residual schema from a prior interrupted run, then build fresh.
     SQLModel.metadata.drop_all(engine)
     with engine.begin() as conn:
         for type_name in _ENUM_TYPES:
-            conn.execute(text(f"DROP TYPE IF EXISTS {type_name}"))
-
-    # Create all tables
+            conn.execute(text(f"DROP TYPE IF EXISTS {type_name} CASCADE"))
     SQLModel.metadata.create_all(engine)
+
     yield engine
 
-    # Clean up: drop all tables but keep the database
     SQLModel.metadata.drop_all(engine)
     with engine.begin() as conn:
         for type_name in _ENUM_TYPES:
-            conn.execute(text(f"DROP TYPE IF EXISTS {type_name}"))
+            conn.execute(text(f"DROP TYPE IF EXISTS {type_name} CASCADE"))
     engine.dispose()
+
 
 @pytest.fixture
 def db_session(db_engine):
-    """Create database session for testing"""
+    """Per-test session with truncated tables for isolation."""
+    table_names = [t.name for t in SQLModel.metadata.sorted_tables]
+    if table_names:
+        quoted = ", ".join(f'"{name}"' for name in table_names)
+        with db_engine.begin() as conn:
+            conn.execute(text(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE"))
+
     with Session(db_engine) as session:
         try:
             logger.debug(f"Test session using database: {db_engine.url}")
             yield session
-            session.rollback()  # Roll back any uncommitted changes
+            session.rollback()
         finally:
             session.close()
 
