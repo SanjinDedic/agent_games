@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { closeSupportDialog } from '../../slices/supportSlice';
+import { selectToken } from '../../slices/authSlice';
 import { authFetch } from '../../utils/authFetch';
 import ImageDropzone from './ImageDropzone';
 
@@ -18,7 +19,7 @@ function SupportDialog() {
   const dispatch = useDispatch();
   const isOpen = useSelector((state) => state.support.isDialogOpen);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
+  const accessToken = useSelector(selectToken);
 
   const [category, setCategory] = useState('bug');
   const [subject, setSubject] = useState('');

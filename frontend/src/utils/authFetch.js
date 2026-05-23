@@ -1,5 +1,5 @@
 import { store } from "../store";
-import { logout } from "../slices/authSlice";
+import { logout, selectCurrentUser } from "../slices/authSlice";
 import { clearLeagues } from "../slices/leaguesSlice";
 import { clearTeam } from "../slices/teamsSlice";
 
@@ -15,9 +15,9 @@ function handleSessionExpired() {
   if (isLoggingOut) return;
   isLoggingOut = true;
 
-  const { auth } = store.getState();
-  const role = auth.currentUser?.role;
-  const isDemo = auth.currentUser?.is_demo;
+  const currentUser = selectCurrentUser(store.getState());
+  const role = currentUser?.role;
+  const isDemo = currentUser?.is_demo;
 
   store.dispatch(logout());
   store.dispatch(clearLeagues());

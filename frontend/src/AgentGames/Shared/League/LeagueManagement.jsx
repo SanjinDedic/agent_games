@@ -31,6 +31,8 @@ import {
 // Import the shared API hook
 import useLeagueAPI from '../hooks/useLeagueAPI';
 
+import { selectToken } from '../../../slices/authSlice';
+
 /**
  * Shared league management component used by both Admin and Institution roles
  *
@@ -42,7 +44,7 @@ import useLeagueAPI from '../hooks/useLeagueAPI';
 const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
+  const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
   const allSimulations = useSelector((state) => state.leagues.currentLeagueResults);
@@ -95,7 +97,7 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ name: currentLeague.name })
+        body: JSON.stringify({ league_id: currentLeague.id })
       });
       
       const data = await response.json();
@@ -133,7 +135,7 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
     const formattedDate = date.toISOString();
     
     try {
-      const result = await api.updateExpiryDate(currentLeague.name, formattedDate);
+      const result = await api.updateExpiryDate(currentLeague.id, formattedDate);
       
       if (result.success) {
         dispatch(updateExpiryDate({ 
@@ -251,6 +253,7 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
               <div className="bg-white rounded-lg shadow-lg p-4">
                 <LeaguePublish
                   simulation_id={currentSimulation.id}
+                  selected_league_id={currentLeague.id}
                   selected_league_name={currentLeague.name}
                   userRole={userRole}
                 />

@@ -71,7 +71,7 @@ def league_with_submissions(db_session: Session) -> dict:
     db_session.refresh(empty_league)
 
     token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
+        data={"sub": "admin", "role": "admin", "institution_id": 1},
         expires_delta=timedelta(minutes=30),
     )
 

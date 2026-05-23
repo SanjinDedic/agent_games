@@ -5,7 +5,8 @@ from sqlmodel import Session, delete, select
 
 from backend.database.db_models import League, Submission, Team
 from backend.routes.auth.auth_core import AUSTRALIA_SYDNEY_TZ, create_access_token
-from backend.routes.user.user_db import get_team
+from backend.routes.user.user_db import get_team_by_id
+from backend.tests.conftest import make_student_token
 
 
 @pytest.fixture
@@ -53,10 +54,7 @@ def setup_test_team(db_session: Session, setup_test_league: League) -> Team:
 @pytest.fixture
 def student_token(setup_test_team: Team) -> str:
     """Create a valid student token for the test team"""
-    return create_access_token(
-        data={"sub": setup_test_team.name, "role": "student"},
-        expires_delta=timedelta(minutes=30),
-    )
+    return make_student_token(setup_test_team)
 
 
 def test_submit_agent_success(
@@ -65,7 +63,7 @@ def test_submit_agent_success(
     """Test successful agent submission scenarios"""
 
     # Verify team is properly set up
-    team = get_team(db_session, setup_test_team.name)
+    team = get_team_by_id(db_session, setup_test_team.id)
     assert team is not None
     assert team.league is not None
     assert team.league.game == "prisoners_dilemma"  # Verify game type matches test code
@@ -304,7 +302,7 @@ def test_get_team_submission_exceptions(client):
     )
     assert response.status_code == 401
 
-    # Test case 3: Non-existent team
+    # Test case 3: Token without team_id surfaces the route's guard
     non_existent_token = create_access_token(
         data={"sub": "non_existent_team", "role": "student"},
         expires_delta=timedelta(minutes=30),
@@ -316,6 +314,7 @@ def test_get_team_submission_exceptions(client):
     assert response.status_code == 200
     data = response.json()
     assert data["data"]["code"] is None
+    assert data["status"] == "error"
 
 
 def test_submit_agent_rate_limit(
@@ -326,7 +325,7 @@ def test_submit_agent_rate_limit(
 ):
     """Test submission rate limiting using actual endpoint submissions"""
     # First verify team is properly set up
-    team = get_team(db_session, setup_test_team.name)
+    team = get_team_by_id(db_session, setup_test_team.id)
     assert team is not None
     assert team.league is not None
 

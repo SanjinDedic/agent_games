@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../slices/authSlice';
 
 function CombinedFooter({
     team,
@@ -14,16 +15,10 @@ function CombinedFooter({
     hasLastSubmission,
     hasStarterCode
 }) {
-    const demoTimeRemaining = useSelector((state) => {
-        const currentUser = state.auth.currentUser;
-        if (currentUser && currentUser.exp) {
-            const expTime = new Date(currentUser.exp * 1000);
-            const now = new Date();
-            const diff = Math.max(0, Math.floor((expTime - now) / 1000 / 60));
-            return diff;
-        }
-        return null;
-    });
+    const currentUser = useSelector(selectCurrentUser);
+    const demoTimeRemaining = currentUser?.exp
+        ? Math.max(0, Math.floor((new Date(currentUser.exp * 1000) - new Date()) / 1000 / 60))
+        : null;
 
     return (
       <div className="fixed bottom-0 left-0 right-0 z-10 w-full bg-ui shadow-md">

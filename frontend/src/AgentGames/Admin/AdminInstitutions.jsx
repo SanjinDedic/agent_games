@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { checkTokenExpiry } from '../../slices/authSlice';
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectToken,
+} from '../../slices/authSlice';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
@@ -13,9 +18,9 @@ function AdminInstitutions() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const accessToken = useSelector(selectToken);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   
   const [institutions, setInstitutions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);

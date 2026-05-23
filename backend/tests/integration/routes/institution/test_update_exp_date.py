@@ -68,7 +68,7 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": league.name,
+            "league_id": league.id,
             "date": new_expiry.isoformat(),
         },
     )
@@ -89,7 +89,7 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": league.name,
+            "league_id": league.id,
             "date": later_expiry.isoformat(),
         },
     )
@@ -115,7 +115,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": "non_existent_league",
+            "league_id": 99999,
             "date": new_expiry.isoformat(),
         },
     )
@@ -130,7 +130,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": league.name,
+            "league_id": league.id,
             "date": past_date.isoformat(),
         },
     )
@@ -141,18 +141,17 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": league.name,
+            "league_id": league.id,
             "date": "not-a-date",
         },
     )
     assert response.status_code == 422
 
-    # Test case 4: Empty league name
+    # Test case 4: Missing league_id field
     response = client.post(
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": "",
             "date": new_expiry.isoformat(),
         },
     )
@@ -188,7 +187,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers=headers,
         json={
-            "league": other_league.name,
+            "league_id": other_league.id,
             "date": new_expiry.isoformat(),
         },
     )
@@ -200,7 +199,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
     response = client.post(
         "/institution/update-expiry-date",
         json={
-            "league": league.name,
+            "league_id": league.id,
             "date": new_expiry.isoformat(),
         },
     )
@@ -215,7 +214,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         "/institution/update-expiry-date",
         headers={"Authorization": f"Bearer {wrong_token}"},
         json={
-            "league": league.name,
+            "league_id": league.id,
             "date": new_expiry.isoformat(),
         },
     )

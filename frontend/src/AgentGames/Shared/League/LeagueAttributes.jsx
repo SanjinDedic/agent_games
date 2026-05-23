@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Import Redux actions 
 import { setLeagues, updateExpiryDate } from "../../../slices/leaguesSlice";
+import { selectToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
 // Import shared components
@@ -21,7 +22,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
+  const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   
   const [signupLink, setSignupLink] = useState("");
@@ -135,7 +136,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
       return;
     }
 
-    await deleteLeague(currentLeague.name);
+    await deleteLeague(currentLeague.id);
   };
 
   // Handle expiry date update
@@ -143,7 +144,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
     const formattedDate = date.toISOString();
     
     try {
-      const result = await updateLeagueExpiry(currentLeague.name, formattedDate);
+      const result = await updateLeagueExpiry(currentLeague.id, formattedDate);
       
       if (result.success) {
         dispatch(updateExpiryDate({ 

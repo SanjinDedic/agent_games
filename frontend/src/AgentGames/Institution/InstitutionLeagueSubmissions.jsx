@@ -4,7 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { toast } from "react-toastify";
-import { checkTokenExpiry } from "../../slices/authSlice";
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectToken,
+} from "../../slices/authSlice";
 import { authFetch } from "../../utils/authFetch";
 
 const verdictColor = (verdict) => {
@@ -102,9 +107,9 @@ function InstitutionLeagueSubmissions() {
   const dispatch = useDispatch();
 
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const currentUser = useSelector((state) => state.auth.currentUser);
+  const accessToken = useSelector(selectToken);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
 
   // submissions: { teamName: [{ code, timestamp, id }, ...] }
   const [submissions, setSubmissions] = useState({});

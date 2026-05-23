@@ -192,9 +192,9 @@ async def assess_plagiarism_endpoint(
 
         # Audit log.
         logger.info(
-            "Plagiarism assessment: caller=%s role=%s team=%s league_id=%s",
-            current_user.get("team_name"),
+            "Plagiarism assessment: caller_role=%s caller_institution_id=%s team=%s league_id=%s",
             current_user.get("role"),
+            current_user.get("institution_id"),
             team.name,
             request.league_id,
         )

@@ -12,13 +12,7 @@ class SubmissionCode(BaseModel):
 class LeagueAssignRequest(BaseModel):
     """Model for assigning teams to leagues"""
 
-    name: str
-
-    @field_validator("name")
-    def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError("League name cannot be empty")
-        return v.strip()
+    league_id: int
 
 
 class GameName(BaseModel):

@@ -153,7 +153,7 @@ def two_institutions(db_session: Session) -> dict:
         expires_delta=timedelta(minutes=30),
     )
     admin_token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
+        data={"sub": "admin", "role": "admin", "institution_id": 1},
         expires_delta=timedelta(minutes=30),
     )
     admin_inst_token = create_access_token(
@@ -207,11 +207,11 @@ def test_get_all_leagues_scoped(client, two_institutions):
     assert "perm_league_a" in names
     assert "perm_league_b" in names
 
-    # Admin Institution (id=1) sees all
+    # Admin Institution (id=1) is just another institution — sees only its own leagues
     resp = client.get("/user/get-all-leagues", headers=data["headers_admin_inst"])
     names = [l["name"] for l in resp.json()["data"]["leagues"]]
-    assert "perm_league_a" in names
-    assert "perm_league_b" in names
+    assert "perm_league_a" not in names
+    assert "perm_league_b" not in names
 
     # Student with institution_id sees only their institution's leagues
     resp = client.get("/user/get-all-leagues", headers=data["headers_student_a"])
@@ -274,14 +274,14 @@ def test_run_simulation_cross_institution(client, two_institutions):
         assert resp.status_code == 200
         assert resp.json()["status"] == "success"
 
-        # Admin Institution CAN simulate B's league
+        # Admin Institution is just another institution — cannot simulate B's league
         resp = client.post(
             "/institution/run-simulation",
             headers=data["headers_admin_inst"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
         assert resp.status_code == 200
-        assert resp.json()["status"] == "success"
+        assert resp.json()["status"] == "error"
 
 
 def test_publish_results_cross_institution(client, two_institutions, db_session):
@@ -303,7 +303,7 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
     resp = client.post(
         "/institution/publish-results",
         headers=data["headers_a"],
-        json={"league_name": "perm_league_b", "id": sim.id},
+        json={"league_id": data["league_b"].id, "id": sim.id},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "error"
@@ -312,7 +312,7 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
     resp = client.post(
         "/institution/publish-results",
         headers=data["headers_admin"],
-        json={"league_name": "perm_league_b", "id": sim.id},
+        json={"league_id": data["league_b"].id, "id": sim.id},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"
@@ -339,7 +339,7 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
     resp = client.post(
         "/institution/delete-league",
         headers=data["headers_a"],
-        json={"name": "perm_delete_target"},
+        json={"league_id": delete_target.id},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "error"
@@ -348,7 +348,7 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
     resp = client.post(
         "/institution/delete-league",
         headers=data["headers_admin"],
-        json={"name": "perm_delete_target"},
+        json={"league_id": delete_target.id},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"

@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { authFetch } from '../../../utils/authFetch';
+import { selectToken } from '../../../slices/authSlice';
 
 /**
  * Hook for handling code submission-related API calls
@@ -10,7 +11,7 @@ import { authFetch } from '../../../utils/authFetch';
  */
 export const useSubmissionAPI = () => {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
+  const accessToken = useSelector(selectToken);
   const [isLoading, setIsLoading] = useState(false);
   
   /**

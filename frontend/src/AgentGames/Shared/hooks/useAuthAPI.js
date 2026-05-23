@@ -1,8 +1,7 @@
 // src/AgentGames/Shared/hooks/useAuthAPI.js
 import { useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { jwtDecode } from 'jwt-decode';
-import { login as loginAction } from '../../../slices/authSlice';
+import { setToken } from '../../../slices/authSlice';
 import { setCurrentTeam } from '../../../slices/teamsSlice';
 import { toast } from 'react-toastify';
 
@@ -27,20 +26,8 @@ export const useAuthAPI = () => {
       const data = await response.json();
 
       if (data.status === "success") {
-        const decoded = jwtDecode(data.data.access_token);
-
-        // Handle login state
-        dispatch(loginAction({
-          token: data.data.access_token,
-          name: decoded.sub,
-          role: decoded.role,
-          exp: decoded.exp,
-          is_demo: false,
-        }));
-
-        // Set current team
+        dispatch(setToken(data.data.access_token));
         dispatch(setCurrentTeam(username));
-
         return { success: true };
       } else {
         return { success: false, error: data.message };
@@ -70,16 +57,9 @@ export const useAuthAPI = () => {
       const data = await response.json();
 
       if (data.status === 'success') {
-        const decoded = jwtDecode(data.data.access_token);
         const teamName = data.data.team_name;
 
-        dispatch(loginAction({
-          token: data.data.access_token,
-          name: teamName,
-          role: 'student',
-          exp: decoded.exp,
-          is_demo: false,
-        }));
+        dispatch(setToken(data.data.access_token));
         dispatch(setCurrentTeam(teamName));
 
         toast.success(data.message || 'Signed up successfully!');

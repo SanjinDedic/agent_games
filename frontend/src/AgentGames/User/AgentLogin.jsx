@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { checkTokenExpiry } from "../../slices/authSlice";
+import {
+  checkTokenExpiry,
+  selectCurrentUser,
+  selectIsAuthenticated,
+} from "../../slices/authSlice";
 import InstructionPopup from "../Shared/Utilities/InstructionPopup";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 
 function AgentLogin() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const currentUser = useSelector((state) => state.auth.currentUser);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
 
   const [institutions, setInstitutions] = useState([]);

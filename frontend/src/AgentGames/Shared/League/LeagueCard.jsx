@@ -6,7 +6,7 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
   
   const handleDelete = (e) => {
     e.stopPropagation(); // Prevent triggering onSelect when clicking delete
-    onDelete(league.name);
+    onDelete(league);
   };
   
   return (

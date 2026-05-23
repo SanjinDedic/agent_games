@@ -27,22 +27,6 @@ class SupportError(Exception):
     """Raised for support-ticket validation or lookup failures."""
 
 
-def resolve_team_by_token_name(session: Session, team_name: str) -> Team:
-    team = session.exec(select(Team).where(Team.name == team_name)).first()
-    if not team:
-        raise SupportError(f"Team '{team_name}' not found")
-    return team
-
-
-def resolve_institution_by_token_name(session: Session, institution_name: str) -> Institution:
-    institution = session.exec(
-        select(Institution).where(Institution.name == institution_name)
-    ).first()
-    if not institution:
-        raise SupportError(f"Institution '{institution_name}' not found")
-    return institution
-
-
 def create_ticket(
     session: Session,
     *,

@@ -80,7 +80,7 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     response = client.post(
         "/institution/get-all-league-results",
         headers=headers,
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -116,7 +116,7 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     response = client.post(
         "/institution/get-all-league-results",
         headers=headers,
-        json={"name": empty_league.name},
+        json={"league_id": empty_league.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -133,7 +133,7 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
     response = client.post(
         "/institution/get-all-league-results",
         headers=headers,
-        json={"name": "non_existent_league"},
+        json={"league_id": 99999},
     )
     assert response.status_code == 200  # API returns 200 with error status
     data = response.json()
@@ -169,25 +169,25 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
     response = client.post(
         "/institution/get-all-league-results",
         headers=headers,
-        json={"name": other_league.name},
+        json={"league_id": other_league.id},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "error"
     assert "not found" in data["message"].lower()
     
-    # Test case 3: Empty league name
+    # Test case 3: Missing league_id field
     response = client.post(
         "/institution/get-all-league-results",
         headers=headers,
-        json={"name": ""},
+        json={},
     )
     assert response.status_code == 422
     
     # Test case 4: Unauthorized access (no token)
     response = client.post(
         "/institution/get-all-league-results",
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 401
     
@@ -199,6 +199,6 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
     response = client.post(
         "/institution/get-all-league-results",
         headers={"Authorization": f"Bearer {wrong_token}"},
-        json={"name": league.name},
+        json={"league_id": league.id},
     )
     assert response.status_code == 403

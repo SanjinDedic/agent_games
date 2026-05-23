@@ -25,11 +25,13 @@ import FeedbackSelector from "../../Feedback/FeedbackSelector";
 // Import hooks
 import useLeagueAPI from "../hooks/useLeagueAPI";
 
+import { selectToken } from '../../../slices/authSlice';
+
 const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector((state) => state.auth.token);
+  const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allSimulations = useSelector(
     (state) => state.leagues.currentLeagueResults
@@ -87,7 +89,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ name: currentLeague.name }),
+          body: JSON.stringify({ league_id: currentLeague.id }),
         }
       );
 
@@ -237,6 +239,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
               <div className="bg-white rounded-lg shadow-lg p-4">
                 <LeaguePublish
                   simulation_id={currentSimulation.id}
+                  selected_league_id={currentLeague.id}
                   selected_league_name={currentLeague.name}
                   userRole={userRole}
                 />
