@@ -15,25 +15,6 @@ from backend.database.db_models import (
     SupportTicketSubmitterType,
     Team,
 )
-from backend.routes.auth.auth_core import create_access_token
-
-
-@pytest.fixture
-def admin_headers() -> dict:
-    token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture
-def student_headers() -> dict:
-    token = create_access_token(
-        data={"sub": "TeamA", "role": "student"},
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture(autouse=True)

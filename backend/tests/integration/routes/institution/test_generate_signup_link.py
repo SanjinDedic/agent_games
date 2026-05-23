@@ -5,7 +5,6 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import inspect_db_state
 
 
 @pytest.fixture

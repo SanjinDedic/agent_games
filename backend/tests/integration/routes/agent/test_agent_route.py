@@ -8,7 +8,6 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import AgentAPIKey, League, Team, TeamType, Submission
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import inspect_db_state
 
 from unittest.mock import patch
 

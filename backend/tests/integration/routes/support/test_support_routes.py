@@ -4,40 +4,10 @@ import io
 from datetime import timedelta
 from unittest.mock import patch
 
-import pytest
 from sqlmodel import select
 
-from backend.database.db_models import SupportTicket, SupportTicketAttachment, Team
+from backend.database.db_models import SupportTicket, SupportTicketAttachment
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import make_student_token
-
-
-@pytest.fixture
-def team_headers(db_session) -> dict:
-    team = db_session.exec(select(Team).where(Team.name == "TeamA")).first()
-    return {"Authorization": f"Bearer {make_student_token(team)}"}
-
-
-@pytest.fixture
-def institution_headers() -> dict:
-    token = create_access_token(
-        data={
-            "sub": "Admin Institution",
-            "role": "institution",
-            "institution_id": 1,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture
-def admin_headers() -> dict:
-    token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
-        expires_delta=timedelta(minutes=30),
-    )
-    return {"Authorization": f"Bearer {token}"}
 
 
 @patch("backend.routes.support.support_router.upload_attachment")

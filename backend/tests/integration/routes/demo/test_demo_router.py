@@ -9,7 +9,6 @@ from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ, DEMO_TOKEN_EXPI
 from backend.database.db_models import DemoUser, League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
-from backend.tests.conftest import inspect_db_state
 
 
 @pytest.fixture

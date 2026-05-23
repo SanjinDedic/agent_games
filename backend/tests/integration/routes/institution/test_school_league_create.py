@@ -1,45 +1,12 @@
 """Tests for POST /institution/league-create with school_league flag."""
 
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from backend.database.db_models import Institution, League
-from backend.routes.auth.auth_core import create_access_token
-
-
-@pytest.fixture
-def institution_token(db_session: Session) -> str:
-    institution = Institution(
-        name="school_league_test_institution",
-        contact_person="Test Person",
-        contact_email="test@example.com",
-        created_date=datetime.now(),
-        subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
-        docker_access=True,
-        password_hash="test_hash",
-    )
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-
-    return create_access_token(
-        data={
-            "sub": institution.name,
-            "role": "institution",
-            "institution_id": institution.id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
-
-
-@pytest.fixture
-def institution_headers(institution_token: str) -> dict:
-    return {"Authorization": f"Bearer {institution_token}"}
+from backend.database.db_models import League
 
 
 def test_school_league_create_success(client, institution_headers, db_session):
