@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from backend.config import get_service_url
-from backend.database.db_models import League
+from backend.database.db_models import League, Team
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import (
@@ -136,7 +136,11 @@ async def submit_agent(
     try:
         duration_ms = validation_result.get("duration_ms")
         submission_id = save_submission(
-            session, submission.code, team.id, duration_ms=duration_ms
+            session,
+            submission.code,
+            team.id,
+            league_id=team.league_id,
+            duration_ms=duration_ms,
         )
         return ResponseModel(
             status="success",
@@ -407,7 +411,7 @@ async def get_team_submission_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Get latest submission for the current team"""
+    """Get latest submission for the current team, scoped to current league."""
     team_id = current_user.get("team_id")
     if team_id is None:
         return ResponseModel(
@@ -416,7 +420,9 @@ async def get_team_submission_endpoint(
             data={"code": None},
         )
     try:
-        submission_data = get_team_submission(session, team_id)
+        team = session.get(Team, team_id)
+        league_id = team.league_id if team else current_user.get("league_id")
+        submission_data = get_team_submission(session, team_id, league_id=league_id)
         return ResponseModel(
             status="success",
             message="Submission retrieved successfully",

@@ -71,6 +71,7 @@ def save_submission(
     session: Session,
     code: str,
     team_id: int,
+    league_id: Optional[int] = None,
     duration_ms: Optional[float] = None,
 ) -> int:
     """Save a code submission"""
@@ -78,6 +79,7 @@ def save_submission(
         code=code,
         timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
         team_id=team_id,
+        league_id=league_id,
         duration_ms=duration_ms,
     )
     session.add(db_submission)
@@ -287,13 +289,15 @@ def get_all_submissions_for_league(
     return {"teams": by_team, "team_ids": team_ids}
 
 
-def get_team_submission(session: Session, team_id: int) -> Dict[str, Optional[str]]:
-    """Get latest submission for a specific team"""
+def get_team_submission(
+    session: Session, team_id: int, league_id: Optional[int] = None
+) -> Dict[str, Optional[str]]:
+    """Get latest submission for a specific team, scoped to the given league."""
+    query = select(Submission).where(Submission.team_id == team_id)
+    if league_id is not None:
+        query = query.where(Submission.league_id == league_id)
     submission = session.exec(
-        select(Submission)
-        .where(Submission.team_id == team_id)
-        .order_by(Submission.timestamp.desc())
-        .limit(1)
+        query.order_by(Submission.timestamp.desc()).limit(1)
     ).first()
 
     return {"code": submission.code if submission else None}
