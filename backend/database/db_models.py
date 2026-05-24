@@ -68,6 +68,7 @@ class League(SQLModel, table=True):
         default=None,
         sa_column=Column(JSON, nullable=True),
     )
+    info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
     # New field for institution relationship
     institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")

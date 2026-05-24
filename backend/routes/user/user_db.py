@@ -179,6 +179,30 @@ def get_all_published_results(session: Session) -> dict:
     return {"all_results": all_results}
 
 
+def get_all_published_results_for_league(session: Session, league_id: int) -> dict:
+    """Get all published results for a single league, newest first."""
+    league = session.get(League, league_id)
+    if not league:
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
+
+    expiry_date = league.expiry_date
+    if expiry_date.tzinfo is None:
+        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
+    active = expiry_date >= datetime.now(AUSTRALIA_SYDNEY_TZ)
+
+    results = [
+        process_simulation_results(sim, league.name, active)
+        for sim in league.simulation_results
+        if sim.published
+    ]
+    results.sort(key=lambda r: r["id"], reverse=True)
+    return {
+        "league_name": league.name,
+        "info_markdown": league.info_markdown or "",
+        "all_results": results,
+    }
+
+
 def get_all_leagues(session: Session):
     """Get all leagues"""
     leagues = session.exec(select(League).where(League.deleted_date == None)).all()
@@ -220,6 +244,7 @@ def get_leagues_for_user(session: Session, role: str, institution_id: Optional[i
                 "expiry_date": league.expiry_date,
                 "signup_link": league.signup_link,
                 "institution_name": league.institution.name if league.institution else None,
+                "info_markdown": league.info_markdown or "",
             }
             for league in leagues
         ]

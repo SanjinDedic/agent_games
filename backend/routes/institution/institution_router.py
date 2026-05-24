@@ -28,12 +28,14 @@ from backend.routes.institution.institution_db import (
     publish_sim_results,
     save_simulation_results,
     update_expiry_date,
+    update_league_info,
     unassign_team,
 )
 from backend.routes.institution.institution_models import (
     ExpiryDate,
     LeagueDelete,
     LeagueIdRef,
+    LeagueInfoUpdate,
     LeagueResults,
     LeagueSignUp,
     SimulationConfig,
@@ -359,6 +361,36 @@ async def update_expiry_endpoint(
         logger.error(f"Error updating expiry date: {e}")
         return ErrorResponseModel(
             status="error", message=f"Failed to update expiry date: {str(e)}"
+        )
+
+
+@institution_router.post("/update-league-info", response_model=ResponseModel)
+@verify_admin_or_institution
+async def update_league_info_endpoint(
+    payload: LeagueInfoUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Update the markdown info block shown to teams enrolled in this league."""
+    try:
+        institution_id, is_admin = _resolve_institution(current_user)
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        msg = update_league_info(
+            session,
+            payload.league_id,
+            payload.info_markdown,
+            institution_id,
+            is_admin=is_admin,
+        )
+        return ResponseModel(status="success", message=msg)
+    except Exception as e:
+        logger.error(f"Error updating league info: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to update league info: {str(e)}"
         )
 
 

@@ -33,6 +33,7 @@ from backend.routes.user.user_db import (
     get_all_leagues,
     get_leagues_for_user,
     get_all_published_results,
+    get_all_published_results_for_league,
     get_all_submissions_for_league,
     get_latest_submissions_for_league,
     get_league_by_signup_token,
@@ -219,6 +220,41 @@ def get_published_results_for_league_endpoint(
         return ErrorResponseModel(
             status="error",
             message="An error occurred while retrieving published results " + str(e),
+        )
+
+
+@user_router.get(
+    "/get-all-published-results-for-my-league", response_model=ResponseModel
+)
+@verify_any_role
+async def get_all_published_results_for_my_league_endpoint(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """All published results for the league the caller is enrolled in (JWT-scoped).
+
+    Reads `league_id` from the token to prevent cross-league leakage. Returns
+    an empty list if the caller has no league assigned.
+    """
+    league_id = current_user.get("league_id")
+    if not league_id:
+        return ResponseModel(
+            status="success",
+            message="No league assigned to user",
+            data={"all_results": [], "league_name": None, "info_markdown": ""},
+        )
+    try:
+        data = get_all_published_results_for_league(session, league_id)
+        return ResponseModel(
+            status="success",
+            message="Published results retrieved successfully",
+            data=data,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving published results for my league: {e}")
+        return ErrorResponseModel(
+            status="error",
+            message=f"Failed to retrieve published results: {str(e)}",
         )
 
 

@@ -165,3 +165,10 @@ class LeagueDelete(BaseModel):
     """Model for league deletion request"""
 
     league_id: int
+
+
+class LeagueInfoUpdate(BaseModel):
+    """Model for updating the per-league markdown info block."""
+
+    league_id: int
+    info_markdown: str = ""

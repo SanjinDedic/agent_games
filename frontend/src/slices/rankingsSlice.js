@@ -1,8 +1,12 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { authFetch } from '../utils/authFetch';
 
 const initialState = {
   allRankings: [],
   currentRanking: null,
+  myLeagueRankings: [],
+  myLeagueName: null,
+  myLeagueInfoMarkdown: '',
 };
 
 const rankingsSlice = createSlice({
@@ -22,13 +26,24 @@ const rankingsSlice = createSlice({
         state.currentRanking = action.payload[0];
       }
     },
+    setMyLeagueRankings: (state, action) => {
+      const { all_results = [], league_name = null, info_markdown = '' } = action.payload || {};
+      state.myLeagueRankings = all_results;
+      state.myLeagueName = league_name;
+      state.myLeagueInfoMarkdown = info_markdown;
+    },
     clearRankings: (state) => {
       state.currentRanking = null;
     },
   },
 });
 
-export const { setRanking, clearRankings, setAllRankings } = rankingsSlice.actions;
+export const {
+  setRanking,
+  clearRankings,
+  setAllRankings,
+  setMyLeagueRankings,
+} = rankingsSlice.actions;
 export default rankingsSlice.reducer;
 
 /**
@@ -53,6 +68,38 @@ export const fetchAllRankings = ({ force = false } = {}) => async (dispatch, get
     return { success: false, error: data.message || 'Failed to fetch published results' };
   } catch (error) {
     console.error('Error fetching published results:', error);
+    return { success: false, error: 'Network error' };
+  }
+};
+
+/**
+ * Fetch all published results scoped to the logged-in team's league.
+ * Server reads league_id from the JWT — no cross-league leakage.
+ */
+export const fetchMyLeagueRankings = ({ force = false } = {}) => async (dispatch, getState) => {
+  const state = getState();
+  const { myLeagueRankings, myLeagueName } = state.rankings;
+  if (!force && (myLeagueRankings.length > 0 || myLeagueName)) {
+    return { success: true, results: myLeagueRankings };
+  }
+  const apiUrl = state.settings.agentApiUrl;
+  const accessToken = state.auth.token;
+  if (!accessToken) {
+    return { success: false, error: 'Not authenticated' };
+  }
+  try {
+    const response = await authFetch(
+      `${apiUrl}/user/get-all-published-results-for-my-league`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    const data = await response.json();
+    if (data.status === 'success') {
+      dispatch(setMyLeagueRankings(data.data || {}));
+      return { success: true, results: data.data?.all_results || [] };
+    }
+    return { success: false, error: data.message || 'Failed to fetch published results' };
+  } catch (error) {
+    console.error('Error fetching my league published results:', error);
     return { success: false, error: 'Network error' };
   }
 };

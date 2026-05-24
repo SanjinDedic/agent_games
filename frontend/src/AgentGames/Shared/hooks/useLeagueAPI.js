@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import { setLeagues, setResults, clearResults } from '../../../slices/leaguesSlice';
+import { setLeagues, setResults, clearResults, updateLeagueInfo as updateLeagueInfoAction } from '../../../slices/leaguesSlice';
 import { selectToken, setToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
@@ -309,6 +309,45 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken]);
   
   /**
+   * Update per-league markdown info block
+   */
+  const updateLeagueInfo = useCallback(async (leagueId, infoMarkdown) => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/institution/update-league-info`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          league_id: leagueId,
+          info_markdown: infoMarkdown ?? '',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        dispatch(updateLeagueInfoAction({
+          league_id: leagueId,
+          info_markdown: infoMarkdown ?? '',
+        }));
+        toast.success(data.message);
+        return { success: true };
+      }
+      toast.error(data.message || 'Failed to update league info');
+      return { success: false, error: data.message };
+    } catch (error) {
+      console.error('Error updating league info:', error);
+      toast.error('Network error while updating league info');
+      return { success: false, error: 'Network error' };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken, dispatch]);
+
+  /**
    * Assign team to league
    */
   const assignTeamToLeague = useCallback(async (teamId, leagueId) => {
@@ -423,6 +462,7 @@ export const useLeagueAPI = (userRole) => {
     createLeague,
     publishResults,
     updateExpiryDate,
+    updateLeagueInfo,
     assignTeamToLeague,
     unassignTeam,
     deleteLeague,
