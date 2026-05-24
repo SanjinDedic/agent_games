@@ -265,7 +265,12 @@ def test_get_team_submission_success(
     assert team is not None
 
     # Add test submissions
-    submission1 = Submission(code="old code", timestamp=datetime.now(), team_id=team.id)
+    submission1 = Submission(
+        code="old code",
+        timestamp=datetime.now(),
+        team_id=team.id,
+        league_id=team.league_id,
+    )
     db_session.add(submission1)
     db_session.commit()
 
@@ -273,6 +278,7 @@ def test_get_team_submission_success(
         code="latest code",
         timestamp=datetime.now() + timedelta(minutes=1),
         team_id=team.id,
+        league_id=team.league_id,
     )
     db_session.add(submission2)
     db_session.commit()
