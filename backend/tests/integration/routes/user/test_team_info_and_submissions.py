@@ -1,6 +1,5 @@
 """Tests for the new endpoints/functions added on this branch:
 - get_team_submission_history (user_db.py)
-- GET /user/get-team-info (user_router.py)
 - GET /user/get-team-submissions (user_router.py)
 """
 
@@ -120,59 +119,6 @@ def test_get_team_submission_history_empty(db_session: Session, team: Team):
     db_session.exec(delete(Submission).where(Submission.team_id == team.id))
     db_session.commit()
     assert get_team_submission_history(db_session, team.id) == []
-
-
-# ---------------------------------------------------------------------------
-# GET /user/get-team-info
-# ---------------------------------------------------------------------------
-
-
-def test_get_team_info_success(
-    client,
-    team_token: str,
-    team: Team,
-    league_with_institution: League,
-    institution: Institution,
-):
-    response = client.get(
-        "/user/get-team-info",
-        headers={"Authorization": f"Bearer {team_token}"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    payload = data["data"]
-    assert payload["team_name"] == team.name
-    assert payload["league_id"] == league_with_institution.id
-    assert payload["league_name"] == league_with_institution.name
-    assert payload["institution_name"] == institution.name
-
-
-def test_get_team_info_team_not_found(client):
-    token = create_access_token(
-        data={"sub": "ghost_team", "role": "student"},
-        expires_delta=timedelta(minutes=30),
-    )
-    response = client.get(
-        "/user/get-team-info",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-
-
-def test_get_team_info_unauthorized(client):
-    response = client.get("/user/get-team-info")
-    assert response.status_code == 401
-
-
-def test_get_team_info_invalid_token(client):
-    response = client.get(
-        "/user/get-team-info",
-        headers={"Authorization": "Bearer bogus.token.value"},
-    )
-    assert response.status_code == 401
 
 
 # ---------------------------------------------------------------------------

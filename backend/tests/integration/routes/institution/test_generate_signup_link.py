@@ -144,27 +144,18 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
     assert data["status"] == "error"
     assert "permission" in data["message"].lower()
 
-    # Test case 3: Missing league_id
+    # Test case 3: Missing league_id (Pydantic 422)
     response = client.post(
         "/institution/generate-signup-link",
         headers=headers,
         json={},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "required" in data["message"].lower() or "league id" in data["message"].lower()
+    assert response.status_code == 422
 
-    # Test case 4: Invalid league_id type
+    # Test case 4: Invalid league_id type (Pydantic 422)
     response = client.post(
         "/institution/generate-signup-link",
         headers=headers,
         json={"league_id": "not_an_integer"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    # Updated assertion to match the new error message format from Option 3
-    assert (
-        "integer" in data["message"].lower() and "league id" in data["message"].lower()
-    )
+    assert response.status_code == 422

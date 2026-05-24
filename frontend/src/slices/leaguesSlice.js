@@ -26,6 +26,7 @@ const leaguesSlice = createSlice({
         signup_link: league.signup_link,
         institution_name: league.institution_name ?? null,
         school_league: league.school_league ?? false,
+        info_markdown: league.info_markdown ?? '',
       }));
       const existing = state.currentLeague
         ? state.list.find(l => l.name === state.currentLeague.name)
@@ -49,7 +50,18 @@ const leaguesSlice = createSlice({
         signup_link: league.signup_link,
         institution_name: league.institution_name ?? null,
         school_league: league.school_league ?? false,
+        info_markdown: league.info_markdown ?? '',
       });
+    },
+    updateLeagueInfo: (state, action) => {
+      const { league_id, info_markdown } = action.payload;
+      const league = state.list.find(l => l.id === league_id);
+      if (league) {
+        league.info_markdown = info_markdown;
+      }
+      if (state.currentLeague && state.currentLeague.id === league_id) {
+        state.currentLeague.info_markdown = info_markdown;
+      }
     },
     updateExpiryDate: (state, action) => {
       const { name, expiry_date } = action.payload;
@@ -127,16 +139,17 @@ const leaguesSlice = createSlice({
   }
 });
 
-export const { 
-  setLeagues, 
-  addLeague, 
-  setCurrentLeague, 
-  clearLeagues, 
-  updateExpiryDate, 
-  setResults, 
-  setCurrentSimulation, 
-  setRewards, 
-  clearResults, 
+export const {
+  setLeagues,
+  addLeague,
+  setCurrentLeague,
+  clearLeagues,
+  updateExpiryDate,
+  updateLeagueInfo,
+  setResults,
+  setCurrentSimulation,
+  setRewards,
+  clearResults,
   addSimulationResult
 } = leaguesSlice.actions;
 

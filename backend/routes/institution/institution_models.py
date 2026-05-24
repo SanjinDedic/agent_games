@@ -87,8 +87,6 @@ class SimulationConfig(BaseModel):
 
     num_simulations: int = Field(gt=0, le=10000)
     league_id: int
-    league_name: Optional[str] = None  # For backwards compatibility
-    game: Optional[str] = None
     custom_rewards: Optional[List[int]] = None
 
     @field_validator("num_simulations")
@@ -157,7 +155,20 @@ class LeagueIdRef(BaseModel):
     league_id: int
 
 
+class TeamIdRef(BaseModel):
+    """Model for specifying a team by id (authenticated lookup)."""
+
+    team_id: int
+
+
 class LeagueDelete(BaseModel):
     """Model for league deletion request"""
 
     league_id: int
+
+
+class LeagueInfoUpdate(BaseModel):
+    """Model for updating the per-league markdown info block."""
+
+    league_id: int
+    info_markdown: str = ""

@@ -1,0 +1,15 @@
+Hello there my name is Sanjin, I am Python Developer and a recovering Computer Science teacher. 
+
+Agent games is experiment that hatched out of the Victorian Coding Challenge. 
+
+This is a labour of love over 4 years, I had so much fun doing that I decided I wanted to do programming full time
+
+Every year over 1000 students participate in agent games, they games you see were all developed for the Victorian Coding Challenge
+
+I am keen on making this available to mroe universities and high schools with extension programs.
+
+Always looking for collaborators if you have ideas on making the site better or more secure or if you would like to develop games for the platoform
+
+get in touch
+
+ There is nothing for sale here  

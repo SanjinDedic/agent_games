@@ -42,6 +42,22 @@ def get_institution_names(session: Session):
     return [inst.name for inst in institutions]
 
 
+def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedelta = None) -> str:
+    """Build a JWT for a team session (student or ai_agent)."""
+    token_data = {
+        "sub": team.name,
+        "role": role,
+        "team_id": team.id,
+        "team_type": team.team_type.value,
+        "is_demo": team.is_demo,
+        "institution_id": team.institution_id,
+        "league_id": team.league_id,
+    }
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES)
+    return create_access_token(data=token_data, expires_delta=expires_delta)
+
+
 def get_team_token(session: Session, team_name: str, team_password: str):
     """Get authentication token for team login"""
     team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
@@ -52,19 +68,7 @@ def get_team_token(session: Session, team_name: str, team_password: str):
     if not team.verify_password(team_password):
         raise InvalidCredentialsError("Invalid team password")
 
-    token_data = {
-        "sub": team_name,
-        "role": "student",
-        "team_id": team.id,
-        "team_type": team.team_type.value,
-        "is_demo": team.is_demo,
-        "institution_id": team.institution_id,
-    }
-
-    access_token = create_access_token(
-        data=token_data, expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES)
-    )
-
+    access_token = mint_team_token(team)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -149,17 +153,9 @@ def verify_agent_api_key(session: Session, api_key: str):
     api_key_record.last_used = datetime.now(AUSTRALIA_SYDNEY_TZ)
     session.commit()
 
-    token_data = {
-        "sub": team.name,
-        "role": "ai_agent",
-        "team_id": team.id,
-        "team_type": team.team_type.value,
-        "is_demo": team.is_demo,
-        "institution_id": team.institution_id,
-    }
-
-    access_token = create_access_token(
-        data=token_data,
+    access_token = mint_team_token(
+        team,
+        role="ai_agent",
         expires_delta=timedelta(days=AGENT_TOKEN_EXPIRY_DAYS),
     )
 

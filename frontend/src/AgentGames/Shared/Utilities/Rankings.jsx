@@ -4,28 +4,22 @@ import FeedbackSelector from '../../Feedback/FeedbackSelector';
 import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 import { useDispatch, useSelector } from 'react-redux';
-import { setAllRankings, setRanking } from '../../../slices/rankingsSlice';
+import { fetchAllRankings, setRanking } from '../../../slices/rankingsSlice';
 
 function AgentRankings() {
   const dispatch = useDispatch();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const rankingOutput = useSelector((state) => state.rankings.currentRanking);
   const allRankings = useSelector((state) => state.rankings.allRankings);
 
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    fetch(`${apiUrl}/user/get-published-results-for-all-leagues`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          dispatch(setAllRankings(data.data.all_results));
-        } else {
-          toast.error(data.message || 'Failed to fetch rankings');
-        }
-      })
-      .catch(() => toast.error('Failed to show results'));
-  }, [apiUrl, dispatch]);
+    dispatch(fetchAllRankings()).then((res) => {
+      if (res && res.success === false) {
+        toast.error(res.error || 'Failed to fetch rankings');
+      }
+    });
+  }, [dispatch]);
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6">

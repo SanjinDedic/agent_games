@@ -114,6 +114,14 @@ def test_league_assign_success(
     data = response.json()
     assert data["status"] == "success"
     assert "assigned to league" in data["message"]
+    # Successful assign returns a refreshed token carrying the new league_id.
+    assert "access_token" in data["data"]
+    from jose import jwt
+    from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
+    payload = jwt.decode(
+        data["data"]["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+    )
+    assert payload["league_id"] == setup_leagues["comp_test"].id
 
     # Verify assignment in database
     team = get_team_by_id(db_session, setup_unassigned_team.id)

@@ -29,7 +29,7 @@ class PlagiarismRequest(BaseModel):
     """Request to assess a team's submissions for plagiarism / AI-generation."""
 
     league_id: int = Field(..., gt=0)
-    team_name: str = Field(..., min_length=1, max_length=200)
+    team_id: int = Field(..., gt=0)
 
 
 class SubmissionMetrics(BaseModel):

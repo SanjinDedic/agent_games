@@ -6,9 +6,10 @@ import moment from 'moment-timezone';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useNavigate } from 'react-router-dom';
+import Editor from '@monaco-editor/react';
 
-// Import Redux actions 
-import { setLeagues, updateExpiryDate } from "../../../slices/leaguesSlice";
+// Import Redux actions
+import { updateExpiryDate } from "../../../slices/leaguesSlice";
 import { selectToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
@@ -16,6 +17,7 @@ import { authFetch } from '../../../utils/authFetch';
 import LeagueTeams from './LeagueTeams';
 import LeagueCreation from './LeagueCreation';
 import LeagueCardList from "./LeagueCardList";
+import PureMarkdown from '../Utilities/PureMarkdown';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 
 const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
@@ -24,24 +26,36 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
-  
+
   const [signupLink, setSignupLink] = useState("");
   const [showSignupLink, setShowSignupLink] = useState(false);
   const [isLoadingSignupLink, setIsLoadingSignupLink] = useState(false);
-  
+
   // Use the shared API hook
   const {
     fetchUserLeagues,
     updateExpiryDate: updateLeagueExpiry,
+    updateLeagueInfo,
     deleteLeague,
     isLoading,
   } = useLeagueAPI(userRole);
 
+  const [infoMarkdownDraft, setInfoMarkdownDraft] = useState('');
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
+  const [showInfoPreview, setShowInfoPreview] = useState(false);
+
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    fetchLeagues();
+    fetchUserLeagues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset markdown draft when the selected league changes
+  useEffect(() => {
+    setInfoMarkdownDraft(currentLeague?.info_markdown ?? '');
+    setShowInfoPreview(false);
+  }, [currentLeague?.id, currentLeague?.info_markdown]);
 
   // Check for existing signup links when currentLeague changes
   useEffect(() => {
@@ -55,29 +69,6 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
       setSignupLink("");
     }
   }, [currentLeague]);
-
-  // Fetch all leagues
-  const fetchLeagues = async () => {
-    try {
-      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.status === "success") {
-        dispatch(setLeagues(data.data.leagues));
-      } else if (data.status === "failed") {
-        toast.error(data.message);
-      } else if (data.detail === "Invalid token") {
-        onUnauthorized();
-      }
-    } catch (error) {
-      console.error("Error fetching leagues:", error);
-    }
-  };
 
   // Generate signup link for a league
   const generateSignupLink = async (leagueId, leagueName) => {
@@ -156,6 +147,21 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
       console.error('Error updating date:', error);
     }
   };
+
+  // Save markdown info for the selected league
+  const handleSaveInfo = async () => {
+    if (!currentLeague) return;
+    setIsSavingInfo(true);
+    try {
+      await updateLeagueInfo(currentLeague.id, infoMarkdownDraft);
+    } finally {
+      setIsSavingInfo(false);
+    }
+  };
+
+  const infoHasChanges =
+    currentLeague != null &&
+    (currentLeague.info_markdown ?? '') !== infoMarkdownDraft;
 
   // Navigate to the simulation page
   const handleGoToSimulation = () => {
@@ -338,6 +344,66 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                         : "Generate Signup Link"}
                     </button>
                   )}
+                </div>
+
+                {/* League Info Markdown */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-medium text-ui-dark">
+                      League Info (Markdown)
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowInfoPreview((v) => !v)}
+                        className="px-3 py-1 text-sm bg-ui-light hover:bg-ui-light/80 text-ui-dark rounded"
+                      >
+                        {showInfoPreview ? 'Hide Preview' : 'Show Preview'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveInfo}
+                        disabled={!infoHasChanges || isSavingInfo}
+                        className="px-3 py-1 text-sm bg-primary hover:bg-primary-hover text-white rounded disabled:bg-ui-light disabled:cursor-not-allowed"
+                      >
+                        {isSavingInfo ? 'Saving...' : 'Save Info'}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-ui mb-2">
+                    Shown to teams enrolled in this league on the leaderboard
+                    page. Use it for the simulation schedule, publishing
+                    cadence, league rules, etc.
+                  </p>
+                  <div className={showInfoPreview ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
+                    <div className="border border-ui-light rounded overflow-hidden" style={{ height: '320px' }}>
+                      <Editor
+                        height="320px"
+                        defaultLanguage="markdown"
+                        language="markdown"
+                        theme="vs-dark"
+                        value={infoMarkdownDraft}
+                        onChange={(value) => setInfoMarkdownDraft(value ?? '')}
+                        options={{
+                          minimap: { enabled: false },
+                          wordWrap: 'on',
+                          fontSize: 14,
+                          lineNumbers: 'on',
+                          automaticLayout: true,
+                          scrollBeyondLastLine: false,
+                        }}
+                      />
+                    </div>
+                    {showInfoPreview && (
+                      <div className="border border-ui-light rounded p-3 bg-ui-lighter overflow-auto" style={{ height: '320px' }}>
+                        {infoMarkdownDraft.trim() ? (
+                          <PureMarkdown content={infoMarkdownDraft} />
+                        ) : (
+                          <p className="text-ui">Nothing to preview yet.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Teams Grid */}

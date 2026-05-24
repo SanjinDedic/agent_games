@@ -28,16 +28,19 @@ from backend.routes.institution.institution_db import (
     publish_sim_results,
     save_simulation_results,
     update_expiry_date,
+    update_league_info,
     unassign_team,
 )
 from backend.routes.institution.institution_models import (
     ExpiryDate,
     LeagueDelete,
     LeagueIdRef,
+    LeagueInfoUpdate,
     LeagueResults,
     LeagueSignUp,
     SimulationConfig,
     TeamDelete,
+    TeamIdRef,
     TeamLeagueAssignment,
     TeamSignup,
 )
@@ -361,6 +364,36 @@ async def update_expiry_endpoint(
         )
 
 
+@institution_router.post("/update-league-info", response_model=ResponseModel)
+@verify_admin_or_institution
+async def update_league_info_endpoint(
+    payload: LeagueInfoUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Update the markdown info block shown to teams enrolled in this league."""
+    try:
+        institution_id, is_admin = _resolve_institution(current_user)
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        msg = update_league_info(
+            session,
+            payload.league_id,
+            payload.info_markdown,
+            institution_id,
+            is_admin=is_admin,
+        )
+        return ResponseModel(status="success", message=msg)
+    except Exception as e:
+        logger.error(f"Error updating league info: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to update league info: {str(e)}"
+        )
+
+
 @institution_router.post("/assign-team-to-league", response_model=ResponseModel)
 @verify_admin_or_institution
 async def assign_team_endpoint(
@@ -391,7 +424,7 @@ async def assign_team_endpoint(
 @institution_router.post("/generate-signup-link", response_model=ResponseModel)
 @verify_admin_or_institution
 async def generate_signup_link_endpoint(
-    request: dict,
+    league: LeagueIdRef,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
@@ -403,41 +436,25 @@ async def generate_signup_link_endpoint(
                 status="error", message="Institution ID not found in token"
             )
 
-        # Get the league ID from the request
-        league_id = request.get("league_id")
-        if not league_id:
-            return ErrorResponseModel(status="error", message="League ID is required")
-
-        # Validate league_id is an integer
         try:
-            league_id = int(league_id)
-        except (ValueError, TypeError):
-            return ErrorResponseModel(
-                status="error",
-                message=f"League ID must be an integer, got '{league_id}'",
+            result = generate_signup_link(
+                session, league.league_id, institution_id, is_admin=is_admin
             )
-
-        try:
-            result = generate_signup_link(session, league_id, institution_id, is_admin=is_admin)
             return ResponseModel(
                 status="success",
                 message=f"Signup link generated for league {result['league_name']}",
                 data={"signup_token": result["signup_token"]},
             )
-        except LeagueNotFoundError as e:
+        except LeagueNotFoundError:
             return ErrorResponseModel(
-                status="error", message=f"League with ID {league_id} not found"
+                status="error",
+                message=f"League with ID {league.league_id} not found",
             )
-        except InstitutionAccessError as e:
+        except InstitutionAccessError:
             return ErrorResponseModel(
                 status="error",
                 message="You don't have permission to access this league",
             )
-        except Exception as e:
-            return ErrorResponseModel(
-                status="error", message=f"Failed to generate signup link: {str(e)}"
-            )
-
     except Exception as e:
         logger.error(f"Error in signup link endpoint: {e}")
         return ErrorResponseModel(
@@ -473,23 +490,19 @@ async def delete_league_endpoint(
 @institution_router.post("/unassign-team", response_model=ResponseModel)
 @verify_admin_or_institution
 async def unassign_team_endpoint(
-    request: dict,
+    team: TeamIdRef,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Move a team to the institution's 'unassigned' league without relying on client-provided league id."""
     try:
-        institution_id, is_admin = _resolve_institution(current_user)
+        institution_id, _ = _resolve_institution(current_user)
         if not institution_id:
             return ErrorResponseModel(
                 status="error", message="Institution ID not found in token"
             )
 
-        team_id = request.get("team_id")
-        if not team_id:
-            return ErrorResponseModel(status="error", message="team_id is required")
-
-        msg = unassign_team(session, int(team_id), institution_id)
+        msg = unassign_team(session, team.team_id, institution_id)
         return ResponseModel(status="success", message=msg)
     except Exception as e:
         logger.error(f"Error unassigning team: {e}")

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { setTeams, addTeam, removeTeam } from '../../slices/teamsSlice';
+import { setTeams } from '../../slices/teamsSlice';
 import { authFetch } from '../../utils/authFetch';
 import {
   checkTokenExpiry,
@@ -19,10 +19,31 @@ function InstitutionTeam() {
   const accessToken = useSelector(selectToken);
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [team, setTeam] = useState({ name: '', password: '', school_name: '' });
   const [showAddTeamForm, setShowAddTeamForm] = useState(false);
+
+  const fetchAllTeams = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await response.json();
+      if (data.status === 'success' && Array.isArray(data.data.teams)) {
+        dispatch(setTeams(data.data.teams));
+      } else if (data.status === 'failed') {
+        toast.error(data.message);
+      } else if (data.detail === 'Invalid token') {
+        navigate('/Institution');
+      }
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken, dispatch, navigate]);
 
   useEffect(() => {
     const tokenExpired = dispatch(checkTokenExpiry());
@@ -33,28 +54,8 @@ function InstitutionTeam() {
   }, []);
 
   useEffect(() => {
-    setIsLoading(true);
-    authFetch(`${apiUrl}/institution/get-all-teams`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success" && Array.isArray(data.data.teams)) {
-          dispatch(setTeams(data.data.teams));
-        } else if (data.status === "failed") {
-          toast.error(data.message);
-        } else if (data.detail === "Invalid token") {
-          navigate('/Institution');
-        }
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching teams:', error);
-        setIsLoading(false);
-      });
-  }, [apiUrl, dispatch, navigate, accessToken]);
+    fetchAllTeams();
+  }, [fetchAllTeams]);
 
   const handleChange = (e) => {
     setTeam(prev => ({
@@ -63,65 +64,61 @@ function InstitutionTeam() {
     }));
   };
 
-  const handleAddTeam = () => {
-    // Validate form
+  const handleAddTeam = async () => {
     if (!team.name.trim() || !team.password.trim()) {
       toast.error('Team name and password are required');
       return;
     }
 
-    authFetch(`${apiUrl}/institution/team-create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        name: team.name,
-        password: team.password,
-        school_name: team.school_name || 'Not Available'
-      }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          setTeam({ name: '', password: '', school_name: '' });
-          setShowAddTeamForm(false);
-          dispatch(addTeam(data.data));
-          toast.success(data.message);
-        } else if (data.status === "failed" || data.status === "error") {
-          toast.error(data.message);
-        }
-      })
-      .catch(error => {
-        console.error('Error adding team:', error);
-        toast.error('Failed to add team');
-      });
-  };
-
-  const handleDelete = (id, name) => {
-    if (window.confirm(`Are you sure you want to delete team "${name}"?`)) {
-      authFetch(`${apiUrl}/institution/delete-team`, {
+    try {
+      const response = await authFetch(`${apiUrl}/institution/team-create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ id: id }),
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === "success") {
-            dispatch(removeTeam(id));
-            toast.success(data.message);
-          } else if (data.status === "failed" || data.status === "error") {
-            toast.error(data.message);
-          }
-        })
-        .catch(error => {
-          console.error('Error deleting team:', error);
-          toast.error('Failed to delete team');
-        });
+        body: JSON.stringify({
+          name: team.name,
+          password: team.password,
+          school_name: team.school_name || 'Not Available',
+        }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setTeam({ name: '', password: '', school_name: '' });
+        setShowAddTeamForm(false);
+        toast.success(data.message);
+        await fetchAllTeams();
+      } else if (data.status === 'failed' || data.status === 'error') {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error('Error adding team:', error);
+      toast.error('Failed to add team');
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete team "${name}"?`)) return;
+    try {
+      const response = await authFetch(`${apiUrl}/institution/delete-team`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ id }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        await fetchAllTeams();
+      } else if (data.status === 'failed' || data.status === 'error') {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      toast.error('Failed to delete team');
     }
   };
 

@@ -145,7 +145,7 @@ def test_assess_no_api_key_returns_error(client, institution_setup):
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -158,7 +158,7 @@ def test_assess_team_not_found_in_league(client, institution_setup, stored_opena
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": "nonexistent_team"},
+        json={"league_id": league.id, "team_id": 999999},
     )
     assert response.status_code == 200
     data = response.json()
@@ -201,7 +201,7 @@ def test_assess_league_not_owned_by_institution(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers_a,
-        json={"league_id": other_league.id, "team_name": team_a.name},
+        json={"league_id": other_league.id, "team_id": team_a.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -219,7 +219,7 @@ def test_assess_wrong_role_forbidden(client, institution_setup, stored_openai_ke
     response = client.post(
         "/ai/assess-plagiarism",
         headers={"Authorization": f"Bearer {token}"},
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 403
 
@@ -241,7 +241,7 @@ def test_assess_no_submissions(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -260,7 +260,7 @@ def test_assess_two_submissions_happy_path(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -301,7 +301,7 @@ def test_assess_single_submission_progression_not_applicable(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -338,7 +338,7 @@ def test_assess_sampling_when_over_ten_submissions(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "success"
@@ -361,7 +361,7 @@ def test_assess_llm_returns_non_json(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "error"
@@ -381,7 +381,7 @@ def test_assess_llm_returns_bad_literal(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "error"
@@ -401,7 +401,7 @@ def test_assess_llm_extra_keys_rejected(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "error"
@@ -425,7 +425,7 @@ def test_assess_openai_500(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "error"
@@ -448,7 +448,7 @@ def test_assess_openai_timeout(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "error"
@@ -467,7 +467,7 @@ def test_assess_anonymization_strips_team_name(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     assert response.json()["status"] == "success"
 
@@ -517,7 +517,7 @@ def test_assess_deterministic_flag_over_likely_threshold(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "success"
@@ -561,7 +561,7 @@ def test_assess_deterministic_flag_between_4_and_6(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     assert data["status"] == "success"
@@ -584,7 +584,7 @@ def test_assess_normal_typing_speed_flag(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     data = response.json()
     report = data["data"]
@@ -623,7 +623,7 @@ def test_assess_deterministic_summary_sent_to_llm(
     client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     call_args = mock_client.post.call_args
     outbound_json = call_args.kwargs.get("json") or call_args.args[1]
@@ -646,7 +646,7 @@ def test_assess_template_similarity_present(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     report = response.json()["data"]
     # greedy_pig league → template available → similarity is a float.
@@ -687,7 +687,7 @@ def test_assess_ast_construct_counts(
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
-        json={"league_id": league.id, "team_name": team.name},
+        json={"league_id": league.id, "team_id": team.id},
     )
     report = response.json()["data"]
     assert report["submission_metrics"][0]["ast_construct_count"] == 1  # just FunctionDef
@@ -715,7 +715,7 @@ def test_assess_admin_can_assess_any_league(
         response = client.post(
             "/ai/assess-plagiarism",
             headers={"Authorization": f"Bearer {admin_token}"},
-            json={"league_id": league.id, "team_name": team.name},
+            json={"league_id": league.id, "team_id": team.id},
         )
     data = response.json()
     assert data["status"] == "success"

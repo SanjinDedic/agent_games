@@ -180,12 +180,12 @@ async def assess_plagiarism_endpoint(
             )
 
         # Verify the team exists and belongs to that league.
-        team = get_team_in_league(session, request.team_name, request.league_id)
+        team = get_team_in_league(session, request.team_id, request.league_id)
         if not team:
             return ErrorResponseModel(
                 status="error",
                 message=(
-                    f"Team '{request.team_name}' not found in league "
+                    f"Team {request.team_id} not found in league "
                     f"{request.league_id}"
                 ),
             )

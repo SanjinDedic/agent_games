@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
@@ -6,8 +6,10 @@ import { setCurrentLeague } from "../../slices/leaguesSlice";
 import {
   checkTokenExpiry,
   selectCurrentUser,
+  selectInstitutionName,
   selectIsAuthenticated,
   selectIsDemo,
+  selectLeagueId,
 } from "../../slices/authSlice";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
@@ -19,12 +21,11 @@ function AgentLeagueSignUp() {
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
   const isDemo = useSelector(selectIsDemo);
+  const assignedLeagueId = useSelector(selectLeagueId);
+  const institutionName = useSelector(selectInstitutionName);
 
-  const { fetchUserLeagues, fetchTeamInfo, assignToLeague, isLoading } = useLeagueAPI();
+  const { fetchUserLeagues, assignToLeague, isLoading } = useLeagueAPI();
 
-  const [assignedLeagueId, setAssignedLeagueId] = useState(null);
-  const [assignedLeagueName, setAssignedLeagueName] = useState(null);
-  const [institutionName, setInstitutionName] = useState(null);
   const [pendingLeague, setPendingLeague] = useState(null);
   const preselectedRef = useRef(false);
 
@@ -36,30 +37,26 @@ function AgentLeagueSignUp() {
       navigate("/AgentLogin");
       return;
     }
-
     fetchUserLeagues();
-
-    (async () => {
-      const result = await fetchTeamInfo();
-      if (result.success && result.data) {
-        setAssignedLeagueId(result.data.league_id);
-        setAssignedLeagueName(result.data.league_name);
-        setInstitutionName(result.data.institution_name);
-      }
-    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Resolve the assigned-league record from JWT league_id + loaded leagues.
+  const assignedLeague = useMemo(
+    () => (assignedLeagueId ? allLeagues?.find((l) => l.id === assignedLeagueId) : null),
+    [assignedLeagueId, allLeagues],
+  );
+  const assignedLeagueName = assignedLeague?.name ?? null;
 
   // Pre-select team's currently assigned league once leagues are loaded (one-shot)
   useEffect(() => {
     if (preselectedRef.current) return;
-    if (!assignedLeagueId || !allLeagues?.length) return;
-    const match = allLeagues.find((l) => l.id === assignedLeagueId);
-    if (match && match.name.toLowerCase() !== "unassigned") {
-      dispatch(setCurrentLeague(match.name));
+    if (!assignedLeague) return;
+    if (assignedLeague.name.toLowerCase() !== "unassigned") {
+      dispatch(setCurrentLeague(assignedLeague.name));
     }
     preselectedRef.current = true;
-  }, [assignedLeagueId, allLeagues, dispatch]);
+  }, [assignedLeague, dispatch]);
 
   const isAssignedToReal =
     assignedLeagueName && assignedLeagueName.toLowerCase() !== "unassigned";

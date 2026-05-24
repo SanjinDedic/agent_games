@@ -113,6 +113,7 @@ function InstitutionLeagueSubmissions() {
 
   // submissions: { teamName: [{ code, timestamp, id }, ...] }
   const [submissions, setSubmissions] = useState({});
+  const [teamIds, setTeamIds] = useState({});
   const [leagueName, setLeagueName] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [submissionIndex, setSubmissionIndex] = useState(0);
@@ -154,8 +155,10 @@ function InstitutionLeagueSubmissions() {
         const data = await resp.json();
         if (data.status === "success") {
           const map = data.data?.teams || {};
+          const ids = data.data?.team_ids || {};
           setLeagueName(data.data?.league_name || "");
           setSubmissions(map);
+          setTeamIds(ids);
           const firstTeam = Object.keys(map).sort()[0] || "";
           setSelectedTeam(firstTeam);
           // Start at latest submission
@@ -191,6 +194,11 @@ function InstitutionLeagueSubmissions() {
 
   const handleAssessPlagiarism = async () => {
     if (!selectedTeam || !leagueId) return;
+    const teamId = teamIds[selectedTeam];
+    if (!teamId) {
+      toast.error("Team id not found");
+      return;
+    }
     const proceed = window.confirm(
       `This will send ${selectedTeam}'s code submissions to OpenAI for analysis. Continue?`
     );
@@ -207,7 +215,7 @@ function InstitutionLeagueSubmissions() {
         },
         body: JSON.stringify({
           league_id: Number(leagueId),
-          team_name: selectedTeam,
+          team_id: teamId,
         }),
       });
       const data = await resp.json();

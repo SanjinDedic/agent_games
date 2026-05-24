@@ -1,12 +1,10 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class SubmissionCode(BaseModel):
     """Model for code submissions from teams"""
 
     code: str
-    team_id: int = Field(default=None)
-    league_id: int = Field(default=None)
 
 
 class LeagueAssignRequest(BaseModel):

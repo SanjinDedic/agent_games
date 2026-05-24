@@ -6,13 +6,7 @@ import moment from 'moment-timezone';
 import { useNavigate } from 'react-router-dom';
 
 // Import Redux actions
-import { authFetch } from '../../../utils/authFetch';
-import {
-  setLeagues,
-  setCurrentSimulation,
-  setResults,
-  clearResults,
-} from "../../../slices/leaguesSlice";
+import { setCurrentSimulation } from "../../../slices/leaguesSlice";
 
 // Import components
 import LeagueCardList from "./LeagueCardList";
@@ -25,13 +19,9 @@ import FeedbackSelector from "../../Feedback/FeedbackSelector";
 // Import hooks
 import useLeagueAPI from "../hooks/useLeagueAPI";
 
-import { selectToken } from '../../../slices/authSlice';
-
 const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allSimulations = useSelector(
     (state) => state.leagues.currentLeagueResults
@@ -40,78 +30,21 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
     (state) => state.leagues.currentLeagueResultSelected
   );
 
-  // Use the shared API hook
   const api = useLeagueAPI(userRole);
 
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    fetchLeagues();
+    api.fetchUserLeagues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (currentLeague?.name) {
-      fetchLeagueResults();
+    if (currentLeague?.id) {
+      api.fetchLeagueResults(currentLeague.id);
     }
-  }, [currentLeague]);
-
-  // Fetch all leagues
-  const fetchLeagues = async () => {
-    try {
-      const response = await authFetch(`${apiUrl}/user/get-all-leagues`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.status === "success") {
-        dispatch(setLeagues(data.data.leagues));
-      } else if (data.status === "failed") {
-        toast.error(data.message);
-      } else if (data.detail === "Invalid token") {
-        onUnauthorized();
-      }
-    } catch (error) {
-      console.error("Error fetching leagues:", error);
-    }
-  };
-
-  // Fetch league results
-  const fetchLeagueResults = async () => {
-    try {
-      const response = await authFetch(
-        `${apiUrl}/institution/get-all-league-results`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ league_id: currentLeague.id }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.status === "success") {
-        if (data.data.results.length === 0) {
-          dispatch(clearResults());
-          toast.info("No results in the selected League");
-        } else {
-          dispatch(setResults(data.data.results));
-        }
-      } else if (data.status === "failed") {
-        toast.error(data.message);
-        dispatch(clearResults());
-      } else if (data.detail === "Invalid token") {
-        onUnauthorized();
-      }
-    } catch (error) {
-      console.error("Error fetching league results:", error);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLeague?.id]);
 
   // Handle simulation selection change
   const handleTableDropdownChange = (event) => {

@@ -68,6 +68,7 @@ class League(SQLModel, table=True):
         default=None,
         sa_column=Column(JSON, nullable=True),
     )
+    info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
     simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
     # New field for institution relationship
     institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
@@ -128,6 +129,7 @@ class Submission(SQLModel, table=True):
     code: str = Field(sa_column=Column(Text()))  # Use Text for potentially long code
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     team_id: int = Field(default=None, foreign_key="team.id", nullable=True)
+    league_id: Optional[int] = Field(default=None, foreign_key="league.id", nullable=True)
     duration_ms: Optional[float] = Field(default=None)
     team: Team = Relationship(back_populates="submissions")
 

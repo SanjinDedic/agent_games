@@ -371,6 +371,26 @@ def update_expiry_date(
     return f"Expiry date updated successfully for league '{league.name}'"
 
 
+def update_league_info(
+    session: Session,
+    league_id: int,
+    info_markdown: str,
+    institution_id: int,
+    is_admin: bool = False,
+) -> str:
+    """Update the per-league markdown info block."""
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
+        raise LeagueNotFoundError(
+            f"League with ID {league_id} not found in your institution"
+        )
+
+    league.info_markdown = info_markdown or ""
+    session.add(league)
+    session.commit()
+    return f"League info updated successfully for league '{league.name}'"
+
+
 def assign_team_to_league(session: Session, team_id: int, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Assign a team to a league within the same institution"""
     team = session.get(Team, team_id)
