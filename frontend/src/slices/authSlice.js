@@ -1,8 +1,6 @@
 import { createSlice, createSelector } from '@reduxjs/toolkit';
 import { jwtDecode } from 'jwt-decode';
 import moment from 'moment-timezone';
-import { clearLeagues } from './leaguesSlice';
-import { clearTeam } from './teamsSlice';
 
 moment.tz.setDefault("Australia/Sydney");
 
@@ -86,20 +84,9 @@ export const selectLeagueId = (state) => selectCurrentUser(state).league_id;
 export const selectIsDemo = (state) => selectCurrentUser(state).is_demo;
 export const selectTokenExp = (state) => selectCurrentUser(state).exp;
 
-// --- Token expiry thunk ------------------------------------------------
-
-export const checkTokenExpiry = () => (dispatch, getState) => {
-  const exp = selectTokenExp(getState());
-  if (!exp) return false;
-
-  const expiryDate = moment.unix(exp);
-  if (moment().isAfter(expiryDate)) {
-    dispatch(clearToken());
-    dispatch(clearLeagues());
-    dispatch(clearTeam());
-    return true;
-  }
-  return false;
-};
+export const selectIsTokenExpired = createSelector(
+  [selectTokenExp],
+  (exp) => (exp ? moment().unix() >= exp : false),
+);
 
 export default authSlice.reducer;

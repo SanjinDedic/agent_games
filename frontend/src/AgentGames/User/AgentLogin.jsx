@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import {
-  checkTokenExpiry,
   selectCurrentUser,
   selectIsAuthenticated,
+  selectIsTokenExpired,
 } from "../../slices/authSlice";
 import InstructionPopup from "../Shared/Utilities/InstructionPopup";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 
 function AgentLogin() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const tokenExpired = useSelector(selectIsTokenExpired);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
 
   const [institutions, setInstitutions] = useState([]);
@@ -26,7 +26,6 @@ function AgentLogin() {
   const { teamLogin, isLoading } = useAuthAPI();
 
   useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
     if (isAuthenticated && !tokenExpired && currentUser.role === "student") {
       navigate("/AgentLeagueSignUp");
     }

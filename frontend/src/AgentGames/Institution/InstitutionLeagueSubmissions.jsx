@@ -1,15 +1,9 @@
-// src/AgentGames/Institution/InstitutionLeagueSubmissions.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { toast } from "react-toastify";
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-  selectToken,
-} from "../../slices/authSlice";
+import { selectToken } from "../../slices/authSlice";
 import { authFetch } from "../../utils/authFetch";
 
 const verdictColor = (verdict) => {
@@ -104,12 +98,9 @@ const TEMPLATE_MAX = 100;
 function InstitutionLeagueSubmissions() {
   const { leagueId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
-  const currentUser = useSelector(selectCurrentUser);
 
   // submissions: { teamName: [{ code, timestamp, id }, ...] }
   const [submissions, setSubmissions] = useState({});
@@ -130,15 +121,6 @@ function InstitutionLeagueSubmissions() {
   const currentSubmission = teamSubmissions[submissionIndex];
   const selectedCode = currentSubmission?.code || "";
   const totalSubmissions = teamSubmissions.length;
-
-  // Guard: require institution role (mount-only to avoid loop on logout)
-  useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || tokenExpired || currentUser.role !== "institution") {
-      navigate("/Institution");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Fetch all submissions for league
   useEffect(() => {
