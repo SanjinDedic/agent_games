@@ -1,4 +1,3 @@
-import { store } from "../store";
 import { logout, selectCurrentUser } from "../slices/authSlice";
 import { clearLeagues } from "../slices/leaguesSlice";
 import { clearTeam } from "../slices/teamsSlice";
@@ -11,10 +10,22 @@ const LOGIN_ROUTES = {
 
 let isLoggingOut = false;
 
-function handleSessionExpired() {
+// Lazy-resolve the store via dynamic import so this module does not sit in
+// the store → slice → authFetch → store import cycle. The dynamic import
+// creates an async boundary that breaks the cycle for the bundler.
+let _storePromise;
+function getStore() {
+  if (!_storePromise) {
+    _storePromise = import("../store").then((m) => m.store);
+  }
+  return _storePromise;
+}
+
+async function handleSessionExpired() {
   if (isLoggingOut) return;
   isLoggingOut = true;
 
+  const store = await getStore();
   const currentUser = selectCurrentUser(store.getState());
   const role = currentUser?.role;
   const isDemo = currentUser?.is_demo;
@@ -41,7 +52,7 @@ export async function authFetch(url, options = {}) {
   const response = await fetch(url, options);
 
   if (response.status === 401) {
-    handleSessionExpired();
+    await handleSessionExpired();
     // Return a response that callers can still safely .json() on
     return new Response(JSON.stringify({ status: "error", message: "Session expired" }), {
       status: 401,
