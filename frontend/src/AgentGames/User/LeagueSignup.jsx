@@ -4,10 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
 import {
-  checkTokenExpiry,
   selectCurrentUser,
   selectInstitutionName,
-  selectIsAuthenticated,
   selectIsDemo,
   selectLeagueId,
 } from "../../slices/authSlice";
@@ -17,7 +15,6 @@ function AgentLeagueSignUp() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
   const isDemo = useSelector(selectIsDemo);
@@ -32,11 +29,6 @@ function AgentLeagueSignUp() {
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-      navigate("/AgentLogin");
-      return;
-    }
     fetchUserLeagues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

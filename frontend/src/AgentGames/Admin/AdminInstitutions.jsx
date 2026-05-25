@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-  selectToken,
-} from '../../slices/authSlice';
+import { useSelector } from 'react-redux';
+import { selectToken } from '../../slices/authSlice';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
@@ -15,13 +9,9 @@ import { saveAs } from 'file-saver';
 import { authFetch } from '../../utils/authFetch';
 
 function AdminInstitutions() {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
-  const currentUser = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
-  
+
   const [institutions, setInstitutions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -33,14 +23,6 @@ function AdminInstitutions() {
     subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default to 1 year
     docker_access: false
   });
-
-  useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-      navigate('/Admin');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     fetchInstitutions();

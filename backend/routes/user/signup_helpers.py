@@ -1,16 +1,13 @@
 """Shared helpers for the team-signup endpoints (classic + school)."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Tuple
 
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
-from backend.routes.auth.auth_config import (
-    AUSTRALIA_SYDNEY_TZ,
-    TEAM_TOKEN_EXPIRY_MINUTES,
-    create_access_token,
-)
+from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
+from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.user.user_db import get_league_by_signup_token
 
 
@@ -41,22 +38,11 @@ def resolve_active_league_by_token(
 
 def team_signup_success_data(team: Team, league: League) -> dict:
     """The response data shape shared by both signup endpoints."""
-    access_token = create_access_token(
-        data={
-            "sub": team.name,
-            "role": "student",
-            "team_id": team.id,
-            "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
-            "institution_id": team.institution_id,
-        },
-        expires_delta=timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES),
-    )
     return {
         "team_id": team.id,
         "team_name": team.name,
         "league_id": league.id,
         "league_name": league.name,
-        "access_token": access_token,
+        "access_token": mint_team_token(team),
         "token_type": "bearer",
     }

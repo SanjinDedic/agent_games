@@ -1,14 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import moment from 'moment-timezone';
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-  selectToken,
-} from '../../slices/authSlice';
+import { selectToken } from '../../slices/authSlice';
 import { authFetch } from '../../utils/authFetch';
 
 const SUBMITTER_TABS = [
@@ -30,12 +24,8 @@ const CATEGORY_STYLES = {
 };
 
 function AdminUserSupport() {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
-  const currentUser = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const [submitterTab, setSubmitterTab] = useState('team');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -45,14 +35,6 @@ function AdminUserSupport() {
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [lightboxUrl, setLightboxUrl] = useState(null);
-
-  useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== 'admin' || tokenExpired) {
-      navigate('/Admin');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const fetchTickets = useCallback(() => {
     setIsLoading(true);

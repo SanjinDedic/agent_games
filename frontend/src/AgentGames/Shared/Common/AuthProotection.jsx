@@ -1,32 +1,35 @@
-// src/AgentGames/Shared/Auth/AuthProtection.jsx
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  checkTokenExpiry,
   selectCurrentUser,
   selectIsAuthenticated,
+  selectIsTokenExpired,
 } from '../../../slices/authSlice';
+import { sessionExpired } from '../../../middleware/authErrorMiddleware';
 
 const AuthProtection = ({
   children,
   requiredRole,
-  redirectTo
+  redirectTo,
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  
+  const tokenExpired = useSelector(selectIsTokenExpired);
+
   useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole) || tokenExpired) {
+    if (tokenExpired) {
+      dispatch(sessionExpired());
+      return;
+    }
+    if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole)) {
       navigate(redirectTo);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If not authenticated or wrong role, don't render children
   if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole)) {
     return null;
   }

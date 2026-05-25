@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-} from "../../slices/authSlice";
+import { selectCurrentUser } from "../../slices/authSlice";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
 import CodeEditor from "./CodeEditor";
 import CombinedFooter from "./CombinedFooter";
@@ -34,10 +29,8 @@ function AgentSubmission() {
 
   // Redux hooks
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const currentUser = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   // Custom API hooks
   const {
@@ -53,14 +46,7 @@ function AgentSubmission() {
   // Combined loading state
   const isLoading = isSubmitting || isLeagueLoading || isLoadingLeagueInfo;
 
-  // Check authentication and load necessary data
   useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "student" || tokenExpired) {
-      navigate("/AgentLogin");
-      return;
-    }
-
     const loadInitialData = async () => {
       // Load the latest submission
       let hadSubmission = false;

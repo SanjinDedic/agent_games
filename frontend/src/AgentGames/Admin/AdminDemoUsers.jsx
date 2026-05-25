@@ -1,45 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import moment from 'moment-timezone';
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-  selectToken,
-} from '../../slices/authSlice';
+import { selectToken } from '../../slices/authSlice';
 import DemoUserCard from './DemoUserCard';
 import { authFetch } from '../../utils/authFetch';
 
-/**
- * Renders the admin demo users management interface.
- *
- * Upon mounting, the component checks for valid admin authentication and token expiry, redirecting
- * unauthorized users to the admin page. It then retrieves demo users from the server and displays them
- * in a responsive grid layout. The interface allows refreshing the list, deleting all demo users, or
- * deleting an individual demo user, with accompanying UI feedback and notifications.
- */
 function AdminDemoUsers() {
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
     const apiUrl = useSelector((state) => state.settings.agentApiUrl);
     const accessToken = useSelector(selectToken);
-    const currentUser = useSelector(selectCurrentUser);
-    const isAuthenticated = useSelector(selectIsAuthenticated);
 
     const [demoUsers, setDemoUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDeletingAll, setIsDeletingAll] = useState(false);
 
-    // Check authentication and fetch demo users on component mount
     useEffect(() => {
-        const tokenExpired = dispatch(checkTokenExpiry());
-        if (!isAuthenticated || currentUser.role !== "admin" || tokenExpired) {
-            navigate('/Admin');
-            return;
-        }
-
         fetchDemoUsers();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

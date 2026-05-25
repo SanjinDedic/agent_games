@@ -1,4 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { authFetch } from '../utils/authFetch';
 
 const initialState = {
   allRankings: [],
@@ -87,7 +88,6 @@ export const fetchMyLeagueRankings = ({ force = false } = {}) => async (dispatch
     return { success: false, error: 'Not authenticated' };
   }
   try {
-    const { authFetch } = await import('../utils/authFetch');
     const response = await authFetch(
       `${apiUrl}/user/get-all-published-results-for-my-league`,
       { headers: { Authorization: `Bearer ${accessToken}` } },

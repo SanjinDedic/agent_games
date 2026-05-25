@@ -1,35 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-  selectToken,
-} from '../../slices/authSlice';
+import { useSelector } from 'react-redux';
+import { selectToken } from '../../slices/authSlice';
 import { authFetch } from '../../utils/authFetch';
 
 function AdminBackup() {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
-  const currentUser = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const [backups, setBackups] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [restoringKey, setRestoringKey] = useState(null);
-
-  useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== 'admin' || tokenExpired) {
-      navigate('/Admin');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     fetchBackups();

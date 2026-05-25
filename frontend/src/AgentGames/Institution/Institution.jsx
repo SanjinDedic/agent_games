@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setToken,
-  checkTokenExpiry,
   selectCurrentUser,
   selectIsAuthenticated,
+  selectIsTokenExpired,
 } from '../../slices/authSlice';
 
 function Institution() {
@@ -14,13 +14,13 @@ function Institution() {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  
+  const tokenExpired = useSelector(selectIsTokenExpired);
+
   const [institution, setInstitution] = useState({ name: '', password: '' });
   const [errorMessage, setErrorMessage] = useState('');
   const [shake, setShake] = useState(false);
 
   useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
     if (isAuthenticated && !tokenExpired) {
       if (currentUser.role === "institution") {
         navigate('/InstitutionTeam');

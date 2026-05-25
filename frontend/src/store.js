@@ -7,6 +7,11 @@ import rankingsReducer from './slices/rankingsSlice';
 import settingsReducer from './slices/settingsSlice';
 import feedbackReducer from './slices/feedbackSlice';
 import supportReducer from './slices/supportSlice';
+import {
+  authErrorMiddleware,
+  sessionExpired,
+} from './middleware/authErrorMiddleware';
+import { registerOnUnauthorized } from './utils/authFetch';
 
 const saveState = (state) => {
   try {
@@ -44,8 +49,15 @@ export const store = configureStore({
     support: supportReducer,
   },
   preloadedState: persistedState,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().prepend(authErrorMiddleware.middleware),
 });
 
 store.subscribe(() => {
   saveState(store.getState());
 });
+
+// Wire authFetch's 401 hook into the store. Keeps utils/authFetch.js free of
+// any Redux imports — the cycle (store → slice → authFetch → store) cannot
+// re-form because authFetch no longer imports anything from this module.
+registerOnUnauthorized(() => store.dispatch(sessionExpired()));

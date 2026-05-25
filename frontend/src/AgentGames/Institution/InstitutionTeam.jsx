@@ -4,12 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTeams } from '../../slices/teamsSlice';
 import { authFetch } from '../../utils/authFetch';
-import {
-  checkTokenExpiry,
-  selectCurrentUser,
-  selectIsAuthenticated,
-  selectToken,
-} from '../../slices/authSlice';
+import { selectToken } from '../../slices/authSlice';
 
 function InstitutionTeam() {
   const navigate = useNavigate();
@@ -17,8 +12,6 @@ function InstitutionTeam() {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const teams = useSelector((state) => state.teams.list);
   const accessToken = useSelector(selectToken);
-  const currentUser = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const [isLoading, setIsLoading] = useState(false);
   const [team, setTeam] = useState({ name: '', password: '', school_name: '' });
@@ -44,14 +37,6 @@ function InstitutionTeam() {
       setIsLoading(false);
     }
   }, [apiUrl, accessToken, dispatch, navigate]);
-
-  useEffect(() => {
-    const tokenExpired = dispatch(checkTokenExpiry());
-    if (!isAuthenticated || currentUser.role !== "institution" || tokenExpired) {
-      navigate('/Institution');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     fetchAllTeams();

@@ -31,6 +31,7 @@ import About from './AgentGames/About';
 import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
 import SupportButton from "./AgentGames/Support/SupportButton";
 import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
+import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
 
 function App() {
   return (
@@ -40,8 +41,22 @@ function App() {
         <Routes>
           <Route path="/" element={<AgentHome />} />
           <Route path="AgentLogin" element={<AgentLogin />} />
-          <Route path="AgentLeagueSignUp" element={<AgentLeagueSignUp />} />
-          <Route path="AgentSubmission" element={<AgentSubmission />} />
+          <Route
+            path="AgentLeagueSignUp"
+            element={
+              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
+                <AgentLeagueSignUp />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="AgentSubmission"
+            element={
+              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
+                <AgentSubmission />
+              </AuthProtection>
+            }
+          />
           <Route path="Rankings" element={<AgentRankings />} />
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />
@@ -55,29 +70,97 @@ function App() {
           <Route path="/results/:publishLink" element={<PublishedResults />} />
           {/* Admin Routes */}
           <Route path="Admin" element={<Admin />} />
-          <Route path="AdminLeague" element={<AdminLeague />} />
+          <Route
+            path="AdminLeague"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminLeague />
+              </AuthProtection>
+            }
+          />
           <Route
             path="AdminLeagueSimulation"
-            element={<AdminLeagueSimulation />}
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminLeagueSimulation />
+              </AuthProtection>
+            }
           />
-          <Route path="AdminInstitutions" element={<AdminInstitutions />} />
+          <Route
+            path="AdminInstitutions"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminInstitutions />
+              </AuthProtection>
+            }
+          />
           {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
-          <Route path="AdminBackup" element={<AdminBackup />} />
-          <Route path="AdminDockerStatus" element={<DockerStatus />} />
-          <Route path="AdminAPIKeys" element={<AdminAPIKeys />} />
-          <Route path="AdminUserSupport" element={<AdminUserSupport />} />
+          <Route
+            path="AdminBackup"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminBackup />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="AdminDockerStatus"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <DockerStatus />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="AdminAPIKeys"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminAPIKeys />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="AdminUserSupport"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminUserSupport />
+              </AuthProtection>
+            }
+          />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
-          <Route path="InstitutionLeague" element={<InstitutionLeague />} />
+          <Route
+            path="InstitutionLeague"
+            element={
+              <AuthProtection requiredRole="institution" redirectTo="/Institution">
+                <InstitutionLeague />
+              </AuthProtection>
+            }
+          />
           <Route
             path="InstitutionLeagueSimulation"
-            element={<InstitutionLeagueSimulation />}
+            element={
+              <AuthProtection requiredRole="institution" redirectTo="/Institution">
+                <InstitutionLeagueSimulation />
+              </AuthProtection>
+            }
           />
           <Route
             path="InstitutionLeagueSubmissions/:leagueId"
-            element={<InstitutionLeagueSubmissions />}
+            element={
+              <AuthProtection requiredRole="institution" redirectTo="/Institution">
+                <InstitutionLeagueSubmissions />
+              </AuthProtection>
+            }
           />
-          <Route path="InstitutionTeam" element={<InstitutionTeam />} />
+          <Route
+            path="InstitutionTeam"
+            element={
+              <AuthProtection requiredRole="institution" redirectTo="/Institution">
+                <InstitutionTeam />
+              </AuthProtection>
+            }
+          />
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />
         </Routes>

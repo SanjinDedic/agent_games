@@ -19,7 +19,8 @@ const teamsSlice = createSlice({
     removeTeam: (state, action) => {
       state.list = state.list.filter(team => team.id !== action.payload);
     },
-    clearTeam: (state, action) => {
+    clearTeam: (state) => {
+      state.list = [];
       state.currentTeam = null;
     },
   },
