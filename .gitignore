@@ -2,6 +2,7 @@ __pycache__
 classes/__pycache__
 logfiles
 single_file_game
+docker-compose.override.yml
 
 .coverage
 coverage/
