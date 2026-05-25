@@ -105,10 +105,12 @@ export const useSubmissionAPI = () => {
           }
         }
         
-        return { 
-          success: true, 
-          starterCode, 
-          instructions: data.data.game_instructions 
+        return {
+          success: true,
+          starterCode,
+          instructions: data.data.game_instructions,
+          rewardSchema: data.data.reward_schema ?? null,
+          rewardInstructions: data.data.reward_instructions ?? "",
         };
       } else {
         return { 

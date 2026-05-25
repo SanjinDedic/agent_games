@@ -293,6 +293,8 @@ async def get_game_instructions(game: GameName):
             data={
                 "starter_code": game_class.starter_code,
                 "game_instructions": game_class.game_instructions,
+                "reward_schema": game_class.reward_schema,
+                "reward_instructions": game_class.reward_instructions,
             },
         )
     except Exception as e:

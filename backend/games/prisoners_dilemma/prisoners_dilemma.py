@@ -66,6 +66,47 @@ When you log out, navigate away, or refresh the page, your code will be lost. Pl
 Good luck and have fun!
 """
 
+    reward_schema = {
+        "kind": "matrix",
+        "length": 4,
+        "labels": [
+            "Both Collude (C, C)",
+            "You Collude / Opp Defect (C, D)",
+            "You Defect / Opp Collude (D, C)",
+            "Both Defect (D, D)",
+        ],
+        "default": [4, 0, 6, 0],
+    }
+
+    reward_instructions = """## Custom Rewards — Prisoner's Dilemma
+
+Rewards form the **per-round payoff matrix** used in every pairwise round. The
+four entries map to the four possible outcomes of a single round:
+
+- `rewards[0]` — **Both Collude.** You get `rewards[0]`, opponent gets `rewards[0]`.
+- `rewards[1]` — **You Collude, Opp Defect.** You get `rewards[1]`, opponent gets `rewards[2]`.
+- `rewards[2]` — **You Defect, Opp Collude.** You get `rewards[2]`, opponent gets `rewards[1]`.
+- `rewards[3]` — **Both Defect.** You get `rewards[3]`, opponent gets `rewards[3]`.
+
+Your opponent's payoff is symmetric — swap entries `[1]` and `[2]`.
+
+**Default:** `[4, 0, 6, 0]` — the classic Prisoner's Dilemma incentive
+structure: mutual cooperation pays 4 each, defecting against a cooperator pays
+6, the cooperator gets 0, and mutual defection pays nothing.
+
+For the game to remain a true Prisoner's Dilemma you generally want
+`rewards[2] > rewards[0] > rewards[3] > rewards[1]` (Temptation > Reward >
+Punishment > Sucker).
+
+**Example tweaks:**
+
+- `[3, 0, 5, 1]` — softer punishment; mutual defection still beats being
+  exploited.
+- `[5, 1, 4, 2]` — no longer a true Prisoner's Dilemma (mutual cooperation
+  beats unilateral defection); cooperation should dominate.
+- `[2, 0, 3, 0]` — sharper temptation gap; defection is more attractive.
+"""
+
     def __init__(
         self,
         league,

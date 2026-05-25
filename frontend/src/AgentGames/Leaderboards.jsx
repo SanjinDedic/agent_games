@@ -72,12 +72,16 @@ function Leaderboards() {
   };
 
   // Team mode: fetch leagues (for league name + markdown) and league-scoped results.
+  // `info_markdown` is served by /get-all-published-results-for-my-league and is
+  // persisted in sessionStorage via the rankings slice. A plain mount-time fetch
+  // is short-circuited by the cache, so admin edits to league info don't surface
+  // until the team user clears their session. Force a refresh on every mount.
   useEffect(() => {
     if (isTeamUser) {
       if (leaguesList.length === 0) {
         fetchUserLeagues();
       }
-      loadMyLeagueResults();
+      loadMyLeagueResults(true);
     } else {
       loadPublicResults();
     }

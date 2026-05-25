@@ -82,6 +82,36 @@ def make_decision(self, game_state):
 <p>Good luck and have fun!</p>
 """
 
+    reward_schema = {
+        "kind": "placement",
+        "length": 7,
+        "labels": None,
+        "default": [10, 8, 6, 4, 3, 2, 1],
+    }
+
+    reward_instructions = """## Custom Rewards — Greedy Pig
+
+Rewards are **placement bonuses** awarded once the underlying money game ends.
+After every simulated game, players are sorted by their final total
+(`banked_money + unbanked_money`) and the rewards list is paid out top-down.
+
+- 1st place receives `rewards[0]`, 2nd place receives `rewards[1]`, and so on.
+- **Ties share a rank.** Tied players each receive the same reward — the one
+  that corresponds to the first position in the tie group.
+- Players who finish beyond the end of the rewards list receive **0**.
+- The list length therefore controls how deep the payout extends. A shorter
+  list concentrates points among the top finishers; a longer list spreads
+  points more evenly down the leaderboard.
+
+**Default:** `[10, 8, 6, 4, 3, 2, 1]` (top 7 places paid).
+
+**Example tweaks:**
+
+- `[10, 0, 0, 0, 0, 0, 0]` → winner-takes-all.
+- `[3, 2, 1]` → only the podium scores.
+- `[1, 1, 1, 1, 1, 1, 1, 1]` → flat reward for everyone in the top 8.
+"""
+
     def __init__(self, league, verbose=False, custom_rewards=None):
         super().__init__(league, verbose)
         self.active_players = list(self.players)

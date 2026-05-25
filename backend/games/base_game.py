@@ -21,6 +21,19 @@ class BaseGame(ABC):
     <p>These are generic game instructions. Each game should provide its own specific instructions.</p>
     """
 
+    # None → game does not accept custom rewards; UI hides the input.
+    # dict → schema descriptor consumed by the frontend:
+    #   {
+    #     "kind": "placement" | "matrix",
+    #     "length": int,                  # required entry count
+    #     "labels": [str, ...] | None,    # optional per-cell labels (matrix games)
+    #     "default": [number, ...],       # values shown when user has not customised
+    #   }
+    reward_schema = None
+
+    # Markdown shown next to the custom rewards input.
+    reward_instructions = ""
+
     def __init__(self, league, verbose=False):
         self.verbose = verbose
         self.league = league

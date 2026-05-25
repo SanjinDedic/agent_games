@@ -9,6 +9,8 @@ const initialState = {
   currentLeagueResults: [],
   currentLeagueResultSelected: null,
   currentRewards: null,
+  currentRewardSchema: null,
+  currentRewardInstructions: '',
   currentPublishLink: null,
 };
 
@@ -112,6 +114,12 @@ const leaguesSlice = createSlice({
     setRewards: (state, action) => {
       state.currentRewards = action.payload;
     },
+    setRewardMeta: (state, action) => {
+      const { schema = null, instructions = '' } = action.payload || {};
+      state.currentRewardSchema = schema;
+      state.currentRewardInstructions = instructions;
+      state.currentRewards = null;
+    },
     clearResults: (state) => {
       state.currentLeagueResults = [];
       state.currentLeagueResultSelected = null;
@@ -149,6 +157,7 @@ export const {
   setResults,
   setCurrentSimulation,
   setRewards,
+  setRewardMeta,
   clearResults,
   addSimulationResult
 } = leaguesSlice.actions;

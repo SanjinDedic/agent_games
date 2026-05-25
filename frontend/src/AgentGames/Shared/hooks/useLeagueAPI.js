@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import { setLeagues, setResults, clearResults, updateLeagueInfo as updateLeagueInfoAction } from '../../../slices/leaguesSlice';
+import { setLeagues, setResults, clearResults, updateLeagueInfo as updateLeagueInfoAction, setRewardMeta } from '../../../slices/leaguesSlice';
 import { selectToken, setToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 
@@ -451,7 +451,40 @@ export const useLeagueAPI = (userRole) => {
       setIsLoading(false);
     }
   }, [apiUrl, accessToken, fetchUserLeagues]);
-  
+
+  /**
+   * Fetch reward schema + markdown for a game, dispatch into Redux.
+   * Resets currentRewards so stale values from a previously selected game
+   * aren't carried into a new simulation.
+   */
+  const fetchRewardMeta = useCallback(async (gameName) => {
+    if (!gameName) {
+      dispatch(setRewardMeta({ schema: null, instructions: "" }));
+      return { success: false, error: "No game name" };
+    }
+    try {
+      const response = await fetch(`${apiUrl}/user/get-game-instructions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_name: gameName }),
+      });
+      const data = await response.json();
+      if (data.status === "success" && data.data) {
+        dispatch(setRewardMeta({
+          schema: data.data.reward_schema ?? null,
+          instructions: data.data.reward_instructions ?? "",
+        }));
+        return { success: true };
+      }
+      dispatch(setRewardMeta({ schema: null, instructions: "" }));
+      return { success: false, error: data.message || "Failed to fetch reward meta" };
+    } catch (error) {
+      console.error("Error fetching reward metadata:", error);
+      dispatch(setRewardMeta({ schema: null, instructions: "" }));
+      return { success: false, error: "Network error" };
+    }
+  }, [apiUrl, dispatch]);
+
   return {
     isLoading,
     getLeagueInfo,
@@ -466,6 +499,7 @@ export const useLeagueAPI = (userRole) => {
     assignTeamToLeague,
     unassignTeam,
     deleteLeague,
+    fetchRewardMeta,
   };
 };
 

@@ -11,7 +11,6 @@ import LeagueTeams from './LeagueTeams';
 import LeagueSimulation from './LeagueSimulation';
 import LeagueCreation from './LeagueCreation';
 import LeaguePublish from './LeaguePublish';
-import CustomRewards from '../Common/CustomRewards';
 
 // Import existing components that are already shared
 import ResultsDisplay from '../Utilities/ResultsDisplay';
@@ -151,9 +150,9 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
             {/* Teams Grid */}
             {currentLeague && (
               <div className="w-full bg-white rounded-lg shadow-lg p-6">
-                <LeagueTeams 
+                <LeagueTeams
                   selected_league_name={currentLeague.name}
-                  userRole={userRole} 
+                  userRole={userRole}
                 />
               </div>
             )}
@@ -162,13 +161,10 @@ const LeagueManagement = ({ userRole, redirectPath, onUnauthorized }) => {
           {/* Right Column - Controls (1/4 width) */}
           <div className="space-y-4">
             {/* Simulation Controls */}
-            <LeagueSimulation 
+            <LeagueSimulation
               league={currentLeague}
               userRole={userRole}
             />
-
-            {/* Custom Rewards */}
-            <CustomRewards />
 
             {/* Expiry Date */}
             <div className="bg-white rounded-lg shadow-lg p-4">

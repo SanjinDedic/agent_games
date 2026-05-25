@@ -1,63 +1,143 @@
 // src/AgentGames/Shared/Common/CustomRewards.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import { setRewards } from '../../../slices/leaguesSlice';
 
+const markdownComponents = {
+  h1: (props) => <h1 className="text-xl font-bold text-ui-dark mt-3 mb-2" {...props} />,
+  h2: (props) => <h2 className="text-lg font-semibold text-ui-dark mt-3 mb-2" {...props} />,
+  h3: (props) => <h3 className="text-base font-semibold text-ui-dark mt-2 mb-1" {...props} />,
+  p: (props) => <p className="text-sm text-ui-dark leading-relaxed mb-2" {...props} />,
+  ul: (props) => <ul className="list-disc list-outside pl-5 text-sm text-ui-dark mb-2 space-y-1" {...props} />,
+  ol: (props) => <ol className="list-decimal list-outside pl-5 text-sm text-ui-dark mb-2 space-y-1" {...props} />,
+  li: (props) => <li className="text-sm text-ui-dark" {...props} />,
+  strong: (props) => <strong className="font-semibold text-ui-dark" {...props} />,
+  em: (props) => <em className="italic" {...props} />,
+  code: ({ inline, className, children, ...props }) => (
+    <code
+      className="px-1 py-0.5 rounded bg-ui-lighter font-mono text-xs text-ui-dark"
+      {...props}
+    >
+      {children}
+    </code>
+  ),
+  table: (props) => (
+    <div className="overflow-x-auto mb-2">
+      <table className="min-w-full text-xs border border-ui-light" {...props} />
+    </div>
+  ),
+  thead: (props) => <thead className="bg-ui-lighter" {...props} />,
+  th: (props) => <th className="px-2 py-1 text-left font-semibold border border-ui-light" {...props} />,
+  td: (props) => <td className="px-2 py-1 border border-ui-light" {...props} />,
+};
+
 /**
- * Shared component for setting custom rewards
- * Can be used by both Admin and Institution roles
+ * Schema-aware custom rewards input. The shape, length, default values and
+ * per-cell labels all come from the selected game's `reward_schema` exposed
+ * via `/user/get-game-instructions`. When the schema is null the component
+ * renders nothing — the game does not support custom rewards.
  */
 const CustomRewards = () => {
   const dispatch = useDispatch();
+  const schema = useSelector((state) => state.leagues.currentRewardSchema);
+  const instructions = useSelector((state) => state.leagues.currentRewardInstructions);
+
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setInputValue('');
+    setError('');
+  }, [schema]);
+
+  if (!schema) {
+    return null;
+  }
+
+  const defaultStr = JSON.stringify(schema.default);
 
   const handleInputChange = (event) => {
     const value = event.target.value;
     setInputValue(value);
-    
-    if (value.trim().endsWith(']')) {
-      try {
-        const parsed = JSON.parse(value);
 
-        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'number')) {
-          dispatch(setRewards(parsed));
-          setError('');
-        } else {
-          throw new Error();
-        }
-      } catch (e) {
-        dispatch(setRewards(null));
-        setError('Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3].');
-        toast.error('Invalid input. Please enter a valid array of numbers like [10, 8, 5, 3].');
-      }
-    } else {
+    if (!value.trim().endsWith(']')) {
       dispatch(setRewards(null));
-      setError('Please type the correct format. Example: [10, 8, 5, 3]');
+      setError(`Please type the correct format. Example: ${defaultStr}`);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(value);
+      if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'number')) {
+        throw new Error('Not a numeric array');
+      }
+      if (parsed.length !== schema.length) {
+        const msg = `${schema.kind === 'matrix' ? 'Payoff matrix' : 'Rewards list'} must have exactly ${schema.length} entries.`;
+        dispatch(setRewards(null));
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      dispatch(setRewards(parsed));
+      setError('');
+    } catch (e) {
+      dispatch(setRewards(null));
+      const msg = `Invalid input. Enter a numeric JSON array like ${defaultStr}.`;
+      setError(msg);
+      toast.error(msg);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4">
-      <h3 className="font-medium text-lg text-ui-dark mb-2">Custom Rewards</h3>
-      <div className="space-y-2">
-        <label className="block text-sm text-ui">
-          Enter rewards as a JSON array:
-          <input
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="[10, 8, 6, 4, 3, 2, 1]"
-            className="w-full mt-1 p-2 border border-ui-light rounded-lg text-base"
-          />
-        </label>
-        {error && (
-          <p className="text-sm text-danger">{error}</p>
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <h2 className="text-xl font-semibold text-ui-dark mb-4">Custom Rewards</h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Markdown explainer */}
+        {instructions && (
+          <div className="lg:col-span-3 max-w-none text-ui-dark">
+            <ReactMarkdown rehypePlugins={[rehypeRaw]} components={markdownComponents}>
+              {instructions}
+            </ReactMarkdown>
+          </div>
         )}
-        <div className="text-xs text-ui">
-          <p>Default: [10, 8, 6, 4, 3, 2, 1]</p>
-          <p>For Prisoner's Dilemma: [4, 0, 6, 0]</p>
+
+        {/* Input column */}
+        <div className={instructions ? 'lg:col-span-2 space-y-3' : 'lg:col-span-5 space-y-3'}>
+          <label className="block text-sm font-medium text-ui-dark">
+            Enter rewards as a JSON array
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              placeholder={defaultStr}
+              className="w-full mt-1 p-2 border border-ui-light rounded-lg text-base font-mono"
+            />
+          </label>
+
+          {schema.kind === 'matrix' && Array.isArray(schema.labels) && schema.labels.length === schema.length && (
+            <div className="text-xs text-ui">
+              <p className="font-medium mb-1">Index order:</p>
+              <ol className="list-decimal list-inside space-y-0.5">
+                {schema.labels.map((label, i) => (
+                  <li key={i}>
+                    <span className="font-mono">[{i}]</span> {label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-danger">{error}</p>}
+
+          <p className="text-xs text-ui">
+            Default: <span className="font-mono">{defaultStr}</span>
+            {' '}
+            ({schema.length} entries)
+          </p>
         </div>
       </div>
     </div>
