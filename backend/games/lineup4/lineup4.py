@@ -47,6 +47,18 @@ Implement a Lineup 4 player by creating a strategy for choosing moves on a 7x6 g
 - Add feedback with self.add_feedback() to help debug your strategy
     """
 
+    reward_schema = None
+
+    reward_instructions = """## Custom Rewards — Lineup 4
+
+This game uses fixed round-robin scoring and does **not** support custom
+rewards. Every pairing is played twice (once with each player going first):
+
+- Win: **2 points**
+- Draw: **1 point**
+- Loss: **0 points**
+"""
+
     def __init__(self, league, verbose=False):
         super().__init__(league, verbose)
         self.board = {}

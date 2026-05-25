@@ -127,6 +127,16 @@ You can find the source code for the exact damage calculations [HERE](https://gi
 
 """
 
+    reward_schema = None
+
+    reward_instructions = """## Custom Rewards — Arena Champions
+
+This game uses fixed win-counting and does **not** support custom rewards.
+Every pair of champions fights twice (home and away). A player's score for the
+tournament is simply the number of matches they won — there are no per-place
+bonuses or per-outcome payoffs to tune.
+"""
+
     def __init__(self, league, verbose=False):
         super().__init__(league, verbose)
         self.battle_history = {}

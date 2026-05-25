@@ -46,6 +46,13 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLeague?.id]);
 
+  useEffect(() => {
+    if (currentLeague?.game) {
+      api.fetchRewardMeta(currentLeague.game);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLeague?.game]);
+
   // Handle simulation selection change
   const handleTableDropdownChange = (event) => {
     dispatch(setCurrentSimulation(event.target.value));
@@ -164,9 +171,6 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
             {/* Simulation Controls */}
             <SimulationRunner league={currentLeague} userRole={userRole} />
 
-            {/* Custom Rewards */}
-            <CustomRewards />
-
             {/* Publish Button */}
             {currentLeague && currentSimulation && (
               <div className="bg-white rounded-lg shadow-lg p-4">
@@ -235,6 +239,9 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
                 </div>
               )}
             </div>
+
+            {/* Custom Rewards (hidden when game has no schema) */}
+            <CustomRewards />
           </div>
         </div>
       </div>
