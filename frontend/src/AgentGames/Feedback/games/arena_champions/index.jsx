@@ -5,7 +5,7 @@ export default {
   name: 'arena_champions',
   displayName: 'Arena Champions',
   description:
-    'Build a champion that picks stats, attacks, and abilities to outlast rivals across a tournament of arena battles.',
+    'Build a champion that picks stats, attacks, and abilities to outlast rivals across a series of arena battles.',
   shortDescription:
     'Pick stats and attacks to outlast rivals across arena battles.',
   thumbnail: 'games/arena_champions.png',

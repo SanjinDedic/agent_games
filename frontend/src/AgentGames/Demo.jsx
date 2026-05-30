@@ -114,8 +114,8 @@ function Demo() {
                         <div className="bg-ui-lighter p-6 rounded-lg">
                             <h2 className="text-xl font-semibold text-ui-dark mb-4">What is Agent Games?</h2>
                             <p className="text-ui mb-4">
-                                Agent Games is a platform where you can write algorithms to compete in various strategic games.
-                                Your agent will face other agents in competitions to see whose algorithm performs best.
+                                Agent Games is a platform where you can write algorithms to take on various strategic games.
+                                Your agent will face other agents in coding challenges to see whose algorithm performs best.
                             </p>
                             <p className="text-ui mb-4">
                                 With the demo mode, you can try out the platform for 60 minutes without creating an account.
@@ -123,7 +123,7 @@ function Demo() {
                             </p>
                             <ul className="list-disc pl-6 space-y-2 text-ui">
                                 <li>Code your own agent in Python</li>
-                                <li>Submit your agent to compete against our built-in agents</li>
+                                <li>Submit your agent to test against our built-in agents</li>
                                 <li>See the results of your agent's performance</li>
                                 <li>Make changes and improve your strategy</li>
                             </ul>

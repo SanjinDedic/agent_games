@@ -189,7 +189,7 @@ function AgentLeagueSignUp() {
               you sure you want to change leagues?
             </p>
             <p className="text-ui-dark mb-6">
-              You may not be competing against teams you are intended to compete
+              You may not be matched against the teams you are intended to play
               against.
             </p>
             <div className="flex justify-end gap-3">

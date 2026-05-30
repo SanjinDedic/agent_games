@@ -88,10 +88,10 @@ const Homepage = () => {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-ui-dark mb-2">
-                Compete & Improve
+                Take On Challenges & Improve
               </h3>
               <p className="text-ui">
-                Test your agents against others in competitive leagues, gaining
+                Test your agents against others in challenge leagues, gaining
                 insights and refining your strategies with each iteration.
               </p>
             </div>
@@ -190,7 +190,7 @@ const Homepage = () => {
                     />
                   </svg>
                   <span>
-                    Ready-to-use platform with structured competitions and
+                    Ready-to-use platform with structured coding challenges and
                     leagues
                   </span>
                 </li>

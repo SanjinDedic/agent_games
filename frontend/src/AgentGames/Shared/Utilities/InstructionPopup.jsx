@@ -4,7 +4,7 @@ import PureMarkdown from './PureMarkdown';
 const InstructionPopup = ({ instructions = '', homescreen = true }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const defaultInstructions = `# Competition Instructions
+  const defaultInstructions = `# Challenge Instructions
 
 1. **Login Process**
    - Click on the **Game Submission** option in the navbar to log in.
