@@ -31,7 +31,8 @@
 **/*.log
 **/*.sqlite
 **/*.db
-**/*.sql
+# NOTE: do NOT blanket-exclude **/*.sql — backend/migrations/*.sql must ship in
+# the image. DB backups are excluded by the *_backup_*.sql patterns below.
 **/teams.db
 
 # Build and dist directories
