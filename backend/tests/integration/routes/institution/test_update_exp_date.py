@@ -4,6 +4,7 @@ import pytest
 import pytz
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
 
@@ -14,7 +15,7 @@ AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 def expiry_setup(db_session: Session) -> tuple:
     """Setup institution and league for testing expiry updates"""
     # Create an institution with timezone-aware dates
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -159,7 +160,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
 
     # Test case 5: League from different institution
     # Create another institution and league with timezone-aware dates
-    other_institution = Institution(
+    other_institution = build_institution(
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",

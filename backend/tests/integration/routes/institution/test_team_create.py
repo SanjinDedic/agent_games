@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, Team
 from backend.routes.auth.auth_core import create_access_token
 
@@ -11,7 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 def institution_setup(db_session: Session) -> tuple:
     """Setup institution for testing and return token and headers"""
     # Create an institution
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -172,7 +173,7 @@ def test_team_create_global_duplicate(client, institution_setup, db_session):
     assert response.json()["status"] == "success"
 
     # Create another institution
-    other = Institution(
+    other = build_institution(
         name="other_inst_for_dup_test",
         contact_person="Other",
         contact_email="other@test.com",

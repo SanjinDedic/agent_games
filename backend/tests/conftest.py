@@ -14,6 +14,7 @@ from backend.database.db_models import (
     Admin,
     DemoUser,
     Institution,
+    InstitutionSubscription,
     League,
     LeagueType,
     Submission,
@@ -56,6 +57,58 @@ AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+def build_institution(
+    *,
+    name,
+    password_hash,
+    contact_person="Test Contact",
+    contact_email="test@example.com",
+    created_date=None,
+    subscription_active=True,
+    subscription_expiry=None,
+    docker_access=True,
+    payment_method="admin",
+    **extra,
+):
+    """Build an Institution with its 1:1 InstitutionSubscription attached via the
+    relationship — NOT yet persisted.
+
+    Subscription state (active/expiry) lives on InstitutionSubscription, so the
+    inline subscription kwargs populate that record. Because the subscription is
+    assigned through the relationship, a plain ``session.add(inst)`` +
+    ``commit()``/``flush()`` cascades and persists it automatically — existing
+    test code that adds/commits the institution itself keeps working unchanged.
+    """
+    now = created_date or datetime.now()
+    if subscription_expiry is None:
+        subscription_expiry = now + timedelta(days=30)
+    institution = Institution(
+        name=name,
+        contact_person=contact_person,
+        contact_email=contact_email,
+        created_date=now,
+        docker_access=docker_access,
+        password_hash=password_hash,
+        **extra,
+    )
+    institution.subscription = InstitutionSubscription(
+        payment_method=payment_method,
+        subscription_active=subscription_active,
+        subscription_expiry=subscription_expiry,
+        created_date=now,
+    )
+    return institution
+
+
+def create_test_institution(session, **kwargs):
+    """build_institution + persist; returns the committed, refreshed Institution."""
+    institution = build_institution(**kwargs)
+    session.add(institution)
+    session.commit()
+    session.refresh(institution)
+    return institution
 
 # Service URL constants — resolve to container names inside Docker, localhost outside
 _IS_DOCKER = os.path.exists("/.dockerenv")
@@ -154,18 +207,16 @@ def populate_test_database(session):
     admin = Admin(username="admin", password_hash=_HASH_ADMIN)
     session.add(admin)
 
-    institution = Institution(
+    institution = create_test_institution(
+        session,
         name="Admin Institution",
         contact_person="Admin",
         contact_email="admin@admin.com",
         created_date=now,
-        subscription_active=True,
         subscription_expiry=now + timedelta(days=365),
         docker_access=True,
         password_hash=_HASH_INSTITUTION,
     )
-    session.add(institution)
-    session.commit()
 
     unassigned_league = League(
         name="unassigned",
@@ -414,19 +465,15 @@ def team_headers(db_session) -> dict:
 @pytest.fixture
 def institution_token(db_session: Session) -> str:
     """Create a fresh institution and return its institution-role JWT."""
-    institution = Institution(
+    institution = create_test_institution(
+        db_session,
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
-        subscription_active=True,
         subscription_expiry=datetime.now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
 
     return create_access_token(
         data={

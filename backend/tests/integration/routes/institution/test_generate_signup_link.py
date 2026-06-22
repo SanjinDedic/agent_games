@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
 
@@ -11,7 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 def signup_link_setup(db_session: Session) -> tuple:
     """Setup institution and league for testing signup link generation"""
     # Create an institution
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -109,7 +110,7 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
 
     # Test case 2: League from different institution
     # Create another institution
-    other_institution = Institution(
+    other_institution = build_institution(
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",

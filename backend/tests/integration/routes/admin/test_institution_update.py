@@ -5,26 +5,21 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
+from backend.tests.conftest import create_test_institution
 
 
 @pytest.fixture
 def update_institution_setup(db_session: Session) -> Institution:
     """Create an institution for update testing"""
-    institution = Institution(
+    return create_test_institution(
+        db_session,
         name="update_test_institution",
         contact_person="Original Contact",
         contact_email="original@example.com",
-        created_date=datetime.now(),
-        subscription_active=True,
         subscription_expiry=datetime.now() + timedelta(days=30),
         docker_access=False,
         password_hash="test_hash",
     )
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-    
-    return institution
 
 
 def test_institution_update_success(client, auth_headers, update_institution_setup, db_session):
@@ -57,7 +52,7 @@ def test_institution_update_success(client, auth_headers, update_institution_set
     assert institution.name == "updated_institution"
     assert institution.contact_person == "Updated Contact"
     assert institution.contact_email == "updated@example.com"
-    assert institution.subscription_active is False
+    assert institution.subscription.subscription_active is False
     assert institution.docker_access is True
     
     # Test partial update
@@ -104,18 +99,15 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
     
     # Test case 2: Duplicate institution name
     # Create another institution first
-    other_institution = Institution(
+    create_test_institution(
+        db_session,
         name="other_institution",
         contact_person="Other Contact",
         contact_email="other@example.com",
-        created_date=datetime.now(),
-        subscription_active=True,
         subscription_expiry=datetime.now() + timedelta(days=30),
         docker_access=False,
         password_hash="test_hash",
     )
-    db_session.add(other_institution)
-    db_session.commit()
     
     # Try to update to a name that already exists
     duplicate_name_update = {

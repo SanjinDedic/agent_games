@@ -16,8 +16,10 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.database.db_config import get_database_url
-from backend.database.db_models import (Admin, Institution, League, LeagueType,
-                                        Team, TeamType, get_password_hash)
+from backend.database.db_models import (Admin, Institution,
+                                        InstitutionSubscription, League,
+                                        LeagueType, Team, TeamType,
+                                        get_password_hash)
 from backend.database.db_session import get_db_engine
 
 logging.basicConfig(level=logging.INFO)
@@ -97,12 +99,20 @@ def populate_database(engine):
             contact_person="Admin",
             contact_email="admin@admin.com",
             created_date=datetime.now(AUSTRALIA_TZ),
-            subscription_active=True,
-            subscription_expiry=(datetime.now(AUSTRALIA_TZ) + timedelta(days=365)),
             docker_access=True,
             password_hash=get_password_hash(institution_password),
         )
         session.add(default_institution)
+        session.flush()  # assign id before creating the subscription
+        session.add(
+            InstitutionSubscription(
+                institution_id=default_institution.id,
+                payment_method="admin",
+                subscription_active=True,
+                subscription_expiry=(datetime.now(AUSTRALIA_TZ) + timedelta(days=365)),
+                created_date=datetime.now(AUSTRALIA_TZ),
+            )
+        )
         session.commit()
 
         # Create unassigned league

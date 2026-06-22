@@ -36,8 +36,13 @@ PROJECT_ROOT = os.path.dirname(ROOT_DIR)  # Get the parent directory of backend 
 # Load environment variables
 from dotenv import load_dotenv
 
-# Load .env from project root
+# Load .env from project root (public, non-secret dev defaults)
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+
+# Load payment secrets from a gitignored, per-developer file. Available inside
+# the api container via the ./backend volume mount. Does not override values
+# already set in the environment.
+load_dotenv(os.path.join(ROOT_DIR, "routes", "payments", ".env"))
 
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
@@ -122,6 +127,21 @@ DOCKER_API_URL = API_URL
 # In production, this should always be overridden by the actual secret key
 # from environment vars
 SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_tests")
+
+# Stripe (test mode). Keys/prices come from .env; webhook secret comes from
+# the Stripe CLI `stripe listen` output during local development.
+STRIPE_SECRET_KEY = os.getenv("SECRET_STRIPE_KEY")
+STRIPE_PUBLISHABLE_KEY = os.getenv("PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+# Two Prices per tier: a one-time 90-day pass (Checkout mode="payment") and a
+# yearly recurring subscription (mode="subscription"). The buyer's auto-renew
+# choice selects which one is used. The annual Price is higher than the 90-day
+# one (e.g. club: $99 once vs $299/yr; university: $199 once vs $599/yr).
+STRIPE_PRICE_CLUB_ONCE = os.getenv("STRIPE_PRICE_CLUB_ONCE")
+STRIPE_PRICE_CLUB_YEAR = os.getenv("STRIPE_PRICE_CLUB_YEAR")
+STRIPE_PRICE_UNI_ONCE = os.getenv("STRIPE_PRICE_UNI_ONCE")
+STRIPE_PRICE_UNI_YEAR = os.getenv("STRIPE_PRICE_UNI_YEAR")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Import after defining constants to avoid circular import
 from backend.routes.auth.auth_config import create_service_token

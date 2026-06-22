@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution
 
 
@@ -13,7 +14,7 @@ def multiple_institutions(db_session: Session) -> dict:
     """Create a mix of active, inactive, and demo institutions."""
     now = datetime.now()
 
-    active = Institution(
+    active = build_institution(
         name="Active School",
         contact_person="Teacher",
         contact_email="teacher@school.com",
@@ -25,7 +26,7 @@ def multiple_institutions(db_session: Session) -> dict:
     )
     db_session.add(active)
 
-    inactive = Institution(
+    inactive = build_institution(
         name="Inactive School",
         contact_person="Old Teacher",
         contact_email="old@school.com",
@@ -37,7 +38,7 @@ def multiple_institutions(db_session: Session) -> dict:
     )
     db_session.add(inactive)
 
-    demo = Institution(
+    demo = build_institution(
         name="Demo Institution",
         contact_person="Demo",
         contact_email="demo@example.com",

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
 
@@ -11,7 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 def delete_institution_setup(db_session: Session) -> Institution:
     """Create an institution with leagues and teams for deletion testing"""
     # Create the institution
-    institution = Institution(
+    institution = build_institution(
         name="delete_test_institution",
         contact_person="Delete Test Contact",
         contact_email="delete@example.com",

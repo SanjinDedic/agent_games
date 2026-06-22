@@ -10,12 +10,13 @@ from sqlmodel import Session, select
 from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import (
     DemoUser,
+    Institution,
+    InstitutionSubscription,
     League,
     LeagueType,
     Submission,
     Team,
     TeamType,
-    Institution,
     get_password_hash,
 )
 from backend.utils import get_games_names
@@ -32,15 +33,22 @@ def get_or_create_demo_institution(session: Session) -> Institution:
 
     if not demo_institution:
         # Create a default institution for demo entities
+        now = datetime.now(AUSTRALIA_SYDNEY_TZ)
         demo_institution = Institution(
             name="Demo Institution",
             contact_person="Demo Admin",
             contact_email="demo@example.com",
-            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-            subscription_active=True,
-            subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365),
+            created_date=now,
             docker_access=True,
             password_hash=get_password_hash("demo_password"),
+        )
+        # Subscription state lives on the 1:1 record; assigning via the
+        # relationship lets the cascade persist it with the institution.
+        demo_institution.subscription = InstitutionSubscription(
+            payment_method="admin",
+            subscription_active=True,
+            subscription_expiry=now + timedelta(days=365),
+            created_date=now,
         )
         session.add(demo_institution)
         session.flush()  # Get the ID without committing the transaction

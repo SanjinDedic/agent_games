@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (
     Institution,
     League,
@@ -167,7 +168,7 @@ def test_get_all_submissions_student_forbidden(client, league_with_submissions):
 
 def test_get_all_submissions_institution_own_league(client, db_session):
     """An institution can see submissions in a league it owns."""
-    institution = Institution(
+    institution = build_institution(
         name="own_league_inst",
         contact_person="Person",
         contact_email="p@e.com",
@@ -213,7 +214,7 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
     client, db_session
 ):
     """Institution A cannot read Institution B's league submissions."""
-    inst_a = Institution(
+    inst_a = build_institution(
         name="inst_a_for_leak_test",
         contact_person="A",
         contact_email="a@e.com",
@@ -223,7 +224,7 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         docker_access=True,
         password_hash="hash",
     )
-    inst_b = Institution(
+    inst_b = build_institution(
         name="inst_b_for_leak_test",
         contact_person="B",
         contact_email="b@e.com",

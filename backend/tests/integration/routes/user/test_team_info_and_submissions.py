@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, delete, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Submission, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_submission_history
@@ -20,7 +21,7 @@ def institution(db_session: Session) -> Institution:
         select(Institution).where(Institution.name == "Team Info Institution")
     ).first()
     if not inst:
-        inst = Institution(
+        inst = build_institution(
             name="Team Info Institution",
             contact_person="Tester",
             contact_email="ti@example.com",

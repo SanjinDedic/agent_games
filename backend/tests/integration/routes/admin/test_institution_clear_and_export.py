@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (
     AgentAPIKey,
     Institution,
@@ -28,7 +29,7 @@ def seeded_institution(db_session: Session) -> Institution:
     submission, sim result, agent API key, and a support ticket + attachment."""
     now = datetime.now()
 
-    institution = Institution(
+    institution = build_institution(
         name="clear_export_test_inst",
         contact_person="C",
         contact_email="c@example.com",

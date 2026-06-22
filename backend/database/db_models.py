@@ -33,23 +33,73 @@ class LeagueType(str, PyEnum):
 
 
 class Institution(SQLModel, table=True):
+    """Operational identity of an institution: who logs in and what they own.
+
+    All subscription/billing/Stripe state lives in the 1:1 InstitutionSubscription
+    record (see `subscription`), keeping this table free of payment concerns.
+    """
+
     id: int = Field(primary_key=True)
     name: str = Field(unique=True, index=True)
     contact_person: str
     contact_email: str
+    address: Optional[str] = None
     created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    subscription_active: bool = Field(default=True)
-    subscription_expiry: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     docker_access: bool = Field(default=False)
     password_hash: str
     teams: List["Team"] = Relationship(back_populates="institution")
     leagues: List["League"] = Relationship(back_populates="institution")
+    subscription: Optional["InstitutionSubscription"] = Relationship(
+        back_populates="institution",
+        sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"},
+    )
 
     def set_password(self, password: str):
         self.password_hash = get_password_hash(password)
 
     def verify_password(self, password: str):
         return verify_password(password, self.password_hash)
+
+
+class InstitutionSubscription(SQLModel, table=True):
+    """All subscription, billing, and Stripe-linkage state for one Institution.
+
+    One row per institution (1:1). It owns:
+      - the access window (subscription_active / subscription_expiry) read by the
+        login gate,
+      - how access was obtained and billed (payment_method / tier / auto_renew),
+      - the Stripe object IDs webhooks use to tie renewals and cancellations back
+        to the institution (the checkout session ID is unique: one paid session
+        creates exactly one institution — a replay/reuse guard),
+      - and, for the invoiced plan only, the business billing contact (who pays
+        the invoice), kept distinct from the institution's teaching/login contact
+        which lives on Institution.
+    """
+
+    __tablename__ = "institution_subscription"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    institution_id: int = Field(
+        foreign_key="institution.id", unique=True, index=True
+    )
+    # "card" (Stripe Checkout), "invoice" (Stripe send_invoice), or "admin"
+    # (manually granted, no Stripe).
+    payment_method: str = Field(default="admin")
+    tier: Optional[str] = None
+    subscription_active: bool = Field(default=True)
+    subscription_expiry: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    auto_renew: bool = Field(default=False)
+    stripe_customer_id: Optional[str] = Field(default=None, index=True)
+    stripe_subscription_id: Optional[str] = Field(default=None, index=True)
+    stripe_checkout_session_id: Optional[str] = Field(
+        default=None, unique=True, index=True
+    )
+    stripe_invoice_id: Optional[str] = Field(default=None, index=True)
+    business_contact_name: Optional[str] = None
+    business_contact_email: Optional[str] = None
+    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+
+    institution: Optional["Institution"] = Relationship(back_populates="subscription")
 
 
 class League(SQLModel, table=True):

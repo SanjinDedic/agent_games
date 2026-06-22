@@ -12,6 +12,7 @@ from backend.database.db_models import (
     AgentAPIKey,
     DemoUser,
     Institution,
+    InstitutionSubscription,
     League,
     LeagueType,
     SimulationResult,
@@ -50,19 +51,29 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
             f"Institution with name '{institution_data.name}' already exists"
         )
 
+    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
     institution = Institution(
         name=institution_data.name,
         contact_person=institution_data.contact_person,
         contact_email=institution_data.contact_email,
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        subscription_active=True,
-        subscription_expiry=institution_data.subscription_expiry,
+        created_date=now,
         docker_access=institution_data.docker_access,
     )
     institution.set_password(institution_data.password)
 
     session.add(institution)
     session.flush()  # Get the ID for the new institution
+
+    # Admin-granted access: subscription state lives on the 1:1 record.
+    session.add(
+        InstitutionSubscription(
+            institution_id=institution.id,
+            payment_method="admin",
+            subscription_active=True,
+            subscription_expiry=institution_data.subscription_expiry,
+            created_date=now,
+        )
+    )
 
     # Create unassigned league for this institution
     unassigned_league = League(
@@ -103,14 +114,33 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
             institution.contact_person = institution_data.contact_person
         if institution_data.contact_email is not None:
             institution.contact_email = institution_data.contact_email
-        if institution_data.subscription_active is not None:
-            institution.subscription_active = institution_data.subscription_active
-        if institution_data.subscription_expiry is not None:
-            institution.subscription_expiry = institution_data.subscription_expiry
         if institution_data.docker_access is not None:
             institution.docker_access = institution_data.docker_access
         if institution_data.password is not None:
             institution.set_password(institution_data.password)
+
+        # Subscription fields live on the 1:1 InstitutionSubscription record.
+        if (
+            institution_data.subscription_active is not None
+            or institution_data.subscription_expiry is not None
+        ):
+            subscription = institution.subscription
+            if subscription is None:
+                subscription = InstitutionSubscription(
+                    institution_id=institution.id,
+                    payment_method="admin",
+                    subscription_active=True,
+                    subscription_expiry=(
+                        institution_data.subscription_expiry
+                        or datetime.now(AUSTRALIA_SYDNEY_TZ)
+                    ),
+                    created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+                )
+            if institution_data.subscription_active is not None:
+                subscription.subscription_active = institution_data.subscription_active
+            if institution_data.subscription_expiry is not None:
+                subscription.subscription_expiry = institution_data.subscription_expiry
+            session.add(subscription)
 
         session.add(institution)
         session.commit()
@@ -404,8 +434,16 @@ def get_all_institutions(session: Session) -> Dict:
                 "contact_person": inst.contact_person,
                 "contact_email": inst.contact_email,
                 "created_date": inst.created_date,
-                "subscription_active": inst.subscription_active,
-                "subscription_expiry": inst.subscription_expiry,
+                "subscription_active": (
+                    inst.subscription.subscription_active
+                    if inst.subscription
+                    else None
+                ),
+                "subscription_expiry": (
+                    inst.subscription.subscription_expiry
+                    if inst.subscription
+                    else None
+                ),
                 "docker_access": inst.docker_access,
                 "team_count": len(inst.teams),
                 "league_count": len(inst.leagues),

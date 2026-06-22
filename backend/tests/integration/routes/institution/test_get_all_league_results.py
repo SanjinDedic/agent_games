@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (Institution, League, SimulationResult,
                                         Team)
 from backend.routes.auth.auth_core import create_access_token
@@ -12,7 +13,7 @@ from backend.routes.auth.auth_core import create_access_token
 def league_results_setup(db_session: Session) -> tuple:
     """Setup institution, league, and simulation results for testing"""
     # Create an institution
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -142,7 +143,7 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
     
     # Test case 2: League from different institution
     # Create another institution and league
-    other_institution = Institution(
+    other_institution = build_institution(
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",

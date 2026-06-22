@@ -4,73 +4,48 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session
 
-from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
-from backend.tests.conftest import TEST_PASSWORD_HASHES
+from backend.tests.conftest import TEST_PASSWORD_HASHES, create_test_institution
 
 
 @pytest.fixture
 def test_institution(db_session: Session):
     """Create a test institution for login tests"""
     # Create with naive datetime to avoid timezone comparison issues
-    institution = Institution(
+    return create_test_institution(
+        db_session,
         name="test_institution",
         contact_person="Test Contact",
-        contact_email="test@example.com",
-        created_date=datetime.now(),  # Using naive datetime
-        subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),  # Using naive datetime
-        docker_access=True,
+        subscription_expiry=datetime.now() + timedelta(days=30),  # naive datetime
         password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )
-
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-
-    return institution
 
 
 @pytest.fixture
 def expired_institution(db_session: Session):
     """Create an institution with an expired subscription"""
-    institution = Institution(
+    return create_test_institution(
+        db_session,
         name="expired_institution",
         contact_person="Expired Contact",
         contact_email="expired@example.com",
-        created_date=datetime.now(),
-        subscription_active=True,
         subscription_expiry=datetime.now() - timedelta(days=1),  # Expired
-        docker_access=True,
         password_hash=TEST_PASSWORD_HASHES["expired_password"],
     )
-
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-
-    return institution
 
 
 @pytest.fixture
 def inactive_institution(db_session: Session):
     """Create an institution with an inactive subscription"""
-    institution = Institution(
+    return create_test_institution(
+        db_session,
         name="inactive_institution",
         contact_person="Inactive Contact",
         contact_email="inactive@example.com",
-        created_date=datetime.now(),
         subscription_active=False,  # Inactive
         subscription_expiry=datetime.now() + timedelta(days=30),
-        docker_access=True,
         password_hash=TEST_PASSWORD_HASHES["inactive_password"],
     )
-    
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-    
-    return institution
 
 
 def test_institution_login_success(client, test_institution):
