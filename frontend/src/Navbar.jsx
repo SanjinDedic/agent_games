@@ -22,6 +22,7 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/InstitutionTeam", label: "Team Section" },
     { to: "/InstitutionLeague", label: "League Management" },
     { to: "/InstitutionLeagueSimulation", label: "League Simulation" },
+    { to: "/InstitutionSubscription", label: "Subscription" },
   ],
   team: [
     { to: "/", label: "Home" },

@@ -9,6 +9,7 @@ import pytz
 from jose import jwt
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (
     Institution,
     League,
@@ -26,7 +27,7 @@ def school_league_fixture(db_session: Session) -> dict:
     """Create an institution + a school league with a valid signup token."""
     now = datetime.now(AUSTRALIA_SYDNEY_TZ)
 
-    institution = Institution(
+    institution = build_institution(
         name="School League Test School",
         contact_person="Teacher",
         contact_email="teacher@school.com",

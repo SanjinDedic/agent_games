@@ -171,6 +171,65 @@ async def get_teams_endpoint(
         )
 
 
+@institution_router.get("/subscription", response_model=ResponseModel)
+@verify_institution_role
+async def get_subscription_endpoint(
+    session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the logged-in institution's subscription + contact details.
+
+    Read-only view backing the Subscription tab. Stripe object IDs are not
+    exposed — only display fields the institution needs to see.
+    """
+    try:
+        institution_id, _ = _resolve_institution(current_user)
+        if not institution_id:
+            return ErrorResponseModel(
+                status="error", message="Institution ID not found in token"
+            )
+
+        institution = session.get(Institution, institution_id)
+        if not institution:
+            return ErrorResponseModel(
+                status="error", message="Institution not found"
+            )
+
+        sub = institution.subscription
+        data = {
+            "institution_name": institution.name,
+            "contact_person": institution.contact_person,
+            "contact_email": institution.contact_email,
+            "address": institution.address,
+            "subscription": None,
+        }
+        if sub is not None:
+            data["subscription"] = {
+                "tier": sub.tier,
+                "payment_method": sub.payment_method,
+                "subscription_active": sub.subscription_active,
+                "subscription_expiry": (
+                    sub.subscription_expiry.isoformat()
+                    if sub.subscription_expiry
+                    else None
+                ),
+                "auto_renew": sub.auto_renew,
+                "business_contact_name": sub.business_contact_name,
+                "business_contact_email": sub.business_contact_email,
+                "created_date": (
+                    sub.created_date.isoformat() if sub.created_date else None
+                ),
+            }
+        return ResponseModel(
+            status="success", message="Subscription retrieved successfully", data=data
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving subscription: {e}")
+        return ErrorResponseModel(
+            status="error", message=f"Failed to retrieve subscription: {str(e)}"
+        )
+
+
 @institution_router.post("/run-simulation", response_model=ResponseModel)
 @verify_admin_or_institution
 async def run_simulation_endpoint(

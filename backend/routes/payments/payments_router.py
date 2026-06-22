@@ -11,6 +11,10 @@ from backend import config
 from backend.database.db_models import Institution, InstitutionSubscription
 from backend.database.db_session import get_db
 from backend.models_api import ResponseModel
+from backend.routes.auth.auth_config import (
+    INSTITUTION_TOKEN_EXPIRY_MINUTES,
+    create_access_token,
+)
 from backend.routes.payments.payments_db import (
     PaidSignupError,
     create_invoiced_institution,
@@ -112,6 +116,24 @@ def _format_address(details: Optional[dict]) -> Optional[str]:
     ]
     joined = ", ".join(p for p in parts if p)
     return joined or None
+
+
+def _institution_access_token(institution: Institution) -> str:
+    """Mint the same JWT institution-login issues.
+
+    A freshly created institution is active with a future expiry, so we can log
+    it straight in (no second password check) by returning this token from the
+    signup endpoints. Claims match get_institution_token in auth_db.
+    """
+    return create_access_token(
+        data={
+            "sub": institution.name,
+            "role": "institution",
+            "institution_id": institution.id,
+            "institution_name": institution.name,
+        },
+        expires_delta=timedelta(minutes=INSTITUTION_TOKEN_EXPIRY_MINUTES),
+    )
 
 
 @payments_router.post("/create-checkout-session", response_model=ResponseModel)
@@ -270,7 +292,12 @@ async def institution_signup(
     return ResponseModel(
         status="success",
         message="Institution created",
-        data={"institution_name": institution.name},
+        data={
+            "institution_name": institution.name,
+            # Auto-login: log the buyer straight in after signup.
+            "access_token": _institution_access_token(institution),
+            "token_type": "bearer",
+        },
     )
 
 
@@ -368,6 +395,9 @@ async def invoice_signup(
         data={
             "institution_name": institution.name,
             "hosted_invoice_url": invoice.get("hosted_invoice_url"),
+            # Auto-login: log the buyer straight in after signup.
+            "access_token": _institution_access_token(institution),
+            "token_type": "bearer",
         },
     )
 

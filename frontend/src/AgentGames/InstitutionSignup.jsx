@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
+import { setToken } from '../slices/authSlice';
 
 const apiUrl = import.meta.env.VITE_AGENT_API_URL;
 
@@ -12,6 +14,7 @@ const TIER_LABELS = {
 function InstitutionSignup() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
     const sessionId = searchParams.get('session_id');
 
     const [loading, setLoading] = useState(true);
@@ -89,8 +92,17 @@ function InstitutionSignup() {
                 toast.error(json?.detail || 'Signup failed. Please try again.');
                 return;
             }
-            toast.success('Institution created — you can now log in.');
-            navigate('/Institution');
+            // Auto-login: the backend returns a token for the new institution,
+            // so log straight in and land on the Subscription tab.
+            const token = json?.data?.access_token;
+            if (token) {
+                dispatch(setToken(token));
+                toast.success('Institution created — you are now logged in.');
+                navigate('/InstitutionSubscription');
+            } else {
+                toast.success('Institution created — you can now log in.');
+                navigate('/Institution');
+            }
         } catch (err) {
             toast.error('Could not reach the server. Please try again.');
         } finally {

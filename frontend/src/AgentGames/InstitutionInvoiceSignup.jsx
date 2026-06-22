@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
+import { setToken } from '../slices/authSlice';
 
 const apiUrl = import.meta.env.VITE_AGENT_API_URL;
 
@@ -13,6 +15,8 @@ const TIERS = {
 
 function InstitutionInvoiceSignup() {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
     const tier = searchParams.get('tier');
     const tierInfo = TIERS[tier];
 
@@ -27,8 +31,6 @@ function InstitutionInvoiceSignup() {
         confirm: '',
     });
     const [submitting, setSubmitting] = useState(false);
-    // After a successful signup: { hosted_invoice_url } for the confirmation view.
-    const [result, setResult] = useState(null);
 
     const update = (field) => (e) =>
         setForm((s) => ({ ...s, [field]: e.target.value }));
@@ -67,10 +69,20 @@ function InstitutionInvoiceSignup() {
                 return;
             }
             // Access is already granted and Stripe has emailed the invoice
-            // (net 30 — no payment needed now). Stay on our site and show a
-            // confirmation rather than dropping the buyer on Stripe's pay page.
+            // (net 30 — no payment needed now). Auto-login and land on the
+            // Subscription tab, passing the hosted invoice link through so it's
+            // surfaced there rather than lost.
             toast.success('Institution created — your invoice has been issued.');
-            setResult({ hosted_invoice_url: json?.data?.hosted_invoice_url || null });
+            const token = json?.data?.access_token;
+            const hostedInvoiceUrl = json?.data?.hosted_invoice_url || null;
+            if (token) {
+                dispatch(setToken(token));
+                navigate('/InstitutionSubscription', {
+                    state: { hostedInvoiceUrl },
+                });
+            } else {
+                navigate('/Institution');
+            }
         } catch (err) {
             toast.error('Could not reach the server. Please try again.');
         } finally {
@@ -113,45 +125,6 @@ function InstitutionInvoiceSignup() {
                         <Link to="/Institutions" className="text-primary underline">
                             Back to pricing
                         </Link>
-                    </div>
-                ) : result ? (
-                    <div className={`${card} text-center`}>
-                        <h2 className="text-xl font-semibold text-ui-dark mb-3">
-                            You're all set — access is active
-                        </h2>
-                        <p className="text-ui mb-2">
-                            Your institution{' '}
-                            <span className="font-semibold text-ui-dark">
-                                {form.institution_name}
-                            </span>{' '}
-                            is ready to use.
-                        </p>
-                        <p className="text-ui mb-6">
-                            We've emailed an invoice for ${tierInfo.yearPrice} AUD to{' '}
-                            <span className="font-semibold text-ui-dark">
-                                {form.business_contact_email}
-                            </span>
-                            . It's due within 30 days (net 30) — no payment is needed
-                            now.
-                        </p>
-                        <Link
-                            to="/Institution"
-                            className="inline-block bg-primary hover:bg-primary-hover text-white py-2 px-6 rounded font-semibold"
-                        >
-                            Go to institution login
-                        </Link>
-                        {result.hosted_invoice_url && (
-                            <p className="mt-4">
-                                <a
-                                    href={result.hosted_invoice_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary underline text-sm"
-                                >
-                                    View or download your invoice
-                                </a>
-                            </p>
-                        )}
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className={`${card} space-y-4`}>
