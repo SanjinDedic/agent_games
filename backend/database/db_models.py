@@ -37,9 +37,21 @@ class Institution(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     contact_person: str
     contact_email: str
+    address: Optional[str] = None
     created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     subscription_active: bool = Field(default=True)
     subscription_expiry: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    # Whether the buyer opted into recurring billing (subscription mode) vs a
+    # one-off 365-day purchase (payment mode).
+    auto_renew: bool = Field(default=False)
+    # Stripe linkage. customer/subscription IDs let webhooks tie renewals and
+    # cancellations back to this row; the checkout session ID is unique so one
+    # paid session can create exactly one institution (replay/reuse guard).
+    stripe_customer_id: Optional[str] = Field(default=None, index=True)
+    stripe_subscription_id: Optional[str] = Field(default=None, index=True)
+    stripe_checkout_session_id: Optional[str] = Field(
+        default=None, unique=True, index=True
+    )
     docker_access: bool = Field(default=False)
     password_hash: str
     teams: List["Team"] = Relationship(back_populates="institution")
@@ -50,6 +62,36 @@ class Institution(SQLModel, table=True):
 
     def verify_password(self, password: str):
         return verify_password(password, self.password_hash)
+
+
+class PaymentClient(SQLModel, table=True):
+    """Billing/contact record for an institution that pays by issued invoice.
+
+    Created alongside the Institution when a buyer chooses the invoiced annual
+    plan (Stripe collection_method="send_invoice"). Keeps the billing-side
+    details (who pays the invoice) separate from the institution's operational
+    teaching contact (who logs in and manages teams/leagues).
+    """
+
+    __tablename__ = "payment_client"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    institution_id: Optional[int] = Field(
+        default=None, foreign_key="institution.id", index=True
+    )
+    institution_name: str
+    institution_address: str
+    business_contact_name: str
+    business_contact_email: str
+    teaching_contact_name: str
+    teaching_contact_email: str
+    # Stripe linkage for the invoiced subscription and its issued invoice.
+    stripe_customer_id: Optional[str] = Field(default=None, index=True)
+    stripe_subscription_id: Optional[str] = Field(default=None, index=True)
+    stripe_invoice_id: Optional[str] = Field(default=None, index=True)
+    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+
+    institution: Optional["Institution"] = Relationship()
 
 
 class League(SQLModel, table=True):
