@@ -5,7 +5,14 @@ from datetime import datetime, timedelta
 import pytz
 from sqlmodel import Session, select
 
-from backend.database.db_models import Admin, AgentAPIKey, Institution, Team, TeamType
+from backend.database.db_models import (
+    Admin,
+    AgentAPIKey,
+    Institution,
+    InstitutionSubscription,
+    Team,
+    TeamType,
+)
 from backend.routes.auth.auth_config import (
     ADMIN_TOKEN_EXPIRY_MINUTES,
     AGENT_TOKEN_EXPIRY_DAYS,
@@ -36,7 +43,8 @@ def get_institution_names(session: Session):
     """Get list of active institution names for the login selector"""
     institutions = session.exec(
         select(Institution)
-        .where(Institution.subscription_active == True)
+        .join(InstitutionSubscription)
+        .where(InstitutionSubscription.subscription_active == True)
         .where(Institution.name != "Demo Institution")
     ).all()
     return [inst.name for inst in institutions]
@@ -100,20 +108,23 @@ def get_institution_token(session: Session, institution_name: str, password: str
     if not institution.verify_password(password):
         raise InvalidCredentialsError("Invalid password")
 
-    # Check if subscription is active
-    if not institution.subscription_active:
+    # Subscription state lives on the 1:1 InstitutionSubscription record.
+    subscription = institution.subscription
+
+    # Check if subscription is active (missing record == no active subscription)
+    if subscription is None or not subscription.subscription_active:
         raise InvalidCredentialsError("Institution subscription is not active")
 
     # Check if subscription has expired - get current time with same timezone awareness
     now = datetime.now()
-    if institution.subscription_expiry.tzinfo:
+    if subscription.subscription_expiry.tzinfo:
         # If expiry has timezone info, localize current time
         now = AUSTRALIA_SYDNEY_TZ.localize(now)
 
-    if institution.subscription_expiry < now:
+    if subscription.subscription_expiry < now:
         # Update subscription_active to False
-        institution.subscription_active = False
-        session.add(institution)
+        subscription.subscription_active = False
+        session.add(subscription)
         session.commit()
         raise InvalidCredentialsError("Institution subscription has expired")
 

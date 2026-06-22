@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
 
@@ -51,7 +52,7 @@ def test_institution_create_success(client, auth_headers, db_session):
 def test_institution_create_failures(client, auth_headers, db_session):
     """Test failure cases for institution creation"""
     # Create an existing institution first
-    existing_institution = Institution(
+    existing_institution = build_institution(
         name="existing_institution",
         contact_person="Existing Contact",
         contact_email="existing@example.com",

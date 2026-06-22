@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
 
@@ -13,7 +14,7 @@ def institutions_setup(db_session: Session) -> list:
     institutions = []
     
     # Create first institution with leagues and teams
-    institution1 = Institution(
+    institution1 = build_institution(
         name="first_institution",
         contact_person="First Contact",
         contact_email="first@example.com",
@@ -51,7 +52,7 @@ def institutions_setup(db_session: Session) -> list:
     db_session.commit()
     
     # Create second institution
-    institution2 = Institution(
+    institution2 = build_institution(
         name="second_institution",
         contact_person="Second Contact",
         contact_email="second@example.com",
@@ -67,7 +68,7 @@ def institutions_setup(db_session: Session) -> list:
     institutions.append(institution2)
     
     # Create third institution with expired subscription
-    institution3 = Institution(
+    institution3 = build_institution(
         name="third_institution",
         contact_person="Third Contact",
         contact_email="third@example.com",

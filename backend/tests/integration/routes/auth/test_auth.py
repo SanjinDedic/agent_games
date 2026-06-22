@@ -10,7 +10,7 @@ from backend.database.db_models import (
     League,
     Team,
 )
-from backend.tests.conftest import TEST_PASSWORD_HASHES
+from backend.tests.conftest import TEST_PASSWORD_HASHES, create_test_institution
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -206,19 +206,15 @@ def test_token_validation(client, db_session: Session):
     AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
     # Create test institution with timezone-aware datetimes
-    institution = Institution(
+    institution = create_test_institution(
+        db_session,
         name="test_institution",
         contact_person="Test Contact",
-        contact_email="test@example.com",
         created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),  # Add timezone
-        subscription_active=True,
         subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ)
         + timedelta(days=30),  # Add timezone
-        docker_access=True,
         password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )
-    db_session.add(institution)
-    db_session.commit()
 
     # Get institution token
     response = client.post(

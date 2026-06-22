@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (
     Institution,
     League,
@@ -38,7 +39,7 @@ def two_institutions(db_session: Session) -> dict:
     assert admin_inst is not None
 
     # Institution A
-    inst_a = Institution(
+    inst_a = build_institution(
         name="PermTest Institution A",
         contact_person="Person A",
         contact_email="a@example.com",
@@ -53,7 +54,7 @@ def two_institutions(db_session: Session) -> dict:
     db_session.refresh(inst_a)
 
     # Institution B
-    inst_b = Institution(
+    inst_b = build_institution(
         name="PermTest Institution B",
         contact_person="Person B",
         contact_email="b@example.com",

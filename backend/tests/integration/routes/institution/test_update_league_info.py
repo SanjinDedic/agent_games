@@ -4,6 +4,7 @@ import pytest
 import pytz
 from sqlmodel import Session
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
 
@@ -12,7 +13,7 @@ AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 @pytest.fixture
 def info_setup(db_session: Session) -> tuple:
-    institution = Institution(
+    institution = build_institution(
         name="info_test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -80,7 +81,7 @@ def test_update_league_info_success(client, info_setup, db_session):
 def test_update_league_info_cross_institution_rejected(client, info_setup, db_session):
     institution, league, headers = info_setup
 
-    other = Institution(
+    other = build_institution(
         name="other_info_institution",
         contact_person="Other",
         contact_email="other@example.com",

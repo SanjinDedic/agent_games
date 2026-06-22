@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, LeagueType, Team, TeamType
 from backend.routes.auth.auth_core import create_access_token
 
@@ -14,7 +15,7 @@ def unassign_setup(db_session: Session) -> dict:
     """Create institution with a league, unassigned league, and a team."""
     now = datetime.now()
 
-    institution = Institution(
+    institution = build_institution(
         name="unassign_test_inst",
         contact_person="Test",
         contact_email="test@test.com",
@@ -108,7 +109,7 @@ def test_unassign_team_not_found(client, unassign_setup):
 
 def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
     """Cannot unassign a team from another institution."""
-    other_inst = Institution(
+    other_inst = build_institution(
         name="other_unassign_inst",
         contact_person="Other",
         contact_email="other@test.com",

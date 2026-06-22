@@ -14,9 +14,9 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import (
     Institution,
+    InstitutionSubscription,
     League,
     LeagueType,
-    PaymentClient,
     get_password_hash,
 )
 
@@ -43,22 +43,25 @@ def create_paid_institution(
     stripe_customer_id: Optional[str],
     stripe_subscription_id: Optional[str],
     stripe_checkout_session_id: str,
+    tier: Optional[str] = None,
 ) -> Institution:
     """Create an institution after its Stripe payment has been verified.
 
-    Idempotency/replay is enforced on stripe_checkout_session_id: if a row
-    already exists for this session, the existing institution is returned
-    instead of creating a duplicate or charging the buyer twice in effect.
+    Idempotency/replay is enforced on stripe_checkout_session_id (unique on the
+    subscription record): if a subscription already exists for this session, the
+    existing institution is returned instead of creating a duplicate or charging
+    the buyer twice in effect.
     """
     # A given paid session creates exactly one institution. If the buyer
     # double-submits the form (or refreshes), return what already exists.
     existing_for_session = session.exec(
-        select(Institution).where(
-            Institution.stripe_checkout_session_id == stripe_checkout_session_id
+        select(InstitutionSubscription).where(
+            InstitutionSubscription.stripe_checkout_session_id
+            == stripe_checkout_session_id
         )
     ).first()
     if existing_for_session:
-        return existing_for_session
+        return existing_for_session.institution
 
     name = name.strip()
     if not name:
@@ -77,18 +80,27 @@ def create_paid_institution(
         contact_email=contact_email,
         address=address,
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=subscription_expiry,
-        auto_renew=auto_renew,
-        stripe_customer_id=stripe_customer_id,
-        stripe_subscription_id=stripe_subscription_id,
-        stripe_checkout_session_id=stripe_checkout_session_id,
         docker_access=False,
     )
     institution.set_password(password)
 
     session.add(institution)
-    session.flush()  # Assign institution.id before creating its league
+    session.flush()  # Assign institution.id before creating dependent rows
+
+    session.add(
+        InstitutionSubscription(
+            institution_id=institution.id,
+            payment_method="card",
+            tier=tier,
+            subscription_active=True,
+            subscription_expiry=subscription_expiry,
+            auto_renew=auto_renew,
+            stripe_customer_id=stripe_customer_id,
+            stripe_subscription_id=stripe_subscription_id,
+            stripe_checkout_session_id=stripe_checkout_session_id,
+            created_date=now,
+        )
+    )
 
     # Every institution gets an "unassigned" league (matches admin-created flow).
     unassigned_league = League(
@@ -126,14 +138,15 @@ def create_invoiced_institution(
     stripe_customer_id: Optional[str],
     stripe_subscription_id: Optional[str],
     stripe_invoice_id: Optional[str],
+    tier: Optional[str] = None,
 ) -> Institution:
-    """Create an institution plus its PaymentClient billing record for an
-    invoiced annual subscription.
+    """Create an institution plus its InstitutionSubscription billing record for
+    an invoiced annual subscription.
 
     Access is granted immediately: the Stripe invoice has been issued and
     payment follows on net terms. The teaching contact becomes the institution's
-    login/primary contact; the business contact is retained on the PaymentClient
-    for billing only.
+    login/primary contact; the business contact is retained on the subscription
+    record for billing only.
     """
     institution_name = institution_name.strip()
     if not institution_name:
@@ -154,12 +167,6 @@ def create_invoiced_institution(
         contact_email=teaching_contact_email,
         address=institution_address,
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=subscription_expiry,
-        auto_renew=True,
-        stripe_customer_id=stripe_customer_id,
-        stripe_subscription_id=stripe_subscription_id,
-        stripe_checkout_session_id=None,
         docker_access=False,
     )
     institution.set_password(password)
@@ -178,20 +185,24 @@ def create_invoiced_institution(
     )
     session.add(unassigned_league)
 
-    payment_client = PaymentClient(
-        institution_id=institution.id,
-        institution_name=institution_name,
-        institution_address=institution_address,
-        business_contact_name=business_contact_name,
-        business_contact_email=business_contact_email,
-        teaching_contact_name=teaching_contact_name,
-        teaching_contact_email=teaching_contact_email,
-        stripe_customer_id=stripe_customer_id,
-        stripe_subscription_id=stripe_subscription_id,
-        stripe_invoice_id=stripe_invoice_id,
-        created_date=now,
+    # Subscription + billing record. The business contact (who pays the invoice)
+    # is kept here, distinct from the institution's teaching/login contact above.
+    session.add(
+        InstitutionSubscription(
+            institution_id=institution.id,
+            payment_method="invoice",
+            tier=tier,
+            subscription_active=True,
+            subscription_expiry=subscription_expiry,
+            auto_renew=True,
+            stripe_customer_id=stripe_customer_id,
+            stripe_subscription_id=stripe_subscription_id,
+            stripe_invoice_id=stripe_invoice_id,
+            business_contact_name=business_contact_name,
+            business_contact_email=business_contact_email,
+            created_date=now,
+        )
     )
-    session.add(payment_client)
 
     session.commit()
     session.refresh(institution)

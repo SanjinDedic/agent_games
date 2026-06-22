@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (
     Institution,
     League,
@@ -65,7 +66,7 @@ def test_complete_game_lifecycle(
     6. Viewing results
     """
     # First create an institution
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -207,7 +208,7 @@ async def test_concurrent_game_operations(
     3. Concurrent result publishing
     """
     # Create a test institution first
-    institution = Institution(
+    institution = build_institution(
         name="concurrent_institution",
         contact_person="Concurrent Person",
         contact_email="concurrent@example.com",

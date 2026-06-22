@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (Institution, League, SimulationResult,
                                         Submission, Team)
 from backend.routes.auth.auth_core import create_access_token
@@ -58,7 +59,7 @@ class CustomPlayer(Player):
 def simulation_setup(db_session: Session) -> tuple:
     """Setup institution, league, and team for simulation testing"""
     # Create an institution with docker access
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",

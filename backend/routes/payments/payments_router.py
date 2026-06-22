@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from backend import config
-from backend.database.db_models import Institution
+from backend.database.db_models import Institution, InstitutionSubscription
 from backend.database.db_session import get_db
 from backend.models_api import ResponseModel
 from backend.routes.payments.payments_db import (
@@ -184,8 +184,8 @@ async def get_checkout_session(
         raise HTTPException(status_code=402, detail="Payment not completed")
 
     already = session.exec(
-        select(Institution).where(
-            Institution.stripe_checkout_session_id == session_id
+        select(InstitutionSubscription).where(
+            InstitutionSubscription.stripe_checkout_session_id == session_id
         )
     ).first()
 
@@ -232,6 +232,7 @@ async def institution_signup(
     customer_id = checkout.get("customer")
     subscription_id = checkout.get("subscription")  # None for one-time payments
     auto_renew = checkout.get("mode") == "subscription"
+    tier = (checkout.get("metadata") or {}).get("tier")
 
     # Determine access expiry: subscriptions track the billing period end;
     # one-time purchases get a fixed 90-day window.
@@ -261,6 +262,7 @@ async def institution_signup(
             stripe_customer_id=customer_id,
             stripe_subscription_id=subscription_id,
             stripe_checkout_session_id=body.session_id,
+            tier=tier,
         )
     except PaidSignupError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -355,6 +357,7 @@ async def invoice_signup(
             stripe_customer_id=customer.id,
             stripe_subscription_id=sub.get("id"),
             stripe_invoice_id=invoice.get("id"),
+            tier=body.tier,
         )
     except PaidSignupError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -416,18 +419,20 @@ async def stripe_webhook(request: Request, session: Session = Depends(get_db)):
     return {"received": True}
 
 
-def _institution_for_subscription(
+def _subscription_for_stripe_id(
     session: Session, sub_id: Optional[str]
-) -> Optional[Institution]:
+) -> Optional[InstitutionSubscription]:
     if not sub_id:
         return None
-    inst = session.exec(
-        select(Institution).where(Institution.stripe_subscription_id == sub_id)
+    subscription = session.exec(
+        select(InstitutionSubscription).where(
+            InstitutionSubscription.stripe_subscription_id == sub_id
+        )
     ).first()
-    if not inst:
+    if not subscription:
         # Normal during the initial invoice: signup hasn't created the row yet.
-        logger.info("No institution yet for subscription %s", sub_id)
-    return inst
+        logger.info("No subscription record yet for stripe subscription %s", sub_id)
+    return subscription
 
 
 def _update_subscription_window(
@@ -436,17 +441,17 @@ def _update_subscription_window(
     period_end: Optional[datetime],
     active: bool,
 ) -> None:
-    inst = _institution_for_subscription(session, sub_id)
-    if not inst:
+    subscription = _subscription_for_stripe_id(session, sub_id)
+    if not subscription:
         return
-    inst.subscription_active = active
+    subscription.subscription_active = active
     if period_end:
-        inst.subscription_expiry = period_end
-    session.add(inst)
+        subscription.subscription_expiry = period_end
+    session.add(subscription)
     session.commit()
     logger.info(
         "Subscription window updated: institution id=%s active=%s expiry=%s",
-        inst.id,
+        subscription.institution_id,
         active,
         period_end,
     )
@@ -455,12 +460,14 @@ def _update_subscription_window(
 def _set_subscription_active(
     session: Session, sub_id: Optional[str], active: bool
 ) -> None:
-    inst = _institution_for_subscription(session, sub_id)
-    if not inst:
+    subscription = _subscription_for_stripe_id(session, sub_id)
+    if not subscription:
         return
-    inst.subscription_active = active
-    session.add(inst)
+    subscription.subscription_active = active
+    session.add(subscription)
     session.commit()
     logger.info(
-        "Subscription active set: institution id=%s active=%s", inst.id, active
+        "Subscription active set: institution id=%s active=%s",
+        subscription.institution_id,
+        active,
     )

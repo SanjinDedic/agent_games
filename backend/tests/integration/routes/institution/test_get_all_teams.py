@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
 
@@ -11,7 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 def institution_with_teams(db_session: Session) -> tuple:
     """Setup institution with multiple teams for testing"""
     # Create an institution
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",

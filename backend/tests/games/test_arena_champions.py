@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
 
@@ -11,7 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 
 
 def _create_institution(db_session: Session) -> Institution:
-    inst = Institution(
+    inst = build_institution(
         name="arena_inst",
         contact_person="Arena Admin",
         contact_email="arena@example.com",

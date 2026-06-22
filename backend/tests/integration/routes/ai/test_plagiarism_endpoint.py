@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import (
     AIProviderKey,
     Institution,
@@ -64,7 +65,7 @@ def institution_setup(db_session: Session):
 
     Returns (institution, league, team, headers).
     """
-    institution = Institution(
+    institution = build_institution(
         name="plagiarism_test_inst",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -172,7 +173,7 @@ def test_assess_league_not_owned_by_institution(
     """Institution A cannot assess teams in Institution B's league."""
     institution_a, league_a, team_a, headers_a = institution_setup
 
-    other_inst = Institution(
+    other_inst = build_institution(
         name="other_inst",
         contact_person="Other",
         contact_email="other@example.com",

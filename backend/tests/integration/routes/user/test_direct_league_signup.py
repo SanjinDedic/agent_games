@@ -8,6 +8,7 @@ import pytz
 from jose import jwt
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, LeagueType, Team
 from backend.routes.auth.auth_config import SECRET_KEY, ALGORITHM
 
@@ -19,7 +20,7 @@ def signup_league(db_session: Session) -> dict:
     """Create an institution with a league that has a valid signup token."""
     now = datetime.now(AUSTRALIA_SYDNEY_TZ)
 
-    institution = Institution(
+    institution = build_institution(
         name="Signup Test School",
         contact_person="Teacher",
         contact_email="teacher@signup.com",

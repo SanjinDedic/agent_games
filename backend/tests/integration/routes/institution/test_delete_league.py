@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
 
@@ -11,7 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 def delete_league_setup(db_session: Session) -> tuple:
     """Setup institution and leagues for testing league deletion"""
     # Create an institution
-    institution = Institution(
+    institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
@@ -172,7 +173,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     
     # Test case 3: Try to delete league from different institution
     # Create another institution
-    other_institution = Institution(
+    other_institution = build_institution(
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",
@@ -243,7 +244,7 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
     )
 
     # Create institution WITHOUT an unassigned league
-    inst = Institution(
+    inst = build_institution(
         name="no_unassigned_inst",
         contact_person="Test",
         contact_email="test@test.com",
