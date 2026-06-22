@@ -5,6 +5,8 @@ import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
 import Institutions from './AgentGames/Institutions';
+import InstitutionSignup from './AgentGames/InstitutionSignup';
+import InstitutionInvoiceSignup from './AgentGames/InstitutionInvoiceSignup';
 import Institution from "./AgentGames/Institution/Institution";
 import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
 import InstitutionLeague from "./AgentGames/Institution/InstitutionLeague";
@@ -60,6 +62,11 @@ function App() {
           <Route path="Rankings" element={<AgentRankings />} />
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />
+          <Route path="InstitutionSignup" element={<InstitutionSignup />} />
+          <Route
+            path="InstitutionInvoiceSignup"
+            element={<InstitutionInvoiceSignup />}
+          />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="About" element={<About />} />
           <Route
