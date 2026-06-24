@@ -82,6 +82,9 @@ env:
     - STRIPE_PRICE_CLUB_YEAR
     - STRIPE_PRICE_UNI_ONCE
     - STRIPE_PRICE_UNI_YEAR
+    # Load-test gate. Set the value in .kamal/secrets only while benchmarking,
+    # then clear it and re-push to disable /diagnostics/benchmark-submit.
+    - BENCHMARK_TOKEN
 
 accessories:
   postgres:
