@@ -22,10 +22,11 @@ Read the result off the "submit_agent" row of the summary:
     "Average (ms)" = average latency (Y).
 """
 
+import logging
 import os
 import random
 
-from locust import HttpUser, between, task
+from locust import HttpUser, between, events, task
 
 BENCHMARK_TOKEN = os.environ.get("BENCHMARK_TOKEN", "")
 
@@ -103,3 +104,36 @@ class BenchmarkUser(HttpUser):
                 response.success()
             else:
                 response.failure(body.get("message", "unknown error"))
+
+
+@events.init.add_listener
+def _quiet_periodic_tables(environment, **kwargs):
+    """Silence locust's repeating per-interval stats tables (and the auto
+    end-of-run table). They use a dedicated logger with its own handler that
+    locust configures in setup_logging *after* this file is imported, so we
+    must raise its level here (on the init event), not at module load. We print
+    one clean summary block instead (see _print_summary)."""
+    logging.getLogger("locust.stats_logger").setLevel(logging.ERROR)
+
+
+@events.quitting.add_listener
+def _print_summary(environment, **kwargs):
+    """One clean block at shutdown. Run with `--loglevel WARNING` to silence
+    locust's repeating per-interval tables and leave only this."""
+    s = environment.stats.total
+    duration = (s.last_request_timestamp or 0) - (s.start_time or 0)
+    rps = s.num_requests / duration if duration > 0 else 0
+    pct = s.get_response_time_percentile
+    line = "=" * 48
+    print(
+        f"\n{line}\n BENCHMARK RESULT\n{line}\n"
+        f" requests    : {s.num_requests}\n"
+        f" failures    : {s.num_failures}\n"
+        f" throughput  : {rps * 60:,.0f} submissions/min  ({rps:.1f} req/s)\n"
+        f" latency avg : {s.avg_response_time:.0f} ms\n"
+        f"        p50  : {pct(0.50):.0f} ms\n"
+        f"        p95  : {pct(0.95):.0f} ms\n"
+        f"        p99  : {pct(0.99):.0f} ms\n"
+        f"        max  : {s.max_response_time:.0f} ms\n"
+        f"{line}"
+    )
