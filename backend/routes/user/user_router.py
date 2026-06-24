@@ -47,6 +47,7 @@ from backend.routes.user.user_db import (
     get_result_by_publish_link,
 )
 from backend.routes.user.user_models import (
+    AgentSubmitResponse,
     DirectLeagueSignup,
     DirectSchoolLeagueSignup,
     GameName,
@@ -66,12 +67,13 @@ logger = logging.getLogger(__name__)
 user_router = APIRouter()
 
 
-@user_router.post("/submit-agent", response_model=ResponseModel)
+@user_router.post("/submit-agent", response_model=AgentSubmitResponse)
 @verify_ai_agent_service_or_student
 async def submit_agent(
     submission: SubmissionCode,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
+    generate_hint: bool = False
 ):
     """Submit agent code for validation and storage"""
     team_name = current_user["team_name"]
@@ -79,26 +81,26 @@ async def submit_agent(
     try:
         team = get_team_by_id(session, team_id)
     except TeamNotFoundError:
-        return ResponseModel(status="error", message=f"Team '{team_name}' not found")
+        return AgentSubmitResponse(status="error", message=f"Team '{team_name}' not found")
 
     # Check league assignment first
     if not team.league:
-        return ResponseModel(
+        return AgentSubmitResponse(
             status="error", message="Team is not assigned to a league."
         )
 
     if team.league.name == "unassigned":
-        return ResponseModel(
+        return AgentSubmitResponse(
             status="error", message="Team is not assigned to a valid league."
         )
 
     try:
         if not allow_submission(session, team.id):
-            return ResponseModel(
+            return AgentSubmitResponse(
                 status="error", message="You can only make 5 submissions per minute."
             )
     except SubmissionLimitExceededError as e:
-        return ResponseModel(status="error", message=str(e))
+        return AgentSubmitResponse(status="error", message=str(e))
 
     try:
         # Get environment-aware URL for validator
@@ -119,42 +121,43 @@ async def submit_agent(
             )
 
         if response.status_code != 200:
-            return ResponseModel(
+            return AgentSubmitResponse(
                 status="error", message=f"Validation failed: {response.text}"
             )
 
         validation_result = response.json()
 
         # --- TEMP local debug: print hint context on every submission ---
-        print(
-            "\n" + "=" * 35 + "Hints" + "=" * 35 + "\n"
-            + build_hint_context_from_response(
-                submission.code,
-                validation_result,
-                game_name=team.league.game,
-                team_name=team_name,
+        if generate_hint:
+            print(
+                "\n" + "=" * 35 + "Hints" + "=" * 35 + "\n"
+                + build_hint_context_from_response(
+                    submission.code,
+                    validation_result,
+                    game_name=team.league.game,
+                    team_name=team_name,
+                )
+                + "\n" + "=" * 70,
+                flush=True,
             )
-            + "\n" + "=" * 70,
-            flush=True,
-        )
-        hints = await provide_hints(session, submission.code, validation_result, team.league.game, team_name)
-        print("\n" + "=" * 70)
-        print(hints)
-        print("\n" + "=" * 70)
-
-        hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
-
-        # TODO: Provide hint to user here
+            hints = await provide_hints(session, submission.code, validation_result, team.league.game, team_name)
+            print("\n" + "=" * 70)
+            print(hints)
+            print("\n" + "=" * 70)
+    
+            hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
+    
+            # TODO: Provide hint to user here
 
         if validation_result.get("status") == "error":
-            return ResponseModel(
+            return AgentSubmitResponse(
                 status="error",
                 message=validation_result.get("message", "Code validation failed"),
             )
 
     except Exception as e:
         logger.error(f"Error or timeout during validation {e}")
-        return ResponseModel(
+        return AgentSubmitResponse(
             status="error", message=f"An error occurred during validation: {str(e)}"
         )
 
@@ -167,7 +170,7 @@ async def submit_agent(
             league_id=team.league_id,
             duration_ms=duration_ms,
         )
-        return ResponseModel(
+        return AgentSubmitResponse(
             status="success",
             message=f"Code submitted successfully. Submission ID: {submission_id}",
             data={
@@ -179,13 +182,13 @@ async def submit_agent(
         )
     except Exception as e:
         logger.error(f"Error saving submission: {e}")
-        return ResponseModel(
+        return AgentSubmitResponse(
             status="error",
             message=f"An error occurred while saving the submission: {str(e)}",
         )
 
 
-@user_router.post("/league-assign", response_model=ResponseModel)
+@user_router.post("/league-assign", response_model=AgentSubmitResponse)
 @verify_admin_or_student
 async def assign_team_to_league_endpoint(
     league: LeagueAssignRequest,
@@ -207,7 +210,7 @@ async def assign_team_to_league_endpoint(
         role = current_user.get("role", "student")
         token_role = "ai_agent" if role == "ai_agent" else "student"
         access_token = mint_team_token(team, role=token_role)
-        return ResponseModel(
+        return AgentSubmitResponse(
             status="success",
             message=msg,
             data={"access_token": access_token, "token_type": "bearer"},
@@ -216,7 +219,7 @@ async def assign_team_to_league_endpoint(
         logger.error(
             f'Error assigning team "{team_name}" to league_id={league.league_id}: {str(e)}'
         )
-        return ErrorResponseModel(
+        return ErrorAgentSubmitResponse(
             status="error",
             message="An error occurred while assigning team to league" + str(e),
         )
