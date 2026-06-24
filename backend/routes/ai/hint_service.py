@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "gpt-5.4-mini"
 REASONING = "medium"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
-MAX_TOTAL_PAYLOAD_CHARS = 200_000
 REQUEST_TIMEOUT = 60.0
 
 def _make_strict_schema(schema):

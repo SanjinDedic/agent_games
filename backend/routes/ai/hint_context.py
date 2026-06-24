@@ -382,7 +382,11 @@ def build_hint_context(ctx: HintContext) -> str:
     lines.append("")
     lines.append("--- Submitted Code ---")
     lines.append("```python")
-    lines.append(_truncate(ctx.code.rstrip(), MAX_CODE_CHARS))
+    numbered = "\n".join(
+        f"{i + 1:3}: {line}"
+        for i, line in enumerate(ctx.code.rstrip().splitlines())
+    )
+    lines.append(_truncate(numbered, MAX_CODE_CHARS))
     lines.append("```")
 
     # Game feedback (success path, and some games emit partial feedback).
