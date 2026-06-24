@@ -219,7 +219,7 @@ async def assign_team_to_league_endpoint(
         logger.error(
             f'Error assigning team "{team_name}" to league_id={league.league_id}: {str(e)}'
         )
-        return ErrorAgentSubmitResponse(
+        return ErrorResponseModel(
             status="error",
             message="An error occurred while assigning team to league" + str(e),
         )
