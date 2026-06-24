@@ -24,6 +24,7 @@ from backend.routes.institution.institution_db import (
 )
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
+from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
@@ -122,6 +123,20 @@ async def submit_agent(
             )
 
         validation_result = response.json()
+
+        # --- TEMP local debug: print hint context on every submission ---
+        print(
+            "\n" + "=" * 70 + "\n"
+            + build_hint_context_from_response(
+                submission.code,
+                validation_result,
+                game_name=team.league.game,
+                team_name=team_name,
+            )
+            + "\n" + "=" * 70,
+            flush=True,
+        )
+
         if validation_result.get("status") == "error":
             return ResponseModel(
                 status="error",
