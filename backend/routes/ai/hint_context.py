@@ -122,18 +122,19 @@ def classify_outcome(status: Optional[str], message: Optional[str]) -> OutcomeCa
         return "success"
 
     msg = message or ""
+    msg = msg.removeprefix("Agent code is not safe: ")
     if msg.startswith(SYNTAX_ERROR_PREFIX):
         return "syntax_error"
-    if msg.startswith(TIMEOUT_PREFIX):
+    elif msg.startswith(TIMEOUT_PREFIX):
         return "timeout"
-    if msg.startswith(UNSAFE_PREFIX):
-        return "unsafe_code"
-    if msg.startswith(INIT_ERROR_PREFIX):
+    elif msg.startswith(INIT_ERROR_PREFIX):
         return "init_error"
-    if msg.startswith(CONSTRUCTION_ERROR_PREFIX):
+    elif msg.startswith(CONSTRUCTION_ERROR_PREFIX):
         return "construction_error"
-    if msg.startswith(RUNTIME_ERROR_PREFIX):
+    elif msg.startswith(RUNTIME_ERROR_PREFIX):
         return "runtime_error"
+    elif (message or "").startswith(UNSAFE_PREFIX):
+        return "unsafe_code"
     return "unknown_error"
 
 
