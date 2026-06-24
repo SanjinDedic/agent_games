@@ -68,6 +68,7 @@ env:
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
+    FRONTEND_URL: https://agentgames.io
   secret:
     - SECRET_KEY
     - DATABASE_URL
@@ -75,6 +76,12 @@ env:
     - INSTITUTION_PASSWORD
     - AWS_ACCESS_KEY_ID
     - AWS_SECRET_ACCESS_KEY
+    - SECRET_STRIPE_KEY
+    - STRIPE_WEBHOOK_SECRET
+    - STRIPE_PRICE_CLUB_ONCE
+    - STRIPE_PRICE_CLUB_YEAR
+    - STRIPE_PRICE_UNI_ONCE
+    - STRIPE_PRICE_UNI_YEAR
 
 accessories:
   postgres:
