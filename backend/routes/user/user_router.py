@@ -8,6 +8,7 @@ from backend.config import get_service_url
 from backend.database.db_models import League, Team
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
+from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_institution,
@@ -24,7 +25,7 @@ from backend.routes.institution.institution_db import (
 )
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
-from backend.routes.ai.hint_context import build_hint_context_from_response
+from backend.routes.ai.hint_service import provide_hints
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
@@ -126,7 +127,7 @@ async def submit_agent(
 
         # --- TEMP local debug: print hint context on every submission ---
         print(
-            "\n" + "=" * 70 + "\n"
+            "\n" + "=" * 35 + "Hints" + "=" * 35 + "\n"
             + build_hint_context_from_response(
                 submission.code,
                 validation_result,
@@ -136,6 +137,14 @@ async def submit_agent(
             + "\n" + "=" * 70,
             flush=True,
         )
+        hints = await provide_hints(session, submission.code, validation_result, team.league.game, team_name)
+        print("\n" + "=" * 70)
+        print(hints)
+        print("\n" + "=" * 70)
+
+        hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
+
+        # TODO: Provide hint to user here
 
         if validation_result.get("status") == "error":
             return ResponseModel(
