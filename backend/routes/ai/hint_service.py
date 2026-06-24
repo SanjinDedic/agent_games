@@ -1,6 +1,5 @@
-from typing import Optional
-import httpx, logging
 
+import httpx, logging
 from pydantic import ValidationError
 from sqlmodel import Session
 
@@ -10,7 +9,7 @@ from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.ai.ai_models import HintResponse, Hint
 
 class HintServiceError(Exception):
-    """Base error for plagiarism service failures."""
+    """Base error for plagiarism service failures."""  # REVIEW: copy-paste — docstring says "plagiarism", should be "hint".
 
 
 class NoApiKeyError(HintServiceError):
@@ -23,12 +22,14 @@ class LLMResponseError(HintServiceError):
 
 logger = logging.getLogger(__name__)
 
+# REVIEW: verify this model id exists; plagiarism_service uses "gpt-4o-mini" — consider one shared model constant.
 MODEL_NAME = "gpt-5.4-mini"
 REASONING = "medium"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 REQUEST_TIMEOUT = 60.0
 
-def _make_strict_schema(schema):
+# I have done a rudimentary test and I suspect this is redundant if you just add model_config = ConfigDict(extra="forbid")
+def _make_strict_schema(schema):  # REVIEW: add type hints + docstring; non-obvious that OpenAI strict mode needs additionalProperties=false everywhere.
     schema = dict(schema)
     if schema.get("type") == "object":
         schema["additionalProperties"] = False
@@ -67,7 +68,7 @@ async def _call_openai(api_key: str, user_content: str) -> HintResponse:
                 "json_schema": {
                     "name": "ResponseFormat",
                     "strict": True,
-                    "schema": _make_strict_schema(HintResponse.model_json_schema())
+                    "schema": _make_strict_schema(HintResponse.model_json_schema())  # SWAP: -> HintResponse.model_json_schema() once extra="forbid" is set on both models
                 }
             }
         }
@@ -82,13 +83,20 @@ async def _call_openai(api_key: str, user_content: str) -> HintResponse:
         logger.error(
             "OpenAI returned HTTP %s: %s", api_response.status_code, api_response.text[:500]
         )
-        raise LLMResponseError(f"OpenAI return HTTP {api_response.status_code}")
+        raise LLMResponseError(f"OpenAI return HTTP {api_response.status_code}")  # REVIEW: typo "return" -> "returned".
     try:
         content = api_response.json()["choices"][0]["message"]["content"]
         response = HintResponse.model_validate_json(content)
         return response
     except (KeyError, IndexError, TypeError, ValidationError) as e:
         raise LLMResponseError(f"Malformed OpenAI response envelope: {e}") from e
+
+
+#this could be a method of Hint()
+    # def quoted_line_is_correct(self, code: str) -> bool:
+    #     """True if quoted_line matches the claimed line in `code`."""
+    #     lines = code.split("\n")
+    #     return self.quoted_line.strip() == lines[self.line_number - 1].strip()
 
 def _validate_hints(code: str, result: HintResponse) -> list[Hint]:
     """Keep only hints that are flagged as bugs and quote real code."""
@@ -97,10 +105,10 @@ def _validate_hints(code: str, result: HintResponse) -> list[Hint]:
         if not hint.bug:
             logger.debug(f"Skipping {hint} as its not a bug")
             continue
-        if hint.quoted_line not in code:
+        if hint.quoted_line not in code: 
             logger.debug(f"Skipping {hint} as it isn't in the code")
             continue
-        lines = code.split('\n')
+        lines = code.split('\n')  # REVIEW: move out of the loop — recomputed every iteration.
         claimed_line = lines[hint.line_number - 1] if hint.line_number <= len(lines) else ""
         if hint.quoted_line.strip() != claimed_line.strip():
             logger.debug(f"Skipping {hint}: quoted_line doesn't match line {hint.line_number}")

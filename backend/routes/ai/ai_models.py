@@ -107,15 +107,22 @@ class PlagiarismReport(BaseModel):
     generated_at: str  # ISO-8601
 
 
-class Hint(BaseModel):
+class Hint(BaseModel):  
+    # model_config = ConfigDict(extra="forbid")  # SWAP: add this → model_json_schema() becomes strict-ready; lets you delete _make_strict_schema. Matches PlagiarismVerdict.
     line_number: int = Field(ge=1, description="The 1-indexed line number where the issue occurs")
     quoted_line: str = Field(description="Copy the exact line of code containing the issue, verbatim")
     assumptions: list[str] = Field(description="List every implicit assumption this line makes about the input")
     small_hint: str = Field(description="A Socratic leading question nudging the student toward the fix without revealing it")
     big_hint: str = Field(description="A full explanation of the issue and how to fix it")
     priority: int = Field(ge=1, le=5, description="Fix priority: 1=critical, 5=minor")
-    bug: bool = Field(description="Having written the above, confirm: is this actually a runtime/logical bug or strategy weakness, or did you flag something that is fine?")
+    bug: bool = Field(description="Having written the above, confirm: is this actually a runtime/logical bug or strategy weakness, or did you flag something that is fine?")  # REVIEW: "strategy weakness" contradicts SYSTEM_PROMPT, which forbids flagging strategy/suboptimal code.
+
+    def quoted_line_is_correct(self, code: str) -> bool:
+        """True if quoted_line matches the claimed line in `code`."""
+        lines = code.split("\n")
+        return self.quoted_line.strip() == lines[self.line_number - 1].strip()
 
 
 class HintResponse(BaseModel):
+    # model_config = ConfigDict(extra="forbid")  # SWAP: add here too — config is per-class, so the top-level object needs it for additionalProperties:false.
     hints: list[Hint]
