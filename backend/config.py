@@ -142,6 +142,7 @@ STRIPE_PRICE_CLUB_YEAR = os.getenv("STRIPE_PRICE_CLUB_YEAR")
 STRIPE_PRICE_UNI_ONCE = os.getenv("STRIPE_PRICE_UNI_ONCE")
 STRIPE_PRICE_UNI_YEAR = os.getenv("STRIPE_PRICE_UNI_YEAR")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")
 
 # Import after defining constants to avoid circular import
 from backend.routes.auth.auth_config import create_service_token

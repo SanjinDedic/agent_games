@@ -96,6 +96,7 @@ jobs:
         STRIPE_PRICE_CLUB_YEAR: ${{ secrets.STRIPE_PRICE_CLUB_YEAR }}
         STRIPE_PRICE_UNI_ONCE: ${{ secrets.STRIPE_PRICE_UNI_ONCE }}
         STRIPE_PRICE_UNI_YEAR: ${{ secrets.STRIPE_PRICE_UNI_YEAR }}
+        BENCHMARK_TOKEN: ${{ secrets.BENCHMARK_TOKEN }}
       run: |
         mkdir -p .kamal
         cat > .kamal/secrets <<EOF
@@ -117,6 +118,7 @@ jobs:
         STRIPE_PRICE_CLUB_YEAR=$STRIPE_PRICE_CLUB_YEAR
         STRIPE_PRICE_UNI_ONCE=$STRIPE_PRICE_UNI_ONCE
         STRIPE_PRICE_UNI_YEAR=$STRIPE_PRICE_UNI_YEAR
+        BENCHMARK_TOKEN=$BENCHMARK_TOKEN
         EOF
 
     - name: Deploy with Kamal

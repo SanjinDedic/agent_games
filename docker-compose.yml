@@ -19,6 +19,10 @@ services:
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
       - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
+      # Load-test gate. Empty by default -> /diagnostics/benchmark-submit is
+      # disabled. Set BENCHMARK_TOKEN in the env before `docker compose up` to
+      # enable it for a benchmark run. In prod this comes from deploy secrets.
+      - BENCHMARK_TOKEN=${BENCHMARK_TOKEN:-}
     # Secrets. .env holds dev defaults (committed); .aws.env is an optional override
     # for devs exercising real S3 (gitignored). Listed second so its values win.
     env_file:
