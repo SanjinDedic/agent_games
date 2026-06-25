@@ -1,5 +1,6 @@
 import logging
 
+from backend.routes.ai.ai_models import Hint
 import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
@@ -102,6 +103,8 @@ async def submit_agent(
     except SubmissionLimitExceededError as e:
         return AgentSubmitResponse(status="error", message=str(e))
 
+    hint: Hint | None = None
+
     try:
         # Get environment-aware URL for validator
         validator_url = get_service_url("validator", "validate")
@@ -127,27 +130,15 @@ async def submit_agent(
 
         validation_result = response.json()
 
-        # --- TEMP local debug: print hint context on every submission ---
         if generate_hint:
-            print(
-                "\n" + "=" * 35 + "Hints" + "=" * 35 + "\n"
-                + build_hint_context_from_response(
-                    submission.code,
-                    validation_result,
-                    game_name=team.league.game,
-                    team_name=team_name,
-                )
-                + "\n" + "=" * 70,
-                flush=True,
-            )
-            hints = await provide_hints(session, submission.code, validation_result, team.league.game, team_name)
-            print("\n" + "=" * 70)
-            print(hints)
-            print("\n" + "=" * 70)
+            try:
+                hints = await provide_hints(session, submission.code, validation_result, team.league.game, team_name)
+                logger.info(f"Generated hints: {hints}")
     
-            hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
-    
-            # TODO: Provide hint to user here
+                hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
+            except Exception as e:
+                logger.error(f"Error or timeout during hint generation {e}")
+                return AgentSubmitResponse(status="error", message=f"An error occured during hint generation: {str(e)}")
 
         if validation_result.get("status") == "error":
             return AgentSubmitResponse(
@@ -179,6 +170,7 @@ async def submit_agent(
                 "feedback": validation_result.get("feedback"),
                 "duration_ms": duration_ms,
             },
+            hint=hint
         )
     except Exception as e:
         logger.error(f"Error saving submission: {e}")

@@ -48,36 +48,40 @@ def _make_strict_schema(schema):
     return schema
 
 async def _call_openai(api_key: str, user_content: str) -> HintResponse:
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        data = {
-            "model": MODEL_NAME,
-            "reasoning_effort": REASONING, # Give it some reasoning
-            "messages": [
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": user_content
-                }
-            ],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "ResponseFormat",
-                    "strict": True,
-                    "schema": _make_strict_schema(HintResponse.model_json_schema())
+    try:
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            data = {
+                "model": MODEL_NAME,
+                "reasoning_effort": REASONING, # Give it some reasoning
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": SYSTEM_PROMPT
+                    },
+                    {
+                        "role": "user",
+                        "content": user_content
+                    }
+                ],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "ResponseFormat",
+                        "strict": True,
+                        "schema": _make_strict_schema(HintResponse.model_json_schema())
+                    }
                 }
             }
-        }
-        api_response = await client.post(
-            OPENAI_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=data)
+            api_response = await client.post(
+                OPENAI_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=data)
+    except Exception as e:
+        logger.exception(f"OpenAI conection failed {repr(e)}")
+        raise LLMResponseError(f"OpenAI connection failed {e}") from e
     if api_response.status_code != 200:
         logger.error(
             "OpenAI returned HTTP %s: %s", api_response.status_code, api_response.text[:500]

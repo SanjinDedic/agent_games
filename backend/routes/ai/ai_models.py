@@ -107,7 +107,7 @@ class PlagiarismReport(BaseModel):
     generated_at: str  # ISO-8601
 
 
-class Hint(BaseModel):
+class Hint(BaseModel, extra="forbid"):
     line_number: int = Field(ge=1, description="The 1-indexed line number where the issue occurs")
     quoted_line: str = Field(description="Copy the exact line of code containing the issue, verbatim")
     assumptions: list[str] = Field(description="List every implicit assumption this line makes about the input")
