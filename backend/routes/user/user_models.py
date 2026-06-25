@@ -1,4 +1,6 @@
+from typing import Optional
 from pydantic import BaseModel, field_validator
+from backend.routes.ai.ai_models import Hint
 
 
 class SubmissionCode(BaseModel):
@@ -59,3 +61,9 @@ class DirectSchoolLeagueSignup(BaseModel):
         if not v.strip():
             raise ValueError("Field cannot be empty")
         return v.strip()
+
+class AgentSubmitResponse(BaseModel):
+    status: str
+    message: str
+    hint: Optional[Hint] = None
+    data: Optional[dict] = None

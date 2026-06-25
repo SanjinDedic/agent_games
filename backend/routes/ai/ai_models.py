@@ -105,3 +105,17 @@ class PlagiarismReport(BaseModel):
     verdict: PlagiarismVerdict
     model_used: str
     generated_at: str  # ISO-8601
+
+
+class Hint(BaseModel, extra="forbid"):
+    line_number: int = Field(ge=1, description="The 1-indexed line number where the issue occurs")
+    quoted_line: str = Field(description="Copy the exact line of code containing the issue, verbatim")
+    assumptions: list[str] = Field(description="List every implicit assumption this line makes about the input")
+    small_hint: str = Field(description="A Socratic leading question nudging the student toward the fix without revealing it")
+    big_hint: str = Field(description="A full explanation of the issue and how to fix it")
+    priority: int = Field(ge=1, le=5, description="Fix priority: 1=critical, 5=minor")
+    bug: bool = Field(description="Having written the above, confirm: is this actually a runtime/logical bug or strategy weakness, or did you flag something that is fine?")
+
+
+class HintResponse(BaseModel):
+    hints: list[Hint]
