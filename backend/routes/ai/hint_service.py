@@ -28,25 +28,6 @@ REASONING = "medium"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 REQUEST_TIMEOUT = 60.0
 
-def _make_strict_schema(schema):
-    schema = dict(schema)
-    if schema.get("type") == "object":
-        schema["additionalProperties"] = False
-        if "properties" in schema:
-            schema["required"] = list(schema["properties"].keys())
-            schema["properties"] = {
-                k: _make_strict_schema(v)
-                for k, v in schema["properties"].items()
-            }
-    if "$defs" in schema:
-        schema["$defs"] = {
-            k: _make_strict_schema(v)
-            for k, v in schema["$defs"].items()
-        }
-    if "items" in schema:
-        schema["items"] = _make_strict_schema(schema["items"])
-    return schema
-
 async def _call_openai(api_key: str, user_content: str) -> HintResponse:
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
@@ -68,7 +49,7 @@ async def _call_openai(api_key: str, user_content: str) -> HintResponse:
                     "json_schema": {
                         "name": "ResponseFormat",
                         "strict": True,
-                        "schema": _make_strict_schema(HintResponse.model_json_schema())
+                        "schema": HintResponse.model_json_schema()
                     }
                 }
             }
