@@ -7,6 +7,7 @@ import CodeEditor from "./CodeEditor";
 import CombinedFooter from "./CombinedFooter";
 import FeedbackDisplay from "./FeedbackDisplay";
 import MySubmissionsModal from "./MySubmissionsModal";
+import HintModal from "./HintModal";
 import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
@@ -25,6 +26,9 @@ function AgentSubmission() {
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
   const [submissionHistory, setSubmissionHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hintModalOpen, setHintModalOpen] = useState(false);
+  const [hint, setHint] = useState(null);
+  const [isGeneratingHint, setIsGeneratingHint] = useState(false);
   const editorRef = useRef(null);
 
   // Redux hooks
@@ -136,6 +140,40 @@ function AgentSubmission() {
     }
   };
 
+  // Request a hint for the current code (hits the same endpoint with generate_hint=true)
+  const handleGetHint = async () => {
+    if (!code || code.trim() === "") {
+      toast.error("Please enter some code before requesting a hint");
+      return;
+    }
+
+    setIsGeneratingHint(true);
+    setHint(null);
+    setHintModalOpen(true);
+
+    const result = await submitCode(code, { generateHint: true });
+
+    setIsGeneratingHint(false);
+
+    if (result.success) {
+      setHint(result.hint);
+
+      // The hint request is a real submission, so refresh the feedback panel too
+      setOutput(result.output);
+      setFeedback(result.feedback);
+      setShouldCollapseInstructions(true);
+
+      const refreshResult = await getLatestSubmission();
+      if (refreshResult.success && refreshResult.hasSubmission) {
+        setLastSubmission(refreshResult.code);
+        setHasLastSubmission(true);
+      }
+    } else {
+      // submitCode already surfaced the error via toast
+      setHintModalOpen(false);
+    }
+  };
+
   // Load last submitted code
   const handleLoadLastSubmission = () => {
     if (hasLastSubmission && editorRef.current) {
@@ -226,10 +264,12 @@ function AgentSubmission() {
         league={currentLeague?.name}
         isDemo={currentUser.is_demo}
         onSubmit={handleSubmit}
+        onGetHint={handleGetHint}
         onLoadLast={handleLoadLastSubmission}
         onReset={handleReset}
         onShowSubmissions={handleShowSubmissions}
         isLoading={isLoading}
+        isGeneratingHint={isGeneratingHint}
         hasLastSubmission={hasLastSubmission}
         hasStarterCode={!!starterCode}
       />
@@ -240,6 +280,13 @@ function AgentSubmission() {
         submissions={submissionHistory}
         isLoading={isLoadingHistory}
         onSelect={handleSelectSubmission}
+      />
+
+      <HintModal
+        isOpen={hintModalOpen}
+        isLoading={isGeneratingHint}
+        hint={hint}
+        onClose={() => setHintModalOpen(false)}
       />
     </div>
   );

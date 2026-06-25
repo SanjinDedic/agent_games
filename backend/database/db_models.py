@@ -182,6 +182,7 @@ class Submission(SQLModel, table=True):
     league_id: Optional[int] = Field(default=None, foreign_key="league.id", nullable=True)
     duration_ms: Optional[float] = Field(default=None)
     team: Team = Relationship(back_populates="submissions")
+    hint_included: bool = Field(default=False)
 
 
 # In backend/database/db_models.py

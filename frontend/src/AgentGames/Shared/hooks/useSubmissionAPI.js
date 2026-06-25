@@ -129,20 +129,24 @@ export const useSubmissionAPI = () => {
   
   /**
    * Submit code for evaluation
+   * @param {string} code - The agent code to submit
+   * @param {Object} [options]
+   * @param {boolean} [options.generateHint] - Ask the backend to also generate a hint
    */
-  const submitCode = useCallback(async (code) => {
+  const submitCode = useCallback(async (code, { generateHint = false } = {}) => {
     if (!code || code.trim() === "") {
       toast.error("Please enter some code before submitting");
-      return { 
-        success: false, 
-        error: "Empty code submission" 
+      return {
+        success: false,
+        error: "Empty code submission"
       };
     }
-    
+
     setIsLoading(true);
-    
+
     try {
-      const response = await authFetch(`${apiUrl}/user/submit-agent`, {
+      const url = `${apiUrl}/user/submit-agent${generateHint ? "?generate_hint=true" : ""}`;
+      const response = await authFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -150,14 +154,15 @@ export const useSubmissionAPI = () => {
         },
         body: JSON.stringify({ code }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === "success") {
-        return { 
-          success: true, 
-          output: data.data.results, 
-          feedback: data.data.feedback 
+        return {
+          success: true,
+          output: data.data.results,
+          feedback: data.data.feedback,
+          hint: data.hint ?? null
         };
       } else {
         toast.error(data.message || "Error in submission");

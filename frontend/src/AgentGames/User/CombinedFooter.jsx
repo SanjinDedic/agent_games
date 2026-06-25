@@ -8,10 +8,12 @@ function CombinedFooter({
     league,
     isDemo,
     onSubmit,
+    onGetHint,
     onLoadLast,
     onReset,
     onShowSubmissions,
     isLoading,
+    isGeneratingHint,
     hasLastSubmission,
     hasStarterCode
 }) {
@@ -32,6 +34,14 @@ function CombinedFooter({
               className="py-2 px-4 text-base font-medium text-white bg-primary hover:bg-primary-hover disabled:bg-ui-light rounded transition-colors"
             >
               {isLoading ? "Processing..." : "Submit Code"}
+            </button>
+
+            <button
+              onClick={onGetHint}
+              disabled={isLoading}
+              className="py-2 px-4 text-base font-medium text-white bg-success hover:bg-success-hover disabled:bg-ui-light rounded transition-colors"
+            >
+              {isGeneratingHint ? "Getting Hint..." : "Get Hint"}
             </button>
 
             <button
