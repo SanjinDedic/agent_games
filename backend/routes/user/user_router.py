@@ -160,6 +160,7 @@ async def submit_agent(
             team.id,
             league_id=team.league_id,
             duration_ms=duration_ms,
+            hint_included=generate_hint
         )
         return AgentSubmitResponse(
             status="success",

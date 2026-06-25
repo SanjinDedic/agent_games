@@ -73,6 +73,7 @@ def save_submission(
     team_id: int,
     league_id: Optional[int] = None,
     duration_ms: Optional[float] = None,
+    hint_included: bool = False,
 ) -> int:
     """Save a code submission"""
     db_submission = Submission(
@@ -81,6 +82,7 @@ def save_submission(
         team_id=team_id,
         league_id=league_id,
         duration_ms=duration_ms,
+        hint_included=hint_included,
     )
     session.add(db_submission)
     session.commit()
