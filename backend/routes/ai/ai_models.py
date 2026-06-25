@@ -117,5 +117,5 @@ class Hint(BaseModel, extra="forbid"):
     bug: bool = Field(description="Having written the above, confirm: is this actually a runtime/logical bug or strategy weakness, or did you flag something that is fine?")
 
 
-class HintResponse(BaseModel):
+class HintResponse(BaseModel, extra="forbid"):
     hints: list[Hint]
