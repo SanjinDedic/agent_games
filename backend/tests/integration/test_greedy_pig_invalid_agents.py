@@ -1,15 +1,29 @@
-"""Integration test: invalid agents are filtered out before a greedy_pig simulation.
+"""Integration test: only validated agents reach a greedy_pig simulation.
 
-Five teams join a greedy_pig league. Three submit code that fails validation
-(an infinite loop / timeout, a divide-by-zero, and a runaway recursion "memory
-bomb"); two submit valid strategies. The submit-agent endpoint runs every
-submission through the real validator service, so the three bad agents are
-stored with passed_validation=False and are skipped when the simulator fetches
-the league's submissions. The test passes only if exactly the two valid teams
-make it into the simulation and play against each other.
+Seven teams join a greedy_pig league: two valid strategies and five invalid
+agents the validator rejects (stored with passed_validation=False). The test
+passes only if exactly the two valid teams play against each other.
+
+The five invalid agents fall into two groups, on purpose:
+
+1. Security violations (unauthorized imports, unauthorized `eval`). These would
+   *load and play fine in the simulator if they ever reached it* — the
+   simulator's add_player runs exec() with no AST security check. So the ONLY
+   thing keeping them out is get_latest_submissions_for_league honouring
+   passed_validation. These make the test sensitive to that filter: invert or
+   drop it and these agents leak into the run and show up in total_points.
+
+2. Runtime faults (infinite loop / timeout, divide-by-zero on construction).
+   These are *also* caught downstream — the submit endpoint times out before
+   saving the loop agent, and the simulator's add_player drops the div-by-zero
+   agent when construction raises (the game swallows exceptions inside
+   make_decision, so the fault must surface before the game loop). They don't
+   exercise the filter, but they assert the whole pipeline rejects every flavor
+   of bad agent.
+
+NOTE: the infinite-loop agent costs ~20s here — the submit endpoint waits out
+its HTTP timeout to the validator before returning an error.
 """
-
-from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,8 +56,41 @@ class CustomPlayer(Player):
         return "continue"
 """
 
-# Times out: a busy loop that never returns. The validator kills the runaway
-# child after its hard timeout, so validation fails.
+# Three agents the validator rejects at the AST stage. Each would otherwise be a
+# perfectly loadable, playable greedy_pig player, so only passed_validation can
+# keep them out of the simulation.
+
+# Unauthorized import (module-level).
+INVALID_IMPORT_OS = """
+from games.greedy_pig.player import Player
+import os
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "continue"
+"""
+
+# Unauthorized from-import.
+INVALID_IMPORT_FROM = """
+from games.greedy_pig.player import Player
+from socket import socket
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "bank"
+"""
+
+# Unauthorized eval() call.
+INVALID_EVAL = """
+from games.greedy_pig.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return eval("'bank'")
+"""
+
+# Infinite loop: never returns. The validator kills the runaway child after its
+# hard timeout; the submit endpoint then times out and never saves a row.
 INVALID_TIMEOUT = """
 from games.greedy_pig.player import Player
 
@@ -64,23 +111,6 @@ class CustomPlayer(Player):
     def __init__(self):
         super().__init__()
         self.ratio = 1 / 0
-
-    def make_decision(self, game_state):
-        return "bank"
-"""
-
-# Memory bomb via unbounded recursion on construction -> RecursionError before
-# the game ever runs, so validation fails.
-INVALID_MEMORY_BOMB = """
-from games.greedy_pig.player import Player
-
-class CustomPlayer(Player):
-    def __init__(self):
-        super().__init__()
-        self._explode()
-
-    def _explode(self):
-        return self._explode()
 
     def make_decision(self, game_state):
         return "bank"
@@ -114,7 +144,7 @@ def _submit(client: TestClient, team: Team, code: str):
     return client.post("/user/submit-agent", headers=headers, json={"code": code})
 
 
-def test_only_valid_agents_reach_greedy_pig_simulation(
+def test_only_validated_agents_reach_greedy_pig_simulation(
     client: TestClient,
     db_session: Session,
     auth_headers: dict,
@@ -127,12 +157,15 @@ def test_only_valid_agents_reach_greedy_pig_simulation(
         "valid_bank_after_3": VALID_BANK_AFTER_3_ROLLS,
     }
     invalid_teams = {
+        "invalid_import_os": INVALID_IMPORT_OS,
+        "invalid_import_from": INVALID_IMPORT_FROM,
+        "invalid_eval": INVALID_EVAL,
         "invalid_timeout": INVALID_TIMEOUT,
         "invalid_divide_by_zero": INVALID_DIVIDE_BY_ZERO,
-        "invalid_memory_bomb": INVALID_MEMORY_BOMB,
     }
 
-    # 1. Five teams submit code through the real validator.
+    # 1. Five teams submit code through the real validator. The invalid agents
+    #    are rejected but still persisted with passed_validation=False.
     for name, code in {**valid_teams, **invalid_teams}.items():
         team = _make_team(db_session, greedy_pig_league, name)
         response = _submit(client, team, code)
@@ -153,10 +186,12 @@ def test_only_valid_agents_reach_greedy_pig_simulation(
     sim_data = sim_response.json()
     assert sim_data["status"] == "success", sim_data
 
-    # 3. Only the two valid teams should have played.
+    # 3. Only the two validated teams should have played. If the
+    #    passed_validation filter is broken, the rejected agents (which load and
+    #    play fine) leak in and this assertion fails.
     total_points = sim_data["data"]["total_points"]
     assert set(total_points.keys()) == set(valid_teams), (
-        f"Only valid teams should reach the simulation, got: {set(total_points.keys())}"
+        f"Only validated teams should reach the simulation, got: {set(total_points.keys())}"
     )
     for invalid_name in invalid_teams:
         assert invalid_name not in total_points
