@@ -29,6 +29,7 @@ function AgentSubmission() {
   const [hintModalOpen, setHintModalOpen] = useState(false);
   const [hint, setHint] = useState(null);
   const [isGeneratingHint, setIsGeneratingHint] = useState(false);
+  const [allowHint, setAllowHint] = useState(false);
   const editorRef = useRef(null);
 
   // Redux hooks
@@ -126,6 +127,8 @@ function AgentSubmission() {
     setShouldCollapseInstructions(true);
 
     const result = await submitCode(code);
+    if (result.hint_avaliable && !allowHint) toast.success("A hint is now avaliable");
+    setAllowHint(result.hint_avaliable);
 
     if (result.success) {
       setOutput(result.output);
@@ -154,6 +157,9 @@ function AgentSubmission() {
     const result = await submitCode(code, { generateHint: true });
 
     setIsGeneratingHint(false);
+    
+    if (result.hint_avaliable && !allowHint) toast.success("A hint is now avaliable");
+    setAllowHint(result.hint_avaliable);
 
     if (result.success) {
       setHint(result.hint);
@@ -269,6 +275,7 @@ function AgentSubmission() {
         onReset={handleReset}
         onShowSubmissions={handleShowSubmissions}
         isLoading={isLoading}
+        allowHint={allowHint}
         isGeneratingHint={isGeneratingHint}
         hasLastSubmission={hasLastSubmission}
         hasStarterCode={!!starterCode}

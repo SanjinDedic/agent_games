@@ -1,4 +1,5 @@
 from typing import Optional
+from backend.database.db_models import Team
 import httpx, logging
 
 from pydantic import ValidationError
@@ -101,3 +102,6 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
     raw_hints = await _call_openai(api_key, context)
     logger.debug(f"Raw hints {raw_hints}")
     return _validate_hints(code, raw_hints)
+
+def hint_avaliable(session: Session, team: Team) -> bool:
+    return True

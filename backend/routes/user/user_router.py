@@ -26,7 +26,7 @@ from backend.routes.institution.institution_db import (
 )
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
-from backend.routes.ai.hint_service import provide_hints
+from backend.routes.ai.hint_service import provide_hints, hint_avaliable
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
@@ -104,6 +104,10 @@ async def submit_agent(
         return AgentSubmitResponse(status="error", message=str(e))
 
     hint: Hint | None = None
+    allow_hint = hint_avaliable(session, team)
+
+    if generate_hint and not allow_hint:
+        return AgentSubmitResponse(status="error", message="You are not allowed to request a hint right now")
 
     try:
         # Get environment-aware URL for validator
@@ -136,6 +140,8 @@ async def submit_agent(
                 logger.info(f"Generated hints: {hints}")
     
                 hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
+
+                allow_hint = False
             except Exception as e:
                 logger.error(f"Error or timeout during hint generation {e}")
                 return AgentSubmitResponse(status="error", message=f"An error occured during hint generation: {str(e)}")
@@ -144,6 +150,7 @@ async def submit_agent(
             return AgentSubmitResponse(
                 status="error",
                 message=validation_result.get("message", "Code validation failed"),
+                hint_avaliable=allow_hint
             )
 
     except Exception as e:
@@ -171,7 +178,8 @@ async def submit_agent(
                 "feedback": validation_result.get("feedback"),
                 "duration_ms": duration_ms,
             },
-            hint=hint
+            hint=hint,
+            hint_avaliable=allow_hint
         )
     except Exception as e:
         logger.error(f"Error saving submission: {e}")

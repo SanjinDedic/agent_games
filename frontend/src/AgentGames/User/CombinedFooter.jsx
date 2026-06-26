@@ -13,6 +13,7 @@ function CombinedFooter({
     onReset,
     onShowSubmissions,
     isLoading,
+    allowHint,
     isGeneratingHint,
     hasLastSubmission,
     hasStarterCode
@@ -36,13 +37,15 @@ function CombinedFooter({
               {isLoading ? "Processing..." : "Submit Code"}
             </button>
 
-            <button
-              onClick={onGetHint}
-              disabled={isLoading}
-              className="py-2 px-4 text-base font-medium text-white bg-success hover:bg-success-hover disabled:bg-ui-light rounded transition-colors"
-            >
-              {isGeneratingHint ? "Getting Hint..." : "Get Hint"}
-            </button>
+            { allowHint ?
+              <button
+                onClick={onGetHint}
+                disabled={isLoading}
+                className="py-2 px-4 text-base font-medium text-white bg-success hover:bg-success-hover disabled:bg-ui-light rounded transition-colors"
+              >
+                {isGeneratingHint ? "Getting Hint..." : "Get Hint"}
+              </button> : null
+            }
 
             <button
               onClick={onLoadLast}

@@ -162,13 +162,15 @@ export const useSubmissionAPI = () => {
           success: true,
           output: data.data.results,
           feedback: data.data.feedback,
-          hint: data.hint ?? null
+          hint: data.hint ?? null,
+          hint_avaliable: data.hint_avaliable ?? false
         };
       } else {
         toast.error(data.message || "Error in submission");
         return { 
           success: false, 
-          error: data.message 
+          error: data.message,
+          hint_avaliable: data.hint_avaliable ?? false
         };
       }
     } catch (error) {
