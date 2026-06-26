@@ -107,8 +107,11 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
     logger.debug(f"Raw hints {raw_hints}")
     return _validate_hints(code, raw_hints)
 
+# WARNING: This function, if it returns True, must return True again if the same code is resubmitted.
+# This means that this function must be deterministic. And only depend on data from the last hint generated
 def hint_avaliable(session: Session, team: Team, validation_result: dict) -> bool:
     all_subs = get_team_submissions_ordered(session, team.id, only_validated=False)
+
     if not all_subs:
         return False
 
@@ -121,14 +124,14 @@ def hint_avaliable(session: Session, team: Team, validation_result: dict) -> boo
 
     next_submission_idx = len(all_subs)
 
-    logging.info(f"Hint Avaliable: There have been {next_submission_idx - last_submission_idx} submissions between new submission and last hint")
-
-    passed_submission_count = next_submission_idx < (last_submission_idx + SUBMISSIONS_BETWEEN_HINTS):
+    passed_submission_count = next_submission_idx >= (last_submission_idx + SUBMISSIONS_BETWEEN_HINTS)
 
     current_time = datetime.datetime.now(tz = datetime.timezone.utc)
     last_time = all_subs[last_submission_idx].timestamp
     delta = current_time - last_time
     
-    passed_cooldown = delta.total_seconds() < HINT_COOLDOWN
+    passed_cooldown = delta.total_seconds() >= HINT_COOLDOWN
+
+    logger.info(f"Cooldown: {passed_cooldown}, Submission Count: {passed_submission_count}")
 
     return passed_cooldown and passed_submission_count

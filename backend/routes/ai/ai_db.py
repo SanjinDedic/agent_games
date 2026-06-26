@@ -58,7 +58,7 @@ def get_stored_key(session: Session, provider: str) -> Optional[str]:
 
 
 def get_team_submissions_ordered(
-    session: Session, team_id: int, only_validated: bool = False
+    session: Session, team_id: int, only_validated: bool = True
 ) -> List[Submission]:
     """Return all submissions for a team in ascending timestamp order."""
 
