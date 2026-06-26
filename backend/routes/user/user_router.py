@@ -104,10 +104,6 @@ async def submit_agent(
         return AgentSubmitResponse(status="error", message=str(e))
 
     hint: Hint | None = None
-    allow_hint = hint_avaliable(session, team)
-
-    if generate_hint and not allow_hint:
-        return AgentSubmitResponse(status="error", message="You are not allowed to request a hint right now")
 
     try:
         # Get environment-aware URL for validator
@@ -133,6 +129,12 @@ async def submit_agent(
             )
 
         validation_result = response.json()
+        
+        allow_hint = hint_avaliable(session, team, validation_result)
+
+        if generate_hint and not allow_hint:
+            return AgentSubmitResponse(status="error", message="You are not allowed to request a hint right now")
+
 
         if generate_hint:
             try:

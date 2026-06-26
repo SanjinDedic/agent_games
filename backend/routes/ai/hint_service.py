@@ -107,7 +107,7 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
     logger.debug(f"Raw hints {raw_hints}")
     return _validate_hints(code, raw_hints)
 
-def hint_avaliable(session: Session, team: Team) -> bool:
+def hint_avaliable(session: Session, team: Team, validation_result: dict) -> bool:
     all_subs = get_team_submissions_ordered(session, team.id)
     if not all_subs:
         return False
