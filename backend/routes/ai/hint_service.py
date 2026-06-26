@@ -108,7 +108,7 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
     return _validate_hints(code, raw_hints)
 
 def hint_avaliable(session: Session, team: Team, validation_result: dict) -> bool:
-    all_subs = get_team_submissions_ordered(session, team.id)
+    all_subs = get_team_submissions_ordered(session, team.id, only_validated=False)
     if not all_subs:
         return False
 
@@ -123,18 +123,12 @@ def hint_avaliable(session: Session, team: Team, validation_result: dict) -> boo
 
     logging.info(f"Hint Avaliable: There have been {next_submission_idx - last_submission_idx} submissions between new submission and last hint")
 
-    if next_submission_idx < (last_submission_idx + SUBMISSIONS_BETWEEN_HINTS):
-        logging.info(f"Hint Avaliable: Hint forbidden: Submission count")
-        return False
+    passed_submission_count = next_submission_idx < (last_submission_idx + SUBMISSIONS_BETWEEN_HINTS):
 
     current_time = datetime.datetime.now(tz = datetime.timezone.utc)
     last_time = all_subs[last_submission_idx].timestamp
     delta = current_time - last_time
     
-    logging.info(f"Hint Avaliable: There have been {delta.total_seconds()} seconds between new submission and last hint")
+    passed_cooldown = delta.total_seconds() < HINT_COOLDOWN
 
-    if delta.total_seconds() < HINT_COOLDOWN:
-        logging.info(f"Hint Avaliable: Hint forbidden: Cooldown")
-        return False
-
-    return True
+    return passed_cooldown and passed_submission_count

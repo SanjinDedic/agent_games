@@ -58,17 +58,27 @@ def get_stored_key(session: Session, provider: str) -> Optional[str]:
 
 
 def get_team_submissions_ordered(
-    session: Session, team_id: int
+    session: Session, team_id: int, only_validated: bool = False
 ) -> List[Submission]:
     """Return all submissions for a team in ascending timestamp order."""
-    return list(
-        session.exec(
-            select(Submission)
-            .where(Submission.team_id == team_id)
-            .order_by(Submission.timestamp.asc())
-        ).all()
-    )
 
+    if only_validated:
+        return list(
+            session.exec(
+                select(Submission)
+                .where(Submission.team_id == team_id)
+                .where(Submission.passed_validation)
+                .order_by(Submission.timestamp.asc())
+            ).all()
+        )
+    else:
+        return list(
+            session.exec(
+                select(Submission)
+                .where(Submission.team_id == team_id)
+                .order_by(Submission.timestamp.asc())
+            ).all()
+        )
 
 def get_team_in_league(
     session: Session, team_id: int, league_id: int
