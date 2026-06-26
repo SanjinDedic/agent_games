@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 from backend.database.db_models import Team
 import httpx, logging
@@ -5,7 +6,7 @@ import httpx, logging
 from pydantic import ValidationError
 from sqlmodel import Session
 
-from backend.routes.ai.ai_db import get_stored_key
+from backend.routes.ai.ai_db import get_stored_key, get_team_submissions_ordered
 from backend.routes.ai.hint_prompt import SYSTEM_PROMPT
 from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.ai.ai_models import HintResponse, Hint
@@ -28,6 +29,9 @@ MODEL_NAME = "gpt-5.4-mini"
 REASONING = "medium"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 REQUEST_TIMEOUT = 60.0
+
+HINT_COOLDOWN = 5 * 60
+SUBMISSIONS_BETWEEN_HINTS = 3
 
 async def _call_openai(api_key: str, user_content: str) -> HintResponse:
     try:
@@ -104,4 +108,33 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
     return _validate_hints(code, raw_hints)
 
 def hint_avaliable(session: Session, team: Team) -> bool:
+    all_subs = get_team_submissions_ordered(session, team.id)
+    if not all_subs:
+        return False
+
+    hint_submissions_idxs = [i for i in range(len(all_subs)) if all_subs[i].hint_included]
+
+    if not hint_submissions_idxs:
+        last_submission_idx = 0
+    else:
+        last_submission_idx = hint_submissions_idxs[-1]
+
+    next_submission_idx = len(all_subs)
+
+    logging.info(f"Hint Avaliable: There have been {next_submission_idx - last_submission_idx} submissions between new submission and last hint")
+
+    if next_submission_idx < (last_submission_idx + SUBMISSIONS_BETWEEN_HINTS):
+        logging.info(f"Hint Avaliable: Hint forbidden: Submission count")
+        return False
+
+    current_time = datetime.datetime.now(tz = datetime.timezone.utc)
+    last_time = all_subs[last_submission_idx].timestamp
+    delta = current_time - last_time
+    
+    logging.info(f"Hint Avaliable: There have been {delta.total_seconds()} seconds between new submission and last hint")
+
+    if delta.total_seconds() < HINT_COOLDOWN:
+        logging.info(f"Hint Avaliable: Hint forbidden: Cooldown")
+        return False
+
     return True
