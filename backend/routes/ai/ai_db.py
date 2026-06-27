@@ -62,23 +62,14 @@ def get_team_submissions_ordered(
 ) -> List[Submission]:
     """Return all submissions for a team in ascending timestamp order."""
 
+    query = select(Submission).where(Submission.team_id == team_id)
+
     if only_validated:
-        return list(
-            session.exec(
-                select(Submission)
-                .where(Submission.team_id == team_id)
-                .where(Submission.passed_validation)
-                .order_by(Submission.timestamp.asc())
-            ).all()
-        )
-    else:
-        return list(
-            session.exec(
-                select(Submission)
-                .where(Submission.team_id == team_id)
-                .order_by(Submission.timestamp.asc())
-            ).all()
-        )
+        query = query.where(Submission.passed_validation)
+
+    query = query.order_by(Submission.timestamp.asc())
+
+    return list(session.exec(query).all())
 
 def get_team_in_league(
     session: Session, team_id: int, league_id: int

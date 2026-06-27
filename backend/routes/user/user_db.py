@@ -271,21 +271,16 @@ def get_latest_submissions_for_league(
     submissions = {}
     for team in teams:
         # Get latest submission for each team
+        query = select(Submission).where(Submission.team_id == team_id)
+
         if only_validated:
-            latest_submission = session.exec(
-                select(Submission)
-                .where(Submission.team_id == team.id)
-                .order_by(Submission.timestamp.desc())
-                .limit(1)
-            ).first()
-        else:
-            latest_submission = session.exec(
-                select(Submission)
-                .where(Submission.team_id == team.id)
-                .where(Submission.passed_validation)
-                .order_by(Submission.timestamp.desc())
-                .limit(1)
-            ).first()
+            query = query.where(Submission.passed_validation)
+
+        latest_submission = session.exec(
+            query
+            .order_by(Submission.timestamp.desc())
+            .limit(1)
+        ).first()
 
         if latest_submission:
             submissions[team.name] = latest_submission.code
@@ -306,19 +301,13 @@ def get_all_submissions_for_league(
     by_team = {}
     team_ids = {}
     for team in teams:
+
+        query = select(Submission).where(Submission.team_id == team_id)
+
         if only_validated:
-            submissions = session.exec(
-                select(Submission)
-                .where(Submission.team_id == team.id)
-                .where(Submission.passed_validation)
-                .order_by(Submission.timestamp.asc())
-            ).all()
-        else:
-            submissions = session.exec(
-                select(Submission)
-                .where(Submission.team_id == team.id)
-                .order_by(Submission.timestamp.asc())
-            ).all()
+            query = query.where(Submission.passed_validation)
+
+        submissions = session.exec(query.order_by(Submission.timestamp.asc())).all()
 
         by_team[team.name] = [
             {
@@ -355,19 +344,15 @@ def get_team_submission(
 def get_team_submission_history(session: Session, team_id: int, only_validated: bool = True) -> list:
     """Get full submission history for a team, newest first."""
 
+    query = select(Submission).where(Submission.team_id == team_id)
+
     if only_validated:
-        submissions = session.exec(
-            select(Submission)
-            .where(Submission.team_id == team_id)
-            .where(Submission.passed_validation)
-            .order_by(Submission.timestamp.desc())
-        ).all()
-    else:
-        submissions = session.exec(
-            select(Submission)
-            .where(Submission.team_id == team_id)
-            .order_by(Submission.timestamp.desc())
-        ).all()
+        query = query.where(Submission.passed_validation)
+
+    submissions = session.exec(
+        query
+        .order_by(Submission.timestamp.desc())
+    ).all()
 
     return [
         {
