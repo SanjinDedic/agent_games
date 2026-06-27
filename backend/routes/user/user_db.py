@@ -271,7 +271,7 @@ def get_latest_submissions_for_league(
     submissions = {}
     for team in teams:
         # Get latest submission for each team
-        query = select(Submission).where(Submission.team_id == team_id)
+        query = select(Submission).where(Submission.team_id == team.id)
 
         if only_validated:
             query = query.where(Submission.passed_validation)
@@ -302,7 +302,7 @@ def get_all_submissions_for_league(
     team_ids = {}
     for team in teams:
 
-        query = select(Submission).where(Submission.team_id == team_id)
+        query = select(Submission).where(Submission.team_id == team.id)
 
         if only_validated:
             query = query.where(Submission.passed_validation)
