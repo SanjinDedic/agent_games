@@ -14,8 +14,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - VALIDATOR_URL=http://validator:8001
-      - SIMULATOR_URL=http://simulator:8002
+      - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
       - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
@@ -31,9 +30,7 @@ services:
       - path: .aws.env
         required: false
     depends_on:
-      validator:
-        condition: service_healthy
-      simulator:
+      valkey:
         condition: service_healthy
       minio:
         condition: service_healthy
@@ -51,56 +48,83 @@ services:
     mem_reservation: 200m
     pids_limit: 50
 
-  validator:
+  # Celery broker + result backend. Ephemeral by design: losing in-flight
+  # tasks on restart matches losing in-flight HTTP requests in the old setup.
+  # noeviction is mandatory for a broker.
+  valkey:
+    image: valkey/valkey:latest
+    command: valkey-server --save '' --appendonly no --maxmemory 150mb --maxmemory-policy noeviction
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    mem_limit: 200m
+
+  worker-validation:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
-    command: python /agent_games/backend/docker_utils/services/validation_server.py
-    ports:
-      - "8001:8001"
+    command: celery -A backend.celery_app worker -Q validation -n validation@%h --loglevel=info --concurrency=4
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     env_file:
       - path: .env
         required: true
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test: ["CMD-SHELL", "celery -A backend.celery_app inspect ping -d validation@$$HOSTNAME -t 10 | grep -q pong"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     volumes:
       - ./backend:/agent_games/backend
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
 
-  simulator:
+  worker-simulation:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
-    command: python /agent_games/backend/docker_utils/services/simulation_server.py
-    ports:
-      - "8002:8002"
+    command: celery -A backend.celery_app worker -Q simulation -n simulation@%h --loglevel=info --concurrency=1
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
     env_file:
       - path: .env
         required: true
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      test: ["CMD-SHELL", "celery -A backend.celery_app inspect ping -d simulation@$$HOSTNAME -t 10 | grep -q pong"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 10s
+      start_period: 30s
+    volumes:
+      - ./backend:/agent_games/backend
     mem_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
@@ -175,25 +199,26 @@ services:
       dockerfile: ./backend/Dockerfile
       args:
         - BUILD_ENV=test
-        - RUNTIME_PACKAGES=docker-cli
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
+      - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=test
       - SECRET_KEY=test_secret_key_for_tests
     depends_on:
       api:
         condition: service_healthy
-      validator:
+      valkey:
         condition: service_healthy
-      simulator:
+      worker-validation:
+        condition: service_healthy
+      worker-simulation:
         condition: service_healthy
       postgres:
         condition: service_healthy
     volumes:
       - ./backend:/agent_games/backend
-      - /var/run/docker.sock:/var/run/docker.sock
     command: pytest backend/tests/ -v
     scale: 0
 
