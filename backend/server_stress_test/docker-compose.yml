@@ -1,0 +1,45 @@
+# Run the greedy-pig submission benchmark in a container (no local locust needed).
+#
+#   cd backend/server_stress_test
+#   BENCHMARK_TOKEN=<secret> docker compose run --rm benchmark
+#
+# Override any default below inline, e.g. push harder / longer:
+#   USERS=100 DURATION=2m docker compose run --rm benchmark
+# Or point at a different host:
+#   HOST=http://host.docker.internal:8000 docker compose run --rm benchmark
+#
+# CSV output (bench_stats.csv etc.) lands in this folder via the bind mount.
+
+services:
+  benchmark:
+    build: .
+    environment:
+      # Same secret the API process was started with; empty => every request 403s.
+      BENCHMARK_TOKEN: ${BENCHMARK_TOKEN:-}
+      # Optional knobs read by the locustfile.
+      WAIT_MIN: ${WAIT_MIN:-0}
+      WAIT_MAX: ${WAIT_MAX:-0}
+      NUM_SIMULATIONS: ${NUM_SIMULATIONS:-20}
+      # Agent-mix weights (relative). Set W_SPIN=0 for a pure valid-agent run.
+      W_VALID: ${W_VALID:-80}
+      W_SPIN: ${W_SPIN:-3}
+      W_SLOW: ${W_SLOW:-7}
+      W_SECURITY: ${W_SECURITY:-5}
+      W_RUNTIME: ${W_RUNTIME:-5}
+    volumes:
+      # Persist the --csv output back onto the host.
+      - .:/loadtest
+    command:
+      - --headless
+      - -u
+      - ${USERS:-50}
+      - -r
+      - ${SPAWN_RATE:-1}
+      - -t
+      - ${DURATION:-1m}
+      - --loglevel
+      - ${LOGLEVEL:-WARNING}
+      - --host
+      - ${HOST:-https://api.agentgames.io}
+      - --csv
+      - bench

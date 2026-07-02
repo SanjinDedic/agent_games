@@ -105,6 +105,17 @@ def _child_run(conn, game_name, code, team_name, num_simulations, custom_rewards
     import contextlib
     import io
     import logging as _logging
+    import signal
+
+    # The child forked from the uvicorn process and inherited uvicorn's SIGTERM/
+    # SIGINT handlers (graceful shutdown), which swallow terminate() and leave a
+    # runaway child spinning. Restore the default disposition so a normal signal
+    # kills it. (The parent also escalates to SIGKILL via _reap as a guarantee.)
+    for _sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(_sig, signal.SIG_DFL)
+        except Exception:
+            pass
 
     _logging.disable(_logging.CRITICAL)
     buf = io.StringIO()
@@ -155,6 +166,19 @@ def _child_run(conn, game_name, code, team_name, num_simulations, custom_rewards
         conn.close()
 
 
+def _reap(proc) -> None:
+    """Ensure the child process is dead, then reap it.
+
+    proc.terminate() (SIGTERM) is unreliable here: the child forked from the
+    uvicorn process and inherited uvicorn's SIGTERM handler, which swallows the
+    signal and leaves a `while True` agent spinning a core at 100% while
+    proc.join() blocks forever. SIGKILL cannot be caught, so use it directly --
+    the child is a short-lived agent run with nothing to clean up."""
+    if proc.is_alive():
+        proc.kill()
+    proc.join()
+
+
 def _supervise(game_name, code, team_name, num_simulations, custom_rewards) -> Dict[str, Any]:
     """Run one validation in a child process; enforce the timeout with a kill."""
     parent_conn, child_conn = _MP_CTX.Pipe()
@@ -173,14 +197,10 @@ def _supervise(game_name, code, team_name, num_simulations, custom_rewards) -> D
                     "status": "error",
                     "message": "Validation crashed before returning a result.",
                 }
-            proc.join(timeout=1)
-            if proc.is_alive():
-                proc.terminate()
-                proc.join()
+            _reap(proc)
             return result
         # Timed out: kill the runaway child.
-        proc.terminate()
-        proc.join()
+        _reap(proc)
         return {
             "status": "error",
             "message": (

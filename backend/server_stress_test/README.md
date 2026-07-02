@@ -17,6 +17,50 @@ path (1 game + 20 greedy-pig simulations — the expensive part of
 That isolates validator throughput, which is the thing that moves when you
 change simulation/validation code.
 
+## Agent mix (problematic agents included)
+
+By default the load is not all valid agents. The locustfile sends a weighted
+mix, each type recorded under its own row in the summary, so the bad agents
+exercise the validator's reject / timeout / kill paths — the paths where a
+CPU-spin regression hides. (A timed-out agent that isn't fully killed leaves a
+core pegged at 100%.)
+
+| Row (`name`)           | Agent code                          | Path exercised        | Expected |
+|------------------------|-------------------------------------|-----------------------|----------|
+| `submit_valid`         | randomized threshold strategy       | full success          | success  |
+| `submit_slow`          | heavy finite loop, under the 5s cap | worker CPU pressure   | success  |
+| `submit_spin`          | `while True: pass`                  | 5s timeout + kill     | rejected |
+| `submit_security`      | `import os` / `eval(...)`           | AST reject in parent  | rejected |
+| `submit_runtime_error` | divide-by-zero in `__init__`        | child error path      | rejected |
+
+**The "failures" on `submit_spin` / `submit_security` / `submit_runtime_error`
+rows are EXPECTED** — those agents are supposed to be rejected. The locustfile
+counts the opposite (a bad agent that *validated*) as the failure. Read
+`submit_valid` (and `submit_slow`) for clean throughput/latency.
+
+Each spin agent holds a validator child slot for the full ~5s timeout, so even a
+small `W_SPIN` throttles everything behind the `_MAX_PROCS` semaphore — that's
+realistic backpressure. Set `W_SPIN=0` to reproduce the old pure-valid run.
+
+## CPU check (no core at 100%)
+
+The throughput number won't tell you if a killed agent leaked a runaway process.
+The signature of that bug is **residual CPU after the load stops**: the validator
+should fall back to idle. `monitor_cpu.sh` watches for exactly that.
+
+Local stack only (it reads `docker stats` on this host). In a second terminal:
+
+```bash
+cd backend/server_stress_test
+./monitor_cpu.sh            # Ctrl-C after the benchmark finishes for the verdict
+```
+
+It prints each container's peak CPU during the run and its idle CPU from the
+final samples, then a PASS/FAIL: a container still above the idle threshold (25%
+by default) once traffic stops ⇒ `FAIL` (likely a leaked spinner — confirm with
+`docker top <container>`). Knobs: `INTERVAL`, `IDLE_THRESHOLD`, `IDLE_SAMPLES`,
+`MATCH`.
+
 ## Safety gate
 
 The endpoint is **disabled by default**. It only works when the API process has
@@ -49,6 +93,11 @@ locust -f backend/server_stress_test/locust_greedy_pig.py \
 |-----|---------|---------|
 | `WAIT_MIN` / `WAIT_MAX` | `0` / `0` | per-user pause (s) between submissions; 0 = max throughput |
 | `NUM_SIMULATIONS` | `20` | sims per submission (20 = prod parity) |
+| `W_VALID` | `80` | weight of valid agents in the mix |
+| `W_SPIN` | `3` | weight of infinite-loop (timeout) agents; `0` = pure valid run |
+| `W_SLOW` | `7` | weight of heavy-but-legal agents (finish under the 5s cap) |
+| `W_SECURITY` | `5` | weight of AST-rejected agents (`import os` / `eval`) |
+| `W_RUNTIME` | `5` | weight of runtime-error agents (divide-by-zero) |
 
 ## Read the result (X req/min @ Y latency)
 

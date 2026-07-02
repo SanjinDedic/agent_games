@@ -183,7 +183,7 @@ class Submission(SQLModel, table=True):
     duration_ms: Optional[float] = Field(default=None)
     team: Team = Relationship(back_populates="submissions")
     hint_included: bool = Field(default=False)
-
+    passed_validation: bool = Field(default=True)
 
 # In backend/database/db_models.py
 

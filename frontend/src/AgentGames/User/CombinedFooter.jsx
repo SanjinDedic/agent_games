@@ -13,6 +13,8 @@ function CombinedFooter({
     onReset,
     onShowSubmissions,
     isLoading,
+    allowHint,
+    codeChangedSinceLastSubmit,
     isGeneratingHint,
     hasLastSubmission,
     hasStarterCode
@@ -36,13 +38,26 @@ function CombinedFooter({
               {isLoading ? "Processing..." : "Submit Code"}
             </button>
 
-            <button
-              onClick={onGetHint}
-              disabled={isLoading}
-              className="py-2 px-4 text-base font-medium text-white bg-success hover:bg-success-hover disabled:bg-ui-light rounded transition-colors"
-            >
-              {isGeneratingHint ? "Getting Hint..." : "Get Hint"}
-            </button>
+            { allowHint ?
+              <div className="relative group inline-block">
+                <button
+                  onClick={onGetHint}
+                  disabled={isLoading || codeChangedSinceLastSubmit}
+                  className="py-2 px-4 text-base font-medium text-white bg-success hover:bg-success-hover disabled:bg-ui-light rounded transition-colors"
+                >
+                  {isGeneratingHint ? "Getting Hint..." : "Get Hint"}
+                </button>
+		{codeChangedSinceLastSubmit && <div
+                  className="
+                    pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                    whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white
+                    opacity-0 transition-opacity group-hover:opacity-100
+                  "
+                >
+                  Your hint is only valid for your last submission
+                </div>}
+              </div> : null
+            }
 
             <button
               onClick={onLoadLast}

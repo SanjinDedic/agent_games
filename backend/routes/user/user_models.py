@@ -66,4 +66,5 @@ class AgentSubmitResponse(BaseModel):
     status: str
     message: str
     hint: Optional[Hint] = None
+    hint_available: bool = False
     data: Optional[dict] = None
