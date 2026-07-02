@@ -20,7 +20,7 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 
 ### Running the app
 ```bash
-# Development (starts api, validator, simulator, postgres, minio, frontend)
+# Development (starts api, valkey, celery workers, postgres, minio, frontend)
 # docker-compose.override.yml is applied automatically: it wraps the api in debugpy (port 5678)
 docker compose up -d
 
@@ -49,13 +49,13 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 
 ### Services (docker compose)
 - **API** (port 8000): Main FastAPI app — auth, league/team management, agent submission, AI hints, payments, support
-- **Validator** (port 8001): Validates submitted agent code before acceptance
-- **Simulator** (port 8002): Runs game simulations
+- **Valkey** (port 6379): Redis-compatible Celery broker + result backend (ephemeral, no persistence)
+- **worker-validation / worker-simulation**: Celery workers consuming the `validation` and `simulation` queues (separate containers so one queue's OOM can't kill the other's in-flight tasks)
 - **PostgreSQL** (port 5432): Single cluster hosting both `agent_games` and `agent_games_test` databases
 - **MinIO** (ports 9000/9001): Local S3-compatible storage for assets and support attachments (real S3 in production)
 - **Frontend** (port 3000): React SPA served by Vite
 
-The API calls Validator and Simulator via async HTTP (httpx). Submitted code executes inside the validator/simulator service containers, which run with compose-level resource limits (500MB RAM, 50 pids).
+The API enqueues Celery tasks (`validation.run`, `simulation.run`) and blocks on the result via `asyncio.to_thread(result.get)`. Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 8s hard time limit.
 
 ### Backend structure (`backend/`)
 - `api.py` — FastAPI entry point; mounts routers: auth, admin, institution, user, agent, demo, ai, diagnostics, support, payments
@@ -63,9 +63,9 @@ The API calls Validator and Simulator via async HTTP (httpx). Submitted code exe
 - `games/` — Game implementations extending `base_game.py`. Games are discovered dynamically: `backend/games/<name>/<name>.py` must define exactly one `BaseGame` subclass — no manual registration. Current games: `greedy_pig`, `prisoners_dilemma`, `lineup4`, `arena_champions`
 - `database/` — SQLModel ORM models (`db_models.py`), DB config (`db_config.py`), session management, `init_db.py` for schema setup
 - `migrations/` — dated SQL migrations for production schema changes (not used by tests)
-- `docker_utils/` — legacy validator/simulator service servers (slated for Celery migration)
-- `Dockerfile` — shared image for api/validator/simulator/test-runner (build context is repo root)
-- `config.py` — Central config: service URLs, dynamic game discovery (`GAMES`), league expiry settings, Stripe keys, secrets
+- `celery_app.py` — Celery app: broker config, queue routing, worker settings
+- `Dockerfile` — shared image for api/workers/test-runner (build context is repo root)
+- `config.py` — Central config: dynamic game discovery (`GAMES`), league expiry settings, Stripe keys, secrets
 
 Python dependencies are managed with uv (`pyproject.toml` / `uv.lock`), Python 3.14.
 
@@ -84,5 +84,5 @@ Each game extends `BaseGame` and implements match logic. `GameFactory` resolves 
 ### Testing
 - Tests run inside a Docker container via `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner`
 - Integration tests hit a real test database (`agent_games_test`) on the same Postgres instance — do not mock the database
-- Service URLs (validator, simulator, api) auto-resolve via `conftest.py` constants (`VALIDATOR_URL`, `SIMULATOR_URL`, `API_URL`) — use these instead of hardcoded localhost URLs
-- `DB_ENVIRONMENT=test` is set automatically in the test-runner container
+- Task-level tests enqueue to the real broker and real workers (never `task_always_eager` — time limits and process isolation don't fire eager); use the `celery_workers` fixture to fail fast when workers are down
+- `DB_ENVIRONMENT=test` is set automatically in the test-runner container (and on the workers via `docker-compose.test.yml`)

@@ -188,16 +188,11 @@ class GameFactory:
             raise ValueError(f"Unknown game: {game_name}")
 ```
 
-## 5. Docker Container Rebuild
-After adding files:
-1. Stop containers:
+## 5. Restart Services
+After adding files, restart the API and the Celery workers so they pick up the
+new game module:
 ```bash
-python -c "from backend.docker_utils.containers import stop_containers; stop_containers()"
-```
-
-2. Restart API server (containers will rebuild):
-```bash
-uvicorn backend.api:app --reload
+docker compose restart api worker-validation worker-simulation
 ```
 
 ## Notes
