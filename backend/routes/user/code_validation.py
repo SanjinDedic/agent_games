@@ -17,14 +17,26 @@ import traceback as tb
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 
-from celery.exceptions import SoftTimeLimitExceeded
+from billiard.exceptions import WorkerLostError
+from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
 from backend.celery_app import celery_app
+from backend.celery_utils import poll_task_result
 from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 
 # Universal hard cap for agent validation (single game + simulations).
 VALIDATION_TIMEOUT_SECONDS = 5
+
+# How long the API waits for a validation result before giving up (and killing
+# the task). Above the 6s hard task limit so a legitimately slow validation
+# still returns, but bounded so a queue backlog can't hang a request.
+VALIDATION_RESULT_TIMEOUT = 15
+
+# Drop a queued validation whose submitter has already stopped waiting, so a
+# flood of submissions cannot build an unbounded backlog that starves live ones
+# (the workers keep churning tasks nobody is waiting for otherwise).
+VALIDATION_TASK_EXPIRES = 20
 
 # Prefix-matched by hint_context.classify_outcome — do not reword. Shared by
 # the task's soft-limit handler and the routers' hard-kill fallback.
@@ -131,12 +143,60 @@ def timeout_validation_result() -> Dict[str, Any]:
     return _normalize({"status": "error", "message": TIMEOUT_MESSAGE})
 
 
+def enqueue_validation(
+    code: str,
+    game_name: str,
+    team_name: str,
+    num_simulations: int = 20,
+    custom_rewards: Optional[list] = None,
+):
+    """Enqueue a validation task that self-drops if it waits out its usefulness.
+
+    `expires` means a task still queued after VALIDATION_TASK_EXPIRES seconds is
+    discarded instead of run — the submitter has long since given up, so running
+    it would only burn a worker slot and deepen a backlog.
+    """
+    return run_validation.apply_async(
+        kwargs={
+            "code": code,
+            "game_name": game_name,
+            "team_name": team_name,
+            "num_simulations": num_simulations,
+            "custom_rewards": custom_rewards,
+        },
+        expires=VALIDATION_TASK_EXPIRES,
+    )
+
+
+async def await_validation_result(
+    async_result, timeout: float = VALIDATION_RESULT_TIMEOUT
+) -> Dict[str, Any]:
+    """Await a validation task and always return a normalized ValidationResponse.
+
+    Polls the result backend (no blocking .get(), no shared pubsub consumer to
+    corrupt under concurrency). A worker killed by the hard time limit (spin/CPU)
+    or by an OOM SIGKILL, and a task that outlives the caller's patience, all map
+    to the same user-facing "consumes too much time" failure — the job is
+    discarded (acks_late=False → never redelivered), not retried.
+    """
+    try:
+        return await poll_task_result(async_result, timeout)
+    except (TimeLimitExceeded, WorkerLostError, TimeoutError):
+        return timeout_validation_result()
+    except Exception as e:  # noqa: BLE001 - any task fault becomes a clean error
+        return _normalize(
+            {"status": "error", "message": f"Error during validation: {e}"}
+        )
+
+
 @celery_app.task(
     name="validation.run",
     soft_time_limit=VALIDATION_TIMEOUT_SECONDS,
-    # Hard SIGKILL backstop: SoftTimeLimitExceeded is a plain Exception, so an
-    # agent with a bare `except Exception` inside its loop can swallow it.
-    time_limit=8,
+    # Hard SIGKILL backstop, kept tight (1s past the soft limit): the game engine
+    # and agents with a bare `except Exception` swallow SoftTimeLimitExceeded, so
+    # only this hard kill reliably reaps a spinner — a wide gap just lets a
+    # runaway agent hold a worker core longer (CPU is the binding constraint).
+    time_limit=6,
 )
 def run_validation(
     code: str,
