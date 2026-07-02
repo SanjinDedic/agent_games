@@ -130,7 +130,7 @@ async def submit_agent(
 
         validation_result = response.json()
         
-        allow_hint = hint_available(session, team, validation_result)
+        allow_hint = hint_available(session, team)
 
         if generate_hint and not allow_hint:
             return AgentSubmitResponse(status="error", message="You are not allowed to request a hint right now")
