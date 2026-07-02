@@ -6,7 +6,7 @@ import httpx, logging
 from pydantic import ValidationError
 from sqlmodel import Session
 
-from backend.routes.ai.ai_db import get_stored_key, get_team_submissions_ordered
+from backend.routes.ai.ai_db import get_stored_key, get_team_attempts_ordered
 from backend.routes.ai.hint_prompt import SYSTEM_PROMPT
 from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.ai.ai_models import HintResponse, Hint
@@ -110,7 +110,7 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
 # WARNING: This function, if it returns True, must return True again if the same code is resubmitted.
 # This means that this function must be deterministic. And only depend on data from the last hint generated
 def hint_available(session: Session, team: Team) -> bool:
-    all_subs = get_team_submissions_ordered(session, team.id, only_validated=False)
+    all_subs = get_team_attempts_ordered(session, team.id)
 
     if not all_subs:
         return False
