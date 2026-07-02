@@ -100,29 +100,21 @@ def test_run_simulation_success(client, simulation_setup, db_session):
     """Test successful simulation execution"""
     institution, league, team, _, headers = simulation_setup
     
-    # Need to patch the Docker API call to avoid actual Docker calls
-    with patch("httpx.AsyncClient.post") as mock_post:
-        # Setup mock response
-        mock_response = type('MockResponse', (), {
-            'status_code': 200,
-            'json': lambda self: {
-                "status": "success",
-                "simulation_results": {
-                    "total_points": {team.name: 100},
-                    "num_simulations": 10,
-                    "table": {"wins": {team.name: 5}, "defections": {team.name: 2}, "collusions": {team.name: 8}},
-                },
-                "feedback": "Test feedback",
-                "player_feedback": {"test_player": "feedback"},
-            }
-        })()
-        
-        # Make the mock post return an awaitable that returns the mock response
-        async def mock_post_async(*args, **kwargs):
-            return mock_response
-        
-        mock_post.side_effect = mock_post_async
-        
+    # Patch the Celery task so no worker round-trip happens
+    with patch("backend.routes.institution.institution_router.run_simulation") as mock_task:
+        # .get is a plain sync callable — the router runs it via asyncio.to_thread
+        mock_task.delay.return_value.get.return_value = {
+            "status": "success",
+            "simulation_results": {
+                "total_points": {team.name: 100},
+                "num_simulations": 10,
+                "table": {"wins": {team.name: 5}, "defections": {team.name: 2}, "collusions": {team.name: 8}},
+            },
+            "feedback": "Test feedback",
+            "player_feedback": {"test_player": "feedback"},
+        }
+
+
         # Test basic simulation
         response = client.post(
             "/institution/run-simulation",

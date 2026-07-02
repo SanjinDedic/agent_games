@@ -22,16 +22,22 @@ async def test_status_success():
 
         # Mock service status data
         mock_statuses = {
-            "validator": {
-                "name": "validator",
+            "valkey": {
+                "name": "valkey",
                 "status": "running",
-                "health": "Service validator is healthy (HTTP 200)",
+                "health": "Broker connection OK",
                 "is_healthy": True,
             },
-            "simulator": {
-                "name": "simulator",
+            "validation-worker": {
+                "name": "validation-worker",
                 "status": "running",
-                "health": "Service simulator is healthy (HTTP 200)",
+                "health": "Worker validation@host responded to ping",
+                "is_healthy": True,
+            },
+            "simulation-worker": {
+                "name": "simulation-worker",
+                "status": "running",
+                "health": "Worker simulation@host responded to ping",
                 "is_healthy": True,
             },
         }

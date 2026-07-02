@@ -1,0 +1,193 @@
+from datetime import datetime, timedelta
+
+import pytest
+from celery.exceptions import TimeLimitExceeded
+from sqlmodel import Session
+
+from backend.database.db_models import League, Team
+from backend.games.simulation_task import run_simulation
+from backend.routes.user.code_validation import (
+    run_validation,
+    timeout_validation_result,
+    validate_code,
+)
+
+
+@pytest.fixture
+def test_league(db_session: Session) -> League:
+    """Create a test league for Celery task tests"""
+    league = League(
+        name="celery_test_league",
+        game="prisoners_dilemma",
+        created_date=datetime.now(),
+        expiry_date=datetime.now() + timedelta(days=7),
+    )
+    db_session.add(league)
+    db_session.commit()
+    db_session.refresh(league)
+    return league
+
+
+@pytest.fixture
+def test_team(db_session: Session, test_league: League) -> Team:
+    """Create a test team for Celery task tests"""
+    team = Team(
+        name="celery_test_team",
+        school_name="Celery Test School",
+        password_hash="test_hash",
+        league_id=test_league.id,
+    )
+    db_session.add(team)
+    db_session.commit()
+    db_session.refresh(team)
+    return team
+
+
+def test_validation_workflow(celery_workers, test_team: Team):
+    """Security rejection happens API-side; valid code succeeds via the task."""
+
+    # 1. Invalid code with security violation never reaches the worker
+    invalid_security_code = """
+from games.prisoners_dilemma.player import Player
+import os  # Unauthorized import
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        os.system('echo "hack"')
+        return "collude"
+"""
+    is_safe, message = validate_code(invalid_security_code)
+    assert not is_safe
+    assert "unauthorized" in message.lower()
+
+    # 2. Valid code runs through the validation task
+    valid_code = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+    result = run_validation.delay(
+        code=valid_code,
+        game_name="prisoners_dilemma",
+        team_name=test_team.name,
+        num_simulations=10,
+    ).get(timeout=20)
+    assert result["status"] == "success"
+    assert "simulation_results" in result
+
+
+def test_simulation_workflow(celery_workers, test_league: League):
+    """Basic and custom-rewards simulations through the task."""
+    result = run_simulation.delay(
+        league_id=test_league.id,
+        game_name="prisoners_dilemma",
+        num_simulations=10,
+    ).get(timeout=60)
+    assert result["status"] == "success"
+    assert "simulation_results" in result
+
+    result = run_simulation.delay(
+        league_id=test_league.id,
+        game_name="prisoners_dilemma",
+        num_simulations=10,
+        custom_rewards=[10, 5, 3, 0],
+    ).get(timeout=60)
+    assert result["status"] == "success"
+
+
+def test_validation_timeout(celery_workers):
+    """An agent stuck in a loop is hard-killed by the task time_limit.
+
+    The soft limit's SoftTimeLimitExceeded is swallowed by the game engine's
+    `except Exception` around agent calls, so the hard SIGKILL backstop fires
+    and .get() raises TimeLimitExceeded. Routers map that to the canonical
+    timeout message (see test below).
+    """
+    timeout_code = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        while True:
+            pass
+"""
+    with pytest.raises(TimeLimitExceeded):
+        run_validation.delay(
+            code=timeout_code,
+            game_name="prisoners_dilemma",
+            team_name="timeout_team",
+            num_simulations=10,
+        ).get(timeout=15)
+
+
+def test_validation_timeout_result_shape():
+    """The hard-kill fallback dict carries the exact prefix-matched message."""
+    result = timeout_validation_result()
+    assert result["status"] == "error"
+    assert result["message"].startswith("Your agent consumes too much time")
+    assert set(result) == {
+        "status",
+        "message",
+        "feedback",
+        "simulation_results",
+        "duration_ms",
+        "traceback",
+        "stdout",
+    }
+
+
+def test_task_isolation(celery_workers):
+    """A fresh process per task (worker_max_tasks_per_child=1) means one
+    agent's monkeypatching of games.* cannot leak into a later validation."""
+    contaminating_code = """
+from games.prisoners_dilemma.player import Player
+
+Player.contaminated = True
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+    probe_code = """
+from games.prisoners_dilemma.player import Player
+
+print("CONTAMINATED" if getattr(Player, "contaminated", False) else "CLEAN")
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+    result = run_validation.delay(
+        code=contaminating_code,
+        game_name="prisoners_dilemma",
+        team_name="dirty_team",
+        num_simulations=5,
+    ).get(timeout=20)
+    assert result["status"] == "success"
+
+    result = run_validation.delay(
+        code=probe_code,
+        game_name="prisoners_dilemma",
+        team_name="clean_team",
+        num_simulations=5,
+    ).get(timeout=20)
+    assert result["status"] == "success"
+    assert "CLEAN" in (result.get("stdout") or "")
+    assert "CONTAMINATED" not in (result.get("stdout") or "")
+
+
+def test_concurrent_simulations(celery_workers, test_league: League):
+    """Multiple queued simulations all complete."""
+    async_results = [
+        run_simulation.delay(
+            league_id=test_league.id,
+            game_name="prisoners_dilemma",
+            num_simulations=10,
+        )
+        for _ in range(5)
+    ]
+    for async_result in async_results:
+        result = async_result.get(timeout=120)
+        assert result["status"] == "success"
