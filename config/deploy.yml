@@ -8,7 +8,7 @@ servers:
       - api.agentgames.io
     options:
       hostname: api
-      memory: 400m
+      memory: 300m
       pids-limit: 50
 
   worker-validation:
@@ -18,7 +18,7 @@ servers:
     proxy: false
     options:
       hostname: worker-validation
-      memory: 600m
+      memory: 800m
       pids-limit: 50
 
   worker-simulation:

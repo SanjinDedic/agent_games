@@ -102,8 +102,11 @@ def test_run_simulation_success(client, simulation_setup, db_session):
     
     # Patch the Celery task so no worker round-trip happens
     with patch("backend.routes.institution.institution_router.run_simulation") as mock_task:
-        # .get is a plain sync callable — the router runs it via asyncio.to_thread
-        mock_task.delay.return_value.get.return_value = {
+        # The router awaits poll_task_result, which reads ready()/successful()/.result
+        mock_async = mock_task.delay.return_value
+        mock_async.ready.return_value = True
+        mock_async.successful.return_value = True
+        mock_async.result = {
             "status": "success",
             "simulation_results": {
                 "total_points": {team.name: 100},
