@@ -143,11 +143,19 @@ async def submit_agent(
                 logger.info(f"Generated hints: {hints}")
     
                 hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
-
-                allow_hint = False
             except Exception as e:
                 logger.error(f"Error or timeout during hint generation {e}")
                 return AgentSubmitResponse(status="error", message=f"An error occured during hint generation: {str(e)}")
+
+            if hint is None:
+                # No submission is recorded on this path, so the hint attempt isn't consumed
+                return AgentSubmitResponse(
+                    status="error",
+                    message="LLM provider failed to generate a valid hint",
+                    hint_available=allow_hint,
+                )
+
+            allow_hint = False
 
         if validation_result.get("status") == "error":
             duration_ms = validation_result.get("duration_ms")
@@ -161,6 +169,7 @@ async def submit_agent(
             return AgentSubmitResponse(
                 status="error",
                 message=validation_result.get("message", "Code validation failed"),
+                hint=hint,
                 hint_available=allow_hint
             )
 
