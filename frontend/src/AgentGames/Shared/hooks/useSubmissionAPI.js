@@ -163,14 +163,14 @@ export const useSubmissionAPI = () => {
           output: data.data.results,
           feedback: data.data.feedback,
           hint: data.hint ?? null,
-          hint_avaliable: data.hint_avaliable ?? false
+          hint_available: data.hint_available ?? false
         };
       } else {
         toast.error(data.message || "Error in submission");
         return { 
           success: false, 
           error: data.message,
-          hint_avaliable: data.hint_avaliable ?? false
+          hint_available: data.hint_available ?? false
         };
       }
     } catch (error) {
