@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
+from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (Institution, League, SimulationResult,
-                                        Submission, Team)
+                                        Team)
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -39,7 +39,8 @@ def create_test_league_with_teams(db_session: Session, institution_id: int) -> L
         teams.append(team)
 
         # Add a simple valid submission for each team
-        submission = Submission(
+        add_submission(
+            db_session,
             code=f"""
 from games.prisoners_dilemma.player import Player
 class CustomPlayer(Player):
@@ -49,7 +50,6 @@ class CustomPlayer(Player):
             timestamp=datetime.now(),
             team_id=team.id,
         )
-        db_session.add(submission)
 
     db_session.commit()
     return league

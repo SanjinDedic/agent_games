@@ -18,6 +18,7 @@ from backend.database.db_models import (
     League,
     LeagueType,
     Submission,
+    SubmissionMetadata,
     Team,
     TeamType,
 )
@@ -364,6 +365,53 @@ def make_ai_agent_token(team: Team, minutes: int = 30) -> str:
     )
 
 
+def add_submission(
+    session,
+    *,
+    code: str,
+    timestamp: datetime,
+    team_id: int,
+    league_id: int = None,
+    duration_ms: float = None,
+    hint_included: bool = False,
+) -> Submission:
+    """Create the metadata + code-row pair for a VALIDATED submission.
+
+    Does not commit; save-update cascade inserts the metadata row with the code row.
+    """
+    meta = SubmissionMetadata(
+        team_id=team_id,
+        league_id=league_id,
+        timestamp=timestamp,
+        duration_ms=duration_ms,
+        hint_included=hint_included,
+    )
+    sub = Submission(code=code, timestamp=timestamp, meta=meta)
+    session.add(sub)
+    return sub
+
+
+def add_failed_submission(
+    session,
+    *,
+    timestamp: datetime,
+    team_id: int,
+    league_id: int = None,
+    duration_ms: float = None,
+    hint_included: bool = False,
+) -> SubmissionMetadata:
+    """Create a metadata-only row for an attempt that failed validation."""
+    meta = SubmissionMetadata(
+        team_id=team_id,
+        league_id=league_id,
+        timestamp=timestamp,
+        duration_ms=duration_ms,
+        hint_included=hint_included,
+    )
+    session.add(meta)
+    return meta
+
+
 @pytest.fixture
 def auth_headers(admin_token) -> dict:
     """Return headers with admin authentication"""
@@ -428,12 +476,12 @@ def setup_demo_data(db_session: Session) -> None:
 
             # Add submissions for each team
             for j in range(3):
-                submission = Submission(
+                add_submission(
+                    db_session,
                     code=f"Demo code {j} for team {i}",
                     timestamp=datetime.now() - timedelta(minutes=j),
                     team_id=team.id,
                 )
-                db_session.add(submission)
 
     db_session.commit()
 

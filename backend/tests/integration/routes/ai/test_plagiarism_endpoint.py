@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session
 
-from backend.tests.conftest import build_institution
+from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (
     AIProviderKey,
     Institution,
     League,
-    Submission,
     Team,
 )
+from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -107,12 +107,11 @@ def institution_setup(db_session: Session):
         "def foo():\n    return 1\n",
         "def foo():\n    return 2  # fixed\n",
     ]):
-        db_session.add(
-            Submission(
-                code=code,
-                timestamp=base_ts + timedelta(minutes=i * 5),
-                team_id=team.id,
-            )
+        add_submission(
+            db_session,
+            code=code,
+            timestamp=base_ts + timedelta(minutes=i * 5),
+            team_id=team.id,
         )
     db_session.commit()
 
@@ -231,12 +230,7 @@ def test_assess_no_submissions(
     """Team with zero submissions → error."""
     institution, league, team, headers = institution_setup
     # Remove all existing submissions for the team.
-    from sqlmodel import select
-    subs = db_session.exec(
-        select(Submission).where(Submission.team_id == team.id)
-    ).all()
-    for s in subs:
-        db_session.delete(s)
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     response = client.post(
@@ -284,12 +278,20 @@ def test_assess_single_submission_progression_not_applicable(
 ):
     """Single submission → LLM returns not_applicable progression."""
     institution, league, team, headers = institution_setup
-    # Delete one of the two submissions so only one remains.
+    # Delete one of the two code rows so only one validated submission remains.
     from sqlmodel import select
+
+    from backend.database.db_models import Submission, SubmissionMetadata
+
     subs = db_session.exec(
-        select(Submission).where(Submission.team_id == team.id)
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team.id)
+        .order_by(Submission.timestamp.asc())
     ).all()
+    meta = subs[1].meta
     db_session.delete(subs[1])
+    db_session.delete(meta)
     db_session.commit()
 
     single_verdict = _valid_llm_verdict_json()
@@ -323,12 +325,11 @@ def test_assess_sampling_when_over_ten_submissions(
     # Add 13 more submissions (starts with 2).
     base_ts = datetime.now(timezone.utc)
     for i in range(13):
-        db_session.add(
-            Submission(
-                code=f"def foo():\n    return {i}\n",
-                timestamp=base_ts + timedelta(hours=i + 10),
-                team_id=team.id,
-            )
+        add_submission(
+            db_session,
+            code=f"def foo():\n    return {i}\n",
+            timestamp=base_ts + timedelta(hours=i + 10),
+            team_id=team.id,
         )
     db_session.commit()
 
@@ -495,19 +496,16 @@ def test_assess_deterministic_flag_over_likely_threshold(
     regardless of the LLM verdict, and must be included in deterministic_flag_summary."""
     institution, league, team, headers = institution_setup
     # Wipe existing submissions and create a pair: 2000 chars added in 10 seconds = 200 cps.
-    from sqlmodel import select
-    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
-        db_session.delete(s)
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     base = datetime.now(timezone.utc)
-    db_session.add(Submission(code="x", timestamp=base, team_id=team.id))
-    db_session.add(
-        Submission(
-            code="y" * 2000,
-            timestamp=base + timedelta(seconds=10),
-            team_id=team.id,
-        )
+    add_submission(db_session, code="x", timestamp=base, team_id=team.id)
+    add_submission(
+        db_session,
+        code="y" * 2000,
+        timestamp=base + timedelta(seconds=10),
+        team_id=team.id,
     )
     db_session.commit()
 
@@ -538,20 +536,17 @@ def test_assess_deterministic_flag_between_4_and_6(
 ):
     """Delta in the probable-plagiarism range (4 < cps <= 6)."""
     institution, league, team, headers = institution_setup
-    from sqlmodel import select
-    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
-        db_session.delete(s)
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     base = datetime.now(timezone.utc)
     # 500 chars in 100 seconds = 5 cps → probable
-    db_session.add(Submission(code="x", timestamp=base, team_id=team.id))
-    db_session.add(
-        Submission(
-            code="y" * 500,
-            timestamp=base + timedelta(seconds=100),
-            team_id=team.id,
-        )
+    add_submission(db_session, code="x", timestamp=base, team_id=team.id)
+    add_submission(
+        db_session,
+        code="y" * 500,
+        timestamp=base + timedelta(seconds=100),
+        team_id=team.id,
     )
     db_session.commit()
 
@@ -602,19 +597,16 @@ def test_assess_deterministic_summary_sent_to_llm(
 ):
     """The deterministic_flag_summary must be included in the outbound LLM payload."""
     institution, league, team, headers = institution_setup
-    from sqlmodel import select
-    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
-        db_session.delete(s)
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     base = datetime.now(timezone.utc)
-    db_session.add(Submission(code="x", timestamp=base, team_id=team.id))
-    db_session.add(
-        Submission(
-            code="y" * 2000,
-            timestamp=base + timedelta(seconds=10),
-            team_id=team.id,
-        )
+    add_submission(db_session, code="x", timestamp=base, team_id=team.id)
+    add_submission(
+        db_session,
+        code="y" * 2000,
+        timestamp=base + timedelta(seconds=10),
+        team_id=team.id,
     )
     db_session.commit()
 
@@ -662,9 +654,7 @@ def test_assess_ast_construct_counts(
 ):
     """AST construct counts should increase when code grows more complex."""
     institution, league, team, headers = institution_setup
-    from sqlmodel import select
-    for s in db_session.exec(select(Submission).where(Submission.team_id == team.id)).all():
-        db_session.delete(s)
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     base = datetime.now(timezone.utc)
@@ -675,9 +665,9 @@ def test_assess_ast_construct_counts(
         "    def bar(self):\n        pass\n"
         "    def baz(self):\n        return [i for i in range(10)]\n"
     )
-    db_session.add(Submission(code=simple, timestamp=base, team_id=team.id))
-    db_session.add(
-        Submission(code=complex_code, timestamp=base + timedelta(hours=1), team_id=team.id)
+    add_submission(db_session, code=simple, timestamp=base, team_id=team.id)
+    add_submission(
+        db_session, code=complex_code, timestamp=base + timedelta(hours=1), team_id=team.id
     )
     db_session.commit()
 

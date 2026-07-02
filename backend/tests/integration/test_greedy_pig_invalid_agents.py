@@ -1,35 +1,37 @@
 """Integration test: only validated agents reach a greedy_pig simulation.
 
 Seven teams join a greedy_pig league: two valid strategies and five invalid
-agents the validator rejects (stored with passed_validation=False). The test
-passes only if exactly the two valid teams play against each other.
+agents the validator rejects (recorded as a SubmissionMetadata attempt with NO
+linked Submission code row). The test passes only if exactly the two valid
+teams play against each other.
 
 The five invalid agents fall into two groups, on purpose:
 
 1. Security violations (unauthorized imports, unauthorized `eval`). These would
    *load and play fine in the simulator if they ever reached it* — the
    simulator's add_player runs exec() with no AST security check. So the ONLY
-   thing keeping them out is get_latest_submissions_for_league honouring
-   passed_validation. These make the test sensitive to that filter: invert or
-   drop it and these agents leak into the run and show up in total_points.
+   thing keeping them out is that failed attempts never get a Submission code
+   row, so get_latest_submissions_for_league cannot see them. These make the
+   test sensitive to the write path: store failed code in Submission and these
+   agents leak into the run and show up in total_points.
 
 2. Runtime faults (infinite loop / timeout, divide-by-zero on construction).
-   These are *also* caught downstream — the submit endpoint times out before
-   saving the loop agent, and the simulator's add_player drops the div-by-zero
-   agent when construction raises (the game swallows exceptions inside
-   make_decision, so the fault must surface before the game loop). They don't
-   exercise the filter, but they assert the whole pipeline rejects every flavor
-   of bad agent.
+   These are *also* caught downstream — the validator kills the runaway loop
+   agent after its hard timeout and reports failure, and the simulator's
+   add_player drops the div-by-zero agent when construction raises (the game
+   swallows exceptions inside make_decision, so the fault must surface before
+   the game loop). They don't exercise the filter, but they assert the whole
+   pipeline rejects every flavor of bad agent.
 
-NOTE: the infinite-loop agent costs ~20s here — the submit endpoint waits out
-its HTTP timeout to the validator before returning an error.
+NOTE: the infinite-loop agent is the slowest submission here — it waits out the
+validator's hard timeout before the error comes back.
 """
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.database.db_models import League, Team
+from backend.database.db_models import League, Submission, SubmissionMetadata, Team
 from backend.tests.conftest import make_student_token
 
 
@@ -57,8 +59,8 @@ class CustomPlayer(Player):
 """
 
 # Three agents the validator rejects at the AST stage. Each would otherwise be a
-# perfectly loadable, playable greedy_pig player, so only passed_validation can
-# keep them out of the simulation.
+# perfectly loadable, playable greedy_pig player, so only the absence of a
+# Submission code row can keep them out of the simulation.
 
 # Unauthorized import (module-level).
 INVALID_IMPORT_OS = """
@@ -90,7 +92,7 @@ class CustomPlayer(Player):
 """
 
 # Infinite loop: never returns. The validator kills the runaway child after its
-# hard timeout; the submit endpoint then times out and never saves a row.
+# hard timeout and reports a validation failure.
 INVALID_TIMEOUT = """
 from games.greedy_pig.player import Player
 
@@ -164,10 +166,13 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
         "invalid_divide_by_zero": INVALID_DIVIDE_BY_ZERO,
     }
 
-    # 1. Five teams submit code through the real validator. The invalid agents
-    #    are rejected but still persisted with passed_validation=False.
+    # 1. Seven teams submit code through the real validator. Invalid agents are
+    #    rejected: their attempt is recorded in SubmissionMetadata but no
+    #    Submission code row is written.
+    teams_by_name = {}
     for name, code in {**valid_teams, **invalid_teams}.items():
         team = _make_team(db_session, greedy_pig_league, name)
+        teams_by_name[name] = team
         response = _submit(client, team, code)
         assert response.status_code == 200
         status = response.json()["status"]
@@ -175,6 +180,23 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
             assert status == "success", f"{name} should pass validation: {response.json()}"
         else:
             assert status == "error", f"{name} should fail validation: {response.json()}"
+
+    # 1b. DB-level invariants of the split write path.
+    for name, team in teams_by_name.items():
+        attempts = db_session.exec(
+            select(SubmissionMetadata).where(SubmissionMetadata.team_id == team.id)
+        ).all()
+        code_rows = db_session.exec(
+            select(Submission)
+            .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+            .where(SubmissionMetadata.team_id == team.id)
+        ).all()
+        if name in valid_teams:
+            assert len(attempts) == 1, f"{name}: expected one recorded attempt"
+            assert len(code_rows) == 1, f"{name}: expected one stored code row"
+        else:
+            assert len(attempts) == 1, f"{name}: failed attempt should be recorded"
+            assert len(code_rows) == 0, f"{name}: failed code must NOT be stored"
 
     # 2. Run the simulation as admin (Admin Institution owns the seeded league).
     sim_response = client.post(
@@ -186,8 +208,8 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
     sim_data = sim_response.json()
     assert sim_data["status"] == "success", sim_data
 
-    # 3. Only the two validated teams should have played. If the
-    #    passed_validation filter is broken, the rejected agents (which load and
+    # 3. Only the two validated teams should have played. If failed code ever
+    #    gets a Submission row again, the rejected agents (which load and
     #    play fine) leak in and this assertion fails.
     total_points = sim_data["data"]["total_points"]
     assert set(total_points.keys()) == set(valid_teams), (

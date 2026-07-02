@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, delete, select
 
-from backend.tests.conftest import build_institution
-from backend.database.db_models import Institution, League, Submission, Team
+from backend.tests.conftest import add_submission, build_institution
+from backend.database.db_models import Institution, League, Team
+from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_submission_history
 from backend.tests.conftest import make_student_token
@@ -83,23 +84,24 @@ def team_token(team: Team) -> str:
 def test_get_team_submission_history_returns_newest_first(
     db_session: Session, team: Team
 ):
-    db_session.exec(delete(Submission).where(Submission.team_id == team.id))
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     base = datetime.now()
-    s1 = Submission(code="old", timestamp=base, team_id=team.id, duration_ms=12.0)
-    s2 = Submission(
+    add_submission(db_session, code="old", timestamp=base, team_id=team.id, duration_ms=12.0)
+    add_submission(
+        db_session,
         code="newer",
         timestamp=base + timedelta(minutes=1),
         team_id=team.id,
         duration_ms=34.5,
     )
-    s3 = Submission(
+    add_submission(
+        db_session,
         code="newest",
         timestamp=base + timedelta(minutes=2),
         team_id=team.id,
     )
-    db_session.add_all([s1, s2, s3])
     db_session.commit()
 
     history = get_team_submission_history(db_session, team.id)
@@ -117,7 +119,7 @@ def test_get_team_submission_history_no_team(db_session: Session):
 
 
 def test_get_team_submission_history_empty(db_session: Session, team: Team):
-    db_session.exec(delete(Submission).where(Submission.team_id == team.id))
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
     assert get_team_submission_history(db_session, team.id) == []
 
@@ -130,20 +132,17 @@ def test_get_team_submission_history_empty(db_session: Session, team: Team):
 def test_get_team_submissions_success(
     client, db_session: Session, team_token: str, team: Team
 ):
-    db_session.exec(delete(Submission).where(Submission.team_id == team.id))
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     base = datetime.now()
-    db_session.add_all(
-        [
-            Submission(code="v1", timestamp=base, team_id=team.id, duration_ms=10.0),
-            Submission(
-                code="v2",
-                timestamp=base + timedelta(minutes=1),
-                team_id=team.id,
-                duration_ms=20.0,
-            ),
-        ]
+    add_submission(db_session, code="v1", timestamp=base, team_id=team.id, duration_ms=10.0)
+    add_submission(
+        db_session,
+        code="v2",
+        timestamp=base + timedelta(minutes=1),
+        team_id=team.id,
+        duration_ms=20.0,
     )
     db_session.commit()
 
@@ -167,7 +166,7 @@ def test_get_team_submissions_success(
 def test_get_team_submissions_empty_for_team_with_no_submissions(
     client, db_session: Session, team_token: str, team: Team
 ):
-    db_session.exec(delete(Submission).where(Submission.team_id == team.id))
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     response = client.get(

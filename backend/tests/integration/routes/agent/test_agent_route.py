@@ -6,8 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.database.db_models import AgentAPIKey, League, Team, TeamType, Submission
+from backend.database.db_models import AgentAPIKey, League, Team, TeamType
 from backend.routes.auth.auth_core import create_access_token
+from backend.tests.conftest import add_submission
 
 from unittest.mock import patch
 
@@ -73,13 +74,12 @@ def make_move(my_history, opponent_history, my_score, opponent_score):
 
     for team in player_teams:
         db_session.refresh(team)
-        submission = Submission(
+        add_submission(
+            db_session,
             team_id=team.id,
             code=lineup4_code,
-            submission_time=datetime.now(),
-            is_valid=True,
+            timestamp=datetime.now(),
         )
-        db_session.add(submission)
 
     db_session.commit()
     return player_teams

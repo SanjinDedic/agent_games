@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
-from backend.database.db_models import Institution, League, Submission, Team
+from backend.tests.conftest import add_submission, build_institution
+from backend.database.db_models import Institution, League, Submission, SubmissionMetadata, Team
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -50,12 +50,12 @@ def institution_setup(db_session: Session) -> tuple:
     db_session.refresh(team)
     
     # Add a submission for the team
-    submission = Submission(
+    add_submission(
+        db_session,
         code="test code",
         timestamp=datetime.now(),
         team_id=team.id,
     )
-    db_session.add(submission)
     db_session.commit()
     
     # Create token
@@ -100,11 +100,17 @@ def test_delete_team_success(client, institution_setup, db_session):
     ).first()
     assert deleted_team is None
     
-    # Verify submissions were deleted
-    submissions = db_session.exec(
-        select(Submission).where(Submission.team_id == team.id)
+    # Verify submissions were deleted (metadata and code rows)
+    attempts = db_session.exec(
+        select(SubmissionMetadata).where(SubmissionMetadata.team_id == team.id)
     ).all()
-    assert len(submissions) == 0
+    assert len(attempts) == 0
+    orphaned_code = db_session.exec(
+        select(Submission).where(
+            ~Submission.metadata_id.in_(select(SubmissionMetadata.id))
+        )
+    ).all()
+    assert len(orphaned_code) == 0
 
 
 def test_delete_team_failures(client, institution_setup, db_session):

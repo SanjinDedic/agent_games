@@ -11,10 +11,13 @@ from backend.database.db_models import (
     League,
     LeagueType,
     Submission,
+    SubmissionMetadata,
     Team,
     TeamType,
     get_password_hash,
 )
+from backend.database.submission_helpers import delete_submissions_for_teams
+from backend.tests.conftest import add_submission
 from backend.routes.demo.demo_db import (
     assign_user_to_demo_league,
     cleanup_expired_demo_users,
@@ -79,20 +82,20 @@ def demo_setup(db_session: Session) -> dict:
     db_session.refresh(old_team)
 
     # Old submission
-    old_sub = Submission(
+    add_submission(
+        db_session,
         code="# old submission",
         timestamp=now - timedelta(hours=2),
         team_id=old_team.id,
     )
-    db_session.add(old_sub)
 
     # Recent submission
-    recent_sub = Submission(
+    add_submission(
+        db_session,
         code="# recent submission",
         timestamp=now - timedelta(minutes=5),
         team_id=old_team.id,
     )
-    db_session.add(recent_sub)
     db_session.commit()
 
     return {
@@ -111,7 +114,9 @@ def test_cleanup_old_demo_submissions(db_session, demo_setup):
 
     # Recent submission should still exist
     remaining = db_session.exec(
-        select(Submission).where(Submission.team_id == demo_setup["old_team"].id)
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == demo_setup["old_team"].id)
     ).all()
     assert len(remaining) >= 1
     assert any("recent" in s.code for s in remaining)
@@ -121,10 +126,8 @@ def test_cleanup_old_demo_submissions_no_teams(db_session):
     """Returns 0 when no demo teams exist (already cleaned up)."""
     # Delete all demo teams first
     demo_teams = db_session.exec(select(Team).where(Team.is_demo == True)).all()
+    delete_submissions_for_teams(db_session, [t.id for t in demo_teams])
     for t in demo_teams:
-        db_session.exec(
-            Submission.__table__.delete().where(Submission.team_id == t.id)
-        )
         db_session.delete(t)
     db_session.commit()
 

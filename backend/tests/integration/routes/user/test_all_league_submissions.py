@@ -5,11 +5,10 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
+from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (
     Institution,
     League,
-    Submission,
     Team,
     TeamType,
 )
@@ -52,11 +51,12 @@ def league_with_submissions(db_session: Session) -> dict:
         # Add 3 submissions per team with ascending timestamps
         base_time = datetime.now() - timedelta(hours=3)
         for j in range(3):
-            db_session.add(Submission(
+            add_submission(
+                db_session,
                 code=f"# submission {j} for team {i}",
                 timestamp=base_time + timedelta(hours=j),
                 team_id=team.id,
-            ))
+            )
     db_session.commit()
 
     # Empty league (no teams)
@@ -264,12 +264,11 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
     db_session.commit()
     db_session.refresh(b_team)
 
-    db_session.add(
-        Submission(
-            code="# secret code",
-            timestamp=datetime.now(),
-            team_id=b_team.id,
-        )
+    add_submission(
+        db_session,
+        code="# secret code",
+        timestamp=datetime.now(),
+        team_id=b_team.id,
     )
     db_session.commit()
 

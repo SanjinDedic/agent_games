@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
+from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (
     AgentAPIKey,
     Institution,
@@ -84,13 +84,13 @@ def seeded_institution(db_session: Session) -> Institution:
     db_session.refresh(student_team)
     db_session.refresh(agent_team)
 
-    sub = Submission(
+    add_submission(
+        db_session,
         code="print('hello')",
         timestamp=now,
         team_id=student_team.id,
         duration_ms=10.5,
     )
-    db_session.add(sub)
 
     sim_result = SimulationResult(
         league_id=other_league.id,
