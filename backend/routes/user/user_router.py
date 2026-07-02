@@ -44,6 +44,7 @@ from backend.routes.user.user_db import (
     get_team_by_id,
     get_team_submission,
     get_team_submission_history,
+    record_failed_submission,
     save_submission,
     get_result_by_publish_link,
 )
@@ -142,26 +143,33 @@ async def submit_agent(
                 logger.info(f"Generated hints: {hints}")
     
                 hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
-
-                allow_hint = False
             except Exception as e:
                 logger.error(f"Error or timeout during hint generation {e}")
                 return AgentSubmitResponse(status="error", message=f"An error occured during hint generation: {str(e)}")
 
+            if hint is None:
+                # No submission is recorded on this path, so the hint attempt isn't consumed
+                return AgentSubmitResponse(
+                    status="error",
+                    message="LLM provider failed to generate a valid hint",
+                    hint_available=allow_hint,
+                )
+
+            allow_hint = False
+
         if validation_result.get("status") == "error":
             duration_ms = validation_result.get("duration_ms")
-            submission_id = save_submission(
+            record_failed_submission(
                 session,
-                submission.code,
                 team.id,
                 league_id=team.league_id,
                 duration_ms=duration_ms,
                 hint_included=generate_hint,
-                passed_validation=False
             )
             return AgentSubmitResponse(
                 status="error",
                 message=validation_result.get("message", "Code validation failed"),
+                hint=hint,
                 hint_available=allow_hint
             )
 
@@ -180,7 +188,6 @@ async def submit_agent(
             league_id=team.league_id,
             duration_ms=duration_ms,
             hint_included=generate_hint,
-            passed_validation=True
         )
         return AgentSubmitResponse(
             status="success",
@@ -393,7 +400,6 @@ async def get_league_submissions(
     league_id: int,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
-    only_validated: bool = True
 ):
     """Get latest submissions for all teams in a league.
 
@@ -420,7 +426,7 @@ async def get_league_submissions(
             )
 
     try:
-        submissions = get_latest_submissions_for_league(session, league_id, only_validated)
+        submissions = get_latest_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="Submissions retrieved successfully",
@@ -439,7 +445,6 @@ async def get_all_league_submissions(
     league_id: int,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
-    only_validated: bool = True
 ):
     """Get all submissions for all teams in a league with timestamps.
 
@@ -469,7 +474,7 @@ async def get_all_league_submissions(
                 message="You don't have permission to access this league",
             )
 
-        result = get_all_submissions_for_league(session, league_id, only_validated)
+        result = get_all_submissions_for_league(session, league_id)
         return ResponseModel(
             status="success",
             message="All submissions retrieved successfully",
@@ -491,7 +496,6 @@ async def get_all_league_submissions(
 async def get_team_submission_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
-    only_validated: bool = True
 ):
     """Get latest submission for the current team, scoped to current league."""
     team_id = current_user.get("team_id")
@@ -504,7 +508,7 @@ async def get_team_submission_endpoint(
     try:
         team = session.get(Team, team_id)
         league_id = team.league_id if team else current_user.get("league_id")
-        submission_data = get_team_submission(session, team_id, league_id=league_id, only_validated=only_validated)
+        submission_data = get_team_submission(session, team_id, league_id=league_id)
         return ResponseModel(
             status="success",
             message="Submission retrieved successfully",
@@ -524,7 +528,6 @@ async def get_team_submission_endpoint(
 async def get_team_submissions_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
-    only_validated: bool = True
 ):
     """Get full submission history for the current team"""
     team_id = current_user.get("team_id")
@@ -533,7 +536,7 @@ async def get_team_submissions_endpoint(
             status="error", message="This endpoint requires a team token"
         )
     try:
-        submissions = get_team_submission_history(session, team_id, only_validated)
+        submissions = get_team_submission_history(session, team_id)
         return ResponseModel(
             status="success",
             message="Submissions retrieved successfully",

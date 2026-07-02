@@ -10,7 +10,8 @@ from sqlmodel import Session, delete, select
 
 from backend.database.db_models import (Institution, League, LeagueType,
                                         SimulationResult, SimulationResultItem,
-                                        Submission, Team, TeamType)
+                                        Team, TeamType)
+from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.games.game_factory import GameFactory
 from backend.routes.institution.institution_models import LeagueSignUp
 from backend.schools.config import (GoogleSheetsSchoolsConfig,
@@ -198,7 +199,7 @@ def delete_team(session: Session, team_id: int, institution_id: int) -> str:
         raise InstitutionAccessError("You don't have permission to delete this team")
 
     # Delete associated submissions first
-    session.exec(delete(Submission).where(Submission.team_id == team.id))
+    delete_submissions_for_teams(session, [team.id])
 
     # Delete all result items
     session.exec(
@@ -516,10 +517,8 @@ def delete_league(session: Session, league_id: int, institution_id: int, is_admi
         delete(SimulationResult).where(SimulationResult.league_id == league.id)
     )
     # Delete all submissions from teams in this league and move teams to unassigned league
+    delete_submissions_for_teams(session, [team.id for team in teams])
     for team in teams:
-        # Delete team's submissions
-        session.exec(delete(Submission).where(Submission.team_id == team.id))
-
         # Move team to unassigned league
         team.league_id = unassigned_league.id
         session.add(team)

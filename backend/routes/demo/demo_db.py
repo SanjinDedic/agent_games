@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Tuple
 
 import pytz
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select
 
 from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import (
@@ -15,10 +15,12 @@ from backend.database.db_models import (
     League,
     LeagueType,
     Submission,
+    SubmissionMetadata,
     Team,
     TeamType,
     get_password_hash,
 )
+from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
@@ -211,20 +213,23 @@ def cleanup_old_demo_submissions(
 
     demo_team_ids = [team.id for team in demo_teams]
 
-    # Find old submissions from these teams
-    old_submissions = session.exec(
-        select(Submission)
-        .where(Submission.team_id.in_(demo_team_ids))
-        .where(Submission.timestamp < cutoff_time)
+    # Find old submission attempts from these teams
+    old_meta = session.exec(
+        select(SubmissionMetadata)
+        .where(SubmissionMetadata.team_id.in_(demo_team_ids))
+        .where(SubmissionMetadata.timestamp < cutoff_time)
     ).all()
+    old_meta_ids = [m.id for m in old_meta]
 
-    # Delete old submissions
-    count = 0
-    for submission in old_submissions:
-        session.delete(submission)
-        count += 1
+    # Delete code rows first (they hold the FK), then the metadata
+    if old_meta_ids:
+        session.exec(delete(Submission).where(Submission.metadata_id.in_(old_meta_ids)))
+        session.exec(
+            delete(SubmissionMetadata).where(SubmissionMetadata.id.in_(old_meta_ids))
+        )
 
     session.commit()
+    count = len(old_meta_ids)
     logger.info(f"Cleaned up {count} old demo submissions")
     return count
 
@@ -237,6 +242,10 @@ def cleanup_expired_demo_users(session: Session, age_minutes: int = DEMO_TOKEN_E
     expired_users = session.exec(
         select(Team).where(Team.is_demo == True).where(Team.created_at < cutoff_time)
     ).all()
+
+    # Delete their submissions explicitly; deleting Team via the ORM would only
+    # null out the metadata FK and strand orphaned rows
+    delete_submissions_for_teams(session, [user.id for user in expired_users])
 
     # Delete expired users
     count = 0

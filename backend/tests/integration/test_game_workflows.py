@@ -7,12 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
+from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (
     Institution,
     League,
     SimulationResult,
-    Submission,
     Team,
 )
 from backend.routes.auth.auth_core import create_access_token
@@ -33,7 +32,8 @@ def setup_integration_team(db_session: Session, test_league: League) -> Team:
     db_session.refresh(team)
 
     # Add a basic valid submission
-    submission = Submission(
+    add_submission(
+        db_session,
         code="""
 from games.prisoners_dilemma.player import Player
 class CustomPlayer(Player):
@@ -43,7 +43,6 @@ class CustomPlayer(Player):
         timestamp=datetime.now(),
         team_id=team.id,
     )
-    db_session.add(submission)
     db_session.commit()
 
     return team

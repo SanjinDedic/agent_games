@@ -113,17 +113,6 @@ function HintModal({ isOpen, isLoading, hint, onClose }) {
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-ui-lighter text-right">
-          <button
-            type="button"
-            onClick={onClose}
-            className="py-2 px-4 text-sm font-medium text-white bg-ui-light hover:bg-ui rounded transition-colors"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );

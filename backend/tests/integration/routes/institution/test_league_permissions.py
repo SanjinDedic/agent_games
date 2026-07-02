@@ -13,14 +13,13 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
+from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (
     Institution,
     League,
     LeagueType,
     SimulationResult,
     SimulationResultItem,
-    Submission,
     Team,
     TeamType,
 )
@@ -117,11 +116,12 @@ def two_institutions(db_session: Session) -> dict:
         db_session.add(team)
         db_session.commit()
         db_session.refresh(team)
-        db_session.add(Submission(
+        add_submission(
+            db_session,
             code='from games.prisoners_dilemma.player import Player\nclass CustomPlayer(Player):\n    def make_decision(self, game_state):\n        return "collude"',
             timestamp=now,
             team_id=team.id,
-        ))
+        )
 
     # Teams + submissions for league B
     for i in range(2):
@@ -136,11 +136,12 @@ def two_institutions(db_session: Session) -> dict:
         db_session.add(team)
         db_session.commit()
         db_session.refresh(team)
-        db_session.add(Submission(
+        add_submission(
+            db_session,
             code='from games.greedy_pig.player import Player\nclass CustomPlayer(Player):\n    def make_decision(self, game_state):\n        if game_state["unbanked_money"][self.name] > 15:\n            return "bank"\n        return "continue"',
             timestamp=now,
             team_id=team.id,
-        ))
+        )
 
     db_session.commit()
 

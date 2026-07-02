@@ -151,7 +151,7 @@ class Team(SQLModel, table=True):
     team_type: TeamType = Field(default=TeamType.STUDENT)
     is_demo: bool = Field(default=False)
     league: League = Relationship(back_populates="teams")
-    submissions: List["Submission"] = Relationship(back_populates="team")
+    submission_attempts: List["SubmissionMetadata"] = Relationship(back_populates="team")
     api_key: Optional["AgentAPIKey"] = Relationship(
         back_populates="team",
         sa_relationship_kwargs={"uselist": False},
@@ -174,16 +174,35 @@ class Team(SQLModel, table=True):
         return verify_password(password, self.password_hash)
 
 
+class SubmissionMetadata(SQLModel, table=True):
+    """One row per submission attempt, pass or fail. Drives rate limiting
+    and hint availability. A linked Submission row == passed validation."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    team_id: Optional[int] = Field(
+        default=None, foreign_key="team.id", nullable=True, index=True
+    )
+    league_id: Optional[int] = Field(default=None, foreign_key="league.id", nullable=True)
+    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    duration_ms: Optional[float] = Field(default=None)
+    hint_included: bool = Field(default=False)
+    team: Optional[Team] = Relationship(back_populates="submission_attempts")
+    submission: Optional["Submission"] = Relationship(
+        back_populates="meta",
+        sa_relationship_kwargs={"uselist": False},
+    )
+
+
 class Submission(SQLModel, table=True):
-    id: int = Field(primary_key=True, default=None)
+    """Validated code only. 1:1 with SubmissionMetadata via unique FK."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(sa_column=Column(Text()))  # Use Text for potentially long code
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    team_id: int = Field(default=None, foreign_key="team.id", nullable=True)
-    league_id: Optional[int] = Field(default=None, foreign_key="league.id", nullable=True)
-    duration_ms: Optional[float] = Field(default=None)
-    team: Team = Relationship(back_populates="submissions")
-    hint_included: bool = Field(default=False)
-    passed_validation: bool = Field(default=True)
+    metadata_id: int = Field(foreign_key="submissionmetadata.id", unique=True, index=True)
+    # `metadata` is reserved on SQLAlchemy declarative classes
+    meta: SubmissionMetadata = Relationship(back_populates="submission")
 
 # In backend/database/db_models.py
 

@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 import pytest
 from sqlmodel import Session, delete, select
 
-from backend.database.db_models import League, Submission, Team
+from backend.database.db_models import League, Submission, SubmissionMetadata, Team
+from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.auth.auth_core import AUSTRALIA_SYDNEY_TZ, create_access_token
 from backend.routes.user.user_db import get_team_by_id
-from backend.tests.conftest import make_student_token
+from backend.tests.conftest import add_submission, make_student_token
 
 
 @pytest.fixture
@@ -91,7 +92,8 @@ class CustomPlayer(Player):
     # Verify submission was saved
     latest_submission = db_session.exec(
         select(Submission)
-        .where(Submission.team_id == team.id)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team.id)
         .order_by(Submission.timestamp.desc())
     ).first()
     assert latest_submission is not None
@@ -189,21 +191,22 @@ def test_get_league_submissions_success(
     """Test successful retrieval of league submissions"""
 
     # Add some test submissions
-    submission1 = Submission(
-        code="test code 1", timestamp=datetime.now(), team_id=setup_test_team.id
+    add_submission(
+        db_session, code="test code 1", timestamp=datetime.now(), team_id=setup_test_team.id
     )
-    submission2 = Submission(
+    add_submission(
+        db_session,
         code="test code 2",
         timestamp=datetime.now() + timedelta(minutes=1),
         team_id=setup_test_team.id,
     )
-    db_session.add(submission1)
-    db_session.add(submission2)
     db_session.commit()
 
     # Verify submissions were added
     submissions = db_session.exec(
-        select(Submission).where(Submission.team_id == setup_test_team.id)
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == setup_test_team.id)
     ).all()
     assert len(submissions) == 2
 
@@ -265,27 +268,29 @@ def test_get_team_submission_success(
     assert team is not None
 
     # Add test submissions
-    submission1 = Submission(
+    add_submission(
+        db_session,
         code="old code",
         timestamp=datetime.now(),
         team_id=team.id,
         league_id=team.league_id,
     )
-    db_session.add(submission1)
     db_session.commit()
 
-    submission2 = Submission(
+    add_submission(
+        db_session,
         code="latest code",
         timestamp=datetime.now() + timedelta(minutes=1),
         team_id=team.id,
         league_id=team.league_id,
     )
-    db_session.add(submission2)
     db_session.commit()
 
     # Verify submissions were added
     submissions = db_session.exec(
-        select(Submission).where(Submission.team_id == team.id)
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team.id)
     ).all()
     assert len(submissions) == 2
 
@@ -343,7 +348,7 @@ def test_submit_agent_rate_limit(
     assert team.league is not None
 
     # Clear any existing submissions
-    db_session.exec(delete(Submission).where(Submission.team_id == team.id))
+    delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
     valid_code = """
@@ -367,7 +372,9 @@ class CustomPlayer(Player):
 
     # Verify we have exactly 5 submissions
     submissions = db_session.exec(
-        select(Submission).where(Submission.team_id == team.id)
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team.id)
     ).all()
     assert len(submissions) == 5
 
@@ -384,6 +391,8 @@ class CustomPlayer(Player):
 
     # Verify we still have exactly 5 submissions
     submissions = db_session.exec(
-        select(Submission).where(Submission.team_id == team.id)
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team.id)
     ).all()
     assert len(submissions) == 5

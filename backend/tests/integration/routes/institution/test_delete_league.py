@@ -240,8 +240,8 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
     from backend.database.db_models import (
         SimulationResult,
         SimulationResultItem,
-        Submission,
     )
+    from backend.tests.conftest import add_submission
 
     # Create institution WITHOUT an unassigned league
     inst = build_institution(
@@ -290,7 +290,7 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
     db_session.refresh(team)
 
     # Add submission
-    db_session.add(Submission(code="# test", timestamp=datetime.now(), team_id=team.id))
+    add_submission(db_session, code="# test", timestamp=datetime.now(), team_id=team.id)
 
     # Add simulation result with items
     sim = SimulationResult(

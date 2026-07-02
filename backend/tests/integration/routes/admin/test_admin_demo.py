@@ -9,6 +9,7 @@ from backend.database.db_models import (
     SimulationResult,
     SimulationResultItem,
     Submission,
+    SubmissionMetadata,
     Team,
 )
 
@@ -37,11 +38,19 @@ def test_delete_all_demo_users(client, auth_headers, setup_demo_data, db_session
     # Direct database verification for teams
     demo_teams = db_session.exec(select(Team).where(Team.is_demo == True)).all()
     assert len(demo_teams) == 0
-    orphaned_submissions = db_session.exec(
+    orphaned_attempts = db_session.exec(
         # ~ means not and when combined with .in_ its like saying WHERE SUB NOT IN . .
-        select(Submission).where(~Submission.team_id.in_(select(Team.id)))
+        select(SubmissionMetadata).where(
+            ~SubmissionMetadata.team_id.in_(select(Team.id))
+        )
     ).all()
-    assert len(orphaned_submissions) == 0
+    assert len(orphaned_attempts) == 0
+    orphaned_code_rows = db_session.exec(
+        select(Submission).where(
+            ~Submission.metadata_id.in_(select(SubmissionMetadata.id))
+        )
+    ).all()
+    assert len(orphaned_code_rows) == 0
 
     # check there are no results / result items that are orphaned
     orphaned_result_items = db_session.exec(

@@ -18,12 +18,14 @@ from backend.database.db_models import (
     SimulationResult,
     SimulationResultItem,
     Submission,
+    SubmissionMetadata,
     SupportTicket,
     SupportTicketAttachment,
     Team,
     TeamType,
     get_password_hash,
 )
+from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.admin.admin_models import (
     CreateAgentTeam,
     CreateInstitution,
@@ -215,7 +217,7 @@ def _purge_institution_data(
         session.exec(delete(SupportTicket).where(SupportTicket.id.in_(ticket_ids)))
 
     if team_ids:
-        session.exec(delete(Submission).where(Submission.team_id.in_(team_ids)))
+        delete_submissions_for_teams(session, team_ids)
         session.exec(
             delete(SimulationResultItem).where(
                 SimulationResultItem.team_id.in_(team_ids)
@@ -316,11 +318,19 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
     ).all()
     league_ids = [lg.id for lg in leagues]
 
-    submissions = (
+    metadata_rows = (
         session.exec(
-            select(Submission).where(Submission.team_id.in_(team_ids))
+            select(SubmissionMetadata).where(SubmissionMetadata.team_id.in_(team_ids))
         ).all()
         if team_ids
+        else []
+    )
+    meta_ids = [m.id for m in metadata_rows]
+    submissions = (
+        session.exec(
+            select(Submission).where(Submission.metadata_id.in_(meta_ids))
+        ).all()
+        if meta_ids
         else []
     )
 
@@ -392,6 +402,7 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
     teams_dump = [t.model_dump(mode="json", exclude={"password_hash"}) for t in teams]
     leagues_dump = [lg.model_dump(mode="json") for lg in leagues]
     submissions_dump = [s.model_dump(mode="json") for s in submissions]
+    submission_metadata_dump = [m.model_dump(mode="json") for m in metadata_rows]
     sim_results_dump = [r.model_dump(mode="json") for r in sim_results]
     sim_items_dump = [i.model_dump(mode="json") for i in sim_items]
 
@@ -416,6 +427,7 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
         "leagues": leagues_dump,
         "teams": teams_dump,
         "submissions": submissions_dump,
+        "submission_metadata": submission_metadata_dump,
         "simulation_results": sim_results_dump,
         "simulation_result_items": sim_items_dump,
         "agent_api_keys": api_keys_dump,
@@ -481,15 +493,15 @@ def get_all_demo_users(session: Session):
         return {"demo_users": []}
 
     for team in demo_teams:
-        latest_submission = session.exec(
-            select(Submission)
-            .where(Submission.team_id == team.id)
-            .order_by(Submission.timestamp.desc())
+        latest_attempt = session.exec(
+            select(SubmissionMetadata)
+            .where(SubmissionMetadata.team_id == team.id)
+            .order_by(SubmissionMetadata.timestamp.desc())
         ).first()
         # Add a null check before accessing .timestamp
         latest_submission_timestamp = None
-        if latest_submission is not None:
-            latest_submission_timestamp = latest_submission.timestamp
+        if latest_attempt is not None:
+            latest_submission_timestamp = latest_attempt.timestamp
         # get the email from the DemoUser table
         matching_demo_user = session.exec(
             select(DemoUser).where(DemoUser.username == team.school_name)
@@ -501,7 +513,7 @@ def get_all_demo_users(session: Session):
                 "demo_team_name": team.name,
                 "email": email,
                 "league_name": team.league.name if team.league else None,
-                "number_of_submissions": len(team.submissions),
+                "number_of_submissions": len(team.submission_attempts),
                 "latest_submission": latest_submission_timestamp,
             }
         )
@@ -515,7 +527,7 @@ def delete_all_demo_teams_and_subs(session):
     team_ids = [team.id for team in all_demo_teams]
 
     # First, delete all submissions from these teams
-    session.exec(delete(Submission).where(Submission.team_id.in_(team_ids)))
+    delete_submissions_for_teams(session, team_ids)
     # Delete any SimulationResultItems for these teams
     session.exec(
         delete(SimulationResultItem).where(SimulationResultItem.team_id.in_(team_ids))

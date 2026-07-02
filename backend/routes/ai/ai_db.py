@@ -4,7 +4,12 @@ from typing import Dict, List, Optional
 
 from sqlmodel import Session, select
 
-from backend.database.db_models import AIProviderKey, Submission, Team
+from backend.database.db_models import (
+    AIProviderKey,
+    Submission,
+    SubmissionMetadata,
+    Team,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,19 +62,36 @@ def get_stored_key(session: Session, provider: str) -> Optional[str]:
 # --- Plagiarism assessment helpers ---
 
 
+def get_team_attempts_ordered(
+    session: Session, team_id: int
+) -> List[SubmissionMetadata]:
+    """Return all submission attempts (pass or fail) for a team in ascending
+    timestamp order. Drives hint availability."""
+
+    return list(
+        session.exec(
+            select(SubmissionMetadata)
+            .where(SubmissionMetadata.team_id == team_id)
+            .order_by(
+                SubmissionMetadata.timestamp.asc(), SubmissionMetadata.id.asc()
+            )
+        ).all()
+    )
+
+
 def get_team_submissions_ordered(
-    session: Session, team_id: int, only_validated: bool = True
+    session: Session, team_id: int
 ) -> List[Submission]:
-    """Return all submissions for a team in ascending timestamp order."""
+    """Return all validated submissions for a team in ascending timestamp order."""
 
-    query = select(Submission).where(Submission.team_id == team_id)
-
-    if only_validated:
-        query = query.where(Submission.passed_validation)
-
-    query = query.order_by(Submission.timestamp.asc())
-
-    return list(session.exec(query).all())
+    return list(
+        session.exec(
+            select(Submission)
+            .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+            .where(SubmissionMetadata.team_id == team_id)
+            .order_by(Submission.timestamp.asc(), Submission.id.asc())
+        ).all()
+    )
 
 def get_team_in_league(
     session: Session, team_id: int, league_id: int
