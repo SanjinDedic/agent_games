@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 from backend.database.db_models import (
     League,
     Submission,
+    SubmissionMetadata,
     Team,
     TeamType,
     SimulationResult,
@@ -52,9 +53,9 @@ def allow_submission(session: Session, team_id: int) -> bool:
 
     one_minute_ago = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=1)
     recent_submissions = session.exec(
-        select(Submission)
-        .where(Submission.team_id == team_id)
-        .where(Submission.timestamp >= one_minute_ago)
+        select(SubmissionMetadata)
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.timestamp >= one_minute_ago)
     ).all()
 
     # Demo users get a higher submission limit (10 per minute instead of 5)
@@ -67,6 +68,26 @@ def allow_submission(session: Session, team_id: int) -> bool:
     return True
 
 
+def record_failed_submission(
+    session: Session,
+    team_id: int,
+    league_id: Optional[int] = None,
+    duration_ms: Optional[float] = None,
+    hint_included: bool = False,
+) -> int:
+    """Record an attempt that failed validation. Code is not stored."""
+    meta = SubmissionMetadata(
+        team_id=team_id,
+        league_id=league_id,
+        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        duration_ms=duration_ms,
+        hint_included=hint_included,
+    )
+    session.add(meta)
+    session.commit()
+    return meta.id
+
+
 def save_submission(
     session: Session,
     code: str,
@@ -74,18 +95,19 @@ def save_submission(
     league_id: Optional[int] = None,
     duration_ms: Optional[float] = None,
     hint_included: bool = False,
-    passed_validation: bool = True
 ) -> int:
-    """Save a code submission"""
-    db_submission = Submission(
-        code=code,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+    """Record a validated attempt: metadata row plus linked code row."""
+    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    meta = SubmissionMetadata(
         team_id=team_id,
         league_id=league_id,
+        timestamp=now,
         duration_ms=duration_ms,
         hint_included=hint_included,
-        passed_validation=passed_validation
     )
+    session.add(meta)
+    session.flush()
+    db_submission = Submission(code=code, timestamp=now, metadata_id=meta.id)
     session.add(db_submission)
     session.commit()
     return db_submission.id
@@ -263,7 +285,7 @@ def get_team_by_id(session: Session, team_id: int) -> Team:
 
 
 def get_latest_submissions_for_league(
-    session: Session, league_id: int, only_validated: bool = True
+    session: Session, league_id: int
 ) -> Dict[str, str]:
     """Get latest submissions for all teams in a league"""
     teams = session.exec(select(Team).where(Team.league_id == league_id)).all()
@@ -271,13 +293,10 @@ def get_latest_submissions_for_league(
     submissions = {}
     for team in teams:
         # Get latest submission for each team
-        query = select(Submission).where(Submission.team_id == team.id)
-
-        if only_validated:
-            query = query.where(Submission.passed_validation)
-
         latest_submission = session.exec(
-            query
+            select(Submission)
+            .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+            .where(SubmissionMetadata.team_id == team.id)
             .order_by(Submission.timestamp.desc())
             .limit(1)
         ).first()
@@ -290,7 +309,7 @@ def get_latest_submissions_for_league(
 
 
 def get_all_submissions_for_league(
-    session: Session, league_id: int, only_validated: bool = True
+    session: Session, league_id: int
 ) -> Dict[str, Dict]:
     """Get all submissions for all teams in a league, ordered by timestamp.
 
@@ -301,22 +320,21 @@ def get_all_submissions_for_league(
     by_team = {}
     team_ids = {}
     for team in teams:
-
-        query = select(Submission).where(Submission.team_id == team.id)
-
-        if only_validated:
-            query = query.where(Submission.passed_validation)
-
-        submissions = session.exec(query.order_by(Submission.timestamp.asc())).all()
+        rows = session.exec(
+            select(Submission, SubmissionMetadata)
+            .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+            .where(SubmissionMetadata.team_id == team.id)
+            .order_by(Submission.timestamp.asc())
+        ).all()
 
         by_team[team.name] = [
             {
                 "code": sub.code,
                 "timestamp": sub.timestamp.isoformat(),
                 "id": sub.id,
-                "duration_ms": sub.duration_ms,
+                "duration_ms": meta.duration_ms,
             }
-            for sub in submissions
+            for sub, meta in rows
         ]
         team_ids[team.name] = team.id
 
@@ -325,15 +343,16 @@ def get_all_submissions_for_league(
 
 
 def get_team_submission(
-    session: Session, team_id: int, league_id: Optional[int] = None, only_validated: bool = True
+    session: Session, team_id: int, league_id: Optional[int] = None
 ) -> Dict[str, Optional[str]]:
     """Get latest submission for a specific team, scoped to the given league."""
-    query = select(Submission).where(Submission.team_id == team_id)
-    if only_validated:
-        query = query.where(Submission.passed_validation)
-    
+    query = (
+        select(Submission)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team_id)
+    )
     if league_id is not None:
-        query = query.where(Submission.league_id == league_id)
+        query = query.where(SubmissionMetadata.league_id == league_id)
     submission = session.exec(
         query.order_by(Submission.timestamp.desc()).limit(1)
     ).first()
@@ -341,16 +360,13 @@ def get_team_submission(
     return {"code": submission.code if submission else None}
 
 
-def get_team_submission_history(session: Session, team_id: int, only_validated: bool = True) -> list:
+def get_team_submission_history(session: Session, team_id: int) -> list:
     """Get full submission history for a team, newest first."""
 
-    query = select(Submission).where(Submission.team_id == team_id)
-
-    if only_validated:
-        query = query.where(Submission.passed_validation)
-
-    submissions = session.exec(
-        query
+    rows = session.exec(
+        select(Submission, SubmissionMetadata)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team_id)
         .order_by(Submission.timestamp.desc())
     ).all()
 
@@ -359,9 +375,9 @@ def get_team_submission_history(session: Session, team_id: int, only_validated: 
             "id": sub.id,
             "code": sub.code,
             "timestamp": sub.timestamp.isoformat(),
-            "duration_ms": sub.duration_ms,
+            "duration_ms": meta.duration_ms,
         }
-        for sub in submissions
+        for sub, meta in rows
     ]
 
 
