@@ -227,26 +227,18 @@ def test_get_all_leagues_scoped(client, two_institutions):
     assert leagues == []
 
 
-def _mock_simulation_response(team_names):
-    """Helper to build a mock httpx response for simulation."""
-    mock_resp = type("MockResponse", (), {
-        "status_code": 200,
-        "json": lambda self: {
-            "status": "success",
-            "simulation_results": {
-                "total_points": {name: 100 for name in team_names},
-                "num_simulations": 10,
-                "table": {},
-            },
-            "feedback": "test",
-            "player_feedback": None,
+def _mock_simulation_result(team_names):
+    """Helper to build a mock simulation task result."""
+    return {
+        "status": "success",
+        "simulation_results": {
+            "total_points": {name: 100 for name in team_names},
+            "num_simulations": 10,
+            "table": {},
         },
-    })()
-
-    async def mock_post(*args, **kwargs):
-        return mock_resp
-
-    return mock_post
+        "feedback": "test",
+        "player_feedback": None,
+    }
 
 
 def test_run_simulation_cross_institution(client, two_institutions):
@@ -254,8 +246,9 @@ def test_run_simulation_cross_institution(client, two_institutions):
     data = two_institutions
     team_names_b = ["perm_team_b_0", "perm_team_b_1"]
 
-    with patch("httpx.AsyncClient.post") as mock_post:
-        mock_post.side_effect = _mock_simulation_response(team_names_b)
+    with patch("backend.routes.institution.institution_router.run_simulation") as mock_task:
+        # .get is a plain sync callable — the router runs it via asyncio.to_thread
+        mock_task.delay.return_value.get.return_value = _mock_simulation_result(team_names_b)
 
         # Institution A CANNOT simulate B's league
         resp = client.post(

@@ -111,11 +111,25 @@ def create_test_institution(session, **kwargs):
     session.refresh(institution)
     return institution
 
-# Service URL constants — resolve to container names inside Docker, localhost outside
-_IS_DOCKER = os.path.exists("/.dockerenv")
-VALIDATOR_URL = "http://validator:8001" if _IS_DOCKER else "http://localhost:8001"
-SIMULATOR_URL = "http://simulator:8002" if _IS_DOCKER else "http://localhost:8002"
-API_URL = "http://api:8000" if _IS_DOCKER else "http://localhost:8000"
+@pytest.fixture(scope="session")
+def celery_workers():
+    """Fail fast with a clear message when the Celery workers are not up.
+
+    Task-level tests enqueue to the real broker and need both queue workers
+    running (docker compose starts them; test-runner depends_on their
+    healthchecks).
+    """
+    from backend.celery_app import celery_app
+
+    replies = celery_app.control.inspect(timeout=5).ping() or {}
+    for prefix in ("validation", "simulation"):
+        if not any(node.startswith(f"{prefix}@") for node in replies):
+            pytest.fail(
+                f"No {prefix} worker responded to ping — start the compose "
+                f"workers first (docker compose up -d worker-validation "
+                f"worker-simulation)"
+            )
+    return replies
 
 
 _ENUM_TYPES = (

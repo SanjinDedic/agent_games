@@ -1,70 +1,70 @@
+import asyncio
 import logging
-from typing import Dict, Tuple
+from typing import Dict
 
-import httpx
+from backend.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
-# Service URLs for health checks
-SERVICE_URLS = {
-    "validator": "http://validator:8001",
-    "simulator": "http://simulator:8002",
+# Worker node-name prefixes (workers are launched with -n validation@%h /
+# -n simulation@%h) mapped to the status entries the frontend renders.
+WORKER_SERVICES = {
+    "validation": "validation-worker",
+    "simulation": "simulation-worker",
 }
 
 
-async def check_service_health_http(service_name: str) -> Tuple[bool, str]:
-    """
-    Check if a service is healthy using HTTP health endpoint
-    Returns (is_healthy, message)
-    """
+def _entry(name: str, is_healthy: bool, health: str) -> Dict:
+    return {
+        "name": name,
+        "status": "running" if is_healthy else "unhealthy",
+        "health": health,
+        "is_healthy": is_healthy,
+    }
+
+
+def _collect_statuses() -> Dict[str, Dict]:
+    statuses: Dict[str, Dict] = {}
+
+    # Broker reachability
     try:
-        service_url = SERVICE_URLS.get(service_name)
-        if not service_url:
-            return False, f"Unknown service: {service_name}"
-
-        health_url = f"{service_url}/health"
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(health_url, timeout=5.0)
-
-            if response.status_code == 200:
-                return True, f"Service {service_name} is healthy (HTTP 200)"
-            else:
-                return (
-                    False,
-                    f"Service {service_name} returned HTTP {response.status_code}",
-                )
-
-    except httpx.ConnectError:
-        return False, f"Service {service_name} is unreachable (connection refused)"
-    except httpx.TimeoutException:
-        return False, f"Service {service_name} health check timed out"
+        with celery_app.connection_for_read() as conn:
+            conn.ensure_connection(max_retries=1, timeout=2)
+        statuses["valkey"] = _entry("valkey", True, "Broker connection OK")
     except Exception as e:
-        error_msg = f"Error checking health of service {service_name}: {str(e)}"
+        error_msg = f"Broker unreachable: {str(e)}"
         logger.error(error_msg)
-        return False, error_msg
+        statuses["valkey"] = _entry("valkey", False, error_msg)
+        for service_name in WORKER_SERVICES.values():
+            statuses[service_name] = _entry(service_name, False, error_msg)
+        return statuses
+
+    # Worker pings
+    try:
+        replies = celery_app.control.inspect(timeout=2.0).ping() or {}
+    except Exception as e:
+        replies = {}
+        logger.error(f"Worker ping failed: {str(e)}")
+
+    for prefix, service_name in WORKER_SERVICES.items():
+        node = next((n for n in replies if n.startswith(f"{prefix}@")), None)
+        if node:
+            statuses[service_name] = _entry(
+                service_name, True, f"Worker {node} responded to ping"
+            )
+        else:
+            statuses[service_name] = _entry(
+                service_name, False, f"No {prefix} worker responded to ping"
+            )
+
+    return statuses
 
 
 async def get_all_services_status() -> Dict[str, Dict]:
+    """Get status for the Celery broker and both worker types.
+
+    Returns a dictionary mapping service names to their status information;
+    each entry has the {name, status, health, is_healthy} shape the frontend
+    renders.
     """
-    Get status information for validator and simulator services using HTTP health checks
-
-    Returns:
-        Dictionary mapping service names to their status information
-    """
-    services = ["validator", "simulator"]
-    statuses = {}
-
-    for service in services:
-        is_healthy, health_message = await check_service_health_http(service)
-
-        status = "running" if is_healthy else "unhealthy"
-
-        statuses[service] = {
-            "name": service,
-            "status": status,
-            "health": health_message,
-            "is_healthy": is_healthy,
-        }
-
-    return statuses
+    return await asyncio.to_thread(_collect_statuses)

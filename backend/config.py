@@ -7,7 +7,7 @@ def find_project_root(current_dir=os.path.dirname(os.path.abspath(__file__))):
     """
     # Markers that indicate we're in the right directory
     project_markers = {
-        "directories": ["games", "routes", "docker_utils", "database"],
+        "directories": ["games", "routes", "database"],
         "files": ["api.py", "config.py"],
     }
 
@@ -73,56 +73,6 @@ def _discover_games(games_dir):
 GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 
 
-def get_service_url(service_name, endpoint=None):
-    """
-    Get environment-aware URL for a service
-
-    Args:
-        service_name: Name of the service ('validator', 'simulator', 'api')
-        endpoint: Optional endpoint to append (without leading slash)
-
-    Returns:
-        Full URL to the service, using localhost in test environment
-        and service name in production
-    """
-    port_mapping = {"validator": 8001, "simulator": 8002, "api": 8000}
-
-    if service_name not in port_mapping:
-        raise ValueError(f"Unknown service: {service_name}")
-
-    port = port_mapping[service_name]
-
-    # Check if we're running inside Docker
-    is_docker = os.path.exists("/.dockerenv")
-
-    if is_docker:
-        # Inside Docker, always use service names
-        host = service_name
-    else:
-        # Outside Docker, use localhost for tests, service name for production
-        host = (
-            "localhost" if os.environ.get("DB_ENVIRONMENT") == "test" else service_name
-        )
-
-    base_url = f"http://{host}:{port}"
-
-    # Append endpoint if provided
-    if endpoint:
-        if not endpoint.startswith("/"):
-            endpoint = f"/{endpoint}"
-        return f"{base_url}{endpoint}"
-
-    return base_url
-
-
-# Define service URLs using the helper function
-VALIDATOR_URL = get_service_url("validator")
-SIMULATOR_URL = get_service_url("simulator")
-API_URL = get_service_url("api")
-
-# This is kept for backwards compatibility
-DOCKER_API_URL = API_URL
-
 # Set a default SECRET_KEY for tests if not available in environment
 # In production, this should always be overridden by the actual secret key
 # from environment vars
@@ -143,9 +93,3 @@ STRIPE_PRICE_UNI_ONCE = os.getenv("STRIPE_PRICE_UNI_ONCE")
 STRIPE_PRICE_UNI_YEAR = os.getenv("STRIPE_PRICE_UNI_YEAR")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")
-
-# Import after defining constants to avoid circular import
-from backend.routes.auth.auth_config import create_service_token
-
-# Generate a service token with the SECRET_KEY (which may be the fallback for tests)
-SERVICE_TOKEN = create_service_token()

@@ -3,10 +3,6 @@ import importlib
 import logging
 from abc import ABC
 
-import httpx
-
-from backend.config import API_URL, SERVICE_TOKEN, SIMULATOR_URL, VALIDATOR_URL
-
 logger = logging.getLogger(__name__)
 
 
@@ -98,62 +94,6 @@ class BaseGame(ABC):
             if not self.players:
                 self.players = []
                 self.scores = {}
-
-    async def get_all_player_classes_via_api(
-        self, api_url: str = None, auth_token: str = None
-    ):
-        """Fetch player code from API and create player instances"""
-        try:
-            token = auth_token or SERVICE_TOKEN
-            headers = {"Authorization": f"Bearer {token}"}
-
-            base_url = api_url or API_URL
-            logger.info(f"Using API URL: {base_url}")
-            url = f"{base_url}/user/get-league-submissions/{self.league.id}"
-            logger.info(f"Attempting to fetch submissions from: {url}")
-
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
-
-                if response.status_code != 200:
-                    logger.error(
-                        f"Failed to fetch submissions. Status: {response.status_code}, Error: {response.text}"
-                    )
-                    raise Exception(f"Failed to fetch submissions: {response.text}")
-
-                data = response.json()
-                logger.info(f"Received API response: {data}")
-                submissions = data.get("data", {})
-
-                if submissions:
-                    # Only clear players if we have submissions to replace them with
-                    logger.info("Found league submissions, clearing validation players")
-                    logger.info(f"Submissions: {submissions}")
-                    self.players = []
-                    self.scores = {}
-
-                    # Add submitted players
-                    for team_name, code in submissions.items():
-                        try:
-                            logger.info(f"Creating player for team: {team_name}")
-                            player = self.add_player(code, team_name)
-                            if player:
-                                logger.info(
-                                    f"Successfully added player for team: {team_name}"
-                                )
-                        except Exception as e:
-                            logger.error(f"Error creating player {team_name}: {str(e)}")
-
-                    logger.info(f"Total league players loaded: {len(self.players)}")
-                    logger.info(f"Player names: {[p.name for p in self.players]}")
-                else:
-                    logger.info(
-                        "No league submissions found, keeping validation players"
-                    )
-
-        except Exception as e:
-            logger.error(f"Error fetching player code: {str(e)}")
-            logger.info("Keeping existing validation players due to error")
 
     def add_player(self, code: str, name: str):
         """Create a player instance from code"""

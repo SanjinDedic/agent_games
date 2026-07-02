@@ -1,12 +1,10 @@
 import ast
-import logging
 
 import pytest
-from fastapi.testclient import TestClient
 
-from backend.docker_utils.services.validation_server import (
+from backend.routes.user.code_validation import (
     CodeValidator,
-    app,
+    run_validation,
     validate_code,
 )
 
@@ -33,95 +31,55 @@ class CustomPlayer(Player):
 """
 
 
-@pytest.fixture
-def validator_client() -> TestClient:
-    """Create a test client for the validator service"""
-    return TestClient(app, base_url="http://localhost:8001")
-
-
-def test_health_check_success(validator_client: TestClient):
-    """Test health check endpoint"""
-    response = validator_client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
-
-
-def test_validate_endpoint_success(validator_client: TestClient):
+def test_validation_task_success(celery_workers):
     """Test successful validation scenarios"""
 
     # Test case 1: Basic valid code validation
-    data = {
-        "code": VALID_CODE,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 20,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "feedback" in data
-    assert "simulation_results" in data
+    result = run_validation.delay(
+        code=VALID_CODE,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+        num_simulations=20,
+    ).get(timeout=20)
+    assert result["status"] == "success"
+    assert "feedback" in result
+    assert "simulation_results" in result
 
     # Test case 2: Validation with custom rewards
-    data = {
-        "code": VALID_CODE,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 20,
-        "custom_rewards": [4, 0, 6, 2],
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
+    result = run_validation.delay(
+        code=VALID_CODE,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+        num_simulations=20,
+        custom_rewards=[4, 0, 6, 2],
+    ).get(timeout=20)
+    assert result["status"] == "success"
 
 
-def test_validate_endpoint_exceptions(validator_client: TestClient):
-    """Test error cases for validation endpoint"""
+def test_validate_code_exceptions():
+    """Test error cases caught by the pre-enqueue AST check"""
 
     # Test case 1: Invalid syntax
-    data = {
-        "code": "This is not valid Python code",
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 100,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "syntax error" in data["message"].lower()
+    is_safe, message = validate_code("This is not valid Python code")
+    assert not is_safe
+    assert "syntax error" in message.lower()
 
     # Test case 2: Unsafe code
-    data = {
-        "code": UNSAFE_CODE,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 20,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not safe" in data["message"].lower()
+    is_safe, message = validate_code(UNSAFE_CODE)
+    assert not is_safe
+    assert "unauthorized import" in message.lower()
 
-    # Test case 3: Invalid game name
-    data = {
-        "code": VALID_CODE,
-        "game_name": "invalid_game",
-        "team_name": "test_team",
-        "num_simulations": 10,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "Unknown game" in data["message"]
+
+def test_validation_task_invalid_game(celery_workers):
+    """Test that an invalid game name surfaces as a task error"""
+    result = run_validation.delay(
+        code=VALID_CODE,
+        game_name="invalid_game",
+        team_name="test_team",
+        num_simulations=10,
+    ).get(timeout=20)
+    assert result["status"] == "error"
+    assert "Unknown game" in result["message"]
 
 
 def test_code_validator_success():
@@ -196,7 +154,7 @@ def test_code_validator_unsafe_functions():
     assert "unauthorized function" in validator.error_message.lower()
 
 
-def test_validate_endpoint_simulation_error(validator_client: TestClient):
+def test_validation_task_simulation_error(celery_workers):
     """Test handling of simulation errors"""
     error_code = """
 from games.prisoners_dilemma.player import Player
@@ -205,21 +163,17 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         return 1 / 0  # Will cause ZeroDivisionError
 """
-    data = {
-        "code": error_code,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 10,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["simulation_results"]["table"]["defections"]["test_team"] == 0
+    result = run_validation.delay(
+        code=error_code,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+        num_simulations=10,
+    ).get(timeout=20)
+    assert result["status"] == "success"
+    assert result["simulation_results"]["table"]["defections"]["test_team"] == 0
 
 
-def test_validate_endpoint_player_feedback(validator_client: TestClient):
+def test_validation_task_player_feedback(celery_workers):
     """Test that player feedback is properly captured"""
     feedback_code = """
 from games.prisoners_dilemma.player import Player
@@ -229,16 +183,12 @@ class CustomPlayer(Player):
         self.add_feedback("Testing feedback mechanism")
         return 'collude'
 """
-    data = {
-        "code": feedback_code,
-        "game_name": "prisoners_dilemma",
-        "team_name": "test_team",
-        "num_simulations": 10,
-        "custom_rewards": None,
-    }
-    response = validator_client.post("/validate", json=data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "feedback" in data
-    assert isinstance(data["feedback"], (dict, str))
+    result = run_validation.delay(
+        code=feedback_code,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+        num_simulations=10,
+    ).get(timeout=20)
+    assert result["status"] == "success"
+    assert "feedback" in result
+    assert isinstance(result["feedback"], (dict, str))

@@ -1,10 +1,8 @@
 import logging
 
-import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from backend.config import get_service_url
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.admin.admin_backup import create_backup, list_backups, restore_backup
 from backend.routes.admin.admin_db import (

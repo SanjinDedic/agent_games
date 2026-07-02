@@ -11,23 +11,23 @@ servers:
       memory: 400m
       pids-limit: 50
 
-  validator:
+  worker-validation:
     hosts:
       - api.agentgames.io
-    cmd: "python /agent_games/backend/docker_utils/services/validation_server.py"
+    cmd: "celery -A backend.celery_app worker -Q validation -n validation@%h --loglevel=info --concurrency=4"
     proxy: false
     options:
-      hostname: validator
+      hostname: worker-validation
       memory: 600m
       pids-limit: 50
 
-  simulator:
+  worker-simulation:
     hosts:
       - api.agentgames.io
-    cmd: "python /agent_games/backend/docker_utils/services/simulation_server.py"
+    cmd: "celery -A backend.celery_app worker -Q simulation -n simulation@%h --loglevel=info --concurrency=2"
     proxy: false
     options:
-      hostname: simulator
+      hostname: worker-simulation
       memory: 3g
       pids-limit: 50
 
@@ -52,7 +52,7 @@ registry:
 
 builder:
   arch: amd64
-  dockerfile: backend/docker_utils/Dockerfile
+  dockerfile: backend/Dockerfile
   context: .
   args:
     RUNTIME_PACKAGES: postgresql18-client
@@ -62,8 +62,7 @@ env:
     PYTHONDONTWRITEBYTECODE: "1"
     PYTHONUNBUFFERED: "1"
     PYTHONPATH: /agent_games
-    VALIDATOR_URL: http://validator:8001
-    SIMULATOR_URL: http://simulator:8002
+    CELERY_BROKER_URL: redis://valkey:6379/0
     DB_ENVIRONMENT: production
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
@@ -87,6 +86,18 @@ env:
     - BENCHMARK_TOKEN
 
 accessories:
+  # Celery broker + result backend. Ephemeral: no persistence dirs on purpose.
+  # Must be booted before the first deploy of the Celery setup:
+  #   kamal accessory boot valkey
+  valkey:
+    image: valkey/valkey:latest
+    hosts:
+      - api.agentgames.io
+    cmd: "valkey-server --save '' --appendonly no --maxmemory 300mb --maxmemory-policy noeviction"
+    options:
+      hostname: valkey
+      memory: 400m
+
   postgres:
     image: postgres:18
     hosts:

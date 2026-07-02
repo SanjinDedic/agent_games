@@ -1,11 +1,10 @@
+import asyncio
 import logging
 
 from backend.routes.ai.ai_models import Hint
-import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from backend.config import get_service_url
 from backend.database.db_models import League, Team
 from backend.games.game_factory import GameFactory
 from backend.models_api import ErrorResponseModel, ResponseModel
@@ -55,6 +54,13 @@ from backend.routes.user.user_models import (
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
+)
+from celery.exceptions import TimeLimitExceeded
+
+from backend.routes.user.code_validation import (
+    run_validation,
+    timeout_validation_result,
+    validate_code,
 )
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
@@ -107,30 +113,39 @@ async def submit_agent(
     hint: Hint | None = None
 
     try:
-        # Get environment-aware URL for validator
-        validator_url = get_service_url("validator", "validate")
-        logger.info(f"Sending submission to validation server for team {team_name}")
-        logger.info(f"Using validator URL: {validator_url}")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                validator_url,
-                json={
-                    "code": submission.code,
-                    "game_name": team.league.game,
-                    "team_name": team_name,
-                    "num_simulations": 20,
-                },
-                timeout=20.0,
+        # AST safety check runs here, before enqueue: cheap, and unsafe code
+        # never reaches a worker. The "Agent code is not safe: " prefix is
+        # matched by hint_context.classify_outcome — do not reword.
+        is_safe, error_message = validate_code(submission.code)
+        if not is_safe:
+            validation_result = {
+                "status": "error",
+                "message": f"Agent code is not safe: {error_message}",
+                "feedback": None,
+                "simulation_results": None,
+                "duration_ms": None,
+                "traceback": None,
+                "stdout": None,
+            }
+        else:
+            logger.info(f"Enqueueing validation task for team {team_name}")
+            async_result = run_validation.delay(
+                code=submission.code,
+                game_name=team.league.game,
+                team_name=team_name,
+                num_simulations=20,
             )
+            try:
+                validation_result = await asyncio.to_thread(
+                    async_result.get, timeout=20
+                )
+            except TimeLimitExceeded:
+                # Hard-killed worker child: the agent (or the game engine's
+                # broad except around agent calls) swallowed the soft limit.
+                # Same user-facing outcome as the soft-limit path.
+                validation_result = timeout_validation_result()
 
-        if response.status_code != 200:
-            return AgentSubmitResponse(
-                status="error", message=f"Validation failed: {response.text}"
-            )
 
-        validation_result = response.json()
-        
         allow_hint = hint_available(session, team)
 
         if generate_hint and not allow_hint:
