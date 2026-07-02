@@ -24,7 +24,7 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 docker compose up -d
 
 # First-time DB init
-docker compose exec api python -m backend.docker_utils.init_db
+docker compose exec api python -m backend.database.init_db
 
 ./stop_services.sh   # Stop all containers
 ```
@@ -54,8 +54,9 @@ The API calls Validator and Simulator via async HTTP (httpx/aiohttp). Simulator 
 - `api.py` — FastAPI app entry point, mounts all routers
 - `routes/` — Route modules grouped by domain: `admin/`, `agent/`, `auth/`, `demo/`, `diagnostics/`, `institution/`, `user/`
 - `games/` — Game implementations extending `base_game.py`. Games: `greedy_pig`, `prisoners_dilemma`, `lineup4`, `arena_champions`. New games are registered in `game_factory.py`
-- `database/` — SQLModel ORM models (`db_models.py`), DB config (`db_config.py`), session management
-- `docker_utils/` — Docker SDK integration for container execution; `init_db.py` for schema setup
+- `database/` — SQLModel ORM models (`db_models.py`), DB config (`db_config.py`), session management, `init_db.py` for schema setup
+- `docker_utils/` — validator/simulator service servers (being phased out in favor of Celery)
+- `Dockerfile` — shared image for api/validator/simulator/test-runner (build context is repo root)
 - `config.py` — Central config: service URLs, game list, league expiry settings, secrets
 
 ### Frontend structure (`frontend/src/`)

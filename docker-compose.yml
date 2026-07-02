@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/Dockerfile
+      dockerfile: ./backend/Dockerfile
       args:
         - RUNTIME_PACKAGES=postgresql18-client
     # Dev: single-worker uvicorn with hot reload. Production uses the Dockerfile CMD (gunicorn).
@@ -54,7 +54,7 @@ services:
   validator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/Dockerfile
+      dockerfile: ./backend/Dockerfile
     command: python /agent_games/backend/docker_utils/services/validation_server.py
     ports:
       - "8001:8001"
@@ -82,7 +82,7 @@ services:
   simulator:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/Dockerfile
+      dockerfile: ./backend/Dockerfile
     command: python /agent_games/backend/docker_utils/services/simulation_server.py
     ports:
       - "8002:8002"
@@ -172,7 +172,7 @@ services:
   test-runner:
     build:
       context: .
-      dockerfile: ./backend/docker_utils/Dockerfile
+      dockerfile: ./backend/Dockerfile
       args:
         - BUILD_ENV=test
         - RUNTIME_PACKAGES=docker-cli

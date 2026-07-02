@@ -18,7 +18,7 @@ from backend.routes.user.user_router import user_router
 from sqlmodel import SQLModel, Session, text
 
 from backend.database.db_session import get_db_engine
-from backend.docker_utils.init_db import initialize_database
+from backend.database.init_db import initialize_database
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +45,13 @@ def check_database_status():
                     else:
                         logger.warning("❌ DATABASE INITIALIZATION FAILED")
                         logger.warning(
-                            "Please run manually: python backend/docker_utils/init_db.py"
+                            "Please run manually: python -m backend.database.init_db"
                         )
                         logger.warning("=" * 60)
                 except Exception as init_error:
                     logger.warning(f"❌ DATABASE INITIALIZATION ERROR: {init_error}")
                     logger.warning(
-                        "Please run manually: python backend/docker_utils/init_db.py"
+                        "Please run manually: python -m backend.database.init_db"
                     )
                     logger.warning("=" * 60)
             else:
@@ -78,13 +78,13 @@ def check_database_status():
             else:
                 logger.warning("❌ DATABASE INITIALIZATION FAILED")
                 logger.warning(
-                    "Please run manually: python backend/docker_utils/init_db.py"
+                    "Please run manually: python -m backend.database.init_db"
                 )
                 logger.warning("=" * 60)
         except Exception as init_error:
             logger.warning(f"❌ DATABASE INITIALIZATION ERROR: {init_error}")
             logger.warning(
-                "Please run manually: python backend/docker_utils/init_db.py"
+                "Please run manually: python -m backend.database.init_db"
             )
             logger.warning("=" * 60)
 

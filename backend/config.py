@@ -7,7 +7,7 @@ def find_project_root(current_dir=os.path.dirname(os.path.abspath(__file__))):
     """
     # Markers that indicate we're in the right directory
     project_markers = {
-        "directories": ["games", "routes", "docker_utils", "database"],
+        "directories": ["games", "routes", "database"],
         "files": ["api.py", "config.py"],
     }
 
