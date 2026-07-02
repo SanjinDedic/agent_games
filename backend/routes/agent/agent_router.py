@@ -1,9 +1,9 @@
-import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from backend.celery_utils import poll_task_result
 from backend.games.simulation_task import run_simulation as run_simulation_task
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.agent.agent_db import (
@@ -47,7 +47,7 @@ async def run_simulation(
             custom_rewards=request.custom_rewards,
             player_feedback=request.player_feedback,
         )
-        simulation_result = await asyncio.to_thread(async_result.get, timeout=60)
+        simulation_result = await poll_task_result(async_result, timeout=60)
         return ResponseModel(
             status="success",
             message="Simulation completed successfully",

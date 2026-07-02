@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from backend.routes.ai.ai_models import Hint
@@ -55,11 +54,9 @@ from backend.routes.user.user_models import (
     LeagueAssignRequest,
     SubmissionCode,
 )
-from celery.exceptions import TimeLimitExceeded
-
 from backend.routes.user.code_validation import (
-    run_validation,
-    timeout_validation_result,
+    await_validation_result,
+    enqueue_validation,
     validate_code,
 )
 from backend.routes.user.signup_helpers import (
@@ -129,21 +126,15 @@ async def submit_agent(
             }
         else:
             logger.info(f"Enqueueing validation task for team {team_name}")
-            async_result = run_validation.delay(
+            async_result = enqueue_validation(
                 code=submission.code,
                 game_name=team.league.game,
                 team_name=team_name,
                 num_simulations=20,
             )
-            try:
-                validation_result = await asyncio.to_thread(
-                    async_result.get, timeout=20
-                )
-            except TimeLimitExceeded:
-                # Hard-killed worker child: the agent (or the game engine's
-                # broad except around agent calls) swallowed the soft limit.
-                # Same user-facing outcome as the soft-limit path.
-                validation_result = timeout_validation_result()
+            # Polls the backend (no thread, no shared pubsub consumer) and maps
+            # every kill/timeout/worker-loss to a clean validation failure.
+            validation_result = await await_validation_result(async_result)
 
 
         allow_hint = hint_available(session, team)

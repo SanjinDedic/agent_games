@@ -1,10 +1,10 @@
-import asyncio
 import json
 import logging
 import os
 
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
+from backend.celery_utils import poll_task_result
 from backend.database.db_models import Institution
 from backend.games.simulation_task import run_simulation
 from backend.models_api import ErrorResponseModel, ResponseModel
@@ -266,7 +266,7 @@ async def run_simulation_endpoint(
             custom_rewards=simulation_config.custom_rewards,
             player_feedback=True,
         )
-        results = await asyncio.to_thread(async_result.get, timeout=300)
+        results = await poll_task_result(async_result, timeout=300)
         simulation_results = results.get("simulation_results")
         feedback = results.get("feedback")
         player_feedback = results.get("player_feedback")

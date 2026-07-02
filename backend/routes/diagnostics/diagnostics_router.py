@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import time
 
@@ -12,11 +11,10 @@ from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import get_current_user, verify_admin_or_institution
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
-from celery.exceptions import TimeLimitExceeded
 
 from backend.routes.user.code_validation import (
-    run_validation,
-    timeout_validation_result,
+    await_validation_result,
+    enqueue_validation,
     validate_code,
 )
 
@@ -106,16 +104,13 @@ async def benchmark_submit(
                 "duration_ms": None,
             }
         else:
-            async_result = run_validation.delay(
+            async_result = enqueue_validation(
                 code=submission.code,
                 game_name=submission.game_name,
                 team_name="benchmark",
                 num_simulations=submission.num_simulations,
             )
-            try:
-                result = await asyncio.to_thread(async_result.get, timeout=20)
-            except TimeLimitExceeded:
-                result = timeout_validation_result()
+            result = await await_validation_result(async_result)
     except Exception as e:
         return ErrorResponseModel(
             status="error", message=f"Validator request failed: {str(e)}"
