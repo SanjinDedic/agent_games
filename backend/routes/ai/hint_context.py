@@ -1,6 +1,6 @@
 """Builds the context string fed to the AI when generating a student hint.
 
-The validator (``backend/docker_utils/services/validation_server.py``) runs a
+The validation task (``backend/routes/user/code_validation.py``) runs a
 student submission and returns a ``ValidationResponse`` shaped like::
 
     {
@@ -32,10 +32,10 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 
 # --- Validator coupling -----------------------------------------------------
-# These mirror the literals produced in validation_server.py. We intentionally
-# do NOT import that module: importing it constructs a FastAPI app and pulls in
-# the game factory. If you change a message there, change the matching prefix
-# here. Each prefix is matched with str.startswith() against response.message.
+# These mirror the literals produced in code_validation.py. We intentionally
+# do NOT import that module: importing it pulls in the Celery app and the game
+# factory. If you change a message there, change the matching prefix here.
+# Each prefix is matched with str.startswith() against response.message.
 
 SYNTAX_ERROR_PREFIX = "Syntax error in code:"
 TIMEOUT_PREFIX = "Your agent consumes too much time"

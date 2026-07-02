@@ -3,12 +3,6 @@ from typing import List, Optional
 from pydantic import BaseModel, field_validator
 
 
-class ValidationRequest(BaseModel):
-    code: str
-    game_name: str
-    team_name: str
-
-
 class SimulationRequest(BaseModel):
     league_id: int
     game_name: str
