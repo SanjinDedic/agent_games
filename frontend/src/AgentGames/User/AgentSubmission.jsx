@@ -164,9 +164,15 @@ function AgentSubmission() {
     if (result.hint_available && !allowHint) toast.success("A hint is now available");
     setAllowHint(result.hint_available);
 
-    if (result.success) {
+    // A hint can come back even when validation fails — that's the main use case
+    if (result.hint) {
       setHint(result.hint);
+    } else {
+      // submitCode already surfaced the error via toast
+      setHintModalOpen(false);
+    }
 
+    if (result.success) {
       // The hint request is a real submission, so refresh the feedback panel too
       setOutput(result.output);
       setFeedback(result.feedback);
@@ -177,9 +183,6 @@ function AgentSubmission() {
         setLastSubmission(refreshResult.code);
         setHasLastSubmission(true);
       }
-    } else {
-      // submitCode already surfaced the error via toast
-      setHintModalOpen(false);
     }
   };
 
