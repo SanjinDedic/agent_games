@@ -1,12 +1,12 @@
+import asyncio
 import json
 import logging
 import os
 
-import httpx
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
-from backend.config import get_service_url
 from backend.database.db_models import Institution
+from backend.games.simulation_task import run_simulation
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import (
     get_current_user,
@@ -258,84 +258,60 @@ async def run_simulation_endpoint(
                 message="Your institution does not have Docker access. Please contact the administrator.",
             )
 
-        # Get environment-aware URL for simulator
-        simulator_url = get_service_url("simulator", "simulate")
-        logger.info(f"Using simulator URL: {simulator_url}")
+        # Enqueue the simulation task and wait for the result
+        async_result = run_simulation.delay(
+            league_id=simulation_config.league_id,
+            game_name=league.game,
+            num_simulations=simulation_config.num_simulations,
+            custom_rewards=simulation_config.custom_rewards,
+            player_feedback=True,
+        )
+        results = await asyncio.to_thread(async_result.get, timeout=300)
+        simulation_results = results.get("simulation_results")
+        feedback = results.get("feedback")
+        player_feedback = results.get("player_feedback")
 
-        # Make direct API call to simulation server
+        # Save simulation results
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    simulator_url,
-                    json={
-                        "league_id": simulation_config.league_id,
-                        "game_name": league.game,
-                        "num_simulations": simulation_config.num_simulations,
-                        "custom_rewards": simulation_config.custom_rewards,
-                        "player_feedback": True,
-                    },
-                    timeout=300.0,
-                )
-
-                if response.status_code != 200:
-                    return ErrorResponseModel(
-                        status="error",
-                        message=f"Simulation failed with status code {response.status_code}: {response.text}",
-                    )
-
-                results = response.json()
-                simulation_results = results.get("simulation_results")
-                feedback = results.get("feedback")
-                player_feedback = results.get("player_feedback")
-
-                # Save simulation results
-                try:
-                    sim_result = save_simulation_results(
-                        session,
-                        league.id,
-                        institution_id,
-                        simulation_results,
-                        simulation_config.custom_rewards,
-                        feedback_str=(feedback if isinstance(feedback, str) else None),
-                        feedback_json=(
-                            json.dumps(feedback) if isinstance(feedback, dict) else None
-                        ),
-                        is_admin=is_admin,
-                    )
-                except Exception as e:
-                    logger.error(f"Error saving simulation results: {str(e)}")
-                    return ErrorResponseModel(
-                        status="error",
-                        message=f"An error occurred while saving the simulation results: {str(e)}",
-                    )
-
-                response_data = {
-                    "league_name": league.name,
-                    "id": sim_result.id if sim_result else None,
-                    "total_points": simulation_results["total_points"],
-                    "num_simulations": simulation_results["num_simulations"],
-                    "timestamp": sim_result.timestamp if sim_result else None,
-                    "rewards": simulation_config.custom_rewards,
-                    "table": simulation_results.get("table", {}),
-                }
-
-                if feedback is not None:
-                    response_data["feedback"] = feedback
-                if player_feedback is not None:
-                    response_data["player_feedback"] = player_feedback
-
-                return ResponseModel(
-                    status="success",
-                    message="Simulation completed successfully",
-                    data=response_data,
-                )
-
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error occurred: {str(e)}")
+            sim_result = save_simulation_results(
+                session,
+                league.id,
+                institution_id,
+                simulation_results,
+                simulation_config.custom_rewards,
+                feedback_str=(feedback if isinstance(feedback, str) else None),
+                feedback_json=(
+                    json.dumps(feedback) if isinstance(feedback, dict) else None
+                ),
+                is_admin=is_admin,
+            )
+        except Exception as e:
+            logger.error(f"Error saving simulation results: {str(e)}")
             return ErrorResponseModel(
                 status="error",
-                message=f"Failed to connect to simulation service: {str(e)}",
+                message=f"An error occurred while saving the simulation results: {str(e)}",
             )
+
+        response_data = {
+            "league_name": league.name,
+            "id": sim_result.id if sim_result else None,
+            "total_points": simulation_results["total_points"],
+            "num_simulations": simulation_results["num_simulations"],
+            "timestamp": sim_result.timestamp if sim_result else None,
+            "rewards": simulation_config.custom_rewards,
+            "table": simulation_results.get("table", {}),
+        }
+
+        if feedback is not None:
+            response_data["feedback"] = feedback
+        if player_feedback is not None:
+            response_data["player_feedback"] = player_feedback
+
+        return ResponseModel(
+            status="success",
+            message="Simulation completed successfully",
+            data=response_data,
+        )
 
     except Exception as e:
         logger.error(f"Error running simulation: {e}")

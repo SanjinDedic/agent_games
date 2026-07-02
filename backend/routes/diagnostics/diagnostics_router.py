@@ -1,17 +1,24 @@
+import asyncio
 import logging
 import time
 
-import httpx
 from fastapi import APIRouter, Depends, Header
 from sqlmodel import Session
 
-from backend.config import BENCHMARK_TOKEN, get_service_url
+from backend.config import BENCHMARK_TOKEN
 from backend.database.db_models import Institution
 from backend.database.db_session import get_db
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import get_current_user, verify_admin_or_institution
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
+from celery.exceptions import TimeLimitExceeded
+
+from backend.routes.user.code_validation import (
+    run_validation,
+    timeout_validation_result,
+    validate_code,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +50,7 @@ async def get_status(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Get health status for validator and simulator services"""
+    """Get health status for the Celery broker and worker services"""
     has_access = await check_docker_access(current_user, session)
     if not has_access:
         return ErrorResponseModel(
@@ -89,33 +96,32 @@ async def benchmark_submit(
             status="error", message="Invalid benchmark token."
         )
 
-    validator_url = get_service_url("validator", "validate")
     t0 = time.perf_counter()
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                validator_url,
-                json={
-                    "code": submission.code,
-                    "game_name": submission.game_name,
-                    "team_name": "benchmark",
-                    "num_simulations": submission.num_simulations,
-                },
-                timeout=20.0,
+        is_safe, error_message = validate_code(submission.code)
+        if not is_safe:
+            result = {
+                "status": "error",
+                "message": f"Agent code is not safe: {error_message}",
+                "duration_ms": None,
+            }
+        else:
+            async_result = run_validation.delay(
+                code=submission.code,
+                game_name=submission.game_name,
+                team_name="benchmark",
+                num_simulations=submission.num_simulations,
             )
+            try:
+                result = await asyncio.to_thread(async_result.get, timeout=20)
+            except TimeLimitExceeded:
+                result = timeout_validation_result()
     except Exception as e:
         return ErrorResponseModel(
             status="error", message=f"Validator request failed: {str(e)}"
         )
     round_trip_ms = (time.perf_counter() - t0) * 1000
 
-    if response.status_code != 200:
-        return ErrorResponseModel(
-            status="error",
-            message=f"Validation failed ({response.status_code}): {response.text}",
-        )
-
-    result = response.json()
     return ResponseModel(
         status=result.get("status", "success"),
         message="benchmark ok",
