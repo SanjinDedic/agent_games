@@ -26,7 +26,7 @@ from backend.routes.institution.institution_db import (
 )
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
-from backend.routes.ai.hint_service import provide_hints, hint_avaliable
+from backend.routes.ai.hint_service import provide_hints, hint_available
 from backend.routes.user.user_db import (
     SubmissionLimitExceededError,
     TeamNotFoundError,
@@ -130,7 +130,7 @@ async def submit_agent(
 
         validation_result = response.json()
         
-        allow_hint = hint_avaliable(session, team, validation_result)
+        allow_hint = hint_available(session, team, validation_result)
 
         if generate_hint and not allow_hint:
             return AgentSubmitResponse(status="error", message="You are not allowed to request a hint right now")
@@ -162,7 +162,7 @@ async def submit_agent(
             return AgentSubmitResponse(
                 status="error",
                 message=validation_result.get("message", "Code validation failed"),
-                hint_avaliable=allow_hint
+                hint_available=allow_hint
             )
 
     except Exception as e:
@@ -192,7 +192,7 @@ async def submit_agent(
                 "duration_ms": duration_ms,
             },
             hint=hint,
-            hint_avaliable=allow_hint
+            hint_available=allow_hint
         )
     except Exception as e:
         logger.error(f"Error saving submission: {e}")

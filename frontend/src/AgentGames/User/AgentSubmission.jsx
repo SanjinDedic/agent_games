@@ -129,8 +129,8 @@ function AgentSubmission() {
     setCodeChangedSinceLastSubmission(false);
 
     const result = await submitCode(code);
-    if (result.hint_avaliable && !allowHint) toast.success("A hint is now avaliable");
-    setAllowHint(result.hint_avaliable);
+    if (result.hint_available && !allowHint) toast.success("A hint is now available");
+    setAllowHint(result.hint_available);
 
     if (result.success) {
       setOutput(result.output);
@@ -161,8 +161,8 @@ function AgentSubmission() {
     setIsGeneratingHint(false);
     setCodeChangedSinceLastSubmission(false);
     
-    if (result.hint_avaliable && !allowHint) toast.success("A hint is now avaliable");
-    setAllowHint(result.hint_avaliable);
+    if (result.hint_available && !allowHint) toast.success("A hint is now available");
+    setAllowHint(result.hint_available);
 
     if (result.success) {
       setHint(result.hint);

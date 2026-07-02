@@ -109,7 +109,7 @@ async def provide_hints(session: Session, code: str, validation_result: dict, ga
 
 # WARNING: This function, if it returns True, must return True again if the same code is resubmitted.
 # This means that this function must be deterministic. And only depend on data from the last hint generated
-def hint_avaliable(session: Session, team: Team, validation_result: dict) -> bool:
+def hint_available(session: Session, team: Team) -> bool:
     all_subs = get_team_submissions_ordered(session, team.id, only_validated=False)
 
     if not all_subs:
