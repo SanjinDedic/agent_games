@@ -31,12 +31,12 @@ VALIDATION_TIMEOUT_SECONDS = 5
 # How long the API waits for a validation result before giving up (and killing
 # the task). Above the 6s hard task limit so a legitimately slow validation
 # still returns, but bounded so a queue backlog can't hang a request.
-VALIDATION_RESULT_TIMEOUT = 15
+VALIDATION_RESULT_TIMEOUT = 6
 
 # Drop a queued validation whose submitter has already stopped waiting, so a
 # flood of submissions cannot build an unbounded backlog that starves live ones
 # (the workers keep churning tasks nobody is waiting for otherwise).
-VALIDATION_TASK_EXPIRES = 20
+VALIDATION_TASK_EXPIRES = 8
 
 # Prefix-matched by hint_context.classify_outcome — do not reword. Shared by
 # the task's soft-limit handler and the routers' hard-kill fallback.
