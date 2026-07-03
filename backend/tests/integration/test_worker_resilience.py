@@ -14,8 +14,14 @@ resource-exhaustion modes the platform must survive:
    the persistent hoard guarantees the cgroup — not Python — wins the race.
 
 2. CPU bomb. A busy loop that also swallows exceptions inside itself, so the
-   soft-limit SoftTimeLimitExceeded cannot stop it. Only the hard time_limit=8
+   soft-limit SoftTimeLimitExceeded cannot stop it. Only the hard time_limit=6
    SIGKILL backstop kills it; .get() raises TimeLimitExceeded.
+
+The memory bomb relies on the worker container having NO swap (compose sets
+memswap_limit == mem_limit): with swap the hoard spills to disk, thrashes, and
+the 6s hard time limit SIGKILLs the child before the kernel OOM killer does —
+TimeLimitExceeded instead of WorkerLostError (seen on GitHub Actions runners,
+which carry a 4GB swapfile).
 
 The point of each test is NOT just that the bomb dies — it's that the pool
 RECOVERS. worker_max_tasks_per_child=1 already retires the child; after a

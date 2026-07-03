@@ -27,6 +27,10 @@ servers:
     options:
       hostname: worker-validation
       memory: 800m
+      # memory-swap == memory disables swap: a memory-bomb agent must be
+      # OOM-killed at the RAM cap, not thrash in swap past the task time limit
+      # (the droplet currently has no swap, but keep the guarantee explicit).
+      memory-swap: 800m
       pids-limit: 50
 
   worker-simulation:
@@ -37,6 +41,7 @@ servers:
     options:
       hostname: worker-simulation
       memory: 3g
+      memory-swap: 3g
       pids-limit: 50
 
 deploy_timeout: 120
