@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict
 
-from backend.celery_app import celery_app
+from backend.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 

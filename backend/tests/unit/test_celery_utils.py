@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.celery_utils import poll_task_result
+from backend.tasks.celery_utils import poll_task_result
 
 
 @pytest.mark.asyncio

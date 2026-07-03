@@ -5,11 +5,11 @@ from celery.exceptions import TimeLimitExceeded
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
-from backend.games.simulation_task import run_simulation
-from backend.routes.user.code_validation import (
+from backend.routes.user.code_validation import validate_code
+from backend.tasks.simulation_task import run_simulation
+from backend.tasks.validation_task import (
     run_validation,
     timeout_validation_result,
-    validate_code,
 )
 
 

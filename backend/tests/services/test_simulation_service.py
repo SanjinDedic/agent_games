@@ -4,7 +4,7 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import League
-from backend.games.simulation_task import aggregate_simulation_results, run_simulation
+from backend.tasks.simulation_task import aggregate_simulation_results, run_simulation
 
 
 @pytest.fixture

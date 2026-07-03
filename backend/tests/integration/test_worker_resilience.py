@@ -26,7 +26,8 @@ import pytest
 from billiard.exceptions import WorkerLostError
 from celery.exceptions import TimeLimitExceeded
 
-from backend.routes.user.code_validation import run_validation, validate_code
+from backend.routes.user.code_validation import validate_code
+from backend.tasks.validation_task import run_validation
 
 # --- Hostile agents (both pass the AST safety check) ------------------------
 

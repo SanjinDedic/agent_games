@@ -22,7 +22,7 @@ servers:
     # --loglevel=warning: at info, every task logs its full result dict repr
     # (several KB) — measurable CPU on a saturated core. Gossip/mingle/heartbeat
     # are single-host-pointless broker chatter in the MainProcess.
-    cmd: "celery -A backend.celery_app worker -Q validation -n validation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=4"
+    cmd: "celery -A backend.tasks.celery_app worker -Q validation -n validation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=4"
     proxy: false
     options:
       hostname: worker-validation
@@ -32,7 +32,7 @@ servers:
   worker-simulation:
     hosts:
       - api.agentgames.io
-    cmd: "celery -A backend.celery_app worker -Q simulation -n simulation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=2"
+    cmd: "celery -A backend.tasks.celery_app worker -Q simulation -n simulation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=2"
     proxy: false
     options:
       hostname: worker-simulation
