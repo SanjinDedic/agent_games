@@ -94,6 +94,12 @@ services:
     volumes:
       - ./backend:/agent_games/backend
     mem_limit: 500m
+    # memswap_limit == mem_limit disables swap for the container. Without it,
+    # docker grants an equal amount of swap on hosts that have any (GitHub
+    # Actions runners carry a 4GB swapfile), and a memory-bomb agent thrashes
+    # in swap past the 6s hard task time limit instead of being OOM-killed —
+    # the resilience tests require the kernel OOM kill to be deterministic.
+    memswap_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
 
@@ -126,6 +132,9 @@ services:
     volumes:
       - ./backend:/agent_games/backend
     mem_limit: 500m
+    # Same no-swap guarantee as worker-validation: untrusted code must hit the
+    # RAM cap and die, not spill into host swap.
+    memswap_limit: 500m
     mem_reservation: 200m
     pids_limit: 50
 
