@@ -1,4 +1,4 @@
-name: Daily DB Backup
+name: Daily DB Maintenance
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  backup:
+  maintenance:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,16 +16,19 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Back up database and prune backups older than 60 days
+      # Cleanup runs first so the backup captures the cleaned database.
+      - name: Clean up old Admin/Demo Institution submissions, then back up
         run: |
           ssh -o StrictHostKeyChecking=accept-new root@api.agentgames.io '
+            set -e
             CONTAINER=$(docker ps -q \
               --filter label=service=agent_games \
               --filter label=role=web \
               --filter status=running | head -1)
             if [ -z "$CONTAINER" ]; then
-              echo "No running web container — cannot back up" >&2
+              echo "No running web container — cannot run maintenance" >&2
               exit 1
             fi
+            docker exec "$CONTAINER" python -m backend.database.maintenance
             docker exec "$CONTAINER" python -m backend.routes.admin.admin_backup --label DAILY --prune
           '
