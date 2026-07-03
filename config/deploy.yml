@@ -8,13 +8,21 @@ servers:
       - api.agentgames.io
     options:
       hostname: api
-      memory: 300m
+      memory: 400m
       pids-limit: 50
 
   worker-validation:
     hosts:
       - api.agentgames.io
-    cmd: "celery -A backend.celery_app worker -Q validation -n validation@%h --loglevel=info --concurrency=4"
+    # concurrency=4 on a 1-vCPU host is NOT for CPU parallelism: with
+    # max_tasks_per_child=1 a slot is dead from child-exit until billiard
+    # respawns it (worst case the 5s pool-maintenance tick), so extra slots
+    # exist to keep live children available during respawn gaps. The frozen
+    # lean heap makes idle children nearly free (COW-shared).
+    # --loglevel=warning: at info, every task logs its full result dict repr
+    # (several KB) — measurable CPU on a saturated core. Gossip/mingle/heartbeat
+    # are single-host-pointless broker chatter in the MainProcess.
+    cmd: "celery -A backend.celery_app worker -Q validation -n validation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=4"
     proxy: false
     options:
       hostname: worker-validation
@@ -24,7 +32,7 @@ servers:
   worker-simulation:
     hosts:
       - api.agentgames.io
-    cmd: "celery -A backend.celery_app worker -Q simulation -n simulation@%h --loglevel=info --concurrency=2"
+    cmd: "celery -A backend.celery_app worker -Q simulation -n simulation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=2"
     proxy: false
     options:
       hostname: worker-simulation
@@ -59,6 +67,9 @@ builder:
 
 env:
   clear:
+    # 1-vCPU host: 3 async workers just triple the memory footprint (the
+    # 300m/3-worker combo OOM-crash-looped gunicorn and pinned the core).
+    GUNICORN_WORKERS: "2"
     PYTHONDONTWRITEBYTECODE: "1"
     PYTHONUNBUFFERED: "1"
     PYTHONPATH: /agent_games
