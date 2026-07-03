@@ -11,8 +11,13 @@ submission flood hit the validator.
 ``AsyncResult.ready()`` — a plain result-backend GET served from the connection
 pool, safe under concurrency — and yields to the event loop between checks, so
 there is no worker thread and no shared pubsub socket to corrupt. A task that
-outlives the caller's deadline is revoked and SIGKILLed so an abandoned or
-runaway agent stops holding a worker core.
+outlives the caller's deadline is revoked WITHOUT terminate: a still-queued
+task is discarded when the worker receives it, and a running one is killed by
+its own hard time_limit. Never revoke(terminate=True) here — SIGKILLing pool
+children races billiard's fork-per-task recycling (worker_max_tasks_per_child=1)
+and leaks unreaped zombies until the container's pids_limit is exhausted, after
+which every fork fails EAGAIN and the pool is permanently wedged (reproduced
+under submission-flood load; recovery required a container restart).
 """
 
 import asyncio
@@ -30,14 +35,15 @@ async def poll_task_result(
 
     Returns the task's return value on success. Re-raises the task's stored
     exception on failure (matching ``.get(propagate=True)``). Raises
-    ``TimeoutError`` — and revokes + SIGKILLs the task — if it does not finish
-    within ``timeout`` seconds, so a backlogged or spinning task the caller has
-    given up on cannot keep burning a worker core.
+    ``TimeoutError`` — and revokes the task — if it does not finish within
+    ``timeout`` seconds. The revoke only discards the task if it is still
+    queued; a running task is left to its hard time_limit, which is the sole
+    kill mechanism (see module docstring for why terminate=True is forbidden).
     """
     deadline = time.monotonic() + timeout
     while not async_result.ready():
         if time.monotonic() >= deadline:
-            async_result.revoke(terminate=True, signal="SIGKILL")
+            async_result.revoke()
             raise TimeoutError(
                 f"task {async_result.id} did not finish within {timeout}s"
             )
