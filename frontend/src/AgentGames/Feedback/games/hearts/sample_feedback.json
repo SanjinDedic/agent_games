@@ -1,0 +1,2889 @@
+{
+  "game": "hearts",
+  "players": [
+    "MoonShooters",
+    "SafePlayers",
+    "QueenHunters",
+    "RandomBot"
+  ],
+  "target_score": 100,
+  "hands": [
+    {
+      "hand_number": 1,
+      "pass_direction": "left",
+      "dealt_hands": {
+        "MoonShooters": [
+          "6C",
+          "8C",
+          "QC",
+          "KC",
+          "6D",
+          "7D",
+          "10D",
+          "2S",
+          "4S",
+          "AS",
+          "7H",
+          "KH",
+          "AH"
+        ],
+        "SafePlayers": [
+          "5C",
+          "JC",
+          "5D",
+          "8D",
+          "9D",
+          "JD",
+          "3S",
+          "6S",
+          "9S",
+          "JS",
+          "3H",
+          "4H",
+          "6H"
+        ],
+        "QueenHunters": [
+          "2C",
+          "3C",
+          "9C",
+          "5S",
+          "7S",
+          "10S",
+          "QS",
+          "KS",
+          "2H",
+          "5H",
+          "9H",
+          "10H",
+          "QH"
+        ],
+        "RandomBot": [
+          "4C",
+          "7C",
+          "10C",
+          "AC",
+          "2D",
+          "3D",
+          "4D",
+          "QD",
+          "KD",
+          "AD",
+          "8S",
+          "8H",
+          "JH"
+        ]
+      },
+      "passes": {
+        "MoonShooters": {
+          "to": "SafePlayers",
+          "cards": [
+            "6C",
+            "2S",
+            "4S"
+          ]
+        },
+        "SafePlayers": {
+          "to": "QueenHunters",
+          "cards": [
+            "3H",
+            "4H",
+            "6H"
+          ]
+        },
+        "QueenHunters": {
+          "to": "RandomBot",
+          "cards": [
+            "QS",
+            "10H",
+            "QH"
+          ]
+        },
+        "RandomBot": {
+          "to": "MoonShooters",
+          "cards": [
+            "AC",
+            "8H",
+            "JH"
+          ]
+        }
+      },
+      "hands_after_pass": {
+        "MoonShooters": [
+          "8C",
+          "QC",
+          "KC",
+          "AC",
+          "6D",
+          "7D",
+          "10D",
+          "AS",
+          "7H",
+          "8H",
+          "JH",
+          "KH",
+          "AH"
+        ],
+        "SafePlayers": [
+          "5C",
+          "6C",
+          "JC",
+          "5D",
+          "8D",
+          "9D",
+          "JD",
+          "2S",
+          "3S",
+          "4S",
+          "6S",
+          "9S",
+          "JS"
+        ],
+        "QueenHunters": [
+          "2C",
+          "3C",
+          "9C",
+          "5S",
+          "7S",
+          "10S",
+          "KS",
+          "2H",
+          "3H",
+          "4H",
+          "5H",
+          "6H",
+          "9H"
+        ],
+        "RandomBot": [
+          "4C",
+          "7C",
+          "10C",
+          "2D",
+          "3D",
+          "4D",
+          "QD",
+          "KD",
+          "AD",
+          "8S",
+          "QS",
+          "10H",
+          "QH"
+        ]
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "2C"
+            },
+            {
+              "player": "RandomBot",
+              "card": "10C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "AC",
+              "feedback": [
+                "Going for control: playing my highest legal card AC"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "5C",
+              "feedback": [
+                "Playing low to stay safe: 5C"
+              ]
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 2,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "AS",
+              "feedback": [
+                "Going for control: playing my highest legal card AS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "2S",
+              "feedback": [
+                "Playing low to stay safe: 2S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "8S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 3,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "KC",
+              "feedback": [
+                "Going for control: playing my highest legal card KC"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6C",
+              "feedback": [
+                "Playing low to stay safe: 6C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3C"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4C"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 4,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "QC",
+              "feedback": [
+                "Going for control: playing my highest legal card QC"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "JC",
+              "feedback": [
+                "Playing low to stay safe: JC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "9C"
+            },
+            {
+              "player": "RandomBot",
+              "card": "7C"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 5,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "10D",
+              "feedback": [
+                "Going for control: playing my highest legal card 10D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "5D",
+              "feedback": [
+                "Playing low to stay safe: 5D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "2H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "AD"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 6,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "QD"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "7D",
+              "feedback": [
+                "Going for control: playing my highest legal card 7D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "8D",
+              "feedback": [
+                "Playing low to stay safe: 8D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3H"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 7,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "3D"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "6D",
+              "feedback": [
+                "Going for control: playing my highest legal card 6D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "9D",
+              "feedback": [
+                "Playing low to stay safe: 9D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "4H"
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 8,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "3S",
+              "feedback": [
+                "Playing low to stay safe: 3S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "7S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "QS"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "AH",
+              "feedback": [
+                "Going for control: playing my highest legal card AH"
+              ]
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 14,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 9,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "QH"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "KH",
+              "feedback": [
+                "Going for control: playing my highest legal card KH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "JD",
+              "feedback": [
+                "Void in H: dumping JD"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5H"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 10,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "JH",
+              "feedback": [
+                "Going for control: playing my highest legal card JH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "JS",
+              "feedback": [
+                "Void in H: dumping JS"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "6H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "10H"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 11,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "8C",
+              "feedback": [
+                "Going for control: playing my highest legal card 8C"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "9S",
+              "feedback": [
+                "Void in C: dumping 9S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "9H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4D"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 12,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "8H",
+              "feedback": [
+                "Going for control: playing my highest legal card 8H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6S",
+              "feedback": [
+                "Void in H: dumping 6S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "10S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "KD"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 13,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "7H",
+              "feedback": [
+                "Going for control: playing my highest legal card 7H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4S",
+              "feedback": [
+                "Void in H: dumping 4S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "KS"
+            },
+            {
+              "player": "RandomBot",
+              "card": "2D"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 1,
+          "hearts_broken": true
+        }
+      ],
+      "hand_scores": {
+        "MoonShooters": 9,
+        "SafePlayers": 1,
+        "QueenHunters": 0,
+        "RandomBot": 16
+      },
+      "shot_the_moon": null,
+      "running_scores": {
+        "MoonShooters": 9,
+        "SafePlayers": 1,
+        "QueenHunters": 0,
+        "RandomBot": 16
+      }
+    },
+    {
+      "hand_number": 2,
+      "pass_direction": "right",
+      "dealt_hands": {
+        "MoonShooters": [
+          "4C",
+          "5C",
+          "7C",
+          "3D",
+          "4D",
+          "10D",
+          "QD",
+          "5S",
+          "6S",
+          "KS",
+          "8H",
+          "9H",
+          "QH"
+        ],
+        "SafePlayers": [
+          "2C",
+          "3C",
+          "9C",
+          "KC",
+          "2D",
+          "6D",
+          "KD",
+          "2S",
+          "QS",
+          "5H",
+          "10H",
+          "KH",
+          "AH"
+        ],
+        "QueenHunters": [
+          "6C",
+          "JC",
+          "AC",
+          "5D",
+          "7D",
+          "8D",
+          "AD",
+          "3S",
+          "4S",
+          "9S",
+          "JS",
+          "3H",
+          "6H"
+        ],
+        "RandomBot": [
+          "8C",
+          "10C",
+          "QC",
+          "9D",
+          "JD",
+          "7S",
+          "8S",
+          "10S",
+          "AS",
+          "2H",
+          "4H",
+          "7H",
+          "JH"
+        ]
+      },
+      "passes": {
+        "MoonShooters": {
+          "to": "RandomBot",
+          "cards": [
+            "4C",
+            "3D",
+            "4D"
+          ]
+        },
+        "SafePlayers": {
+          "to": "MoonShooters",
+          "cards": [
+            "QS",
+            "KH",
+            "AH"
+          ]
+        },
+        "QueenHunters": {
+          "to": "SafePlayers",
+          "cards": [
+            "AC",
+            "3H",
+            "6H"
+          ]
+        },
+        "RandomBot": {
+          "to": "QueenHunters",
+          "cards": [
+            "4H",
+            "7H",
+            "JH"
+          ]
+        }
+      },
+      "hands_after_pass": {
+        "MoonShooters": [
+          "5C",
+          "7C",
+          "10D",
+          "QD",
+          "5S",
+          "6S",
+          "QS",
+          "KS",
+          "8H",
+          "9H",
+          "QH",
+          "KH",
+          "AH"
+        ],
+        "SafePlayers": [
+          "2C",
+          "3C",
+          "9C",
+          "KC",
+          "AC",
+          "2D",
+          "6D",
+          "KD",
+          "2S",
+          "3H",
+          "5H",
+          "6H",
+          "10H"
+        ],
+        "QueenHunters": [
+          "6C",
+          "JC",
+          "5D",
+          "7D",
+          "8D",
+          "AD",
+          "3S",
+          "4S",
+          "9S",
+          "JS",
+          "4H",
+          "7H",
+          "JH"
+        ],
+        "RandomBot": [
+          "4C",
+          "8C",
+          "10C",
+          "QC",
+          "3D",
+          "4D",
+          "9D",
+          "JD",
+          "7S",
+          "8S",
+          "10S",
+          "AS",
+          "2H"
+        ]
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "2C",
+              "feedback": [
+                "Playing low to stay safe: 2C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "6C"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "7C",
+              "feedback": [
+                "Going for control: playing my highest legal card 7C"
+              ]
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 2,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "KS",
+              "feedback": [
+                "Going for control: playing my highest legal card KS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "2S",
+              "feedback": [
+                "Playing low to stay safe: 2S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "7S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 3,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "QD",
+              "feedback": [
+                "Going for control: playing my highest legal card QD"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "2D",
+              "feedback": [
+                "Playing low to stay safe: 2D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "JD"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 4,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "QS",
+              "feedback": [
+                "Going for control: playing my highest legal card QS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "10H",
+              "feedback": [
+                "Void in S: dumping 10H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "4S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "10S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 14,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 5,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "AH",
+              "feedback": [
+                "Going for control: playing my highest legal card AH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "3H",
+              "feedback": [
+                "Playing low to stay safe: 3H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "4H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "2H"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 4,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 6,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "KH",
+              "feedback": [
+                "Going for control: playing my highest legal card KH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "5H",
+              "feedback": [
+                "Playing low to stay safe: 5H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "7H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "8S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 7,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "QH",
+              "feedback": [
+                "Going for control: playing my highest legal card QH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6H",
+              "feedback": [
+                "Playing low to stay safe: 6H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "JH"
+            },
+            {
+              "player": "RandomBot",
+              "card": "10C"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 8,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "10D",
+              "feedback": [
+                "Going for control: playing my highest legal card 10D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6D",
+              "feedback": [
+                "Playing low to stay safe: 6D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "7D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "3D"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 9,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "9H",
+              "feedback": [
+                "Going for control: playing my highest legal card 9H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "AC",
+              "feedback": [
+                "Void in H: dumping AC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "8D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "9D"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 10,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "8H",
+              "feedback": [
+                "Going for control: playing my highest legal card 8H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "KC",
+              "feedback": [
+                "Void in H: dumping KC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "9S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "AS"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 11,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "6S",
+              "feedback": [
+                "Going for control: playing my highest legal card 6S"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "KD",
+              "feedback": [
+                "Void in S: dumping KD"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "JS"
+            },
+            {
+              "player": "RandomBot",
+              "card": "QC"
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 12,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "JC"
+            },
+            {
+              "player": "RandomBot",
+              "card": "8C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "5C",
+              "feedback": [
+                "Going for control: playing my highest legal card 5C"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "3C",
+              "feedback": [
+                "Playing low to stay safe: 3C"
+              ]
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 13,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "AD"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4D"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "5S",
+              "feedback": [
+                "Going for control: playing my highest legal card 5S"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "9C",
+              "feedback": [
+                "Void in D: dumping 9C"
+              ]
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 0,
+          "hearts_broken": true
+        }
+      ],
+      "hand_scores": {
+        "MoonShooters": 0,
+        "SafePlayers": 26,
+        "QueenHunters": 26,
+        "RandomBot": 26
+      },
+      "shot_the_moon": "MoonShooters",
+      "running_scores": {
+        "MoonShooters": 9,
+        "SafePlayers": 27,
+        "QueenHunters": 26,
+        "RandomBot": 42
+      }
+    },
+    {
+      "hand_number": 3,
+      "pass_direction": "across",
+      "dealt_hands": {
+        "MoonShooters": [
+          "9C",
+          "2D",
+          "3D",
+          "5D",
+          "JD",
+          "AD",
+          "2S",
+          "3S",
+          "4S",
+          "5S",
+          "6S",
+          "JS",
+          "AS"
+        ],
+        "SafePlayers": [
+          "2C",
+          "QC",
+          "KC",
+          "4D",
+          "6D",
+          "8D",
+          "9D",
+          "KD",
+          "QS",
+          "4H",
+          "6H",
+          "9H",
+          "JH"
+        ],
+        "QueenHunters": [
+          "3C",
+          "5C",
+          "10C",
+          "AC",
+          "10D",
+          "7S",
+          "8S",
+          "10S",
+          "2H",
+          "3H",
+          "QH",
+          "KH",
+          "AH"
+        ],
+        "RandomBot": [
+          "4C",
+          "6C",
+          "7C",
+          "8C",
+          "JC",
+          "7D",
+          "QD",
+          "9S",
+          "KS",
+          "5H",
+          "7H",
+          "8H",
+          "10H"
+        ]
+      },
+      "passes": {
+        "MoonShooters": {
+          "to": "QueenHunters",
+          "cards": [
+            "2D",
+            "3D",
+            "2S"
+          ]
+        },
+        "SafePlayers": {
+          "to": "RandomBot",
+          "cards": [
+            "QS",
+            "9H",
+            "JH"
+          ]
+        },
+        "QueenHunters": {
+          "to": "MoonShooters",
+          "cards": [
+            "QH",
+            "KH",
+            "AH"
+          ]
+        },
+        "RandomBot": {
+          "to": "SafePlayers",
+          "cards": [
+            "7H",
+            "8H",
+            "10H"
+          ]
+        }
+      },
+      "hands_after_pass": {
+        "MoonShooters": [
+          "9C",
+          "5D",
+          "JD",
+          "AD",
+          "3S",
+          "4S",
+          "5S",
+          "6S",
+          "JS",
+          "AS",
+          "QH",
+          "KH",
+          "AH"
+        ],
+        "SafePlayers": [
+          "2C",
+          "QC",
+          "KC",
+          "4D",
+          "6D",
+          "8D",
+          "9D",
+          "KD",
+          "4H",
+          "6H",
+          "7H",
+          "8H",
+          "10H"
+        ],
+        "QueenHunters": [
+          "3C",
+          "5C",
+          "10C",
+          "AC",
+          "2D",
+          "3D",
+          "10D",
+          "2S",
+          "7S",
+          "8S",
+          "10S",
+          "2H",
+          "3H"
+        ],
+        "RandomBot": [
+          "4C",
+          "6C",
+          "7C",
+          "8C",
+          "JC",
+          "7D",
+          "QD",
+          "9S",
+          "QS",
+          "KS",
+          "5H",
+          "9H",
+          "JH"
+        ]
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "2C",
+              "feedback": [
+                "Playing low to stay safe: 2C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3C"
+            },
+            {
+              "player": "RandomBot",
+              "card": "JC"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "9C",
+              "feedback": [
+                "Going for control: playing my highest legal card 9C"
+              ]
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 2,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "QS"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "AS",
+              "feedback": [
+                "Going for control: playing my highest legal card AS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "10H",
+              "feedback": [
+                "Void in S: dumping 10H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "2S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 14,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 3,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "AD",
+              "feedback": [
+                "Going for control: playing my highest legal card AD"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4D",
+              "feedback": [
+                "Playing low to stay safe: 4D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "2D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "7D"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 4,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "AH",
+              "feedback": [
+                "Going for control: playing my highest legal card AH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4H",
+              "feedback": [
+                "Playing low to stay safe: 4H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "2H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "JH"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 4,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 5,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "KH",
+              "feedback": [
+                "Going for control: playing my highest legal card KH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6H",
+              "feedback": [
+                "Playing low to stay safe: 6H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "9H"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 4,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 6,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "QH",
+              "feedback": [
+                "Going for control: playing my highest legal card QH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "7H",
+              "feedback": [
+                "Playing low to stay safe: 7H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "5H"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 7,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "JD",
+              "feedback": [
+                "Going for control: playing my highest legal card JD"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6D",
+              "feedback": [
+                "Playing low to stay safe: 6D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "10D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "QD"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 8,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "9S"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "JS",
+              "feedback": [
+                "Going for control: playing my highest legal card JS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "8H",
+              "feedback": [
+                "Void in S: dumping 8H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "7S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 9,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "6S",
+              "feedback": [
+                "Going for control: playing my highest legal card 6S"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "KC",
+              "feedback": [
+                "Void in S: dumping KC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "8S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "KS"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 10,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "7C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "5D",
+              "feedback": [
+                "Going for control: playing my highest legal card 5D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "QC",
+              "feedback": [
+                "Playing low to stay safe: QC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5C"
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 11,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "8D",
+              "feedback": [
+                "Playing low to stay safe: 8D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "10C"
+            },
+            {
+              "player": "RandomBot",
+              "card": "6C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "5S",
+              "feedback": [
+                "Going for control: playing my highest legal card 5S"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 12,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "9D",
+              "feedback": [
+                "Playing low to stay safe: 9D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "10S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "4S",
+              "feedback": [
+                "Going for control: playing my highest legal card 4S"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 13,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "KD",
+              "feedback": [
+                "Playing low to stay safe: KD"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "AC"
+            },
+            {
+              "player": "RandomBot",
+              "card": "8C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "3S",
+              "feedback": [
+                "Going for control: playing my highest legal card 3S"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": true
+        }
+      ],
+      "hand_scores": {
+        "MoonShooters": 0,
+        "SafePlayers": 26,
+        "QueenHunters": 26,
+        "RandomBot": 26
+      },
+      "shot_the_moon": "MoonShooters",
+      "running_scores": {
+        "MoonShooters": 9,
+        "SafePlayers": 53,
+        "QueenHunters": 52,
+        "RandomBot": 68
+      }
+    },
+    {
+      "hand_number": 4,
+      "pass_direction": "hold",
+      "dealt_hands": {
+        "MoonShooters": [
+          "6C",
+          "10C",
+          "6D",
+          "7D",
+          "10D",
+          "2S",
+          "5S",
+          "7S",
+          "KS",
+          "5H",
+          "6H",
+          "7H",
+          "KH"
+        ],
+        "SafePlayers": [
+          "4C",
+          "JC",
+          "QC",
+          "KC",
+          "4D",
+          "8D",
+          "JD",
+          "AD",
+          "6S",
+          "JS",
+          "9H",
+          "JH",
+          "QH"
+        ],
+        "QueenHunters": [
+          "7C",
+          "3D",
+          "5D",
+          "9D",
+          "KD",
+          "8S",
+          "9S",
+          "10S",
+          "QS",
+          "3H",
+          "8H",
+          "10H",
+          "AH"
+        ],
+        "RandomBot": [
+          "2C",
+          "3C",
+          "5C",
+          "8C",
+          "9C",
+          "AC",
+          "2D",
+          "QD",
+          "3S",
+          "4S",
+          "AS",
+          "2H",
+          "4H"
+        ]
+      },
+      "passes": null,
+      "hands_after_pass": {
+        "MoonShooters": [
+          "6C",
+          "10C",
+          "6D",
+          "7D",
+          "10D",
+          "2S",
+          "5S",
+          "7S",
+          "KS",
+          "5H",
+          "6H",
+          "7H",
+          "KH"
+        ],
+        "SafePlayers": [
+          "4C",
+          "JC",
+          "QC",
+          "KC",
+          "4D",
+          "8D",
+          "JD",
+          "AD",
+          "6S",
+          "JS",
+          "9H",
+          "JH",
+          "QH"
+        ],
+        "QueenHunters": [
+          "7C",
+          "3D",
+          "5D",
+          "9D",
+          "KD",
+          "8S",
+          "9S",
+          "10S",
+          "QS",
+          "3H",
+          "8H",
+          "10H",
+          "AH"
+        ],
+        "RandomBot": [
+          "2C",
+          "3C",
+          "5C",
+          "8C",
+          "9C",
+          "AC",
+          "2D",
+          "QD",
+          "3S",
+          "4S",
+          "AS",
+          "2H",
+          "4H"
+        ]
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "2C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "10C",
+              "feedback": [
+                "Going for control: playing my highest legal card 10C"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4C",
+              "feedback": [
+                "Playing low to stay safe: 4C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "7C"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 2,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "KS",
+              "feedback": [
+                "Going for control: playing my highest legal card KS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "6S",
+              "feedback": [
+                "Playing low to stay safe: 6S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "8S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 3,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "10D",
+              "feedback": [
+                "Going for control: playing my highest legal card 10D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4D",
+              "feedback": [
+                "Playing low to stay safe: 4D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "QD"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 4,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "3S"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "7S",
+              "feedback": [
+                "Going for control: playing my highest legal card 7S"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "JS",
+              "feedback": [
+                "Playing low to stay safe: JS"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "9S"
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 5,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "8D",
+              "feedback": [
+                "Playing low to stay safe: 8D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "2D"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "7D",
+              "feedback": [
+                "Going for control: playing my highest legal card 7D"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 6,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "JC",
+              "feedback": [
+                "Playing low to stay safe: JC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "QS",
+              "feedback": [
+                "Void in led suit: sliding the Queen of Spades!"
+              ]
+            },
+            {
+              "player": "RandomBot",
+              "card": "AC"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "6C",
+              "feedback": [
+                "Going for control: playing my highest legal card 6C"
+              ]
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 13,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 7,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "AS"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "5S",
+              "feedback": [
+                "Going for control: playing my highest legal card 5S"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "QH",
+              "feedback": [
+                "Void in S: dumping QH"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "10S"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 8,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "8C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "KH",
+              "feedback": [
+                "Going for control: playing my highest legal card KH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "QC",
+              "feedback": [
+                "Playing low to stay safe: QC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3H"
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 2,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 9,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "9H",
+              "feedback": [
+                "Playing low to stay safe: 9H"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "8H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4H"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "7H",
+              "feedback": [
+                "Going for control: playing my highest legal card 7H"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 4,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 10,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "JD",
+              "feedback": [
+                "Playing low to stay safe: JD"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "9D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "5C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "6D",
+              "feedback": [
+                "Going for control: playing my highest legal card 6D"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 11,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "JH",
+              "feedback": [
+                "Playing low to stay safe: JH"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "10H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "2H"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "6H",
+              "feedback": [
+                "Going for control: playing my highest legal card 6H"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 4,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 12,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "KC",
+              "feedback": [
+                "Playing low to stay safe: KC"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "KD"
+            },
+            {
+              "player": "RandomBot",
+              "card": "3C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "5H",
+              "feedback": [
+                "Going for control: playing my highest legal card 5H"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 1,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 13,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "AD",
+              "feedback": [
+                "Playing low to stay safe: AD"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "AH"
+            },
+            {
+              "player": "RandomBot",
+              "card": "9C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "2S",
+              "feedback": [
+                "Going for control: playing my highest legal card 2S"
+              ]
+            }
+          ],
+          "winner": "SafePlayers",
+          "points": 1,
+          "hearts_broken": true
+        }
+      ],
+      "hand_scores": {
+        "MoonShooters": 0,
+        "SafePlayers": 12,
+        "QueenHunters": 0,
+        "RandomBot": 14
+      },
+      "shot_the_moon": null,
+      "running_scores": {
+        "MoonShooters": 9,
+        "SafePlayers": 65,
+        "QueenHunters": 52,
+        "RandomBot": 82
+      }
+    },
+    {
+      "hand_number": 5,
+      "pass_direction": "left",
+      "dealt_hands": {
+        "MoonShooters": [
+          "2C",
+          "10C",
+          "JC",
+          "3D",
+          "9D",
+          "JD",
+          "KD",
+          "3S",
+          "JS",
+          "AS",
+          "QH",
+          "KH",
+          "AH"
+        ],
+        "SafePlayers": [
+          "3C",
+          "4C",
+          "5C",
+          "7C",
+          "8C",
+          "KC",
+          "AC",
+          "2D",
+          "5D",
+          "10D",
+          "4S",
+          "9S",
+          "5H"
+        ],
+        "QueenHunters": [
+          "4D",
+          "8D",
+          "QD",
+          "AD",
+          "5S",
+          "6S",
+          "10S",
+          "QS",
+          "KS",
+          "3H",
+          "7H",
+          "8H",
+          "JH"
+        ],
+        "RandomBot": [
+          "6C",
+          "9C",
+          "QC",
+          "6D",
+          "7D",
+          "2S",
+          "7S",
+          "8S",
+          "2H",
+          "4H",
+          "6H",
+          "9H",
+          "10H"
+        ]
+      },
+      "passes": {
+        "MoonShooters": {
+          "to": "SafePlayers",
+          "cards": [
+            "2C",
+            "3D",
+            "3S"
+          ]
+        },
+        "SafePlayers": {
+          "to": "QueenHunters",
+          "cards": [
+            "KC",
+            "AC",
+            "5H"
+          ]
+        },
+        "QueenHunters": {
+          "to": "RandomBot",
+          "cards": [
+            "QS",
+            "8H",
+            "JH"
+          ]
+        },
+        "RandomBot": {
+          "to": "MoonShooters",
+          "cards": [
+            "6H",
+            "9H",
+            "10H"
+          ]
+        }
+      },
+      "hands_after_pass": {
+        "MoonShooters": [
+          "10C",
+          "JC",
+          "9D",
+          "JD",
+          "KD",
+          "JS",
+          "AS",
+          "6H",
+          "9H",
+          "10H",
+          "QH",
+          "KH",
+          "AH"
+        ],
+        "SafePlayers": [
+          "2C",
+          "3C",
+          "4C",
+          "5C",
+          "7C",
+          "8C",
+          "2D",
+          "3D",
+          "5D",
+          "10D",
+          "3S",
+          "4S",
+          "9S"
+        ],
+        "QueenHunters": [
+          "KC",
+          "AC",
+          "4D",
+          "8D",
+          "QD",
+          "AD",
+          "5S",
+          "6S",
+          "10S",
+          "KS",
+          "3H",
+          "5H",
+          "7H"
+        ],
+        "RandomBot": [
+          "6C",
+          "9C",
+          "QC",
+          "6D",
+          "7D",
+          "2S",
+          "7S",
+          "8S",
+          "QS",
+          "2H",
+          "4H",
+          "8H",
+          "JH"
+        ]
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "SafePlayers",
+          "plays": [
+            {
+              "player": "SafePlayers",
+              "card": "2C",
+              "feedback": [
+                "Playing low to stay safe: 2C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "KC"
+            },
+            {
+              "player": "RandomBot",
+              "card": "QC"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "JC",
+              "feedback": [
+                "Going for control: playing my highest legal card JC"
+              ]
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 2,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "4D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "6D"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "KD",
+              "feedback": [
+                "Going for control: playing my highest legal card KD"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "2D",
+              "feedback": [
+                "Playing low to stay safe: 2D"
+              ]
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 3,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "AS",
+              "feedback": [
+                "Going for control: playing my highest legal card AS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "3S",
+              "feedback": [
+                "Playing low to stay safe: 3S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "8S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 4,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "JD",
+              "feedback": [
+                "Going for control: playing my highest legal card JD"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "3D",
+              "feedback": [
+                "Playing low to stay safe: 3D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "8D"
+            },
+            {
+              "player": "RandomBot",
+              "card": "7D"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 5,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "JS",
+              "feedback": [
+                "Going for control: playing my highest legal card JS"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4S",
+              "feedback": [
+                "Playing low to stay safe: 4S"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "6S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "2S"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 6,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "10C",
+              "feedback": [
+                "Going for control: playing my highest legal card 10C"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "3C",
+              "feedback": [
+                "Playing low to stay safe: 3C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "AC"
+            },
+            {
+              "player": "RandomBot",
+              "card": "6C"
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 0,
+          "hearts_broken": false
+        },
+        {
+          "trick_number": 7,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "10S"
+            },
+            {
+              "player": "RandomBot",
+              "card": "QS"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "AH",
+              "feedback": [
+                "Going for control: playing my highest legal card AH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "9S",
+              "feedback": [
+                "Playing low to stay safe: 9S"
+              ]
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 14,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 8,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "9C"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "KH",
+              "feedback": [
+                "Going for control: playing my highest legal card KH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "4C",
+              "feedback": [
+                "Playing low to stay safe: 4C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "3H"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 2,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 9,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "2H"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "QH",
+              "feedback": [
+                "Going for control: playing my highest legal card QH"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "10D",
+              "feedback": [
+                "Void in H: dumping 10D"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "5H"
+            }
+          ],
+          "winner": "MoonShooters",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 10,
+          "leader": "MoonShooters",
+          "plays": [
+            {
+              "player": "MoonShooters",
+              "card": "10H",
+              "feedback": [
+                "Going for control: playing my highest legal card 10H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "8C",
+              "feedback": [
+                "Void in H: dumping 8C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "7H"
+            },
+            {
+              "player": "RandomBot",
+              "card": "JH"
+            }
+          ],
+          "winner": "RandomBot",
+          "points": 3,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 11,
+          "leader": "RandomBot",
+          "plays": [
+            {
+              "player": "RandomBot",
+              "card": "7S"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "9D",
+              "feedback": [
+                "Going for control: playing my highest legal card 9D"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "7C",
+              "feedback": [
+                "Void in S: dumping 7C"
+              ]
+            },
+            {
+              "player": "QueenHunters",
+              "card": "KS"
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 0,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 12,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "QD"
+            },
+            {
+              "player": "RandomBot",
+              "card": "8H"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "9H",
+              "feedback": [
+                "Going for control: playing my highest legal card 9H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "5D",
+              "feedback": [
+                "Playing low to stay safe: 5D"
+              ]
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 2,
+          "hearts_broken": true
+        },
+        {
+          "trick_number": 13,
+          "leader": "QueenHunters",
+          "plays": [
+            {
+              "player": "QueenHunters",
+              "card": "AD"
+            },
+            {
+              "player": "RandomBot",
+              "card": "4H"
+            },
+            {
+              "player": "MoonShooters",
+              "card": "6H",
+              "feedback": [
+                "Going for control: playing my highest legal card 6H"
+              ]
+            },
+            {
+              "player": "SafePlayers",
+              "card": "5C",
+              "feedback": [
+                "Void in D: dumping 5C"
+              ]
+            }
+          ],
+          "winner": "QueenHunters",
+          "points": 2,
+          "hearts_broken": true
+        }
+      ],
+      "hand_scores": {
+        "MoonShooters": 3,
+        "SafePlayers": 0,
+        "QueenHunters": 4,
+        "RandomBot": 19
+      },
+      "shot_the_moon": null,
+      "running_scores": {
+        "MoonShooters": 12,
+        "SafePlayers": 65,
+        "QueenHunters": 56,
+        "RandomBot": 101
+      }
+    }
+  ],
+  "final_scores": {
+    "MoonShooters": 12,
+    "SafePlayers": 65,
+    "QueenHunters": 56,
+    "RandomBot": 101
+  },
+  "winner": "MoonShooters"
+}

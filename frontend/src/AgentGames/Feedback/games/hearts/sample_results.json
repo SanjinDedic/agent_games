@@ -1,0 +1,35 @@
+{
+  "total_points": {
+    "SafePlayers": 1276,
+    "QueenHunters": 903,
+    "MoonShooters": 892,
+    "RandomBot": 429
+  },
+  "num_simulations": 500,
+  "table": {
+    "games_won": {
+      "SafePlayers": 214,
+      "QueenHunters": 131,
+      "MoonShooters": 118,
+      "RandomBot": 37
+    },
+    "avg_points_per_hand": {
+      "SafePlayers": 4.9,
+      "QueenHunters": 6.4,
+      "MoonShooters": 7.1,
+      "RandomBot": 7.6
+    },
+    "moons_shot": {
+      "MoonShooters": 210,
+      "QueenHunters": 12,
+      "SafePlayers": 3,
+      "RandomBot": 6
+    },
+    "queens_taken": {
+      "RandomBot": 1044,
+      "MoonShooters": 810,
+      "QueenHunters": 620,
+      "SafePlayers": 426
+    }
+  }
+}
