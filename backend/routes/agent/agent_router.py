@@ -3,8 +3,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from backend.celery_utils import poll_task_result
-from backend.games.simulation_task import run_simulation as run_simulation_task
+from backend.tasks.celery_utils import poll_task_result
+from backend.tasks.simulation_task import run_simulation as run_simulation_task
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.agent.agent_db import (
     allow_simulation,

@@ -4,6 +4,14 @@ Measures how many greedy-pig agent submissions the site can absorb per minute,
 and at what latency — so you can re-run it before/after a code change and see
 the effect on capacity.
 
+Three locustfiles share the same agent payloads and summary (`bench_common.py`):
+
+| File | Load shape | Use for |
+|------|-----------|---------|
+| `locust_greedy_pig.py` | weighted mix, max throughput (`-u` bound) | capacity ceiling |
+| `locust_illegal_agents.py` | fixed rates: 50/min valid + 5/min *each* of spin/security/runtime, run 3 min | leak hunting under a steady illegal drip |
+| `locust_legal_only.py` | fixed rate: valid only, 10 req/s, run 1 min | clean throughput/latency at a known offered load |
+
 ## How it works
 
 `locust_greedy_pig.py` hammers a dedicated endpoint,
@@ -86,6 +94,30 @@ locust -f backend/server_stress_test/locust_greedy_pig.py \
 - `-u` total concurrent users, `-r` spawn rate/s, `-t` duration.
 - Start low (`-u 20`) and step up until latency climbs or failures appear —
   that knee is your capacity ceiling.
+
+### Fixed-rate runs
+
+The two fixed-rate tests pace each user with `constant_throughput`, so `-u`
+must match the fixed user counts the file defines (a mismatch logs a warning
+and skews the offered rate):
+
+```bash
+# Illegal drip: 50/min valid + 5/min each of spin/security/runtime, 3 minutes
+BENCHMARK_TOKEN=<secret> \
+locust -f backend/server_stress_test/locust_illegal_agents.py \
+    --headless -u 9 -r 9 -t 3m --host https://your-prod-host --csv bench_illegal
+
+# Legal only: 10 submissions/s for 1 minute
+BENCHMARK_TOKEN=<secret> \
+locust -f backend/server_stress_test/locust_legal_only.py \
+    --headless -u 30 -r 30 -t 1m --host https://your-prod-host --csv bench_legal
+```
+
+Rates/user counts are env-tunable: `LEGAL_PER_MIN`, `ILLEGAL_PER_MIN`,
+`VALID_USERS`, `SPIN_USERS`, `SECURITY_USERS`, `RUNTIME_USERS` (illegal test);
+`TARGET_RPS`, `USERS` (legal test). Pacing can only *cap* the rate — if latency
+exceeds a user's interval the achieved rate falls below target, which is itself
+the finding. Run `monitor_cpu.sh` alongside the illegal test.
 
 ### Optional env knobs
 

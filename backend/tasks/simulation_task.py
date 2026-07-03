@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlmodel import Session
 
-from backend.celery_app import celery_app
+from backend.tasks.celery_app import celery_app
 from backend.database.db_models import League
 from backend.database.db_session import get_db_engine
 from backend.games.game_factory import GameFactory
@@ -58,9 +58,9 @@ def _load_league_players(game, league_id: int) -> None:
     replace the validation players only when there are any; on empty or error
     the validation players loaded by the game constructor stay in place.
     """
-    # Deferred import: user_db lives under backend.routes.user, whose package
-    # __init__ pulls in the routers that import this module — a top-level
-    # import would be circular.
+    # Deferred import: keeps user_db out of the worker parent (this module is
+    # in the Celery include list, so both workers import it at boot) — it is
+    # only needed inside the child actually running a simulation.
     from backend.routes.user.user_db import get_latest_submissions_for_league
 
     try:

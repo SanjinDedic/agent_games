@@ -4,9 +4,9 @@ import os
 
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
-from backend.celery_utils import poll_task_result
+from backend.tasks.celery_utils import poll_task_result
 from backend.database.db_models import Institution
-from backend.games.simulation_task import run_simulation
+from backend.tasks.simulation_task import run_simulation
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import (
     get_current_user,

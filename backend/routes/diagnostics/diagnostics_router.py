@@ -12,10 +12,10 @@ from backend.routes.auth.auth_core import get_current_user, verify_admin_or_inst
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
 
-from backend.routes.user.code_validation import (
+from backend.routes.user.code_validation import validate_code
+from backend.tasks.validation_task import (
     await_validation_result,
     enqueue_validation,
-    validate_code,
 )
 
 logger = logging.getLogger(__name__)

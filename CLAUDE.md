@@ -55,7 +55,7 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 - **MinIO** (ports 9000/9001): Local S3-compatible storage for assets and support attachments (real S3 in production)
 - **Frontend** (port 3000): React SPA served by Vite
 
-The API enqueues Celery tasks (`validation.run`, `simulation.run`) and blocks on the result via `asyncio.to_thread(result.get)`. Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 8s hard time limit.
+The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits the result by polling the result backend (`backend/tasks/celery_utils.py`). Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 6s hard time limit.
 
 ### Backend structure (`backend/`)
 - `api.py` — FastAPI entry point; mounts routers: auth, admin, institution, user, agent, demo, ai, diagnostics, support, payments
@@ -63,7 +63,7 @@ The API enqueues Celery tasks (`validation.run`, `simulation.run`) and blocks on
 - `games/` — Game implementations extending `base_game.py`. Games are discovered dynamically: `backend/games/<name>/<name>.py` must define exactly one `BaseGame` subclass — no manual registration. Current games: `greedy_pig`, `prisoners_dilemma`, `lineup4`, `arena_champions`
 - `database/` — SQLModel ORM models (`db_models.py`), DB config (`db_config.py`), session management, `init_db.py` for schema setup
 - `migrations/` — dated SQL migrations for production schema changes (not used by tests)
-- `celery_app.py` — Celery app: broker config, queue routing, worker settings
+- `tasks/` — All Celery code: `celery_app.py` (broker config, queue routing, worker settings), `celery_utils.py` (result polling), `validation_task.py` and `simulation_task.py` (the tasks)
 - `Dockerfile` — shared image for api/workers/test-runner (build context is repo root)
 - `config.py` — Central config: dynamic game discovery (`GAMES`), league expiry settings, Stripe keys, secrets
 

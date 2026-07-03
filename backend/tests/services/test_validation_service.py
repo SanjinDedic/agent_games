@@ -2,11 +2,8 @@ import ast
 
 import pytest
 
-from backend.routes.user.code_validation import (
-    CodeValidator,
-    run_validation,
-    validate_code,
-)
+from backend.routes.user.code_validation import CodeValidator, validate_code
+from backend.tasks.validation_task import run_validation
 
 # Test constants
 VALID_CODE = """

@@ -190,3 +190,4 @@ frontend/public/about/
 seed_arena_champions_teams_prod.py
 seed_greedy_pig_teams_prod.py
 skills-lock.json
+backend/celery_easy/

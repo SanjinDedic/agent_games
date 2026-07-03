@@ -119,7 +119,7 @@ def celery_workers():
     running (docker compose starts them; test-runner depends_on their
     healthchecks).
     """
-    from backend.celery_app import celery_app
+    from backend.tasks.celery_app import celery_app
 
     replies = celery_app.control.inspect(timeout=5).ping() or {}
     for prefix in ("validation", "simulation"):

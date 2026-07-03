@@ -247,8 +247,11 @@ def test_run_simulation_cross_institution(client, two_institutions):
     team_names_b = ["perm_team_b_0", "perm_team_b_1"]
 
     with patch("backend.routes.institution.institution_router.run_simulation") as mock_task:
-        # .get is a plain sync callable — the router runs it via asyncio.to_thread
-        mock_task.delay.return_value.get.return_value = _mock_simulation_result(team_names_b)
+        # The router awaits poll_task_result, which reads ready()/successful()/.result
+        mock_async = mock_task.delay.return_value
+        mock_async.ready.return_value = True
+        mock_async.successful.return_value = True
+        mock_async.result = _mock_simulation_result(team_names_b)
 
         # Institution A CANNOT simulate B's league
         resp = client.post(

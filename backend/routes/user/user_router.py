@@ -54,10 +54,10 @@ from backend.routes.user.user_models import (
     LeagueAssignRequest,
     SubmissionCode,
 )
-from backend.routes.user.code_validation import (
+from backend.routes.user.code_validation import validate_code
+from backend.tasks.validation_task import (
     await_validation_result,
     enqueue_validation,
-    validate_code,
 )
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
