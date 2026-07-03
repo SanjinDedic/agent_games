@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+# Back up the production DB before containers are replaced.
+# Runs wherever kamal is invoked (CI or laptop) using the same SSH access
+# kamal itself needs. A backup failure aborts the deploy on purpose; a
+# missing web container (first deploy on a fresh host) is skipped.
+
+for HOST in ${KAMAL_HOSTS//,/ }; do
+  echo "Pre-deploy backup on $HOST..."
+  ssh -o StrictHostKeyChecking=accept-new "root@$HOST" '
+    CONTAINER=$(docker ps -q \
+      --filter label=service=agent_games \
+      --filter label=role=web \
+      --filter status=running | head -1)
+    if [ -z "$CONTAINER" ]; then
+      echo "No running web container — skipping pre-deploy backup"
+      exit 0
+    fi
+    docker exec "$CONTAINER" python -m backend.routes.admin.admin_backup --label PRE_DEPLOY
+  '
+done
