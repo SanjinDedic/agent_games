@@ -132,6 +132,76 @@ def test_create_backup_s3_upload_fails(mock_parse, mock_run, mock_s3):
             create_backup()
 
 
+@patch("backend.routes.admin.admin_backup._get_s3_client")
+@patch("backend.routes.admin.admin_backup.subprocess.run")
+@patch("backend.routes.admin.admin_backup._parse_db_url")
+def test_create_backup_label_in_filename(mock_parse, mock_run, mock_s3):
+    """The label is embedded in the backup filename."""
+    from backend.routes.admin.admin_backup import create_backup
+
+    mock_parse.return_value = {
+        "host": "localhost", "port": "5432",
+        "user": "postgres", "password": "", "dbname": "testdb",
+    }
+    mock_run.return_value = MagicMock(returncode=0, stderr="")
+    mock_s3.return_value = MagicMock()
+
+    with patch("backend.routes.admin.admin_backup.os.path.getsize", return_value=1):
+        assert "_PRE_DEPLOY_" in create_backup(label="PRE_DEPLOY")["filename"]
+        assert "_DAILY_" in create_backup(label="DAILY")["filename"]
+        # Default label marks manual backups
+        assert "_MANUAL_" in create_backup()["filename"]
+
+
+# ─── prune_backups ────────────────────────────────────────────────────────────
+
+@patch("backend.routes.admin.admin_backup._get_s3_client")
+def test_prune_backups_deletes_only_expired(mock_s3):
+    """Backups past the cutoff are deleted; recent ones and foreign keys survive."""
+    from datetime import datetime, timedelta, timezone
+
+    from backend.routes.admin.admin_backup import prune_backups
+
+    now = datetime.now(timezone.utc)
+    mock_s3.return_value.list_objects_v2.return_value = {
+        "Contents": [
+            {"Key": "backups/agent_games_DAILY_old.sql", "Size": 1,
+             "LastModified": now - timedelta(days=61)},
+            {"Key": "backups/agent_games_DAILY_new.sql", "Size": 1,
+             "LastModified": now - timedelta(days=1)},
+            # Non-backup object under the prefix must never be touched
+            {"Key": "backups/unrelated_file.txt", "Size": 1,
+             "LastModified": now - timedelta(days=365)},
+        ]
+    }
+
+    deleted = prune_backups(days=60)
+
+    assert deleted == ["backups/agent_games_DAILY_old.sql"]
+    mock_s3.return_value.delete_objects.assert_called_once()
+    delete_arg = mock_s3.return_value.delete_objects.call_args.kwargs["Delete"]
+    assert delete_arg["Objects"] == [{"Key": "backups/agent_games_DAILY_old.sql"}]
+
+
+@patch("backend.routes.admin.admin_backup._get_s3_client")
+def test_prune_backups_nothing_expired(mock_s3):
+    """No delete call when everything is within the retention window."""
+    from datetime import datetime, timedelta, timezone
+
+    from backend.routes.admin.admin_backup import prune_backups
+
+    now = datetime.now(timezone.utc)
+    mock_s3.return_value.list_objects_v2.return_value = {
+        "Contents": [
+            {"Key": "backups/agent_games_DAILY_new.sql", "Size": 1,
+             "LastModified": now - timedelta(days=59)},
+        ]
+    }
+
+    assert prune_backups(days=60) == []
+    mock_s3.return_value.delete_objects.assert_not_called()
+
+
 # ─── list_backups ─────────────────────────────────────────────────────────────
 
 @patch("backend.routes.admin.admin_backup._get_s3_client")

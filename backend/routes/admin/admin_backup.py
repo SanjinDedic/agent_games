@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import boto3
@@ -45,15 +45,16 @@ def _get_s3_client():
     )
 
 
-def create_backup() -> dict:
+def create_backup(label: str = "MANUAL") -> dict:
     """Run pg_dump and upload the .sql file to AWS S3.
 
+    `label` tags the filename with the backup's origin (MANUAL, DAILY, PRE_DEPLOY).
     Returns a dict with backup metadata on success.
     """
     bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
     db = _parse_db_url()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"agent_games_{timestamp}.sql"
+    filename = f"agent_games_{label}_{timestamp}.sql"
 
     with tempfile.TemporaryDirectory() as tmp:
         dump_path = os.path.join(tmp, filename)
@@ -128,6 +129,41 @@ def list_backups() -> list[dict]:
     return backups
 
 
+def prune_backups(days: int = 60) -> list[str]:
+    """Delete backups older than `days` days from the S3 bucket.
+
+    Only touches keys matching backups/agent_games_*. Returns the deleted keys.
+    """
+    bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
+    client = _get_s3_client()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    try:
+        response = client.list_objects_v2(Bucket=bucket, Prefix="backups/")
+    except ClientError as e:
+        raise RuntimeError(f"Failed to list backups: {e}")
+
+    expired = [
+        obj["Key"]
+        for obj in response.get("Contents", [])
+        if obj["Key"].startswith("backups/agent_games_")
+        and obj["LastModified"] < cutoff
+    ]
+    if not expired:
+        return []
+
+    try:
+        client.delete_objects(
+            Bucket=bucket,
+            Delete={"Objects": [{"Key": k} for k in expired], "Quiet": True},
+        )
+    except ClientError as e:
+        raise RuntimeError(f"Failed to delete old backups: {e}")
+
+    logger.info(f"Pruned {len(expired)} backup(s) older than {days} days")
+    return expired
+
+
 def restore_backup(s3_key: str) -> dict:
     """Download a backup from S3 and restore it via psql.
 
@@ -184,3 +220,30 @@ def restore_backup(s3_key: str) -> dict:
 
     logger.info(f"Database restored from s3://{bucket}/{s3_key}")
     return {"filename": filename, "s3_key": s3_key}
+
+
+if __name__ == "__main__":
+    # CLI entry for scheduled/pre-deploy backups, run inside the api container:
+    #   python -m backend.routes.admin.admin_backup --label DAILY --prune
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Back up the database to S3")
+    parser.add_argument(
+        "--label",
+        default="MANUAL",
+        help="Origin tag embedded in the backup filename (e.g. DAILY, PRE_DEPLOY)",
+    )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="After backing up, delete backups older than 60 days",
+    )
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+    result = create_backup(label=args.label)
+    print(f"Backup created: s3://{result['bucket']}/{result['s3_key']} "
+          f"({result['size_bytes']} bytes)")
+    if args.prune:
+        deleted = prune_backups()
+        print(f"Pruned {len(deleted)} backup(s) older than 60 days")

@@ -1,0 +1,31 @@
+name: Daily DB Backup
+
+on:
+  schedule:
+    # 20:00 UTC = 06:00 AEST (07:00 during AEDT — GitHub cron is UTC-only)
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Back up database and prune backups older than 60 days
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new root@api.agentgames.io '
+            CONTAINER=$(docker ps -q \
+              --filter label=service=agent_games \
+              --filter label=role=web \
+              --filter status=running | head -1)
+            if [ -z "$CONTAINER" ]; then
+              echo "No running web container — cannot back up" >&2
+              exit 1
+            fi
+            docker exec "$CONTAINER" python -m backend.routes.admin.admin_backup --label DAILY --prune
+          '
