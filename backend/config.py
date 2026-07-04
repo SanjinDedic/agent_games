@@ -83,6 +83,7 @@ GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 VALIDATION_SIMULATIONS = {
     "hearts": 1,
     "ohhell": 1,
+    "thirteen": 1,
 }
 
 
