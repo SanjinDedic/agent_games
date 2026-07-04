@@ -55,9 +55,10 @@ MAX_FEEDBACK_CHARS = 4_000
 
 # Game feedback dicts carry a per-event "blow-by-blow" log under one of these
 # keys (greedy_pig: rounds, prisoners_dilemma: pairings, lineup4: matches/moves,
-# arena_champions: battles). That log dwarfs everything else (~39k of a ~39.5k
-# feedback dict in greedy_pig) and is irrelevant to hint generation — only the
-# aggregate keys (final_results, score_aggregate, final_scores, winner, ...) are.
+# arena_champions: battles, hearts: hands). That log dwarfs everything else
+# (~39k of a ~39.5k feedback dict in greedy_pig) and is irrelevant to hint
+# generation — only the aggregate keys (final_results, score_aggregate,
+# final_scores, winner, ...) are.
 # We drop these keys, plus any other oversized list, before rendering.
 LOG_FEEDBACK_KEYS = {
     "rounds",
@@ -66,6 +67,8 @@ LOG_FEEDBACK_KEYS = {
     "matches",
     "moves",
     "battles",
+    "hands",
+    "tricks",
     "match_history",
     "history",
 }
