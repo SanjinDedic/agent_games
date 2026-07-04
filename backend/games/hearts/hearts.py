@@ -170,11 +170,20 @@ of Spades is 13. The game ends when someone reaches 100 points — the player
 with the **fewest** points wins the table. Exception: take *all* 26 points in
 one hand ("shooting the moon") and the other three players get 26 instead.
 
+## What is a trick?
+A **trick** is one round where each of the 4 players plays a single card, in
+seat order. The first player "leads" a card, setting the **led suit**; the other
+three follow in turn. Whoever played the highest card *of the led suit* wins
+(takes) the trick, collects all 4 cards, and leads the next trick.
+
 ## Game Rules
 - Each hand, all 52 cards are dealt (13 each), then each player passes 3 cards
   (direction cycles: left, right, across, hold — no pass on the 4th hand)
 - The player holding the 2 of Clubs leads it to the first trick
-- You must follow the led suit if you can; the highest card of the led suit takes the trick and leads next
+- You must follow the led suit if you can (play a card of the same suit as the
+  card that was led); the highest card of the led suit takes the trick and leads next
+- If you can't follow suit, you may play any card — this is how you "dump"
+  penalty cards (hearts, Queen of Spades) onto whoever wins the trick
 - You can't lead hearts until hearts are "broken" (a heart was discarded), and
   no penalty card (hearts, Queen of Spades) may be played on the first trick unless forced
 
