@@ -53,7 +53,18 @@ def test_assign_points(test_league):
         "banked_money": {"Player1": 50, "Player2": 80, "Player3": 30, "Player4": 70},
         "unbanked_money": {"Player1": 10, "Player2": 20, "Player3": 5, "Player4": 15},
     }
+    # Winner-takes-all default, and only banked money counts: Player4's
+    # 70 + 15 unbanked would beat Player2's 80 under the old rules, but
+    # unbanked money is lost.
     results = game.assign_points(game_state)
+    assert results["points"]["Player2"] == 10
+    assert results["points"]["Player4"] == 0
+    assert results["points"]["Player1"] == 0
+    assert results["points"]["Player3"] == 0
+    assert results["score_aggregate"]["Player4"] == 70
+
+    # Placement payouts remain available via custom rewards
+    results = game.assign_points(game_state, [10, 8, 6, 4])
     assert results["points"]["Player2"] == 10
     assert results["points"]["Player4"] == 8
     assert results["points"]["Player1"] == 6

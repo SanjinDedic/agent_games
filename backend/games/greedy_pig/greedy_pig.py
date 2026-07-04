@@ -6,6 +6,11 @@ from backend.games.greedy_pig.player import Player as GreedyPigPlayer
 
 
 class GreedyPigGame(BaseGame):
+    # Game ends at the end of any round where a player has BANKED this much.
+    WINNING_SCORE = 100
+    # Safety net: a player holding this much unbanked money is forced to bank.
+    FAILSAFE_BANK_AT = 150
+
     starter_code = """
 from games.greedy_pig.player import Player
 import random
@@ -30,7 +35,14 @@ class CustomPlayer(Player):
 <p>Welcome to the Greedy Pig game! Your task is to implement the <code>make_decision</code> method in the <code>CustomPlayer</code> class.</p>
 
 <h2>1. Game Objective</h2>
-<p>Be the first player to bank 100 points.</p>
+<p>Be the first player to <strong>bank</strong> 100 points. Only banked money counts — holding 100+ unbanked does nothing until you bank it.</p>
+<ul>
+    <li>The game ends after the roll on which a player <strong>banks</strong> 100 or more. Players still holding unbanked money at that moment lose it.</li>
+    <li>If two or more players bank 100+ on that same roll, the one with the <strong>higher banked total wins</strong>.</li>
+    <li>If the top players are tied on the same score, they share the winner's points between them — identical strategies split the prize.</li>
+    <li><strong>Failsafe:</strong> if your unbanked pile reaches 150, it is automatically banked for you.</li>
+    <li>Scoring is <strong>winner-takes-all</strong> by default (winner gets 10 points per game, everyone else 0). League organisers can switch to placement-based rewards.</li>
+</ul>
 
 <h2>2. Your Task</h2>
 <p>Implement the <code>make_decision</code> method to decide whether to 'continue' rolling or 'bank' your current unbanked money.</p>
@@ -72,9 +84,11 @@ def make_decision(self, game_state):
 
 <h2>6. Strategy Tips</h2>
 <ul>
+    <li>You must bank to win — unbanked money never counts toward the 100-point target</li>
     <li>Consider your current rank when making decisions</li>
-    <li>Be aware of how close you are to winning (100 points)</li>
+    <li>Be aware of how close you are to winning (100 banked points)</li>
     <li>Balance the risk of rolling again with the potential reward</li>
+    <li>Winner takes all by default, and tied winners split the points — an edge over copycat strategies matters</li>
     <li>Observe other players' strategies through the <code>players_banked_this_round</code> list</li>
     <li>Use the <code>add_feedback</code> method to log your decision-making process and debug your strategy</li>
 </ul>
@@ -86,28 +100,30 @@ def make_decision(self, game_state):
         "kind": "placement",
         "length": 7,
         "labels": None,
-        "default": [10, 8, 6, 4, 3, 2, 1],
+        "default": [10, 0, 0, 0, 0, 0, 0],
     }
 
     reward_instructions = """## Custom Rewards — Greedy Pig
 
 Rewards are **placement bonuses** awarded once the underlying money game ends.
-After every simulated game, players are sorted by their final total
-(`banked_money + unbanked_money`) and the rewards list is paid out top-down.
+After every simulated game, players are sorted by their final banked total
+and the rewards list is paid out top-down.
 
 - 1st place receives `rewards[0]`, 2nd place receives `rewards[1]`, and so on.
-- **Ties share a rank.** Tied players each receive the same reward — the one
-  that corresponds to the first position in the tie group.
+- **Ties split the pot.** Tied players pool the rewards for the placements
+  they span and share them equally. Two players tied for 1st under the
+  default split `10 + 0` → 5 points each. This deliberately penalises
+  identical strategies.
 - Players who finish beyond the end of the rewards list receive **0**.
 - The list length therefore controls how deep the payout extends. A shorter
   list concentrates points among the top finishers; a longer list spreads
   points more evenly down the leaderboard.
 
-**Default:** `[10, 8, 6, 4, 3, 2, 1]` (top 7 places paid).
+**Default:** `[10, 0, 0, 0, 0, 0, 0]` — winner-takes-all.
 
 **Example tweaks:**
 
-- `[10, 0, 0, 0, 0, 0, 0]` → winner-takes-all.
+- `[10, 8, 6, 4, 3, 2, 1]` → classic placement payout (top 7 places paid).
 - `[3, 2, 1]` → only the podium scores.
 - `[1, 1, 1, 1, 1, 1, 1, 1]` → flat reward for everyone in the top 8.
 """
@@ -119,7 +135,7 @@ After every simulated game, players are sorted by their final total
         self.round_no = 0
         self.roll_no = 0
         self.game_over = False
-        self.custom_rewards = custom_rewards or [10, 8, 6, 4, 3, 2, 1]
+        self.custom_rewards = custom_rewards or [10, 0, 0, 0, 0, 0, 0]
         # Initialize feedback as dict for JSON output
         self.game_feedback = {"game": "greedy_pig", "rounds": []}
         self.player_feedback = {}
@@ -204,6 +220,13 @@ After every simulated game, players are sorted by their final total
                         print(f"Error in player {player.name}'s decision: {e}")
                         decision = "bank"
 
+                    forced_bank = (
+                        decision != "bank"
+                        and player.unbanked_money >= self.FAILSAFE_BANK_AT
+                    )
+                    if forced_bank:
+                        decision = "bank"
+
                     player_roll_data = {
                         "name": player.name,
                         "unbanked": player.unbanked_money,
@@ -211,6 +234,8 @@ After every simulated game, players are sorted by their final total
                         "action": decision,
                         "player_feedback": list(player.feedback),
                     }
+                    if forced_bank:
+                        player_roll_data["forced_bank"] = True
                     player.feedback = []
 
                     if decision == "bank":
@@ -231,16 +256,16 @@ After every simulated game, players are sorted by their final total
                 }
                 round_data["rolls"].append(roll_data)
 
-            for player in self.active_players:
-                if player.banked_money + player.unbanked_money >= 100:
-                    self.game_over = True
-                    # Record end of round
-                    round_data["end_of_round"] = {
-                        player.name: player.banked_money for player in self.players
-                    }
-                    if self.verbose:
-                        self.game_feedback["rounds"].append(round_data)
-                    return
+            # No automated banking: only BANKED money can win. The game ends
+            # after the roll on which a bank action reaches WINNING_SCORE —
+            # everyone who banked on that roll is compared, and players still
+            # holding unbanked money lose it.
+            if any(
+                player.banked_money >= self.WINNING_SCORE
+                for player in self.players
+            ):
+                self.game_over = True
+                break
 
             if len(self.active_players) == 0:
                 break
@@ -275,30 +300,33 @@ After every simulated game, players are sorted by their final total
 
     def assign_points(self, game_state, custom_rewards=None):
         rewards = custom_rewards or self.custom_rewards
+        # Only banked money counts — unbanked money held when the game ends
+        # was never secured and is lost.
         score_aggregate = {
             player: game_state["banked_money"][player]
-            + game_state["unbanked_money"][player]
             for player in game_state["banked_money"]
         }
         sorted_players = sorted(
             score_aggregate.items(), key=lambda x: x[1], reverse=True
         )
 
+        # Tied players pool the rewards for the placements they span and split
+        # them equally — identical strategies share the prize instead of each
+        # collecting it in full.
         points = {}
-        last_score = None
-        last_reward = 0
-        reward_index = 0
-
-        for i, (player, score) in enumerate(sorted_players):
-            if score != last_score:
-                if reward_index < len(rewards):
-                    last_reward = rewards[reward_index]
-                    reward_index += 1
-                else:
-                    last_reward = 0
-
-            points[player] = last_reward
-            last_score = score
+        i = 0
+        while i < len(sorted_players):
+            j = i
+            while (
+                j < len(sorted_players)
+                and sorted_players[j][1] == sorted_players[i][1]
+            ):
+                j += 1
+            pool = sum(rewards[k] for k in range(i, min(j, len(rewards))))
+            share = round(pool / (j - i), 2)
+            for player, _ in sorted_players[i:j]:
+                points[player] = share
+            i = j
 
         return {"points": points, "score_aggregate": score_aggregate}
 

@@ -81,6 +81,11 @@ def test_get_game_state(test_game):
         assert player.name in game_state["unbanked_money"]
 
 
+def test_default_rewards_winner_takes_all(test_game):
+    """Default rewards give everything to first place"""
+    assert test_game.custom_rewards == [10, 0, 0, 0, 0, 0, 0]
+
+
 def test_assign_points(test_game):
     """Test point assignment based on player rankings"""
     # Mock a game state
@@ -94,22 +99,41 @@ def test_assign_points(test_game):
             "TestRiskyPlayer": 0,
         }
     }
-    
-    # Test with default rewards
+
+    # Test with default (winner-takes-all) rewards
     results = test_game.assign_points(game_state)
-    
-    # First place should get highest reward
-    assert results["points"]["TestPlayer"] == test_game.custom_rewards[0]
-    # Second place should get second reward
-    assert results["points"]["TestRiskyPlayer"] == test_game.custom_rewards[1]
-    
-    # Test with custom rewards
+
+    # First place takes everything, second place gets nothing
+    assert results["points"]["TestPlayer"] == 10
+    assert results["points"]["TestRiskyPlayer"] == 0
+
+    # Test with custom placement rewards
     custom_rewards = [5, 3, 1]
     results = test_game.assign_points(game_state, custom_rewards)
     assert results["points"]["TestPlayer"] == 5
     assert results["points"]["TestRiskyPlayer"] == 3
-    
-    # Test with tied scores
+
+
+def test_assign_points_multiple_over_100_higher_score_wins(test_game):
+    """When several players finish over 100, the highest total wins"""
+    game_state = {
+        "banked_money": {
+            "TestPlayer": 105,
+            "TestRiskyPlayer": 150,
+        },
+        "unbanked_money": {
+            "TestPlayer": 0,
+            "TestRiskyPlayer": 0,
+        }
+    }
+
+    results = test_game.assign_points(game_state)
+    assert results["points"]["TestRiskyPlayer"] == 10
+    assert results["points"]["TestPlayer"] == 0
+
+
+def test_assign_points_tie_splits_the_pot(test_game):
+    """Tied players share the pooled rewards for the placements they span"""
     game_state = {
         "banked_money": {
             "TestPlayer": 50,
@@ -120,11 +144,34 @@ def test_assign_points(test_game):
             "TestRiskyPlayer": 0,
         }
     }
-    
+
+    # Winner-takes-all default: two tied winners split 10 + 0 → 5 each
     results = test_game.assign_points(game_state)
-    # Both should get the same points (the top reward)
-    assert results["points"]["TestPlayer"] == test_game.custom_rewards[0]
-    assert results["points"]["TestRiskyPlayer"] == test_game.custom_rewards[0]
+    assert results["points"]["TestPlayer"] == 5
+    assert results["points"]["TestRiskyPlayer"] == 5
+
+    # Placement rewards: two tied winners split 10 + 8 → 9 each
+    results = test_game.assign_points(game_state, [10, 8, 6])
+    assert results["points"]["TestPlayer"] == 9
+    assert results["points"]["TestRiskyPlayer"] == 9
+
+    # A tie below an outright winner splits the lower placements
+    game_state = {
+        "banked_money": {
+            "TestPlayer": 80,
+            "TestRiskyPlayer": 50,
+            "ThirdPlayer": 50,
+        },
+        "unbanked_money": {
+            "TestPlayer": 0,
+            "TestRiskyPlayer": 0,
+            "ThirdPlayer": 0,
+        }
+    }
+    results = test_game.assign_points(game_state, [10, 8, 6])
+    assert results["points"]["TestPlayer"] == 10
+    assert results["points"]["TestRiskyPlayer"] == 7  # (8 + 6) / 2
+    assert results["points"]["ThirdPlayer"] == 7
 
 
 @patch('random.randint')
@@ -160,21 +207,54 @@ def test_play_round_bank_decision(mock_randint, test_game):
 
 @patch('random.randint')
 def test_play_game_win_condition(mock_randint, test_game):
-    """Test game ends when a player reaches 100 points"""
+    """Test game ends once a player has BANKED 100 points"""
     # Make the dice always roll 6 for faster testing
     mock_randint.return_value = 6
-    
+
     # Set player close to winning
     test_game.players[0].banked_money = 94
-    
+
     # Play the game
     results = test_game.play_game()
-    
+
     # Game should be over
     assert test_game.game_over is True
-    
-    # TestPlayer should win with 100 or more points
-    assert results["score_aggregate"]["TestPlayer"] >= 100
+
+    # TestPlayer banks 94 + 6 = 100 on the first roll and wins immediately
+    assert results["score_aggregate"]["TestPlayer"] == 100
+    assert results["points"]["TestPlayer"] == 10
+    # TestRiskyPlayer was still holding its 6 unbanked — lost, scores nothing
+    assert results["score_aggregate"]["TestRiskyPlayer"] == 0
+    assert results["points"]["TestRiskyPlayer"] == 0
+
+
+@patch('random.randint')
+def test_no_automated_banking_at_100(mock_randint, test_game):
+    """Unbanked money over 100 does NOT end the game — you must bank to win"""
+    # TestRiskyPlayer rides to 102 unbanked, then a 1 wipes it out
+    mock_randint.side_effect = [6] * 17 + [1]
+
+    test_game.play_round()
+
+    # Crossing 100 unbanked must not have triggered a win
+    assert test_game.game_over is False
+    assert test_game.players[1].banked_money == 0
+    assert test_game.players[1].unbanked_money == 0
+
+
+@patch('random.randint')
+def test_failsafe_bank_at_150(mock_randint, test_game):
+    """A player holding 150 unbanked is force-banked"""
+    # 25 rolls of 6 → TestRiskyPlayer reaches exactly 150 unbanked
+    mock_randint.return_value = 6
+
+    test_game.play_round()
+
+    risky = test_game.players[1]
+    assert risky.banked_money == 150
+    assert risky.unbanked_money == 0
+    # 150 banked ends the game at the end of the round
+    assert test_game.game_over is True
 
 
 def test_reset(test_game):

@@ -259,7 +259,7 @@ def save_simulation_results(
     league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
     
     timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
-    rewards_str = rewards if rewards is not None else "[10, 8, 6, 4, 3, 2, 1]"
+    rewards_str = rewards if rewards is not None else "[10, 0, 0, 0, 0, 0, 0]"
     if isinstance(rewards_str, list):
         rewards_str = json.dumps(rewards_str)
 
