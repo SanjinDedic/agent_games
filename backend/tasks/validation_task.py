@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional
 from billiard.exceptions import WorkerLostError
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
+from backend.config import VALIDATION_SIMULATIONS
 from backend.database.db_models import League
 from backend.games.game_factory import GameFactory
 from backend.tasks.celery_app import celery_app
@@ -152,8 +153,11 @@ def run_validation(
                     custom_rewards
                 )
                 game_instance.reset()
+                # Per-game override: games that fan out into many sub-games per
+                # simulation (e.g. Hearts) validate in far fewer passes.
+                sim_count = VALIDATION_SIMULATIONS.get(game_name, num_simulations)
                 simulation_results = game_instance.run_simulations(
-                    num_simulations, test_league, custom_rewards
+                    sim_count, test_league, custom_rewards
                 )
                 result = {
                     "status": "success",

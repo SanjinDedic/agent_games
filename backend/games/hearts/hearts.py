@@ -125,23 +125,38 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         # Card codes are rank + suit letter: "QS", "10H", "2C", "AD"
 
-        if game_state["phase"] == "pass":
-            # Choose exactly 3 cards from game_state["hand"] to pass on.
-            # game_state also has: pass_direction, hand_number, scores, players
-            return random.sample(game_state["hand"], 3)
+        # ---- available in BOTH phases -----------------------------------
+        phase = game_state["phase"]          # "pass" or "play"
+        hand = game_state["hand"]            # your current cards (list of codes)
+        scores = game_state["scores"]        # running game score per player {name: points}
+        players = game_state["players"]      # seat order, list of player names
 
-        # phase == "play" — choose one card from game_state["legal_moves"].
-        # Also available:
-        # - hand: your remaining cards
-        # - trick: cards played so far this trick [{"player", "card"}, ...]
-        # - trick_number (1-13), leader, hearts_broken
-        # - points_taken: points each player has taken this hand
-        # - scores: running game scores (first to 100 ends the game)
+        if phase == "pass":
+            # ---- available only in the PASS phase -----------------------
+            pass_direction = game_state["pass_direction"]  # "left"/"right"/"across"/"hold"
+            hand_number = game_state["hand_number"]        # which hand of the game (1, 2, 3, ...)
 
-        # Add custom feedback (will appear in the game output)
-        self.add_feedback(f"Trick {game_state['trick_number']}: choosing from {game_state['legal_moves']}")
+            self.add_feedback(f"Hand {hand_number}: passing {pass_direction}, hand is {hand}")
 
-        return random.choice(game_state["legal_moves"])  # fallback to random legal card
+            # Choose exactly 3 cards from your hand to pass on.
+            return random.sample(hand, 3)
+
+        # ---- available only in the PLAY phase ---------------------------
+        legal_moves = game_state["legal_moves"]          # cards you may play right now
+        trick = game_state["trick"]                      # this trick so far: [{"player", "card"}, ...]
+        trick_number = game_state["trick_number"]        # 1..13
+        leader = game_state["leader"]                    # name of who led this trick
+        hearts_broken = game_state["hearts_broken"]      # have hearts been broken yet? (bool)
+        points_taken = game_state["points_taken"]        # points each player took THIS hand {name: pts}
+        cards_played = game_state["cards_played"]         # every card played this hand so far (in order)
+        cards_remaining = game_state["cards_remaining"]   # every card not yet played (includes your hand)
+
+        # ---- round-based info printed to the game output ----------------
+        self.add_feedback(f"Trick {trick_number}: choosing from {legal_moves}")
+        self.add_feedback(f"Cards played so far ({len(cards_played)}): {cards_played}")
+        self.add_feedback(f"Hearts broken: {hearts_broken} | points this hand: {points_taken}")
+
+        return random.choice(legal_moves)  # fallback to random legal card
 """
 
     game_instructions = """
@@ -178,6 +193,10 @@ In the `game_state` dictionary:
 - `trick`: cards played so far this trick, in order — `[{"player", "card"}, ...]`
 - `trick_number` (1-13), `leader`, `hearts_broken`
 - `points_taken`: points each player has taken this hand
+- `cards_played`: every card played this hand so far (all completed tricks plus
+  the current trick before your turn), in play order
+- `cards_remaining`: every card not yet played this hand (includes your own
+  hand). `cards_played` + `cards_remaining` is always the full 52-card deck
 - `scores`: running game scores; `players`: seat order; `pass_direction`, `hand_number` (pass phase)
 
 ## Strategy Tips
@@ -262,7 +281,8 @@ mean of the tied placements' points.
         return picks
 
     def _ask_play(self, player, hand, legal, trick_plays, trick_number, leader,
-                  hearts_broken, points_taken, scores, seat_names):
+                  hearts_broken, points_taken, scores, seat_names,
+                  cards_played, cards_remaining):
         state = {
             "phase": "play",
             "hand": list(hand),
@@ -274,6 +294,8 @@ mean of the tied placements' points.
             "points_taken": dict(points_taken),
             "scores": dict(scores),
             "players": list(seat_names),
+            "cards_played": list(cards_played),
+            "cards_remaining": list(cards_remaining),
         }
         try:
             card = player.make_decision(state)
@@ -330,6 +352,7 @@ mean of the tied placements' points.
         hearts_broken = False
         taken = {n: 0 for n in seat_names}
         queens = {n: 0 for n in seat_names}
+        played = []  # every card played this hand, in play order
         tricks_record = [] if verbose else None
 
         for trick_number in range(1, 14):
@@ -343,9 +366,13 @@ mean of the tied placements' points.
                 legal = self._legal_moves(
                     hands[name], plays, trick_number == 1, hearts_broken
                 )
+                cards_played = played + [p["card"] for p in plays]
+                played_set = set(cards_played)
+                cards_remaining = [c for c in DECK if c not in played_set]
                 card = self._ask_play(
                     player, hands[name], legal, plays, trick_number, leader,
                     hearts_broken, taken, scores, seat_names,
+                    cards_played, cards_remaining,
                 )
                 hands[name].remove(card)
                 if card_suit(card) == "H":
@@ -363,6 +390,7 @@ mean of the tied placements' points.
             )["player"]
             pts = sum(card_points(p["card"]) for p in plays)
             taken[winner] += pts
+            played.extend(p["card"] for p in plays)
             if any(p["card"] == "QS" for p in plays):
                 queens[winner] += 1
             if verbose:

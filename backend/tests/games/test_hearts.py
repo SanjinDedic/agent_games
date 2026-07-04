@@ -59,7 +59,7 @@ def test_deck_is_full_52():
 
 def test_game_initialization(test_league):
     game = HeartsGame(test_league)
-    assert len(game.players) == 3  # validation players
+    assert len(game.players) == 8  # validation players
     assert game.game_feedback == {"game": "hearts", "hands": []}
 
 
@@ -183,9 +183,14 @@ def test_roster_pads_short_leagues_with_validation_players(test_league):
     roster = game._roster()
     assert len(roster) == 4
     assert {type(p).__name__ for p in roster[2:]} <= {
-        "Cautious",
+        "RandomBot",
+        "LowballBot",
+        "MoonShooter",
         "QueenDumper",
-        "MoonChaser",
+        "HeartAvoider",
+        "TrickDucker",
+        "VoidMaker",
+        "Cautious",
     }
 
 
@@ -285,7 +290,7 @@ def test_add_player_with_starter_code(test_league):
     game = HeartsGame(test_league)
     player = game.add_player(HeartsGame.starter_code, "TestTeam")
     assert player is not None
-    assert len(game.players) == 4
+    assert len(game.players) == 9  # 8 validation players + the added team
     result = game.play_game()
     assert "TestTeam" in result["points"]
 
