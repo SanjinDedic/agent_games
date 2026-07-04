@@ -1,0 +1,1933 @@
+{
+  "game": "ohhell",
+  "players": [
+    "AceCounter",
+    "Estimator",
+    "ZeroBidder",
+    "GreedyBidder"
+  ],
+  "rounds": [
+    {
+      "round_number": 1,
+      "cards": 10,
+      "trump": "C",
+      "trump_card": "8C",
+      "dealer": "AceCounter",
+      "dealt_hands": {
+        "AceCounter": [
+          "4C",
+          "7C",
+          "KC",
+          "7D",
+          "9D",
+          "AD",
+          "8S",
+          "9S",
+          "5H",
+          "8H"
+        ],
+        "Estimator": [
+          "2C",
+          "QC",
+          "5D",
+          "KD",
+          "5S",
+          "KS",
+          "AS",
+          "10H",
+          "KH",
+          "AH"
+        ],
+        "ZeroBidder": [
+          "JC",
+          "AC",
+          "2D",
+          "8D",
+          "10D",
+          "QD",
+          "3S",
+          "QS",
+          "3H",
+          "4H"
+        ],
+        "GreedyBidder": [
+          "3C",
+          "5C",
+          "4D",
+          "6D",
+          "6S",
+          "10S",
+          "6H",
+          "9H",
+          "JH",
+          "QH"
+        ]
+      },
+      "bids": {
+        "Estimator": 3,
+        "ZeroBidder": 0,
+        "GreedyBidder": 10,
+        "AceCounter": 2
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "AS"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "3S"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "10S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "9S"
+            }
+          ],
+          "winner": "Estimator"
+        },
+        {
+          "trick_number": 2,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "AH"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "3H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "QH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "8H"
+            }
+          ],
+          "winner": "Estimator"
+        },
+        {
+          "trick_number": 3,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "KD"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "2D"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "6D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "AD"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 4,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "KC"
+            },
+            {
+              "player": "Estimator",
+              "card": "QC"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "JC"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "5C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 5,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "4C"
+            },
+            {
+              "player": "Estimator",
+              "card": "2C"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "AC"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "3C"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 6,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "4H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "JH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "5H"
+            },
+            {
+              "player": "Estimator",
+              "card": "KH"
+            }
+          ],
+          "winner": "Estimator"
+        },
+        {
+          "trick_number": 7,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "5D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "8D"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "4D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "7D"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 8,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "10D"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "9H"
+            },
+            {
+              "player": "AceCounter",
+              "card": "9D"
+            },
+            {
+              "player": "Estimator",
+              "card": "KS"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 9,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "QD"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "6S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "7C"
+            },
+            {
+              "player": "Estimator",
+              "card": "10H"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 10,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "8S"
+            },
+            {
+              "player": "Estimator",
+              "card": "5S"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "QS"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "6H"
+            }
+          ],
+          "winner": "ZeroBidder"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 3,
+        "Estimator": 3,
+        "ZeroBidder": 4,
+        "GreedyBidder": 0
+      },
+      "round_scores": {
+        "AceCounter": 3,
+        "Estimator": 13,
+        "ZeroBidder": 4,
+        "GreedyBidder": 0
+      },
+      "running_scores": {
+        "AceCounter": 3,
+        "Estimator": 13,
+        "ZeroBidder": 4,
+        "GreedyBidder": 0
+      }
+    },
+    {
+      "round_number": 2,
+      "cards": 9,
+      "trump": "H",
+      "trump_card": "9H",
+      "dealer": "Estimator",
+      "dealt_hands": {
+        "AceCounter": [
+          "4C",
+          "QC",
+          "6D",
+          "10D",
+          "QD",
+          "4S",
+          "6S",
+          "5H",
+          "AH"
+        ],
+        "Estimator": [
+          "7C",
+          "KC",
+          "4D",
+          "8D",
+          "9D",
+          "KD",
+          "3S",
+          "9S",
+          "7H"
+        ],
+        "ZeroBidder": [
+          "3C",
+          "8C",
+          "9C",
+          "JC",
+          "AD",
+          "QS",
+          "2H",
+          "3H",
+          "4H"
+        ],
+        "GreedyBidder": [
+          "6C",
+          "AC",
+          "7D",
+          "JD",
+          "8S",
+          "6H",
+          "8H",
+          "JH",
+          "KH"
+        ]
+      },
+      "bids": {
+        "ZeroBidder": 0,
+        "GreedyBidder": 9,
+        "AceCounter": 1,
+        "Estimator": 0
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "2H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "KH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "AH"
+            },
+            {
+              "player": "Estimator",
+              "card": "7H"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 2,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "4C"
+            },
+            {
+              "player": "Estimator",
+              "card": "7C"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "3C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "AC"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 3,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "JD"
+            },
+            {
+              "player": "AceCounter",
+              "card": "6D"
+            },
+            {
+              "player": "Estimator",
+              "card": "9D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "AD"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 4,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "3H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "JH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "5H"
+            },
+            {
+              "player": "Estimator",
+              "card": "KC"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 5,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "8S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "4S"
+            },
+            {
+              "player": "Estimator",
+              "card": "3S"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "QS"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 6,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "4H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "8H"
+            },
+            {
+              "player": "AceCounter",
+              "card": "6S"
+            },
+            {
+              "player": "Estimator",
+              "card": "KD"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 7,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "7D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "10D"
+            },
+            {
+              "player": "Estimator",
+              "card": "8D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "8C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 8,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "QC"
+            },
+            {
+              "player": "Estimator",
+              "card": "9S"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "9C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "6C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 9,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "QD"
+            },
+            {
+              "player": "Estimator",
+              "card": "4D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "JC"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "6H"
+            }
+          ],
+          "winner": "GreedyBidder"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 3,
+        "Estimator": 0,
+        "ZeroBidder": 2,
+        "GreedyBidder": 4
+      },
+      "round_scores": {
+        "AceCounter": 3,
+        "Estimator": 10,
+        "ZeroBidder": 2,
+        "GreedyBidder": 4
+      },
+      "running_scores": {
+        "AceCounter": 6,
+        "Estimator": 23,
+        "ZeroBidder": 6,
+        "GreedyBidder": 4
+      }
+    },
+    {
+      "round_number": 3,
+      "cards": 8,
+      "trump": "S",
+      "trump_card": "QS",
+      "dealer": "ZeroBidder",
+      "dealt_hands": {
+        "AceCounter": [
+          "4C",
+          "2D",
+          "2S",
+          "6S",
+          "AS",
+          "2H",
+          "10H",
+          "QH"
+        ],
+        "Estimator": [
+          "7C",
+          "8C",
+          "9C",
+          "5D",
+          "6D",
+          "7D",
+          "4H",
+          "5H"
+        ],
+        "ZeroBidder": [
+          "2C",
+          "5C",
+          "JD",
+          "AD",
+          "5S",
+          "8S",
+          "JS",
+          "9H"
+        ],
+        "GreedyBidder": [
+          "3C",
+          "KC",
+          "8D",
+          "9D",
+          "10D",
+          "7H",
+          "JH",
+          "AH"
+        ]
+      },
+      "bids": {
+        "GreedyBidder": 8,
+        "AceCounter": 1,
+        "Estimator": 0,
+        "ZeroBidder": 0
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "AH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "QH"
+            },
+            {
+              "player": "Estimator",
+              "card": "5H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "9H"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 2,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "KC"
+            },
+            {
+              "player": "AceCounter",
+              "card": "4C"
+            },
+            {
+              "player": "Estimator",
+              "card": "9C"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "2C"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 3,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "JH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "10H"
+            },
+            {
+              "player": "Estimator",
+              "card": "4H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "5C"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 4,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "10D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "2D"
+            },
+            {
+              "player": "Estimator",
+              "card": "7D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "JD"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 5,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "5S"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "9D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "AS"
+            },
+            {
+              "player": "Estimator",
+              "card": "8C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 6,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "2S"
+            },
+            {
+              "player": "Estimator",
+              "card": "7C"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "8S"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "8D"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 7,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "JS"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "7H"
+            },
+            {
+              "player": "AceCounter",
+              "card": "6S"
+            },
+            {
+              "player": "Estimator",
+              "card": "6D"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 8,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "AD"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "3C"
+            },
+            {
+              "player": "AceCounter",
+              "card": "2H"
+            },
+            {
+              "player": "Estimator",
+              "card": "5D"
+            }
+          ],
+          "winner": "ZeroBidder"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 1,
+        "Estimator": 0,
+        "ZeroBidder": 4,
+        "GreedyBidder": 3
+      },
+      "round_scores": {
+        "AceCounter": 11,
+        "Estimator": 10,
+        "ZeroBidder": 4,
+        "GreedyBidder": 3
+      },
+      "running_scores": {
+        "AceCounter": 17,
+        "Estimator": 33,
+        "ZeroBidder": 10,
+        "GreedyBidder": 7
+      }
+    },
+    {
+      "round_number": 4,
+      "cards": 7,
+      "trump": "H",
+      "trump_card": "4H",
+      "dealer": "GreedyBidder",
+      "dealt_hands": {
+        "AceCounter": [
+          "3C",
+          "QC",
+          "9D",
+          "10S",
+          "3H",
+          "10H",
+          "QH"
+        ],
+        "Estimator": [
+          "AC",
+          "3D",
+          "6D",
+          "4S",
+          "6S",
+          "5H",
+          "7H"
+        ],
+        "ZeroBidder": [
+          "4C",
+          "9C",
+          "8D",
+          "QD",
+          "AD",
+          "6H",
+          "9H"
+        ],
+        "GreedyBidder": [
+          "KC",
+          "2D",
+          "5D",
+          "8S",
+          "9S",
+          "8H",
+          "AH"
+        ]
+      },
+      "bids": {
+        "AceCounter": 1,
+        "Estimator": 2,
+        "ZeroBidder": 0,
+        "GreedyBidder": 7
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "QC"
+            },
+            {
+              "player": "Estimator",
+              "card": "AC"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "4C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "KC"
+            }
+          ],
+          "winner": "Estimator"
+        },
+        {
+          "trick_number": 2,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "7H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "6H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "AH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "QH"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 3,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "9S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "10S"
+            },
+            {
+              "player": "Estimator",
+              "card": "6S"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "8D"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 4,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "3C"
+            },
+            {
+              "player": "Estimator",
+              "card": "5H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "9C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "8S"
+            }
+          ],
+          "winner": "Estimator"
+        },
+        {
+          "trick_number": 5,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "3D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "QD"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "5D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "9D"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 6,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "9H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "8H"
+            },
+            {
+              "player": "AceCounter",
+              "card": "3H"
+            },
+            {
+              "player": "Estimator",
+              "card": "6D"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 7,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "AD"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "2D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "10H"
+            },
+            {
+              "player": "Estimator",
+              "card": "4S"
+            }
+          ],
+          "winner": "AceCounter"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 2,
+        "Estimator": 2,
+        "ZeroBidder": 2,
+        "GreedyBidder": 1
+      },
+      "round_scores": {
+        "AceCounter": 2,
+        "Estimator": 12,
+        "ZeroBidder": 2,
+        "GreedyBidder": 1
+      },
+      "running_scores": {
+        "AceCounter": 19,
+        "Estimator": 45,
+        "ZeroBidder": 12,
+        "GreedyBidder": 8
+      }
+    },
+    {
+      "round_number": 5,
+      "cards": 6,
+      "trump": "D",
+      "trump_card": "6D",
+      "dealer": "AceCounter",
+      "dealt_hands": {
+        "AceCounter": [
+          "6C",
+          "4S",
+          "9S",
+          "4H",
+          "5H",
+          "QH"
+        ],
+        "Estimator": [
+          "JC",
+          "2D",
+          "3D",
+          "8D",
+          "2S",
+          "8H"
+        ],
+        "ZeroBidder": [
+          "7C",
+          "8C",
+          "9C",
+          "5D",
+          "7D",
+          "5S"
+        ],
+        "GreedyBidder": [
+          "KC",
+          "AC",
+          "4D",
+          "QD",
+          "9H",
+          "KH"
+        ]
+      },
+      "bids": {
+        "Estimator": 1,
+        "ZeroBidder": 0,
+        "GreedyBidder": 6,
+        "AceCounter": 0
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "JC"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "7C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "AC"
+            },
+            {
+              "player": "AceCounter",
+              "card": "6C"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 2,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "KC"
+            },
+            {
+              "player": "AceCounter",
+              "card": "4S"
+            },
+            {
+              "player": "Estimator",
+              "card": "2D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "8C"
+            }
+          ],
+          "winner": "Estimator"
+        },
+        {
+          "trick_number": 3,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "2S"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "5S"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "KH"
+            },
+            {
+              "player": "AceCounter",
+              "card": "9S"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 4,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "4H"
+            },
+            {
+              "player": "Estimator",
+              "card": "8H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "5D"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "9H"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 5,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "7D"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "QD"
+            },
+            {
+              "player": "AceCounter",
+              "card": "5H"
+            },
+            {
+              "player": "Estimator",
+              "card": "8D"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 6,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "4D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "QH"
+            },
+            {
+              "player": "Estimator",
+              "card": "3D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "9C"
+            }
+          ],
+          "winner": "GreedyBidder"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 1,
+        "Estimator": 1,
+        "ZeroBidder": 1,
+        "GreedyBidder": 3
+      },
+      "round_scores": {
+        "AceCounter": 1,
+        "Estimator": 11,
+        "ZeroBidder": 1,
+        "GreedyBidder": 3
+      },
+      "running_scores": {
+        "AceCounter": 20,
+        "Estimator": 56,
+        "ZeroBidder": 13,
+        "GreedyBidder": 11
+      }
+    },
+    {
+      "round_number": 6,
+      "cards": 5,
+      "trump": "H",
+      "trump_card": "8H",
+      "dealer": "Estimator",
+      "dealt_hands": {
+        "AceCounter": [
+          "JC",
+          "AC",
+          "7D",
+          "3S",
+          "QH"
+        ],
+        "Estimator": [
+          "7C",
+          "3D",
+          "9D",
+          "QS",
+          "5H"
+        ],
+        "ZeroBidder": [
+          "2C",
+          "6C",
+          "5D",
+          "9S",
+          "9H"
+        ],
+        "GreedyBidder": [
+          "5C",
+          "5S",
+          "7H",
+          "10H",
+          "AH"
+        ]
+      },
+      "bids": {
+        "ZeroBidder": 0,
+        "GreedyBidder": 5,
+        "AceCounter": 2,
+        "Estimator": 0
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "2C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "5C"
+            },
+            {
+              "player": "AceCounter",
+              "card": "AC"
+            },
+            {
+              "player": "Estimator",
+              "card": "7C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 2,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "QH"
+            },
+            {
+              "player": "Estimator",
+              "card": "5H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "9H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "AH"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 3,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "10H"
+            },
+            {
+              "player": "AceCounter",
+              "card": "JC"
+            },
+            {
+              "player": "Estimator",
+              "card": "QS"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "5D"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 4,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "7H"
+            },
+            {
+              "player": "AceCounter",
+              "card": "7D"
+            },
+            {
+              "player": "Estimator",
+              "card": "9D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "6C"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 5,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "5S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "3S"
+            },
+            {
+              "player": "Estimator",
+              "card": "3D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "9S"
+            }
+          ],
+          "winner": "ZeroBidder"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 1,
+        "Estimator": 0,
+        "ZeroBidder": 1,
+        "GreedyBidder": 3
+      },
+      "round_scores": {
+        "AceCounter": 1,
+        "Estimator": 10,
+        "ZeroBidder": 1,
+        "GreedyBidder": 3
+      },
+      "running_scores": {
+        "AceCounter": 21,
+        "Estimator": 66,
+        "ZeroBidder": 14,
+        "GreedyBidder": 14
+      }
+    },
+    {
+      "round_number": 7,
+      "cards": 4,
+      "trump": "H",
+      "trump_card": "3H",
+      "dealer": "ZeroBidder",
+      "dealt_hands": {
+        "AceCounter": [
+          "4C",
+          "3D",
+          "10D",
+          "KH"
+        ],
+        "Estimator": [
+          "2C",
+          "9C",
+          "QC",
+          "4D"
+        ],
+        "ZeroBidder": [
+          "7C",
+          "5D",
+          "7S",
+          "8S"
+        ],
+        "GreedyBidder": [
+          "3C",
+          "6D",
+          "QD",
+          "KS"
+        ]
+      },
+      "bids": {
+        "GreedyBidder": 4,
+        "AceCounter": 1,
+        "Estimator": 0,
+        "ZeroBidder": 0
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "KS"
+            },
+            {
+              "player": "AceCounter",
+              "card": "KH"
+            },
+            {
+              "player": "Estimator",
+              "card": "QC"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "7S"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 2,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "3D"
+            },
+            {
+              "player": "Estimator",
+              "card": "4D"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "5D"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "QD"
+            }
+          ],
+          "winner": "GreedyBidder"
+        },
+        {
+          "trick_number": 3,
+          "leader": "GreedyBidder",
+          "plays": [
+            {
+              "player": "GreedyBidder",
+              "card": "6D"
+            },
+            {
+              "player": "AceCounter",
+              "card": "10D"
+            },
+            {
+              "player": "Estimator",
+              "card": "9C"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "7C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 4,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "4C"
+            },
+            {
+              "player": "Estimator",
+              "card": "2C"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "8S"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "3C"
+            }
+          ],
+          "winner": "AceCounter"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 3,
+        "Estimator": 0,
+        "ZeroBidder": 0,
+        "GreedyBidder": 1
+      },
+      "round_scores": {
+        "AceCounter": 3,
+        "Estimator": 10,
+        "ZeroBidder": 10,
+        "GreedyBidder": 1
+      },
+      "running_scores": {
+        "AceCounter": 24,
+        "Estimator": 76,
+        "ZeroBidder": 24,
+        "GreedyBidder": 15
+      }
+    },
+    {
+      "round_number": 8,
+      "cards": 3,
+      "trump": "H",
+      "trump_card": "8H",
+      "dealer": "GreedyBidder",
+      "dealt_hands": {
+        "AceCounter": [
+          "2D",
+          "AD",
+          "KH"
+        ],
+        "Estimator": [
+          "4C",
+          "4S",
+          "JS"
+        ],
+        "ZeroBidder": [
+          "10C",
+          "AS",
+          "5H"
+        ],
+        "GreedyBidder": [
+          "2C",
+          "JC",
+          "6S"
+        ]
+      },
+      "bids": {
+        "AceCounter": 2,
+        "Estimator": 0,
+        "ZeroBidder": 0,
+        "GreedyBidder": 3
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "AD"
+            },
+            {
+              "player": "Estimator",
+              "card": "JS"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "5H"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "JC"
+            }
+          ],
+          "winner": "ZeroBidder"
+        },
+        {
+          "trick_number": 2,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "10C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "2C"
+            },
+            {
+              "player": "AceCounter",
+              "card": "KH"
+            },
+            {
+              "player": "Estimator",
+              "card": "4C"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 3,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "2D"
+            },
+            {
+              "player": "Estimator",
+              "card": "4S"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "AS"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "6S"
+            }
+          ],
+          "winner": "AceCounter"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 2,
+        "Estimator": 0,
+        "ZeroBidder": 1,
+        "GreedyBidder": 0
+      },
+      "round_scores": {
+        "AceCounter": 12,
+        "Estimator": 10,
+        "ZeroBidder": 1,
+        "GreedyBidder": 0
+      },
+      "running_scores": {
+        "AceCounter": 36,
+        "Estimator": 86,
+        "ZeroBidder": 25,
+        "GreedyBidder": 15
+      }
+    },
+    {
+      "round_number": 9,
+      "cards": 2,
+      "trump": "D",
+      "trump_card": "5D",
+      "dealer": "AceCounter",
+      "dealt_hands": {
+        "AceCounter": [
+          "9C",
+          "8H"
+        ],
+        "Estimator": [
+          "4H",
+          "KH"
+        ],
+        "ZeroBidder": [
+          "4C",
+          "6S"
+        ],
+        "GreedyBidder": [
+          "9S",
+          "10S"
+        ]
+      },
+      "bids": {
+        "Estimator": 0,
+        "ZeroBidder": 0,
+        "GreedyBidder": 2,
+        "AceCounter": 1
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "Estimator",
+          "plays": [
+            {
+              "player": "Estimator",
+              "card": "4H"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "4C"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "10S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "8H"
+            }
+          ],
+          "winner": "AceCounter"
+        },
+        {
+          "trick_number": 2,
+          "leader": "AceCounter",
+          "plays": [
+            {
+              "player": "AceCounter",
+              "card": "9C"
+            },
+            {
+              "player": "Estimator",
+              "card": "KH"
+            },
+            {
+              "player": "ZeroBidder",
+              "card": "6S"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "9S"
+            }
+          ],
+          "winner": "AceCounter"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 2,
+        "Estimator": 0,
+        "ZeroBidder": 0,
+        "GreedyBidder": 0
+      },
+      "round_scores": {
+        "AceCounter": 2,
+        "Estimator": 10,
+        "ZeroBidder": 10,
+        "GreedyBidder": 0
+      },
+      "running_scores": {
+        "AceCounter": 38,
+        "Estimator": 96,
+        "ZeroBidder": 35,
+        "GreedyBidder": 15
+      }
+    },
+    {
+      "round_number": 10,
+      "cards": 1,
+      "trump": "S",
+      "trump_card": "3S",
+      "dealer": "Estimator",
+      "dealt_hands": {
+        "AceCounter": [
+          "KS"
+        ],
+        "Estimator": [
+          "4C"
+        ],
+        "ZeroBidder": [
+          "QC"
+        ],
+        "GreedyBidder": [
+          "5S"
+        ]
+      },
+      "bids": {
+        "ZeroBidder": 0,
+        "GreedyBidder": 1,
+        "AceCounter": 1,
+        "Estimator": 0
+      },
+      "tricks": [
+        {
+          "trick_number": 1,
+          "leader": "ZeroBidder",
+          "plays": [
+            {
+              "player": "ZeroBidder",
+              "card": "QC"
+            },
+            {
+              "player": "GreedyBidder",
+              "card": "5S"
+            },
+            {
+              "player": "AceCounter",
+              "card": "KS"
+            },
+            {
+              "player": "Estimator",
+              "card": "4C"
+            }
+          ],
+          "winner": "AceCounter"
+        }
+      ],
+      "tricks_won": {
+        "AceCounter": 1,
+        "Estimator": 0,
+        "ZeroBidder": 0,
+        "GreedyBidder": 0
+      },
+      "round_scores": {
+        "AceCounter": 11,
+        "Estimator": 10,
+        "ZeroBidder": 10,
+        "GreedyBidder": 0
+      },
+      "running_scores": {
+        "AceCounter": 49,
+        "Estimator": 106,
+        "ZeroBidder": 45,
+        "GreedyBidder": 15
+      }
+    }
+  ],
+  "final_scores": {
+    "AceCounter": 49,
+    "Estimator": 106,
+    "ZeroBidder": 45,
+    "GreedyBidder": 15
+  },
+  "winner": "Estimator"
+}
