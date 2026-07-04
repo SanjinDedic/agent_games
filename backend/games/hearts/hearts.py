@@ -164,6 +164,10 @@ class CustomPlayer(Player):
 
 The classic trick-avoidance card game, played at tables of 4.
 
+**New to Hearts?** Play a few rounds yourself at
+[cardgames.io/hearts](https://cardgames.io/hearts/) — it is the fastest way to
+get the rules to click before you start coding your agent.
+
 ## Game Objective
 Score as few points as possible. Each heart you take is 1 point and the Queen
 of Spades is 13. The game ends when someone reaches 100 points — the player
