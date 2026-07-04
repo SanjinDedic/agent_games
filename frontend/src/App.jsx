@@ -21,6 +21,7 @@ import AdminBackup from "./AgentGames/Admin/AdminBackup";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import StyleGuide from "./StyleGuide";
+import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React from "react";
@@ -179,6 +180,7 @@ function App() {
           />
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />
+          <Route path="GamePreview/:gameName" element={<GamePreview />} />
         </Routes>
 
         <ToastContainer

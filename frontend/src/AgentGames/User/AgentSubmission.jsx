@@ -30,7 +30,8 @@ function AgentSubmission() {
   const [hint, setHint] = useState(null);
   const [isGeneratingHint, setIsGeneratingHint] = useState(false);
   const [allowHint, setAllowHint] = useState(false);
-  const [codeChangedSinceLastSubmission, setCodeChangedSinceLastSubmission] = useState(false);
+  // Code as it was at the last submit attempt (success or fail) — gates the hint button
+  const [lastSubmittedCode, setLastSubmittedCode] = useState(null);
   const editorRef = useRef(null);
 
   // Redux hooks
@@ -126,7 +127,7 @@ function AgentSubmission() {
     setOutput("");
     setFeedback("");
     setShouldCollapseInstructions(true);
-    setCodeChangedSinceLastSubmission(false);
+    setLastSubmittedCode(code);
 
     const result = await submitCode(code);
     if (result.hint_available && !allowHint) toast.success("A hint is now available");
@@ -156,11 +157,11 @@ function AgentSubmission() {
     setHint(null);
     setHintModalOpen(true);
 
+    setLastSubmittedCode(code);
     const result = await submitCode(code, { generateHint: true });
 
     setIsGeneratingHint(false);
-    setCodeChangedSinceLastSubmission(false);
-    
+
     if (result.hint_available && !allowHint) toast.success("A hint is now available");
     setAllowHint(result.hint_available);
 
@@ -282,7 +283,7 @@ function AgentSubmission() {
         onShowSubmissions={handleShowSubmissions}
         isLoading={isLoading}
         allowHint={allowHint}
-        codeChangedSinceLastSubmit={(code != lastSubmission && hasLastSubmission)}
+        codeChangedSinceLastSubmit={lastSubmittedCode !== null && code !== lastSubmittedCode}
         isGeneratingHint={isGeneratingHint}
         hasLastSubmission={hasLastSubmission}
         hasStarterCode={!!starterCode}

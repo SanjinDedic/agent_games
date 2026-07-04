@@ -73,6 +73,18 @@ def _discover_games(games_dir):
 GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 
 
+# Per-game override for how many simulations a validation run executes.
+# Games that fan out into many sub-games per simulation need far fewer passes to
+# validate an agent inside the validation time limit — Hearts plays every table
+# of 4 exhaustively each pass (C(9,4)=126 games with 8 validation bots + the
+# submitted agent, i.e. 56 games per player), so a single pass is ample coverage
+# and keeps the whole validation load sub-second even on the 1 vCPU prod droplet.
+# Games not listed here fall back to the num_simulations the caller passed.
+VALIDATION_SIMULATIONS = {
+    "hearts": 1,
+}
+
+
 # Set a default SECRET_KEY for tests if not available in environment
 # In production, this should always be overridden by the actual secret key
 # from environment vars
