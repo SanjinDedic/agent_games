@@ -82,6 +82,7 @@ GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 # Games not listed here fall back to the num_simulations the caller passed.
 VALIDATION_SIMULATIONS = {
     "hearts": 1,
+    "ohhell": 1,
 }
 
 
