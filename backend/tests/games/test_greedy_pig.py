@@ -6,6 +6,7 @@ import pytest
 
 from backend.database.db_models import League
 from backend.games.greedy_pig.greedy_pig import GreedyPigGame
+from backend.games.greedy_pig.validation_players import players as validation_players
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def test_league():
 
 def test_game_initialization(test_league):
     game = GreedyPigGame(test_league)
-    assert len(game.players) == 5
+    assert len(game.players) == len(validation_players)
     assert game.round_no == 0
     assert game.roll_no == 0
     assert not game.game_over
