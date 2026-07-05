@@ -215,6 +215,14 @@ services:
       - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=test
       - SECRET_KEY=test_secret_key_for_tests
+      # Cheap bcrypt for runtime hashing in tests (route-created users, demo
+      # users). Precomputed conftest hashes are cost 4 to match.
+      - BCRYPT_ROUNDS=4
+      # Must match worker-validation's value in docker-compose.test.yml: the
+      # ENQUEUING process stamps soft/hard time limits into each task message
+      # (they override the worker-side task defaults), and tests enqueue from
+      # this container.
+      - VALIDATION_TIMEOUT_SECONDS=2
     depends_on:
       api:
         condition: service_healthy

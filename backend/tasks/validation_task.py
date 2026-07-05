@@ -12,6 +12,7 @@ backend/routes/ai/hint_context.py (classify_outcome) — do not reword them.
 
 import contextlib
 import io
+import os
 import time
 import traceback as tb
 from datetime import datetime, timedelta
@@ -27,7 +28,15 @@ from backend.tasks.celery_app import celery_app
 from backend.tasks.celery_utils import poll_task_result
 
 # Universal hard cap for agent validation (single game + simulations).
-VALIDATION_TIMEOUT_SECONDS = 5
+# Env-overridable so the test compose can shorten the timeout-path tests
+# (docker-compose.test.yml sets 2 on worker-validation); default unchanged.
+VALIDATION_TIMEOUT_SECONDS = int(os.environ.get("VALIDATION_TIMEOUT_SECONDS", "5"))
+
+# Hard SIGKILL backstop, always 1s past the soft limit: the game engine and
+# agents with a bare `except Exception` swallow SoftTimeLimitExceeded, so only
+# this hard kill reliably reaps a spinner — a wide gap just lets a runaway
+# agent hold a worker core longer (CPU is the binding constraint).
+VALIDATION_TIME_LIMIT = VALIDATION_TIMEOUT_SECONDS + 1
 
 # How long the API waits for a validation result before giving up (and killing
 # the task). Above the 6s hard task limit so a legitimately slow validation
@@ -115,11 +124,7 @@ async def await_validation_result(
 @celery_app.task(
     name="validation.run",
     soft_time_limit=VALIDATION_TIMEOUT_SECONDS,
-    # Hard SIGKILL backstop, kept tight (1s past the soft limit): the game engine
-    # and agents with a bare `except Exception` swallow SoftTimeLimitExceeded, so
-    # only this hard kill reliably reaps a spinner — a wide gap just lets a
-    # runaway agent hold a worker core longer (CPU is the binding constraint).
-    time_limit=6,
+    time_limit=VALIDATION_TIME_LIMIT,
 )
 def run_validation(
     code: str,

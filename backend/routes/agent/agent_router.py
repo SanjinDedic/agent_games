@@ -7,6 +7,7 @@ from backend.tasks.celery_utils import poll_task_result
 from backend.tasks.simulation_task import run_simulation as run_simulation_task
 from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.agent.agent_db import (
+    SimulationLimitExceededError,
     allow_simulation,
     get_league_by_id,
 )
@@ -33,12 +34,7 @@ async def run_simulation(
                 status="error", message=f"League with ID {request.league_id} not found"
             )
         team_id = current_user["team_id"]
-        allow_simulate = allow_simulation(session, team_id)
-        if not allow_simulate:
-            return ErrorResponseModel(
-                status="error",
-                message="Simulation is rate limited.",
-            )
+        allow_simulation(team_id)
 
         async_result = run_simulation_task.delay(
             league_id=request.league_id,
@@ -53,6 +49,8 @@ async def run_simulation(
             message="Simulation completed successfully",
             data=simulation_result,
         )
+    except SimulationLimitExceededError as e:
+        return ErrorResponseModel(status="error", message=str(e))
     # Catch any exceptions and return an error response
     except Exception as e:
         logger.error(f"Error during simulation: {e}")

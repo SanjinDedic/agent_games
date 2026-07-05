@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from enum import Enum as PyEnum
 from typing import List, Optional
@@ -6,11 +7,14 @@ import bcrypt as _bcrypt
 from sqlalchemy import JSON, Column, DateTime, String, Text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
+# Test runs set BCRYPT_ROUNDS=4 so runtime hashing costs ~1ms instead of ~170ms.
+_BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+
 
 def get_password_hash(password):
     if isinstance(password, str):
         password = password.encode("utf-8")
-    return _bcrypt.hashpw(password, _bcrypt.gensalt()).decode("utf-8")
+    return _bcrypt.hashpw(password, _bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)).decode("utf-8")
 
 
 def verify_password(plain_password, hashed_password):

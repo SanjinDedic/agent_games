@@ -41,7 +41,12 @@ def _collect_statuses() -> Dict[str, Dict]:
 
     # Worker pings
     try:
-        replies = celery_app.control.inspect(timeout=2.0).ping() or {}
+        # limit= lets the broadcast return as soon as every known worker has
+        # replied instead of always waiting out the full timeout.
+        replies = (
+            celery_app.control.inspect(timeout=2.0, limit=len(WORKER_SERVICES)).ping()
+            or {}
+        )
     except Exception as e:
         replies = {}
         logger.error(f"Worker ping failed: {str(e)}")

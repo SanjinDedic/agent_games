@@ -55,7 +55,7 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 - **MinIO** (ports 9000/9001): Local S3-compatible storage for assets and support attachments (real S3 in production)
 - **Frontend** (port 3000): React SPA served by Vite
 
-The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits the result by polling the result backend (`backend/tasks/celery_utils.py`). Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 6s hard time limit.
+The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits the result by polling the result backend (`backend/tasks/celery_utils.py`). Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 6s hard time limit (soft limit via `VALIDATION_TIMEOUT_SECONDS` env, hard is always soft+1; the test compose sets 2s/3s on worker-validation, so worker containers must be recreated with the test overlay after changing it).
 
 ### Backend structure (`backend/`)
 - `api.py` — FastAPI entry point; mounts routers: auth, admin, institution, user, agent, demo, ai, diagnostics, support, payments

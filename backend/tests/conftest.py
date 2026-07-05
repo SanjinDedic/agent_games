@@ -25,16 +25,18 @@ from backend.database.db_models import (
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import create_access_token
 
-# Precomputed bcrypt hashes to avoid expensive hashing on every test
-_HASH_ADMIN = "$2b$12$2uyQydcoxVc6yB9.SexO8.459AjYhGDTxJGP.k5qW4e8/0yWXFSla"  # "admin"
-_HASH_INSTITUTION = "$2b$12$tNyxHdEN4oHZHnvaoXHVC.SrQiU/Ax/edebRkzWnW3bVRiO7YzRwu"  # "institution"
-_HASH_AA = "$2b$12$DmxMM9uom0S2t9gsRWuHOOfRdeORx5u3cu6jWXQ6/QRki4aXCOuRO"  # "AA"
-_HASH_BB = "$2b$12$OuJhmPMiWtlq.jcWwPnoAORJt56d5jmYncRzeR9dN.8bEa4x/GWr6"  # "BB"
-_HASH_CC = "$2b$12$y8g0Cxu9N/kw2CDtAtoS6ulC3GHAV5h7/H.Mmmi9nMiLzt3zQAmhy"  # "CC"
-_HASH_TEST_PASSWORD = "$2b$12$LtUOTV9o8BVRuLe8.V0wAu5/65/b08B5rglBnKnlv1zjJYAJUqC1W"  # "test_password"
-_HASH_TEAM_PASSWORD = "$2b$12$gn3bcwrwEGgLKoETX8FvTuKxU3fgoEJrpgUuxzMGYNN9wnezW01U2"  # "team_password"
-_HASH_PASSWORD2 = "$2b$12$CPYMcO0geKvhtzBd4A2rbera3Sl6jbMNUTCAGHQmsdN8RFNDNr12q"  # "password2"
-_HASH_INST_PASSWORD = "$2b$12$8HS7Qk89LX/VrTuQzuw4DeIsMOMokU/3rdvWh.R2rfaIarZAk10ci"  # "inst_password"
+# Precomputed bcrypt hashes to avoid expensive hashing on every test.
+# Cost 4 (not the production 12) so login-flow checkpw is ~1ms instead of
+# ~170ms; verify cost comes from the cost embedded in the hash itself.
+_HASH_ADMIN = "$2b$04$.WPpp.Mj.ExyhVOhCjTugOgLBq24T/4zTjrwvnGiOx4c6bFmAXHcG"  # "admin"
+_HASH_INSTITUTION = "$2b$04$pvWMB/sRar78ntUsCb21lON3FpqsCypw8q.a.jVaEYzTu.e1mVEwq"  # "institution"
+_HASH_AA = "$2b$04$/.xNZ5ccGKIbRDAhGT3kBuDK/75Vl5viXLd/G5WCQRJPkqsorzdFm"  # "AA"
+_HASH_BB = "$2b$04$abtlVrQQ6nJf6uWH7OF2IubTw2KzQtQPbBTMtfXZc290ek8jNv1Xi"  # "BB"
+_HASH_CC = "$2b$04$0j273SvCCLMsx4mTO86gDeH4G812r/MXooXEyuyd7WwJk25Lj/wFG"  # "CC"
+_HASH_TEST_PASSWORD = "$2b$04$S/gQ6t/Ex.ME3g76Ga09ne8sUTLDXpBbCy2iVj5RFBGlFXN9mH/o2"  # "test_password"
+_HASH_TEAM_PASSWORD = "$2b$04$RqccKcL1cJP6rFjzclXWwOFgSQ2ALa/71UWz3O1GP9nyo60n9kPOi"  # "team_password"
+_HASH_PASSWORD2 = "$2b$04$adNjLkXrrC9LgRXfZW1EjeYdj66q8jAGrgeJnJNF6KTPdxHb9Iw6W"  # "password2"
+_HASH_INST_PASSWORD = "$2b$04$mNAjfBlxpWDSuMxJR5.Ie.OesZS46hM0cEFivUPN3XjKMNSreOPEO"  # "inst_password"
 
 # Lookup for test files that need hashes for known passwords
 TEST_PASSWORD_HASHES = {
@@ -47,8 +49,8 @@ TEST_PASSWORD_HASHES = {
     "team_password": _HASH_TEAM_PASSWORD,
     "password2": _HASH_PASSWORD2,
     "inst_password": _HASH_INST_PASSWORD,
-    "expired_password": "$2b$12$YFbroVeqFiar5Qrt1w9HHuFl4Nt5oaUn11JtVE7/YMdwZ2Ilhd2aa",
-    "inactive_password": "$2b$12$pSXeqDIBwLaAI2c4kMar1e7hv4acu4snhZg3oK51OIMlgBJ35BWru",
+    "expired_password": "$2b$04$LGfX.gdDyIfZvvtT8eq52eRCtl2JTIt3dXMQC6GllmCXXO/9fl7sS",
+    "inactive_password": "$2b$04$X17RHyabQ7aKUwPP/9u98uOPKWjXhuW2wdZjg7SAwA7FQ8PrdUcBq",
 }
 
 # Set environment variables for testing before any imports
@@ -121,7 +123,9 @@ def celery_workers():
     """
     from backend.tasks.celery_app import celery_app
 
-    replies = celery_app.control.inspect(timeout=5).ping() or {}
+    # limit=2 returns as soon as both workers reply (~10ms) instead of
+    # waiting out the full broadcast timeout.
+    replies = celery_app.control.inspect(timeout=5, limit=2).ping() or {}
     for prefix in ("validation", "simulation"):
         if not any(node.startswith(f"{prefix}@") for node in replies):
             pytest.fail(

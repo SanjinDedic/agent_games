@@ -7,10 +7,25 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from backend.database.db_models import AgentAPIKey, League, Team, TeamType
+from backend.routes.agent import agent_db
 from backend.routes.auth.auth_core import create_access_token
 from backend.tests.conftest import add_submission
 
 from unittest.mock import patch
+
+
+@pytest.fixture(autouse=True)
+def clear_simulation_rate_keys():
+    """Reset the valkey rate-limit counters between tests.
+
+    Team ids restart with each test's TRUNCATE, so without this a counter
+    left by an earlier test (or an earlier suite run inside the 60s window)
+    would bleed into the next test's budget.
+    """
+    redis = agent_db._get_redis()
+    for key in redis.scan_iter("agent-sim-rate:*"):
+        redis.delete(key)
+
 
 @pytest.fixture
 def setup_agent_league(db_session: Session) -> League:
@@ -105,6 +120,7 @@ def agent_token(setup_agent_team: Team) -> str:
             "sub": setup_agent_team.name,
             "role": "ai_agent",
             "team_name": setup_agent_team.name,
+            "team_id": setup_agent_team.id,
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -281,26 +297,28 @@ def test_agent_rate_limiting(
     db_session: Session,
     setup_agent_league: League,
     agent_token: str,
+    monkeypatch,
 ):
-    """Test rate limiting for agent simulation requests"""
+    """Requests within the per-minute limit succeed; the next one is
+    rejected with a rate-limit error. The limit is dropped to 3 so the
+    rejected branch is reached without ten real simulation runs."""
+
+    monkeypatch.setattr(agent_db, "SIMULATIONS_PER_MINUTE", 3)
 
     headers = {"Authorization": f"Bearer {agent_token}"}
+    payload = {
+        "league_id": setup_agent_league.id,
+        "game_name": "lineup4",
+        "num_simulations": 1,
+    }
 
-    # Make multiple rapid requests
-    for i in range(10):
-        response = client.post(
-            "/agent/simulate",
-            headers=headers,
-            json={
-                "league_id": setup_agent_league.id,
-                "game_name": "lineup4",
-                "num_simulations": 10,
-            },
-        )
+    for _ in range(3):
+        response = client.post("/agent/simulate", headers=headers, json=payload)
         assert response.status_code == 200
-        data = response.json()
-        if i < 10:  # First 10 requests should succeed
-            assert data["status"] == "success"
-        else:  # 11th request should be rate limited
-            assert data["status"] == "error"
-            assert "rate limit" in data["message"].lower()
+        assert response.json()["status"] == "success"
+
+    response = client.post("/agent/simulate", headers=headers, json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "error"
+    assert "rate limit" in data["message"].lower()
