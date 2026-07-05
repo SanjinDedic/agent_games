@@ -241,6 +241,7 @@ bonuses or per-outcome payoffs to tune.
             player.add_feedback(
                 f"System default: Error in make_combat_decision ({type(e).__name__}). Defaulting to '{default_action}'."
             )
+            self.record_error_trace(f"{player.name}.make_combat_decision")
             return default_action
 
     def calculate_damage(

@@ -248,14 +248,16 @@ Punishment > Sucker).
                 decision1 = player1.make_decision(game_state1)
                 if decision1 not in ["defect", "collude"]:
                     decision1 = "collude"
-            except Exception as e:
+            except Exception:
+                self.record_error_trace(f"{player1.name}.make_decision")
                 decision1 = "collude"
 
             try:
                 decision2 = player2.make_decision(game_state2)
                 if decision2 not in ["defect", "collude"]:
                     decision2 = "collude"
-            except Exception as e:
+            except Exception:
+                self.record_error_trace(f"{player2.name}.make_decision")
                 decision2 = "collude"
 
             # Update histories

@@ -19,11 +19,16 @@ the three deterministic signals we can derive today:
     2. Was there a syntax error?      -> message starts with the syntax prefix
     3. Did the agent time out?        -> message starts with the timeout prefix
 
-Runtime tracebacks and stdout are NOT yet captured by the validator (see the
-``construction_error`` / ``runtime_error`` categories below), so for those the
-context only carries the validator's short message. When the validator starts
-returning structured traceback/stdout fields, extend ``HintContext`` and
-``build_hint_context`` to include them.
+The validator also captures two runtime signals where it can:
+
+- ``traceback``: an escaping exception's chained traceback (runtime_error), a
+  construction failure's underlying traceback (construction_error), or agent
+  exceptions a game engine swallowed mid-game while substituting a default
+  action (collected via ``BaseGame.record_error_trace`` — these can accompany
+  a ``success`` outcome).
+- ``stdout``: everything the run printed (including the student's own prints).
+
+Both are rendered as their own sections when present.
 """
 
 import json
@@ -107,8 +112,8 @@ _CATEGORY_DESCRIPTION: dict[str, str] = {
     "init_error": "The game itself failed to initialise (not necessarily the student's fault).",
     "construction_error": (
         "The CustomPlayer class could not be created (error while exec'ing the code, "
-        "a bad/missing CustomPlayer class, or an exception in __init__). The validator "
-        "does not yet expose the underlying traceback for this case."
+        "a bad/missing CustomPlayer class, or an exception in __init__). When the "
+        "failure raised an exception, its stack trace is included below."
     ),
     "runtime_error": "The code raised an exception while a game/simulation was running.",
     "unknown_error": "Validation failed for a reason that could not be categorised.",
@@ -204,7 +209,8 @@ class HintContext:
     feedback: Union[str, dict, None] = None
     simulation_results: Optional[dict] = None
     duration_ms: Optional[float] = None
-    # Forward-looking: populated once the validator captures these. Empty today.
+    # Populated by the validator: chained/collected tracebacks (may accompany
+    # a success outcome when the game swallowed agent exceptions) and stdout.
     traceback: Optional[str] = None
     stdout: Optional[str] = None
     # Full source of the game package — attached only when the code parsed (no
@@ -372,10 +378,15 @@ def build_hint_context(ctx: HintContext) -> str:
         lines.append("--- Validator Message ---")
         lines.append(ctx.validator_message.strip())
 
-    # Traceback / stdout — empty today, rendered when the validator supplies them.
+    # Traceback / stdout, rendered when the validator supplies them.
     if ctx.traceback:
         lines.append("")
         lines.append("--- Stack Trace ---")
+        if ctx.sim_completed:
+            lines.append(
+                "The game completed only because the engine swallowed these agent "
+                "exceptions and substituted a default action:"
+            )
         lines.append(_truncate(ctx.traceback.strip(), MAX_FEEDBACK_CHARS))
     if ctx.stdout:
         lines.append("")

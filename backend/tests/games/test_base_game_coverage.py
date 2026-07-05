@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
 import pytest
-from backend.games.base_game import BaseGame
+from backend.games.base_game import BaseGame, PlayerConstructionError
 
 
 class MockLeague:
@@ -88,8 +88,10 @@ def test_add_player_no_custom_player_class():
 class SomethingElse:
     pass
 """
-    player = pd_game.add_player(code, "BadTeam")
-    assert player is None
+    with pytest.raises(PlayerConstructionError, match="No CustomPlayer class") as exc_info:
+        pd_game.add_player(code, "BadTeam")
+    # Structural failure: no underlying exception, so no traceback.
+    assert exc_info.value.traceback_str is None
 
 
 def test_add_player_wrong_base_class():
@@ -103,8 +105,8 @@ class CustomPlayer:
     def make_decision(self, game_state):
         return "collude"
 """
-    player = pd_game.add_player(code, "WrongBase")
-    assert player is None
+    with pytest.raises(PlayerConstructionError, match="does not inherit"):
+        pd_game.add_player(code, "WrongBase")
 
 
 def test_add_player_syntax_error():
@@ -114,8 +116,10 @@ def test_add_player_syntax_error():
     pd_game.scores = {}
 
     code = "this is not valid python {{{{"
-    player = pd_game.add_player(code, "SyntaxErr")
-    assert player is None
+    with pytest.raises(PlayerConstructionError, match="SyntaxError") as exc_info:
+        pd_game.add_player(code, "SyntaxErr")
+    # Underlying exception: traceback captured for the hint context.
+    assert "SyntaxError" in exc_info.value.traceback_str
 
 
 def test_reset_list_feedback(game):

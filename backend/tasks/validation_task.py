@@ -23,6 +23,7 @@ from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
 from backend.config import VALIDATION_SIMULATIONS
 from backend.database.db_models import League
+from backend.games.base_game import PlayerConstructionError
 from backend.games.game_factory import GameFactory
 from backend.tasks.celery_app import celery_app
 from backend.tasks.celery_utils import poll_task_result
@@ -136,6 +137,7 @@ def run_validation(
     """Run the full validation load and return the ValidationResponse dict."""
     buf = io.StringIO()
     result: Dict[str, Any]
+    game_instance = None
     try:
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
             test_league = League(
@@ -146,33 +148,37 @@ def run_validation(
             )
             game_class = GameFactory.get_game_class(game_name)
             game_instance = game_class(test_league)
-            player = game_instance.add_player(code, team_name)
-            if player is None:
-                result = {
-                    "status": "error",
-                    "message": f"Failed to create player for team {team_name}",
-                }
-            else:
-                t0 = time.perf_counter()
-                feedback_result = game_instance.run_single_game_with_feedback(
-                    custom_rewards
-                )
-                game_instance.reset()
-                # Per-game override: games that fan out into many sub-games per
-                # simulation (e.g. Hearts) validate in far fewer passes.
-                sim_count = VALIDATION_SIMULATIONS.get(game_name, num_simulations)
-                simulation_results = game_instance.run_simulations(
-                    sim_count, test_league, custom_rewards
-                )
-                simulation_results["strategies"] = (
-                    game_instance.get_player_strategies()
-                )
-                result = {
-                    "status": "success",
-                    "feedback": feedback_result.get("feedback"),
-                    "simulation_results": simulation_results,
-                    "duration_ms": (time.perf_counter() - t0) * 1000,
-                }
+            game_instance.add_player(code, team_name)
+            t0 = time.perf_counter()
+            feedback_result = game_instance.run_single_game_with_feedback(
+                custom_rewards
+            )
+            game_instance.reset()
+            # Per-game override: games that fan out into many sub-games per
+            # simulation (e.g. Hearts) validate in far fewer passes.
+            sim_count = VALIDATION_SIMULATIONS.get(game_name, num_simulations)
+            simulation_results = game_instance.run_simulations(
+                sim_count, test_league, custom_rewards
+            )
+            simulation_results["strategies"] = (
+                game_instance.get_player_strategies()
+            )
+            result = {
+                "status": "success",
+                "feedback": feedback_result.get("feedback"),
+                "simulation_results": simulation_results,
+                "duration_ms": (time.perf_counter() - t0) * 1000,
+            }
+            # Agent exceptions the game swallowed to keep playing (see
+            # BaseGame.record_error_trace) still surface to the hint context.
+            if game_instance.error_traces:
+                result["traceback"] = "\n\n".join(game_instance.error_traces)
+    except PlayerConstructionError as e:
+        result = {
+            "status": "error",
+            "message": f"Failed to create player for team {team_name}: {e}",
+            "traceback": e.traceback_str,
+        }
     except SoftTimeLimitExceeded:
         # Only reached when nothing swallowed the exception. Game engines wrap
         # agent calls in `except Exception`, which eats this too — those runs
@@ -183,10 +189,15 @@ def run_validation(
             "message": TIMEOUT_MESSAGE,
         }
     except Exception as e:  # noqa: BLE001 - the task boundary is the catch-all
+        # The escaping exception's traceback is chained (games re-raise inside
+        # `except` blocks, so the agent's own frames are included). Prepend any
+        # traces the game swallowed earlier in the run.
+        traces = list(game_instance.error_traces) if game_instance else []
+        traces.append(tb.format_exc())
         result = {
             "status": "error",
             "message": f"Error during simulation: {str(e)}",
-            "traceback": tb.format_exc(),
+            "traceback": "\n\n".join(traces),
         }
     captured = buf.getvalue()
     if captured.strip():

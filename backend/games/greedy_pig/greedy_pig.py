@@ -218,6 +218,7 @@ and the rewards list is paid out top-down.
                         decision = player.make_decision(player_state)
                     except Exception as e:
                         print(f"Error in player {player.name}'s decision: {e}")
+                        self.record_error_trace(f"{player.name}.make_decision")
                         decision = "bank"
 
                     forced_bank = (

@@ -1,9 +1,29 @@
 import copy
 import importlib
 import logging
+import traceback
 from abc import ABC
 
 logger = logging.getLogger(__name__)
+
+# Cap on collected agent-error tracebacks per game instance (see
+# record_error_trace). Traces are deduplicated before the cap applies, so this
+# only limits *distinct* failure sites, not repeats of the same crash.
+MAX_ERROR_TRACES = 5
+
+
+class PlayerConstructionError(Exception):
+    """A submission could not be turned into a live player instance.
+
+    Raised by add_player. ``traceback_str`` carries the formatted traceback of
+    the underlying exception when there was one (exec of the submission or
+    CustomPlayer.__init__ failing); it is None for structural problems (no
+    CustomPlayer class, wrong base class) where a traceback adds nothing.
+    """
+
+    def __init__(self, message, traceback_str=None):
+        super().__init__(message)
+        self.traceback_str = traceback_str
 
 
 class BaseGame(ABC):
@@ -37,7 +57,25 @@ class BaseGame(ABC):
         self.scores = {}
         self.game_feedback = []  # Can be overridden by games to be a dict if needed
         self.player_feedback = {}
+        # Tracebacks of agent exceptions the game swallowed to keep playing
+        # (see record_error_trace). Deliberately NOT cleared by reset(): the
+        # validation task reads these after the feedback game + all
+        # simulations to surface them in the AI hint context.
+        self.error_traces = []
         self.load_validation_players()
+
+    def record_error_trace(self, label):
+        """Capture the in-flight exception's traceback without stopping the game.
+
+        Call from an ``except`` block that swallows an agent exception and
+        substitutes a default action. The validation task hands these traces
+        to the AI hint context, so a student whose agent crashes mid-game
+        still sees where. Deduplicated and capped: a crash-every-turn agent
+        across hundreds of simulations records each distinct traceback once.
+        """
+        trace = f"[{label}]\n{traceback.format_exc().rstrip()}"
+        if trace not in self.error_traces and len(self.error_traces) < MAX_ERROR_TRACES:
+            self.error_traces.append(trace)
 
     def add_feedback(self, message):
         """Add a feedback message if verbose mode is on"""
@@ -108,7 +146,12 @@ class BaseGame(ABC):
         }
 
     def add_player(self, code: str, name: str):
-        """Create a player instance from code"""
+        """Create a player instance from code.
+
+        Raises PlayerConstructionError when the code cannot be turned into a
+        player; its ``traceback_str`` (when set) is surfaced to the student
+        via the AI hint context.
+        """
         try:
             # Get the game name from the class name for dynamic imports
             game_name = self.__class__.__module__.split(".")[2]
@@ -137,7 +180,9 @@ class BaseGame(ABC):
 
             if "CustomPlayer" not in namespace:
                 logger.error(f"No CustomPlayer class found in code for {name}")
-                return None
+                raise PlayerConstructionError(
+                    "No CustomPlayer class found in the submitted code"
+                )
 
             player_class = namespace["CustomPlayer"]
 
@@ -146,7 +191,9 @@ class BaseGame(ABC):
                 logger.error(
                     f"CustomPlayer for {name} does not inherit from correct Player base class"
                 )
-                return None
+                raise PlayerConstructionError(
+                    "CustomPlayer does not inherit from the game's Player base class"
+                )
 
             player = player_class()
             player.name = name
@@ -162,9 +209,13 @@ class BaseGame(ABC):
 
             return player
 
+        except PlayerConstructionError:
+            raise
         except Exception as e:
             logger.error(f"Error creating player {name}: {str(e)}", exc_info=True)
-            return None
+            raise PlayerConstructionError(
+                f"{type(e).__name__}: {e}", traceback_str=traceback.format_exc()
+            ) from e
 
     def run_single_game_with_feedback(self, custom_rewards=None):
         """Run a single game with feedback"""

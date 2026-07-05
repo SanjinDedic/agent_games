@@ -67,6 +67,7 @@ def game():
     g.scores = {}
     g.game_feedback = {"game": "arena_champions", "battles": []}
     g.player_feedback = {}
+    g.error_traces = []
     g.battle_history = {}
     return g
 
