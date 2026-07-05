@@ -71,4 +71,45 @@ class StopAt21(Player):
         return "continue"
 
 
-players = [Bank5(), Bank15(), BankRoll3(), BankRoll4(), StopAt21()]
+class StopAt20Win100(Player):
+    """Player that banks over 20 points, or immediately when banking wins the game"""
+
+    strategy = (
+        "Banks once its unbanked money goes over 20 points, but banks "
+        "immediately whenever banked + unbanked reaches 100 — never risks "
+        "rolling away a winning total."
+    )
+
+    def make_decision(self, game_state):
+        my_unbanked = game_state["unbanked_money"][self.name]
+        my_banked = game_state["banked_money"][self.name]
+        if my_unbanked > 20 or my_banked + my_unbanked >= 100:
+            return "bank"
+        return "continue"
+
+
+class AdaptiveRankStop(Player):
+    """Player that banks over 15 points when ranked 1st, over 25 otherwise"""
+
+    strategy = (
+        "Plays it safe in the lead and greedy when behind — banks once "
+        "unbanked money goes over 15 points while ranked 1st, but holds "
+        "out past 25 points when not in 1st place."
+    )
+
+    def make_decision(self, game_state):
+        threshold = 15 if self.my_rank(game_state) == 1 else 25
+        if game_state["unbanked_money"][self.name] > threshold:
+            return "bank"
+        return "continue"
+
+
+players = [
+    Bank5(),
+    Bank15(),
+    BankRoll3(),
+    BankRoll4(),
+    StopAt21(),
+    StopAt20Win100(),
+    AdaptiveRankStop(),
+]
