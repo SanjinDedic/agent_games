@@ -6,11 +6,11 @@ export default {
   name: 'thirteen',
   displayName: 'Thirteen',
   description:
-    'The Vietnamese climbing game Tiến lên: a four-player shedding race to empty your hand. Beat the pile with a higher combo of the same shape — single, pair, triple, straight or a four-of-a-kind bomb — or pass. Hoard your 2s and your bomb for tempo; the order you finish is your placement.',
+    'The Vietnamese climbing game Tiến lên: race to shed all 13 cards by beating the pile with a higher single, pair, triple, straight — or a bomb.',
   shortDescription:
     'Shed all 13 cards first — beat the pile with a higher combo, or pass.',
   thumbnail: 'games/thirteen.png',
-  featured: false,
+  featured: true,
   order: 7,
   Feedback: ThirteenFeedback,
   ResultsDisplay: ThirteenResultsDisplay,

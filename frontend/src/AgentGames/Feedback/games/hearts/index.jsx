@@ -10,7 +10,7 @@ export default {
   shortDescription:
     'Avoid hearts and the Queen of Spades — or shoot the moon.',
   thumbnail: 'games/hearts.png',
-  featured: false, // flip to true once the backend game lands
+  featured: true,
   order: 5,
   Feedback: HeartsFeedback,
   ResultsDisplay: HeartsResultsDisplay,
