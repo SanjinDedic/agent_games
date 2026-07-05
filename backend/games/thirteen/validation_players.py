@@ -20,6 +20,12 @@ class Controller(Player):
     than spend a control card, and only cracks a 2/bomb open near the endgame to
     seize tempo. The strongest of the validation bots."""
 
+    strategy = (
+        "Hoards its 2s and bombs, shedding cheap combos and passing rather "
+        "than spend a control card — only cracks them open near the endgame "
+        "to seize tempo. The strongest validation bot."
+    )
+
     def make_decision(self, game_state):
         legal = game_state["legal_moves"]
         plays = [m for m in legal if m]
@@ -49,6 +55,11 @@ class LowballShedder(Player):
     """Always plays its lowest legal combo, but never breaks a pair/triple/bomb
     just to answer a single — it passes instead."""
 
+    strategy = (
+        "Always plays its lowest legal combo, but never breaks up a "
+        "pair, triple or bomb just to answer a single — it passes instead."
+    )
+
     def make_decision(self, game_state):
         legal = game_state["legal_moves"]
         hand = game_state["hand"]
@@ -74,6 +85,11 @@ class Beater(Player):
     """Leads its lowest card and answers with the cheapest combo that beats the
     pile — spends exactly enough to win, no more."""
 
+    strategy = (
+        "Leads its lowest card and answers with the cheapest combo that "
+        "beats the pile — spends exactly enough to win, no more."
+    )
+
     def make_decision(self, game_state):
         plays = [m for m in game_state["legal_moves"] if m]
         if plays:
@@ -84,6 +100,11 @@ class Beater(Player):
 class Greedy(Player):
     """Always slams down its biggest legal combo — burns 2s and bombs early."""
 
+    strategy = (
+        "Always slams down its biggest legal combo — burns its 2s and "
+        "bombs early."
+    )
+
     def make_decision(self, game_state):
         plays = [m for m in game_state["legal_moves"] if m]
         if plays:
@@ -93,6 +114,8 @@ class Greedy(Player):
 
 class RandomBot(Player):
     """Plays a random legal combo (or passes at random)."""
+
+    strategy = "Plays a random legal combo, or passes at random."
 
     def make_decision(self, game_state):
         return random.choice(game_state["legal_moves"])

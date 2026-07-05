@@ -36,6 +36,8 @@ def _wins_against_table(card, trick, trump):
 class RandomBot(Player):
     """Bids at random and plays a random legal card."""
 
+    strategy = "Bids at random and plays a random legal card."
+
     def make_decision(self, game_state):
         if game_state["phase"] == "bid":
             cards = game_state["cards_this_round"]
@@ -48,6 +50,11 @@ class RandomBot(Player):
 class ZeroBidder(Player):
     """Always bids 0 and always plays its lowest card to shed tricks."""
 
+    strategy = (
+        "Always bids 0 and always plays its lowest card, trying to win "
+        "no tricks at all."
+    )
+
     def make_decision(self, game_state):
         if game_state["phase"] == "bid":
             return _nudge_bid(0, game_state["cards_this_round"], game_state["forbidden_bid"])
@@ -56,6 +63,11 @@ class ZeroBidder(Player):
 
 class GreedyBidder(Player):
     """Bids high and always plays high — tries to win everything."""
+
+    strategy = (
+        "Bids the maximum and always plays its highest card — tries to "
+        "win every trick."
+    )
 
     def make_decision(self, game_state):
         if game_state["phase"] == "bid":
@@ -66,6 +78,11 @@ class GreedyBidder(Player):
 
 class AceCounter(Player):
     """Bids one per off-suit ace plus high trump; plays high, then ducks."""
+
+    strategy = (
+        "Bids one trick per off-suit ace and high trump it holds; plays high "
+        "while still short of its bid, then ducks low once it's made."
+    )
 
     def make_decision(self, game_state):
         hand = game_state["hand"]
@@ -88,6 +105,12 @@ class AceCounter(Player):
 class Estimator(Player):
     """Estimates tricks from high cards and trump length, then plays to hit the
     bid exactly — wins as cheaply as possible while short, ducks once satisfied."""
+
+    strategy = (
+        "Estimates its bid from high cards and trump length, then plays to hit "
+        "it exactly — wins tricks as cheaply as possible while short, ducks "
+        "once satisfied. The strongest validation bot."
+    )
 
     def make_decision(self, game_state):
         if game_state["phase"] == "bid":

@@ -26,18 +26,28 @@ class Player(ABC):
 ```
 
 ## 2. Validation Players (validation_players.py)
+
+Every validation player must declare a `strategy` class attribute — a short
+plain-English description of how it plays. It is shipped with simulation
+results and shown in the frontend as a tooltip when hovering the player's
+name in the rankings table (see `BaseGame.get_player_strategies`).
+
 ```python
 import random
 import string
 from backend.games.alpha_guess.player import Player
 
 class RandomGuesser(Player):
+    strategy = "Guesses a random letter every round."
+
     def make_decision(self, game_state):
         guess = random.choice(string.ascii_lowercase)
         self.add_feedback(f"Random guess: {guess}")
         return guess
 
 class SmartGuesser(Player):
+    strategy = "Guesses only common English letters (etaoinshrdlu)."
+
     def make_decision(self, game_state):
         common_letters = 'etaoinshrdlu'
         guess = random.choice(common_letters)

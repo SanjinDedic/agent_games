@@ -1,7 +1,6 @@
 import OhHellFeedback from './OhHellFeedback';
 import OhHellResultsDisplay from './OhHellResultsDisplay';
 import sampleFeedback from './sample_feedback.json';
-import sampleResults from './sample_results.json';
 
 export default {
   name: 'ohhell',
@@ -17,5 +16,4 @@ export default {
   ResultsDisplay: OhHellResultsDisplay,
   // Consumed by /GamePreview/:gameName for backend-free UI development
   sampleFeedback,
-  sampleResults,
 };

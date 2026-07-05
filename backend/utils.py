@@ -13,6 +13,7 @@ def transform_result(simulation_results, sim_result, league_name):
         "timestamp": sim_result.timestamp if sim_result else None,
         "rewards": json.loads(sim_result.custom_rewards) if sim_result else None,
         "table": simulation_results.get("table", {}),
+        "strategies": simulation_results.get("strategies", {}),
     }
 
 

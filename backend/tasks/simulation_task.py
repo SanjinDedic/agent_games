@@ -166,6 +166,9 @@ def run_simulation(
     aggregated_results = aggregate_simulation_results(
         simulation_results, num_simulations
     )
+    # Only validation players declare a strategy, so this is empty whenever
+    # real league submissions replaced them.
+    aggregated_results["strategies"] = game.get_player_strategies()
 
     return {
         "status": "success",

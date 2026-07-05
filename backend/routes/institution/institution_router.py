@@ -300,6 +300,7 @@ async def run_simulation_endpoint(
             "timestamp": sim_result.timestamp if sim_result else None,
             "rewards": simulation_config.custom_rewards,
             "table": simulation_results.get("table", {}),
+            "strategies": simulation_results.get("strategies", {}),
         }
 
         if feedback is not None:

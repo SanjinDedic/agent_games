@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
 
 // Thirteen simulation rankings. total_points are tournament placement points
 // (higher = better). Avg Finish is the mean placing (1 = best), Games Won counts
@@ -69,7 +70,7 @@ const ThirteenResultsDisplay = ({ data, highlight = true, data_message = '', tab
                                         #{idx + 1}
                                     </td>
                                     <td className="p-4 border-b border-ui-light/30 font-medium">
-                                        {result.team}
+                                        <StrategyTooltip name={result.team} strategy={data?.strategies?.[result.team]} />
                                     </td>
                                     <td className="p-4 border-b border-ui-light/30 font-medium text-success-hover">
                                         {result.gamesWon?.toLocaleString() || 0}

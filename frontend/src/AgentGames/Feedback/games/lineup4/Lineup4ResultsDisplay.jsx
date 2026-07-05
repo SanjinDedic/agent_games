@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
 
 const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
     const [results, setResults] = useState([]);
@@ -96,7 +97,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
                                         #{idx + 1}
                                     </td>
                                     <td className="p-4 border-b border-ui-light/30 font-medium">
-                                        {result.team}
+                                        <StrategyTooltip name={result.team} strategy={data?.strategies?.[result.team]} />
                                     </td>
                                     <td className="p-4 border-b border-ui-light/30 font-medium">
                                         {result.gamesPlayed?.toLocaleString() || 0}

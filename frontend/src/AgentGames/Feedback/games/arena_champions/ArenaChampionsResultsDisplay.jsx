@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { formatNumber } from '../../../../utils/numberFormat';
+import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
 
 const ArenaChampionsResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
     const [results, setResults] = useState([]);
@@ -200,7 +201,7 @@ const ArenaChampionsResultsDisplay = ({ data, highlight = true, data_message = '
                             idx === 0 ? "font-bold text-amber-600" : ""
                           }
                         >
-                          {result.team}
+                          <StrategyTooltip name={result.team} strategy={data?.strategies?.[result.team]} />
                         </span>
                       </div>
                     </td>

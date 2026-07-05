@@ -159,6 +159,9 @@ def run_validation(
                 simulation_results = game_instance.run_simulations(
                     sim_count, test_league, custom_rewards
                 )
+                simulation_results["strategies"] = (
+                    game_instance.get_player_strategies()
+                )
                 result = {
                     "status": "success",
                     "feedback": feedback_result.get("feedback"),

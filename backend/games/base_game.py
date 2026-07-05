@@ -95,6 +95,18 @@ class BaseGame(ABC):
                 self.players = []
                 self.scores = {}
 
+    def get_player_strategies(self):
+        """Map player name -> strategy for players that declare one.
+
+        Validation players carry a `strategy` class attribute; user-submitted
+        players don't, so the map naturally covers only the built-in bots.
+        """
+        return {
+            str(player.name): player.strategy
+            for player in self.players
+            if getattr(player, "strategy", None)
+        }
+
     def add_player(self, code: str, name: str):
         """Create a player instance from code"""
         try:

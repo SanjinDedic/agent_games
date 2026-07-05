@@ -1,7 +1,6 @@
 import ThirteenFeedback from './ThirteenFeedback';
 import ThirteenResultsDisplay from './ThirteenResultsDisplay';
 import sampleFeedback from './sample_feedback.json';
-import sampleResults from './sample_results.json';
 
 export default {
   name: 'thirteen',
@@ -17,5 +16,4 @@ export default {
   ResultsDisplay: ThirteenResultsDisplay,
   // Consumed by /GamePreview/:gameName for backend-free UI development
   sampleFeedback,
-  sampleResults,
 };

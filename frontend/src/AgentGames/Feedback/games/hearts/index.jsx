@@ -1,7 +1,6 @@
 import HeartsFeedback from './HeartsFeedback';
 import HeartsResultsDisplay from './HeartsResultsDisplay';
 import sampleFeedback from './sample_feedback.json';
-import sampleResults from './sample_results.json';
 
 export default {
   name: 'hearts',
@@ -17,5 +16,4 @@ export default {
   ResultsDisplay: HeartsResultsDisplay,
   // Consumed by /GamePreview/:gameName for backend-free UI development
   sampleFeedback,
-  sampleResults,
 };

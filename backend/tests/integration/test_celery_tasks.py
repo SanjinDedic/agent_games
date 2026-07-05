@@ -76,6 +76,11 @@ class CustomPlayer(Player):
     ).get(timeout=20)
     assert result["status"] == "success"
     assert "simulation_results" in result
+    # Validation runs against the built-in bots, whose strategies ship with
+    # the results (the submitted team has none).
+    strategies = result["simulation_results"]["strategies"]
+    assert strategies["TitForTat"]
+    assert test_team.name not in strategies
 
 
 def test_simulation_workflow(celery_workers, test_league: League):
@@ -87,6 +92,9 @@ def test_simulation_workflow(celery_workers, test_league: League):
     ).get(timeout=60)
     assert result["status"] == "success"
     assert "simulation_results" in result
+    # No submissions in this league, so the validation players (and their
+    # strategies) are in play.
+    assert result["simulation_results"]["strategies"]["AlwaysDefect"]
 
     result = run_simulation.delay(
         league_id=test_league.id,

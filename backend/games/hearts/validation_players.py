@@ -30,6 +30,8 @@ def _void_of_led(game_state):
 class RandomBot(Player):
     """Plays a random legal card; passes three random cards."""
 
+    strategy = "Plays a random legal card and passes three random cards."
+
     def make_decision(self, game_state):
         if game_state["phase"] == "pass":
             return random.sample(game_state["hand"], 3)
@@ -38,6 +40,11 @@ class RandomBot(Player):
 
 class LowballBot(Player):
     """Always plays its lowest legal card; passes its three highest cards."""
+
+    strategy = (
+        "Always plays its lowest legal card and passes its three highest "
+        "cards — hopes low cards dodge the points."
+    )
 
     def make_decision(self, game_state):
         if game_state["phase"] == "pass":
@@ -48,6 +55,11 @@ class LowballBot(Player):
 class MoonShooter(Player):
     """Keeps its high cards (passes its lowest) and plays high to win tricks."""
 
+    strategy = (
+        "Keeps its high cards (passes the lowest) and plays high to win "
+        "tricks — always flirting with shooting the moon."
+    )
+
     def make_decision(self, game_state):
         if game_state["phase"] == "pass":
             return sorted(game_state["hand"], key=_rank)[:3]
@@ -56,6 +68,11 @@ class MoonShooter(Player):
 
 class QueenDumper(Player):
     """Sheds high spades in the pass, slides the Queen the moment it is void."""
+
+    strategy = (
+        "Passes away its high spades, then dumps the Queen of Spades on "
+        "someone the moment it can't follow suit."
+    )
 
     def make_decision(self, game_state):
         hand = game_state["hand"]
@@ -76,6 +93,11 @@ class QueenDumper(Player):
 class HeartAvoider(Player):
     """Passes away hearts and the Queen; refuses to take hearts when it can."""
 
+    strategy = (
+        "Passes away hearts and the Queen, and refuses to play hearts "
+        "whenever it has any other legal choice."
+    )
+
     def make_decision(self, game_state):
         hand = game_state["hand"]
         if game_state["phase"] == "pass":
@@ -90,6 +112,12 @@ class HeartAvoider(Player):
 class TrickDucker(Player):
     """Tries to lose every trick: follows with the highest card that still
     stays under the current winner; leads low, dumps danger when void."""
+
+    strategy = (
+        "Tries to lose every trick: follows with the highest card that still "
+        "stays under the current winner, leads low, and dumps dangerous cards "
+        "when it can't follow suit."
+    )
 
     def make_decision(self, game_state):
         hand = game_state["hand"]
@@ -115,6 +143,11 @@ class VoidMaker(Player):
     """Passes three cards from its shortest suit to go void fast, then dumps
     its most dangerous card whenever it cannot follow; otherwise plays low."""
 
+    strategy = (
+        "Passes from its shortest suit to go void fast, then dumps its most "
+        "dangerous card whenever it can't follow suit; otherwise plays low."
+    )
+
     def make_decision(self, game_state):
         hand = game_state["hand"]
         if game_state["phase"] == "pass":
@@ -130,6 +163,11 @@ class VoidMaker(Player):
 
 class Cautious(Player):
     """Passes its most dangerous cards, plays low, dumps danger when void."""
+
+    strategy = (
+        "Passes its most dangerous cards, plays low whenever it must follow, "
+        "and sheds danger cards when it can't."
+    )
 
     def make_decision(self, game_state):
         hand = game_state["hand"]
