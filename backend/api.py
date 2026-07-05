@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -25,6 +26,12 @@ logger = logging.getLogger(__name__)
 
 def check_database_status():
     """Check if database is initialized and warn if its not"""
+    if os.environ.get("DB_ENVIRONMENT") == "test":
+        # The test suite owns the test schema (conftest drops, creates and
+        # truncates it at will); auto-init from the api races those DDL
+        # statements and can deadlock an entire test run.
+        logger.warning("DB_ENVIRONMENT=test — skipping database check/auto-init")
+        return
     try:
         engine = get_db_engine()
         with Session(engine) as session:
