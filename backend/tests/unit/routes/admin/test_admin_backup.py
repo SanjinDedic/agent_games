@@ -81,15 +81,17 @@ def test_create_backup_success(mock_parse, mock_run, mock_s3):
 
     assert "filename" in result
     assert result["filename"].startswith("agent_games_")
-    assert result["filename"].endswith(".sql")
+    assert result["filename"].endswith(".dump")
     assert result["s3_key"].startswith("backups/")
     assert result["size_bytes"] == 12345
     assert "timestamp" in result
 
-    # pg_dump was called
+    # pg_dump was called in custom format with zstd compression
     mock_run.assert_called_once()
-    args = mock_run.call_args
-    assert "pg_dump" in args[0][0]
+    cmd = mock_run.call_args[0][0]
+    assert "pg_dump" in cmd
+    assert "--format=custom" in cmd
+    assert "--compress=zstd:3" in cmd
 
     # S3 upload was called
     mock_s3.return_value.upload_file.assert_called_once()
@@ -250,7 +252,7 @@ def test_list_backups_empty(mock_s3):
 @patch("backend.routes.admin.admin_backup.subprocess.run")
 @patch("backend.routes.admin.admin_backup._parse_db_url")
 def test_restore_backup_success(mock_parse, mock_run, mock_s3):
-    """Successful restore downloads, drops, creates, and restores."""
+    """Custom-format restore downloads, drops, creates, and runs pg_restore."""
     from backend.routes.admin.admin_backup import restore_backup
 
     mock_parse.return_value = {
@@ -261,16 +263,45 @@ def test_restore_backup_success(mock_parse, mock_run, mock_s3):
     mock_run.return_value = MagicMock(returncode=0, stderr="")
     mock_s3.return_value = MagicMock()
 
-    result = restore_backup("backups/agent_games_20260101_000000.sql")
+    result = restore_backup("backups/agent_games_20260101_000000.dump")
 
-    assert result["filename"] == "agent_games_20260101_000000.sql"
-    assert result["s3_key"] == "backups/agent_games_20260101_000000.sql"
+    assert result["filename"] == "agent_games_20260101_000000.dump"
+    assert result["s3_key"] == "backups/agent_games_20260101_000000.dump"
 
     # S3 download was called
     mock_s3.return_value.download_file.assert_called_once()
 
     # subprocess.run called 4 times: terminate, drop, create, restore
     assert mock_run.call_count == 4
+
+    # The final call restores the archive with pg_restore
+    restore_cmd = mock_run.call_args_list[-1][0][0]
+    assert restore_cmd[0] == "pg_restore"
+    assert "--no-owner" in restore_cmd
+
+
+@patch("backend.routes.admin.admin_backup._get_s3_client")
+@patch("backend.routes.admin.admin_backup.subprocess.run")
+@patch("backend.routes.admin.admin_backup._parse_db_url")
+def test_restore_backup_legacy_sql(mock_parse, mock_run, mock_s3):
+    """Legacy .sql backups still restore via psql -f."""
+    from backend.routes.admin.admin_backup import restore_backup
+
+    mock_parse.return_value = {
+        "host": "localhost", "port": "5432",
+        "user": "postgres", "password": "pass", "dbname": "testdb",
+    }
+    mock_run.return_value = MagicMock(returncode=0, stderr="")
+    mock_s3.return_value = MagicMock()
+
+    result = restore_backup("backups/agent_games_20260101_000000.sql")
+
+    assert result["filename"] == "agent_games_20260101_000000.sql"
+    assert mock_run.call_count == 4
+
+    restore_cmd = mock_run.call_args_list[-1][0][0]
+    assert restore_cmd[0] == "psql"
+    assert "-f" in restore_cmd
 
 
 @patch("backend.routes.admin.admin_backup._get_s3_client")

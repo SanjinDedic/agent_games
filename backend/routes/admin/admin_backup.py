@@ -46,7 +46,7 @@ def _get_s3_client():
 
 
 def create_backup(label: str = "MANUAL") -> dict:
-    """Run pg_dump and upload the .sql file to AWS S3.
+    """Run pg_dump (custom format, zstd-compressed) and upload the .dump to AWS S3.
 
     `label` tags the filename with the backup's origin (MANUAL, DAILY, PRE_DEPLOY).
     Returns a dict with backup metadata on success.
@@ -54,7 +54,7 @@ def create_backup(label: str = "MANUAL") -> dict:
     bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
     db = _parse_db_url()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"agent_games_{label}_{timestamp}.sql"
+    filename = f"agent_games_{label}_{timestamp}.dump"
 
     with tempfile.TemporaryDirectory() as tmp:
         dump_path = os.path.join(tmp, filename)
@@ -69,6 +69,8 @@ def create_backup(label: str = "MANUAL") -> dict:
                 "-p", db["port"],
                 "-U", db["user"],
                 "-d", db["dbname"],
+                "--format=custom",
+                "--compress=zstd:3",
                 "-f", dump_path,
             ],
             capture_output=True,
@@ -90,7 +92,7 @@ def create_backup(label: str = "MANUAL") -> dict:
                 dump_path,
                 bucket,
                 s3_key,
-                ExtraArgs={"ContentType": "application/sql"},
+                ExtraArgs={"ContentType": "application/octet-stream"},
             )
         except ClientError as e:
             raise RuntimeError(f"Failed to upload to S3: {e}")
@@ -165,9 +167,11 @@ def prune_backups(days: int = 60) -> list[str]:
 
 
 def restore_backup(s3_key: str) -> dict:
-    """Download a backup from S3 and restore it via psql.
+    """Download a backup from S3 and restore it.
 
-    This drops and recreates the database before restoring.
+    Custom-format archives (.dump) restore via pg_restore; legacy plain-SQL
+    backups (.sql) still restore via psql. Drops and recreates the database
+    before restoring either way.
     """
     bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
     db = _parse_db_url()
@@ -210,13 +214,26 @@ def restore_backup(s3_key: str) -> dict:
         if result.returncode != 0:
             raise RuntimeError(f"CREATE DATABASE failed: {result.stderr}")
 
-        # Restore the dump
+        # Restore the dump. Legacy backups are plain SQL; current ones are
+        # pg_dump custom-format archives.
+        if filename.endswith(".sql"):
+            restore_cmd = psql_base + ["-d", db["dbname"], "-f", dump_path]
+        else:
+            restore_cmd = [
+                "pg_restore",
+                "-h", db["host"],
+                "-p", db["port"],
+                "-U", db["user"],
+                "-d", db["dbname"],
+                "--no-owner",
+                dump_path,
+            ]
         result = subprocess.run(
-            psql_base + ["-d", db["dbname"], "-f", dump_path],
+            restore_cmd,
             capture_output=True, text=True, env=env, timeout=300,
         )
         if result.returncode != 0:
-            raise RuntimeError(f"psql restore failed: {result.stderr}")
+            raise RuntimeError(f"restore failed: {result.stderr}")
 
     logger.info(f"Database restored from s3://{bucket}/{s3_key}")
     return {"filename": filename, "s3_key": s3_key}
