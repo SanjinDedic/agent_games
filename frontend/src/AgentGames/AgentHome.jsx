@@ -13,8 +13,7 @@ const Homepage = () => {
             Welcome to Agent Games
           </h1>
           <p className="text-xl text-league-text max-w-3xl mx-auto mb-10">
-            A modern platform for developing, testing, and competing with
-            intelligent agents in strategic games.
+            Open Source platform for programming python agents that compete in strategic games. Great for universities, computing clubs and Computer Science enthusiasts
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
             <a href="/Demo" className="inline-block">
@@ -64,9 +63,8 @@ const Homepage = () => {
                 Learn to Design Algorithms
               </h3>
               <p className="text-ui">
-                Build agents that make strategic decisions, developing
-                algorithmic thinking and problem-solving skills through
-                interactive challenges.
+                Program agents that make strategic decisions, developing
+                algorithmic thinking and problem-solving skills. 
               </p>
             </div>
 
@@ -83,16 +81,15 @@ const Homepage = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    d="M3 7h6M3 12h4.5M3 17h6M13.5 17V7m0 0L11 9.5m2.5-2.5L16 9.5M19.5 7v10m0 0L17 14.5m2.5 2.5l2.5-2.5"
                   />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-ui-dark mb-2">
-                Take On Challenges & Improve
+                Host a contest in 5 minutes!
               </h3>
               <p className="text-ui">
-                Test your agents against others in challenge leagues, gaining
-                insights and refining your strategies with each iteration.
+                Live leaderboards, constant iteration, drama and deep learning, more fun than anything else you can do in a computing course.
               </p>
             </div>
 
