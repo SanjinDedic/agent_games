@@ -1,6 +1,6 @@
 import logging
 from datetime import UTC, datetime
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from sqlmodel import Session, select
 
@@ -23,13 +23,13 @@ def mask_key(key: Optional[str]) -> str:
     return "****"
 
 
-def get_api_keys(session: Session) -> Dict:
-    """Retrieve all AI provider keys, masked."""
-    openai_row = session.exec(
-        select(AIProviderKey).where(AIProviderKey.provider == "openai")
-    ).first()
+def get_api_keys(session: Session, providers: Iterable[str]) -> Dict:
+    """Retrieve the given AI providers' keys, masked, as {provider}_api_key."""
+    rows = session.exec(select(AIProviderKey)).all()
+    keys_by_provider = {row.provider: row.api_key for row in rows}
     return {
-        "openai_api_key": mask_key(openai_row.api_key if openai_row else None),
+        f"{provider}_api_key": mask_key(keys_by_provider.get(provider))
+        for provider in providers
     }
 
 

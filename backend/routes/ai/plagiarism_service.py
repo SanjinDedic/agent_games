@@ -5,8 +5,7 @@ This module holds all the imperative logic that the router calls:
 - sample / truncate them
 - compute deterministic metrics
 - build an anonymized payload
-- call OpenAI
-- validate the LLM JSON response with Pydantic
+- call the configured AI provider (via the clients package)
 - assemble the final PlagiarismReport
 
 The router handler remains thin and only deals with auth + error mapping.
@@ -15,16 +14,17 @@ The router handler remains thin and only deals with auth + error mapping.
 import json
 import logging
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
-import httpx
-from pydantic import ValidationError
 from sqlmodel import Session
 
 from backend.database.db_models import Team
-from backend.routes.ai.ai_db import (
-    get_stored_key,
-    get_team_submissions_ordered,
+from backend.routes.ai.ai_db import get_team_submissions_ordered
+from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for the router
+    AIClient,
+    LLMResponseError,
+    NoApiKeyError,
+    get_ai_client,
 )
 from backend.routes.ai.ai_models import (
     PairwiseMetrics,
@@ -46,10 +46,10 @@ from backend.routes.ai.plagiarism_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
+PROVIDER = "openai"
 MODEL_NAME = "gpt-4o-mini"
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+TEMPERATURE = 0.2
 MAX_TOTAL_PAYLOAD_CHARS = 200_000
-REQUEST_TIMEOUT = 60.0
 MAX_ANALYZED_SUBMISSIONS = 10
 
 
@@ -113,15 +113,11 @@ def _summarize_deterministic_flags(
     return concern_level, summary
 
 
-# --- Error taxonomy ---
+# --- Error taxonomy (NoApiKeyError / LLMResponseError come from the clients package) ---
 
 
 class PlagiarismServiceError(Exception):
     """Base error for plagiarism service failures."""
-
-
-class NoApiKeyError(PlagiarismServiceError):
-    """OpenAI API key is not configured in the database."""
 
 
 class NoSubmissionsError(PlagiarismServiceError):
@@ -130,10 +126,6 @@ class NoSubmissionsError(PlagiarismServiceError):
 
 class PayloadTooLargeError(PlagiarismServiceError):
     """Combined submission code exceeds the size limit."""
-
-
-class LLMResponseError(PlagiarismServiceError):
-    """The LLM returned an unusable response (HTTP error, bad JSON, schema mismatch)."""
 
 
 # --- Public API ---
@@ -240,11 +232,12 @@ async def assess_team_for_plagiarism(
 
     # LLM call — separate branches for single vs multi-submission.
     # Flag summary is passed as extra context so the LLM is aware of it.
+    client = get_ai_client(session, PROVIDER)
     if len(sampled_subs) == 1:
-        verdict = await _call_llm_single_submission(session, anon_payload, sub_metrics)
+        verdict = await _call_llm_single_submission(client, anon_payload, sub_metrics)
     else:
         verdict = await _call_llm_full_assessment(
-            session, anon_payload, sub_metrics, pair_metrics, flag_summary
+            client, anon_payload, sub_metrics, pair_metrics, flag_summary
         )
 
     return PlagiarismReport(
@@ -263,68 +256,16 @@ async def assess_team_for_plagiarism(
     )
 
 
-# --- Internal: OpenAI call + response parsing ---
-
-
-async def _call_openai(api_key: str, user_content: str) -> dict:
-    """Make the raw HTTP call to OpenAI chat completions.
-
-    Returns the parsed JSON envelope. Raises LLMResponseError on non-200.
-    """
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        resp = await client.post(
-            OPENAI_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": MODEL_NAME,
-                "response_format": {"type": "json_object"},
-                "temperature": 0.2,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_content},
-                ],
-            },
-        )
-    if resp.status_code != 200:
-        logger.error(
-            "OpenAI returned HTTP %s: %s", resp.status_code, resp.text[:500]
-        )
-        raise LLMResponseError(f"OpenAI returned HTTP {resp.status_code}")
-    return resp.json()
-
-
-def _extract_and_validate_verdict(response_json: dict) -> PlagiarismVerdict:
-    """Pull content out of the OpenAI envelope and validate against PlagiarismVerdict."""
-    try:
-        content = response_json["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as e:
-        raise LLMResponseError(f"Malformed OpenAI response envelope: {e}") from e
-
-    try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError as e:
-        raise LLMResponseError(f"LLM returned non-JSON content: {e}") from e
-
-    try:
-        return PlagiarismVerdict.model_validate(parsed)
-    except ValidationError as e:
-        raise LLMResponseError(f"LLM JSON did not match schema: {e}") from e
+# --- Internal: LLM payload assembly + provider call ---
 
 
 async def _call_llm_full_assessment(
-    session: Session,
+    client: AIClient,
     anon_payload: list,
     sub_metrics: List[SubmissionMetrics],
     pair_metrics: List[PairwiseMetrics],
     deterministic_flag_summary: List[str],
 ) -> PlagiarismVerdict:
-    api_key = get_stored_key(session, "openai")
-    if not api_key:
-        raise NoApiKeyError("OpenAI API key is not configured")
-
     user_content = json.dumps(
         {
             "task": (
@@ -343,19 +284,20 @@ async def _call_llm_full_assessment(
         indent=2,
     )
 
-    response_json = await _call_openai(api_key, user_content)
-    return _extract_and_validate_verdict(response_json)
+    return await client.complete_structured(
+        system=SYSTEM_PROMPT,
+        user=user_content,
+        schema=PlagiarismVerdict,
+        model=MODEL_NAME,
+        temperature=TEMPERATURE,
+    )
 
 
 async def _call_llm_single_submission(
-    session: Session,
+    client: AIClient,
     anon_payload: list,
     sub_metrics: List[SubmissionMetrics],
 ) -> PlagiarismVerdict:
-    api_key = get_stored_key(session, "openai")
-    if not api_key:
-        raise NoApiKeyError("OpenAI API key is not configured")
-
     user_content = json.dumps(
         {
             "task": (
@@ -371,5 +313,10 @@ async def _call_llm_single_submission(
         indent=2,
     )
 
-    response_json = await _call_openai(api_key, user_content)
-    return _extract_and_validate_verdict(response_json)
+    return await client.complete_structured(
+        system=SYSTEM_PROMPT,
+        user=user_content,
+        schema=PlagiarismVerdict,
+        model=MODEL_NAME,
+        temperature=TEMPERATURE,
+    )
