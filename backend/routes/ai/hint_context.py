@@ -170,7 +170,10 @@ def load_game_source(game_name: str) -> Optional[str]:
 
     parts: list[str] = []
     for path in sorted(game_dir.glob("*.py")):
-        if path.name == "__init__.py":
+        # Skip package plumbing and in-package test files (calibration tests
+        # live beside some games). validation_players.py stays: bot code is
+        # needed to diagnose player-to-player interaction bugs.
+        if path.name == "__init__.py" or path.name.startswith("test_"):
             continue
         try:
             text = path.read_text(encoding="utf-8")
@@ -339,10 +342,23 @@ def _render_feedback(feedback: Union[str, dict, None]) -> Optional[str]:
     return "\n".join(parts) if parts else None
 
 
+# Hints diagnose broken code, never strategy (hint_prompt.SYSTEM_PROMPT forbids
+# strategy advice), so simulation_results keys that only describe play quality
+# are dropped before rendering: "strategies" is prose describing the validation
+# bots, and "table" is roll/hold stats no current game populates (all zeros —
+# the model is told to corroborate bugs with statistics, and zeros corroborate
+# phantom bugs). total_points stays: an agent scoring 0 across every simulation
+# is real evidence of a logic bug.
+SIM_RESULTS_DROP_KEYS = {"strategies", "table"}
+
+
 def _render_sim_results(results: Optional[dict]) -> Optional[str]:
     if not results:
         return None
-    return _truncate(json.dumps(results, indent=2, default=str), MAX_FEEDBACK_CHARS)
+    kept = {k: v for k, v in results.items() if k not in SIM_RESULTS_DROP_KEYS}
+    if not kept:
+        return None
+    return _truncate(json.dumps(kept, indent=2, default=str), MAX_FEEDBACK_CHARS)
 
 
 def build_hint_context(ctx: HintContext) -> str:
