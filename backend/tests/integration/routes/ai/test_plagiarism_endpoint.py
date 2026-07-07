@@ -269,7 +269,7 @@ def test_assess_two_submissions_happy_path(
     assert len(report["submission_metrics"]) == 2
     assert len(report["pairwise_metrics"]) == 1
     assert report["verdict"]["progression_verdict"] == "organic"
-    assert report["model_used"] == "gpt-4o-mini"
+    assert report["model_used"] == "gpt-5.4-mini"
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")

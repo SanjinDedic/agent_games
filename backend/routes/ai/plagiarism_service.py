@@ -46,13 +46,13 @@ from backend.routes.ai.plagiarism_prompt import SYSTEM_PROMPT
 logger = logging.getLogger(__name__)
 
 # Ordered failover chain: try the first (provider, model); on any client error
-# fall through to the next. Primary stays on gpt-4o-mini (a sampling model —
-# gpt-5.4-mini is a reasoning model and rejects the temperature we pass here).
+# fall through to the next. gpt-5.4-mini is a reasoning model — it rejects
+# temperature, so reasoning_effort is the depth control here.
 FAILOVER_CHAIN = [
-    ("openai", "gpt-4o-mini"),
+    ("openai", "gpt-5.4-mini"),
     ("google", "gemini-3.5-flash"),
 ]
-TEMPERATURE = 0.2
+REASONING = "medium"
 MAX_TOTAL_PAYLOAD_CHARS = 200_000
 MAX_ANALYZED_SUBMISSIONS = 10
 
@@ -295,7 +295,7 @@ async def _call_llm_full_assessment(
         system=SYSTEM_PROMPT,
         user=user_content,
         schema=PlagiarismVerdict,
-        temperature=TEMPERATURE,
+        reasoning_effort=REASONING,
     )
     return verdict, model
 
@@ -326,6 +326,6 @@ async def _call_llm_single_submission(
         system=SYSTEM_PROMPT,
         user=user_content,
         schema=PlagiarismVerdict,
-        temperature=TEMPERATURE,
+        reasoning_effort=REASONING,
     )
     return verdict, model
