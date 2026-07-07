@@ -21,10 +21,9 @@ from sqlmodel import Session
 from backend.database.db_models import Team
 from backend.routes.ai.ai_db import get_team_submissions_ordered
 from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for the router
-    AIClient,
     LLMResponseError,
     NoApiKeyError,
-    get_ai_client,
+    complete_structured_failover,
 )
 from backend.routes.ai.ai_models import (
     PairwiseMetrics,
@@ -46,8 +45,13 @@ from backend.routes.ai.plagiarism_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-PROVIDER = "openai"
-MODEL_NAME = "gpt-4o-mini"
+# Ordered failover chain: try the first (provider, model); on any client error
+# fall through to the next. Primary stays on gpt-4o-mini (a sampling model —
+# gpt-5.4-mini is a reasoning model and rejects the temperature we pass here).
+FAILOVER_CHAIN = [
+    ("openai", "gpt-4o-mini"),
+    ("google", "gemini-3.5-flash"),
+]
 TEMPERATURE = 0.2
 MAX_TOTAL_PAYLOAD_CHARS = 200_000
 MAX_ANALYZED_SUBMISSIONS = 10
@@ -232,12 +236,13 @@ async def assess_team_for_plagiarism(
 
     # LLM call — separate branches for single vs multi-submission.
     # Flag summary is passed as extra context so the LLM is aware of it.
-    client = get_ai_client(session, PROVIDER)
     if len(sampled_subs) == 1:
-        verdict = await _call_llm_single_submission(client, anon_payload, sub_metrics)
+        verdict, model_used = await _call_llm_single_submission(
+            session, anon_payload, sub_metrics
+        )
     else:
-        verdict = await _call_llm_full_assessment(
-            client, anon_payload, sub_metrics, pair_metrics, flag_summary
+        verdict, model_used = await _call_llm_full_assessment(
+            session, anon_payload, sub_metrics, pair_metrics, flag_summary
         )
 
     return PlagiarismReport(
@@ -251,7 +256,7 @@ async def assess_team_for_plagiarism(
         deterministic_concern_level=concern_level,
         deterministic_flag_summary=flag_summary,
         verdict=verdict,
-        model_used=MODEL_NAME,
+        model_used=model_used,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -260,12 +265,12 @@ async def assess_team_for_plagiarism(
 
 
 async def _call_llm_full_assessment(
-    client: AIClient,
+    session: Session,
     anon_payload: list,
     sub_metrics: List[SubmissionMetrics],
     pair_metrics: List[PairwiseMetrics],
     deterministic_flag_summary: List[str],
-) -> PlagiarismVerdict:
+) -> "tuple[PlagiarismVerdict, str]":
     user_content = json.dumps(
         {
             "task": (
@@ -284,20 +289,22 @@ async def _call_llm_full_assessment(
         indent=2,
     )
 
-    return await client.complete_structured(
+    verdict, _provider, model = await complete_structured_failover(
+        session,
+        FAILOVER_CHAIN,
         system=SYSTEM_PROMPT,
         user=user_content,
         schema=PlagiarismVerdict,
-        model=MODEL_NAME,
         temperature=TEMPERATURE,
     )
+    return verdict, model
 
 
 async def _call_llm_single_submission(
-    client: AIClient,
+    session: Session,
     anon_payload: list,
     sub_metrics: List[SubmissionMetrics],
-) -> PlagiarismVerdict:
+) -> "tuple[PlagiarismVerdict, str]":
     user_content = json.dumps(
         {
             "task": (
@@ -313,10 +320,12 @@ async def _call_llm_single_submission(
         indent=2,
     )
 
-    return await client.complete_structured(
+    verdict, _provider, model = await complete_structured_failover(
+        session,
+        FAILOVER_CHAIN,
         system=SYSTEM_PROMPT,
         user=user_content,
         schema=PlagiarismVerdict,
-        model=MODEL_NAME,
         temperature=TEMPERATURE,
     )
+    return verdict, model

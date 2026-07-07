@@ -435,6 +435,45 @@ def test_assess_openai_500(
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
+def test_assess_failover_to_google_on_openai_error(
+    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+):
+    """OpenAI 500 + google key stored → verdict served by the gemini fallback."""
+    institution, league, team, headers = institution_setup
+    db_session.add(AIProviderKey(provider="google", api_key="AIza-test-google-key"))
+    db_session.commit()
+
+    bad_response = MagicMock()
+    bad_response.status_code = 500
+    bad_response.text = "internal server error"
+
+    envelope = _llm_envelope(_valid_llm_verdict_json())
+    good_response = MagicMock()
+    good_response.status_code = 200
+    good_response.json = MagicMock(return_value=envelope)
+    good_response.text = json.dumps(envelope)
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(side_effect=[bad_response, good_response])
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client_cls.return_value = mock_client
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_id": team.id},
+    )
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["model_used"] == "gemini-3.5-flash"
+
+    # Second call went to the Google OpenAI-compatible endpoint.
+    fallback_url = mock_client.post.call_args_list[1].args[0]
+    assert "generativelanguage.googleapis.com" in fallback_url
+
+
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_openai_timeout(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):

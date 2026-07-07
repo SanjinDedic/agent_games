@@ -11,6 +11,7 @@ from backend.routes.ai.clients.factory import (
     get_ai_client,
     get_client_class,
 )
+from backend.routes.ai.clients.failover import complete_structured_failover
 
 __all__ = [
     "AIClient",
@@ -20,6 +21,7 @@ __all__ = [
     "LLMResponseError",
     "NoApiKeyError",
     "UnknownProviderError",
+    "complete_structured_failover",
     "get_ai_client",
     "get_client_class",
 ]

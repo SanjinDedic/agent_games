@@ -11,15 +11,19 @@ from backend.routes.ai.ai_models import Hint, HintResponse
 from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for callers
     LLMResponseError,
     NoApiKeyError,
-    get_ai_client,
+    complete_structured_failover,
 )
 from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.ai.hint_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-PROVIDER = "openai"
-MODEL_NAME = "gpt-5.4-mini"
+# Ordered failover chain: try the first (provider, model); on any client error
+# (missing key, HTTP error, timeout, bad response) fall through to the next.
+FAILOVER_CHAIN = [
+    ("openai", "gpt-5.4-mini"),
+    ("google", "gemini-3.5-flash"),
+]
 REASONING = "medium"
 
 # Hint rationing. Overridable per-environment (dev sets generous values in .env,
@@ -49,15 +53,15 @@ def _validate_hints(code: str, result: HintResponse) -> list[Hint]:
 
 async def provide_hints(session: Session, code: str, validation_result: dict, game_name: Optional[str] = None, team_name: Optional[str] = None, include_game_code: bool = True) -> list[Hint]:
     context = build_hint_context_from_response(code, validation_result, game_name, team_name, include_game_code)
-    client = get_ai_client(session, PROVIDER)
-    raw_hints = await client.complete_structured(
+    raw_hints, provider, model = await complete_structured_failover(
+        session,
+        FAILOVER_CHAIN,
         system=SYSTEM_PROMPT,
         user=context,
         schema=HintResponse,
-        model=MODEL_NAME,
         reasoning_effort=REASONING,
     )
-    logger.debug(f"Raw hints {raw_hints}")
+    logger.debug(f"Raw hints from {provider}/{model}: {raw_hints}")
     return _validate_hints(code, raw_hints)
 
 
