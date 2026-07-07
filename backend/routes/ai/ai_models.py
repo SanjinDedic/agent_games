@@ -4,15 +4,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class APIKeysResponse(BaseModel):
-    """Response with masked API keys"""
+    """Response with masked API keys (one field per registered provider)"""
 
     openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    google_api_key: str = ""
 
 
 class UpdateAPIKeysRequest(BaseModel):
     """Request to update API keys. None means 'do not change'."""
 
     openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
 
 
 class ValidateAPIKeyRequest(BaseModel):

@@ -5,8 +5,7 @@ This module holds all the imperative logic that the router calls:
 - sample / truncate them
 - compute deterministic metrics
 - build an anonymized payload
-- call OpenAI
-- validate the LLM JSON response with Pydantic
+- call the configured AI provider (via the clients package)
 - assemble the final PlagiarismReport
 
 The router handler remains thin and only deals with auth + error mapping.
@@ -15,16 +14,16 @@ The router handler remains thin and only deals with auth + error mapping.
 import json
 import logging
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
-import httpx
-from pydantic import ValidationError
 from sqlmodel import Session
 
 from backend.database.db_models import Team
-from backend.routes.ai.ai_db import (
-    get_stored_key,
-    get_team_submissions_ordered,
+from backend.routes.ai.ai_db import get_team_submissions_ordered
+from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for the router
+    LLMResponseError,
+    NoApiKeyError,
+    complete_structured_failover,
 )
 from backend.routes.ai.ai_models import (
     PairwiseMetrics,
@@ -46,10 +45,15 @@ from backend.routes.ai.plagiarism_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gpt-4o-mini"
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+# Ordered failover chain: try the first (provider, model); on any client error
+# fall through to the next. gpt-5.4-mini is a reasoning model — it rejects
+# temperature, so reasoning_effort is the depth control here.
+FAILOVER_CHAIN = [
+    ("openai", "gpt-5.4-mini"),
+    ("google", "gemini-3.5-flash"),
+]
+REASONING = "medium"
 MAX_TOTAL_PAYLOAD_CHARS = 200_000
-REQUEST_TIMEOUT = 60.0
 MAX_ANALYZED_SUBMISSIONS = 10
 
 
@@ -113,15 +117,11 @@ def _summarize_deterministic_flags(
     return concern_level, summary
 
 
-# --- Error taxonomy ---
+# --- Error taxonomy (NoApiKeyError / LLMResponseError come from the clients package) ---
 
 
 class PlagiarismServiceError(Exception):
     """Base error for plagiarism service failures."""
-
-
-class NoApiKeyError(PlagiarismServiceError):
-    """OpenAI API key is not configured in the database."""
 
 
 class NoSubmissionsError(PlagiarismServiceError):
@@ -130,10 +130,6 @@ class NoSubmissionsError(PlagiarismServiceError):
 
 class PayloadTooLargeError(PlagiarismServiceError):
     """Combined submission code exceeds the size limit."""
-
-
-class LLMResponseError(PlagiarismServiceError):
-    """The LLM returned an unusable response (HTTP error, bad JSON, schema mismatch)."""
 
 
 # --- Public API ---
@@ -241,9 +237,11 @@ async def assess_team_for_plagiarism(
     # LLM call — separate branches for single vs multi-submission.
     # Flag summary is passed as extra context so the LLM is aware of it.
     if len(sampled_subs) == 1:
-        verdict = await _call_llm_single_submission(session, anon_payload, sub_metrics)
+        verdict, model_used = await _call_llm_single_submission(
+            session, anon_payload, sub_metrics
+        )
     else:
-        verdict = await _call_llm_full_assessment(
+        verdict, model_used = await _call_llm_full_assessment(
             session, anon_payload, sub_metrics, pair_metrics, flag_summary
         )
 
@@ -258,60 +256,12 @@ async def assess_team_for_plagiarism(
         deterministic_concern_level=concern_level,
         deterministic_flag_summary=flag_summary,
         verdict=verdict,
-        model_used=MODEL_NAME,
+        model_used=model_used,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
 
-# --- Internal: OpenAI call + response parsing ---
-
-
-async def _call_openai(api_key: str, user_content: str) -> dict:
-    """Make the raw HTTP call to OpenAI chat completions.
-
-    Returns the parsed JSON envelope. Raises LLMResponseError on non-200.
-    """
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        resp = await client.post(
-            OPENAI_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": MODEL_NAME,
-                "response_format": {"type": "json_object"},
-                "temperature": 0.2,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_content},
-                ],
-            },
-        )
-    if resp.status_code != 200:
-        logger.error(
-            "OpenAI returned HTTP %s: %s", resp.status_code, resp.text[:500]
-        )
-        raise LLMResponseError(f"OpenAI returned HTTP {resp.status_code}")
-    return resp.json()
-
-
-def _extract_and_validate_verdict(response_json: dict) -> PlagiarismVerdict:
-    """Pull content out of the OpenAI envelope and validate against PlagiarismVerdict."""
-    try:
-        content = response_json["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as e:
-        raise LLMResponseError(f"Malformed OpenAI response envelope: {e}") from e
-
-    try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError as e:
-        raise LLMResponseError(f"LLM returned non-JSON content: {e}") from e
-
-    try:
-        return PlagiarismVerdict.model_validate(parsed)
-    except ValidationError as e:
-        raise LLMResponseError(f"LLM JSON did not match schema: {e}") from e
+# --- Internal: LLM payload assembly + provider call ---
 
 
 async def _call_llm_full_assessment(
@@ -320,11 +270,7 @@ async def _call_llm_full_assessment(
     sub_metrics: List[SubmissionMetrics],
     pair_metrics: List[PairwiseMetrics],
     deterministic_flag_summary: List[str],
-) -> PlagiarismVerdict:
-    api_key = get_stored_key(session, "openai")
-    if not api_key:
-        raise NoApiKeyError("OpenAI API key is not configured")
-
+) -> "tuple[PlagiarismVerdict, str]":
     user_content = json.dumps(
         {
             "task": (
@@ -343,19 +289,22 @@ async def _call_llm_full_assessment(
         indent=2,
     )
 
-    response_json = await _call_openai(api_key, user_content)
-    return _extract_and_validate_verdict(response_json)
+    verdict, _provider, model = await complete_structured_failover(
+        session,
+        FAILOVER_CHAIN,
+        system=SYSTEM_PROMPT,
+        user=user_content,
+        schema=PlagiarismVerdict,
+        reasoning_effort=REASONING,
+    )
+    return verdict, model
 
 
 async def _call_llm_single_submission(
     session: Session,
     anon_payload: list,
     sub_metrics: List[SubmissionMetrics],
-) -> PlagiarismVerdict:
-    api_key = get_stored_key(session, "openai")
-    if not api_key:
-        raise NoApiKeyError("OpenAI API key is not configured")
-
+) -> "tuple[PlagiarismVerdict, str]":
     user_content = json.dumps(
         {
             "task": (
@@ -371,5 +320,12 @@ async def _call_llm_single_submission(
         indent=2,
     )
 
-    response_json = await _call_openai(api_key, user_content)
-    return _extract_and_validate_verdict(response_json)
+    verdict, _provider, model = await complete_structured_failover(
+        session,
+        FAILOVER_CHAIN,
+        system=SYSTEM_PROMPT,
+        user=user_content,
+        schema=PlagiarismVerdict,
+        reasoning_effort=REASONING,
+    )
+    return verdict, model

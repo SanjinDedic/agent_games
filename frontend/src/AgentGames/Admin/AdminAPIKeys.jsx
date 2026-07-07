@@ -13,29 +13,30 @@ const providers = [
     description: 'Powers GPT models for AI hints, plagiarism detection, and other future AI features',
     placeholder: 'sk-...',
   },
+  {
+    id: 'google_api_key',
+    name: 'Google Gemini',
+    provider_key: 'google',
+    description: 'Powers Gemini models as an alternative provider for AI hints and plagiarism detection',
+    placeholder: 'AIza...',
+  },
 ];
+
+// Build a { openai_api_key: value, google_api_key: value, ... } object for state init/reset.
+const perProviderState = (value) =>
+  Object.fromEntries(providers.map((p) => [p.id, value]));
 
 function AdminAPIKeys() {
   const navigate = useNavigate();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
 
-  const [keys, setKeys] = useState({
-    openai_api_key: '',
-  });
-  const [editValues, setEditValues] = useState({
-    openai_api_key: '',
-  });
-  const [showKeys, setShowKeys] = useState({
-    openai_api_key: false,
-  });
-  const [validating, setValidating] = useState({
-    openai_api_key: false,
-  });
+  const [keys, setKeys] = useState(perProviderState(''));
+  const [editValues, setEditValues] = useState(perProviderState(''));
+  const [showKeys, setShowKeys] = useState(perProviderState(false));
+  const [validating, setValidating] = useState(perProviderState(false));
   // { status: 'valid'|'invalid'|'error', timestamp: string } or null
-  const [validationResult, setValidationResult] = useState({
-    openai_api_key: null,
-  });
+  const [validationResult, setValidationResult] = useState(perProviderState(null));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -91,9 +92,7 @@ function AdminAPIKeys() {
       const data = await response.json();
       if (data.status === 'success') {
         setKeys(data.data);
-        setEditValues({
-          openai_api_key: '',
-        });
+        setEditValues(perProviderState(''));
         // Clear validation results for keys that were updated
         setValidationResult((prev) => {
           const next = { ...prev };

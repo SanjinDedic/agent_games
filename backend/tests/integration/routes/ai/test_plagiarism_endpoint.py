@@ -244,7 +244,7 @@ def test_assess_no_submissions(
     assert "no submissions" in data["message"].lower()
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_two_submissions_happy_path(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -269,10 +269,10 @@ def test_assess_two_submissions_happy_path(
     assert len(report["submission_metrics"]) == 2
     assert len(report["pairwise_metrics"]) == 1
     assert report["verdict"]["progression_verdict"] == "organic"
-    assert report["model_used"] == "gpt-4o-mini"
+    assert report["model_used"] == "gpt-5.4-mini"
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_single_submission_progression_not_applicable(
     mock_client_cls, client, institution_setup, stored_openai_key, db_session
 ):
@@ -316,7 +316,7 @@ def test_assess_single_submission_progression_not_applicable(
     assert report["verdict"]["progression_verdict"] == "not_applicable"
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_sampling_when_over_ten_submissions(
     mock_client_cls, client, institution_setup, stored_openai_key, db_session
 ):
@@ -350,7 +350,7 @@ def test_assess_sampling_when_over_ten_submissions(
     assert report["sampled"] is True
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_llm_returns_non_json(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -370,7 +370,7 @@ def test_assess_llm_returns_non_json(
     assert "malformed" in data["message"].lower() or "non-json" in data["message"].lower()
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_llm_returns_bad_literal(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -390,7 +390,7 @@ def test_assess_llm_returns_bad_literal(
     assert "malformed" in data["message"].lower() or "schema" in data["message"].lower()
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_llm_extra_keys_rejected(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -409,7 +409,7 @@ def test_assess_llm_extra_keys_rejected(
     assert data["status"] == "error"
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_openai_500(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -434,7 +434,46 @@ def test_assess_openai_500(
     assert "500" in data["message"] or "malformed" in data["message"].lower()
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
+def test_assess_failover_to_google_on_openai_error(
+    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+):
+    """OpenAI 500 + google key stored → verdict served by the gemini fallback."""
+    institution, league, team, headers = institution_setup
+    db_session.add(AIProviderKey(provider="google", api_key="AIza-test-google-key"))
+    db_session.commit()
+
+    bad_response = MagicMock()
+    bad_response.status_code = 500
+    bad_response.text = "internal server error"
+
+    envelope = _llm_envelope(_valid_llm_verdict_json())
+    good_response = MagicMock()
+    good_response.status_code = 200
+    good_response.json = MagicMock(return_value=envelope)
+    good_response.text = json.dumps(envelope)
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(side_effect=[bad_response, good_response])
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client_cls.return_value = mock_client
+
+    response = client.post(
+        "/ai/assess-plagiarism",
+        headers=headers,
+        json={"league_id": league.id, "team_id": team.id},
+    )
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["model_used"] == "gemini-3.5-flash"
+
+    # Second call went to the Google OpenAI-compatible endpoint.
+    fallback_url = mock_client.post.call_args_list[1].args[0]
+    assert "generativelanguage.googleapis.com" in fallback_url
+
+
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_openai_timeout(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -457,7 +496,7 @@ def test_assess_openai_timeout(
     assert "timed out" in data["message"].lower()
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_anonymization_strips_team_name(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -488,7 +527,7 @@ def test_assess_anonymization_strips_team_name(
     assert "submission_1" in serialized
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_deterministic_flag_over_likely_threshold(
     mock_client_cls, client, institution_setup, stored_openai_key, db_session
 ):
@@ -530,7 +569,7 @@ def test_assess_deterministic_flag_over_likely_threshold(
     assert report["pairwise_metrics"][0]["chars_added_per_second"] is not None
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_deterministic_flag_between_4_and_6(
     mock_client_cls, client, institution_setup, stored_openai_key, db_session
 ):
@@ -567,7 +606,7 @@ def test_assess_deterministic_flag_between_4_and_6(
     assert report["pairwise_metrics"][0]["deterministic_flag"] == "probable_plagiarism"
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_normal_typing_speed_flag(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -591,7 +630,7 @@ def test_assess_normal_typing_speed_flag(
     )
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_deterministic_summary_sent_to_llm(
     mock_client_cls, client, institution_setup, stored_openai_key, db_session
 ):
@@ -626,7 +665,7 @@ def test_assess_deterministic_summary_sent_to_llm(
     assert "most likely plagiarising" in user_msg_content
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_template_similarity_present(
     mock_client_cls, client, institution_setup, stored_openai_key
 ):
@@ -648,7 +687,7 @@ def test_assess_template_similarity_present(
         assert 0.0 <= sm["template_similarity"] <= 1.0
 
 
-@patch("backend.routes.ai.plagiarism_service.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_ast_construct_counts(
     mock_client_cls, client, institution_setup, stored_openai_key, db_session
 ):
@@ -698,7 +737,7 @@ def test_assess_admin_can_assess_any_league(
         expires_delta=timedelta(minutes=30),
     )
     with patch(
-        "backend.routes.ai.plagiarism_service.httpx.AsyncClient"
+        "backend.routes.ai.clients.base.httpx.AsyncClient"
     ) as mock_client_cls:
         mock_client_cls.return_value = _mock_openai_client(
             _llm_envelope(_valid_llm_verdict_json())

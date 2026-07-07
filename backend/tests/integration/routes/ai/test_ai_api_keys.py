@@ -157,7 +157,7 @@ def test_validate_unknown_provider(client, auth_headers):
     assert "unknown provider" in data["message"].lower()
 
 
-@patch("backend.routes.ai.ai_router.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_validate_valid_key(mock_client_cls, client, auth_headers):
     """Valid key returns valid=True"""
     mock_response = MagicMock()
@@ -179,7 +179,7 @@ def test_validate_valid_key(mock_client_cls, client, auth_headers):
     assert data["data"]["valid"] is True
 
 
-@patch("backend.routes.ai.ai_router.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_validate_invalid_key(mock_client_cls, client, auth_headers):
     """Invalid key returns valid=False"""
     mock_response = MagicMock()
@@ -201,7 +201,7 @@ def test_validate_invalid_key(mock_client_cls, client, auth_headers):
     assert data["data"]["valid"] is False
 
 
-@patch("backend.routes.ai.ai_router.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_validate_stored_key(mock_client_cls, client, auth_headers):
     """Validate the stored key when no key provided in request"""
     # First store a key
@@ -235,7 +235,7 @@ def test_validate_stored_key(mock_client_cls, client, auth_headers):
     assert call_args[1]["headers"]["Authorization"] == "Bearer sk-stored-key-12345678"
 
 
-@patch("backend.routes.ai.ai_router.httpx.AsyncClient")
+@patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_validate_timeout(mock_client_cls, client, auth_headers):
     """Timeout returns error"""
     import httpx

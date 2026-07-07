@@ -59,7 +59,7 @@ The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits th
 
 ### Backend structure (`backend/`)
 - `api.py` — FastAPI entry point; mounts routers: auth, admin, institution, user, agent, demo, ai, diagnostics, support, payments
-- `routes/` — Route modules grouped by domain. Beyond CRUD domains: `ai/` (OpenAI-backed submission hints and plagiarism detection), `payments/` (Stripe checkout/webhooks for institution subscriptions), `support/` (support tickets with S3 attachments)
+- `routes/` — Route modules grouped by domain. Beyond CRUD domains: `ai/` (submission hints and plagiarism detection; `ai/clients/` is a pluggable provider layer — `AIClient` ABC + OpenAI/Anthropic/Google implementations registered in `factory.py`, keys stored per-provider in the DB), `payments/` (Stripe checkout/webhooks for institution subscriptions), `support/` (support tickets with S3 attachments)
 - `games/` — Game implementations extending `base_game.py`. Games are discovered dynamically: `backend/games/<name>/<name>.py` must define exactly one `BaseGame` subclass — no manual registration. Current games: `greedy_pig`, `prisoners_dilemma`, `lineup4`, `arena_champions`
 - `database/` — SQLModel ORM models (`db_models.py`), DB config (`db_config.py`), session management, `init_db.py` for schema setup
 - `migrations/` — dated SQL migrations for production schema changes (not used by tests)

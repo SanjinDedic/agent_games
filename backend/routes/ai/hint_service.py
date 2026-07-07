@@ -1,84 +1,36 @@
 import datetime
+import logging
+import os
 from typing import Optional
-from backend.database.db_models import Team
-import httpx, logging
 
-from pydantic import ValidationError
 from sqlmodel import Session
 
-from backend.routes.ai.ai_db import get_stored_key, get_team_attempts_ordered
-from backend.routes.ai.hint_prompt import SYSTEM_PROMPT
+from backend.database.db_models import Team
+from backend.routes.ai.ai_db import get_team_attempts_ordered
+from backend.routes.ai.ai_models import Hint, HintResponse
+from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for callers
+    LLMResponseError,
+    NoApiKeyError,
+    complete_structured_failover,
+)
 from backend.routes.ai.hint_context import build_hint_context_from_response
-from backend.routes.ai.ai_models import HintResponse, Hint
-
-class HintServiceError(Exception):
-    """Base error for plagiarism service failures."""
-
-
-class NoApiKeyError(HintServiceError):
-    """OpenAI API key is not configured in the database."""
-
-
-class LLMResponseError(HintServiceError):
-    """The LLM returned an unusable response (HTTP error, bad JSON, schema mismatch)."""
-
+from backend.routes.ai.hint_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gpt-5.4-mini"
+# Ordered failover chain: try the first (provider, model); on any client error
+# (missing key, HTTP error, timeout, bad response) fall through to the next.
+FAILOVER_CHAIN = [
+    ("openai", "gpt-5.4-mini"),
+    ("google", "gemini-3.5-flash"),
+]
 REASONING = "medium"
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
-REQUEST_TIMEOUT = 60.0
 
-HINT_COOLDOWN = 5 * 60
-SUBMISSIONS_BETWEEN_HINTS = 3
+# Hint rationing. Overridable per-environment (dev sets generous values in .env,
+# which docker compose loads into the api container; prod falls back to these).
+HINT_COOLDOWN = int(os.getenv("HINT_COOLDOWN_SECONDS", str(5 * 60)))
+SUBMISSIONS_BETWEEN_HINTS = int(os.getenv("SUBMISSIONS_BETWEEN_HINTS", "3"))
 
-async def _call_openai(api_key: str, user_content: str) -> HintResponse:
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            data = {
-                "model": MODEL_NAME,
-                "reasoning_effort": REASONING, # Give it some reasoning
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": SYSTEM_PROMPT
-                    },
-                    {
-                        "role": "user",
-                        "content": user_content
-                    }
-                ],
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ResponseFormat",
-                        "strict": True,
-                        "schema": HintResponse.model_json_schema()
-                    }
-                }
-            }
-            api_response = await client.post(
-                OPENAI_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=data)
-    except Exception as e:
-        logger.exception(f"OpenAI conection failed {repr(e)}")
-        raise LLMResponseError(f"OpenAI connection failed {e}") from e
-    if api_response.status_code != 200:
-        logger.error(
-            "OpenAI returned HTTP %s: %s", api_response.status_code, api_response.text[:500]
-        )
-        raise LLMResponseError(f"OpenAI return HTTP {api_response.status_code}")
-    try:
-        content = api_response.json()["choices"][0]["message"]["content"]
-        response = HintResponse.model_validate_json(content)
-        return response
-    except (KeyError, IndexError, TypeError, ValidationError) as e:
-        raise LLMResponseError(f"Malformed OpenAI response envelope: {e}") from e
 
 def _validate_hints(code: str, result: HintResponse) -> list[Hint]:
     """Keep only hints that are flagged as bugs and quote real code."""
@@ -98,14 +50,20 @@ def _validate_hints(code: str, result: HintResponse) -> list[Hint]:
         verified_results.append(hint)
     return verified_results
 
+
 async def provide_hints(session: Session, code: str, validation_result: dict, game_name: Optional[str] = None, team_name: Optional[str] = None, include_game_code: bool = True) -> list[Hint]:
     context = build_hint_context_from_response(code, validation_result, game_name, team_name, include_game_code)
-    api_key = get_stored_key(session, "openai")
-    if not api_key:
-        raise NoApiKeyError("OpenAI API key is not configured")
-    raw_hints = await _call_openai(api_key, context)
-    logger.debug(f"Raw hints {raw_hints}")
+    raw_hints, provider, model = await complete_structured_failover(
+        session,
+        FAILOVER_CHAIN,
+        system=SYSTEM_PROMPT,
+        user=context,
+        schema=HintResponse,
+        reasoning_effort=REASONING,
+    )
+    logger.debug(f"Raw hints from {provider}/{model}: {raw_hints}")
     return _validate_hints(code, raw_hints)
+
 
 # WARNING: This function, if it returns True, must return True again if the same code is resubmitted.
 # This means that this function must be deterministic. And only depend on data from the last hint generated
@@ -129,7 +87,7 @@ def hint_available(session: Session, team: Team) -> bool:
     current_time = datetime.datetime.now(tz = datetime.timezone.utc)
     last_time = all_subs[last_submission_idx].timestamp
     delta = current_time - last_time
-    
+
     passed_cooldown = delta.total_seconds() >= HINT_COOLDOWN
 
     logger.info(f"Cooldown: {passed_cooldown}, Submission Count: {passed_submission_count}")

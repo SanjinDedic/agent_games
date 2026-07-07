@@ -17,6 +17,12 @@ from backend.routes.ai.ai_models import (
     UpdateAPIKeysRequest,
     ValidateAPIKeyRequest,
 )
+from backend.routes.ai.clients import (
+    CLIENT_REGISTRY,
+    AIRequestTimeoutError,
+    UnknownProviderError,
+    get_client_class,
+)
 from backend.routes.ai.plagiarism_service import (
     LLMResponseError,
     NoApiKeyError,
@@ -49,7 +55,7 @@ async def get_api_keys_endpoint(
 ):
     """Get the current AI provider API keys (masked for security)"""
     try:
-        keys = get_api_keys(session)
+        keys = get_api_keys(session, CLIENT_REGISTRY.keys())
         return ResponseModel(
             status="success",
             message="API keys retrieved successfully",
@@ -71,10 +77,12 @@ async def update_api_keys_endpoint(
 ):
     """Update AI provider API keys"""
     try:
-        if keys_data.openai_api_key is not None:
-            update_api_key(session, "openai", keys_data.openai_api_key)
+        for provider in CLIENT_REGISTRY:
+            new_key = getattr(keys_data, f"{provider}_api_key", None)
+            if new_key is not None:
+                update_api_key(session, provider, new_key)
 
-        keys = get_api_keys(session)
+        keys = get_api_keys(session, CLIENT_REGISTRY.keys())
         return ResponseModel(
             status="success",
             message="API keys updated successfully",
@@ -98,6 +106,11 @@ async def validate_api_key_endpoint(
     provider = request_data.provider
     api_key = request_data.api_key
 
+    try:
+        client_class = get_client_class(provider)
+    except UnknownProviderError as e:
+        return ErrorResponseModel(status="error", message=str(e))
+
     # If no key provided in the request, validate the stored key
     if not api_key:
         api_key = get_stored_key(session, provider)
@@ -109,37 +122,13 @@ async def validate_api_key_endpoint(
             )
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            if provider == "openai":
-                resp = await client.get(
-                    "https://api.openai.com/v1/models",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                )
-            else:
-                return ErrorResponseModel(
-                    status="error",
-                    message=f"Unknown provider: {provider}",
-                )
-
-            if resp.status_code == 200:
-                return ResponseModel(
-                    status="success",
-                    message="API key is valid",
-                    data={"valid": True},
-                )
-            elif resp.status_code in (401, 403):
-                return ResponseModel(
-                    status="success",
-                    message="API key is invalid or unauthorized",
-                    data={"valid": False},
-                )
-            else:
-                return ResponseModel(
-                    status="success",
-                    message=f"Unexpected response (HTTP {resp.status_code})",
-                    data={"valid": False},
-                )
-    except httpx.TimeoutException:
+        valid = await client_class(api_key).check_key()
+        return ResponseModel(
+            status="success",
+            message="API key is valid" if valid else "API key is invalid or unauthorized",
+            data={"valid": valid},
+        )
+    except AIRequestTimeoutError:
         return ErrorResponseModel(
             status="error", message="Validation request timed out"
         )
@@ -219,7 +208,7 @@ async def assess_plagiarism_endpoint(
             status="error",
             message=f"AI provider returned malformed response: {e}",
         )
-    except httpx.TimeoutException:
+    except (AIRequestTimeoutError, httpx.TimeoutException):
         return ErrorResponseModel(
             status="error", message="AI provider request timed out"
         )
