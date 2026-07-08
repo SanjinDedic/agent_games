@@ -24,9 +24,10 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 # docker-compose.override.yml is applied automatically: it wraps the api in debugpy (port 5678)
 docker compose up -d
 
-# DB schema init/seed runs automatically as a one-shot pre-start step in the
-# api container command (idempotent, advisory-locked). Manual rerun if needed:
-docker compose exec api python -m backend.database.init_db
+# On api-container start, backend/entrypoint.sh runs the one-shot pre-start
+# (idempotent, advisory-locked) before the server: init_db seeds the schema, then
+# every backend/migrations/*.sql is applied. To re-run the whole sequence:
+docker compose restart api
 
 docker compose down   # Stop all containers
 ```
@@ -42,7 +43,7 @@ npm run build    # Production build
 ```
 
 ### Database migrations
-`backend/migrations/` holds dated SQL migration files, applied to existing databases via `apply.sh`. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production.
+`backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production, and keep it in sync with the model if you later refactor those columns (a migration that `ALTER`s a table the model no longer matches becomes schema drift).
 
 ## Architecture
 
