@@ -24,7 +24,8 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 # docker-compose.override.yml is applied automatically: it wraps the api in debugpy (port 5678)
 docker compose up -d
 
-# First-time DB init
+# DB schema init/seed runs automatically as a one-shot pre-start step in the
+# api container command (idempotent, advisory-locked). Manual rerun if needed:
 docker compose exec api python -m backend.database.init_db
 
 docker compose down   # Stop all containers

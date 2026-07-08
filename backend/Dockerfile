@@ -50,4 +50,7 @@ RUN chmod -R 755 /agent_games
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn backend.api:app --worker-class uvicorn.workers.UvicornWorker --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-300} --bind 0.0.0.0:8000 --access-logfile - --error-logfile - 2>&1 | tee -a /agent_games/logs/api.log"]
+# Schema init/seed is a one-shot pre-start step, NOT part of the app lifespan:
+# every gunicorn worker runs the lifespan, so init there races across workers.
+# init_db is idempotent and takes a Postgres advisory lock as a second guard.
+CMD ["sh", "-c", "{ python -m backend.database.init_db && gunicorn backend.api:app --worker-class uvicorn.workers.UvicornWorker --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-300} --bind 0.0.0.0:8000 --access-logfile - --error-logfile -; } 2>&1 | tee -a /agent_games/logs/api.log"]

@@ -5,7 +5,7 @@ import time
 from datetime import timedelta
 
 import psycopg
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, SQLModel, select, text
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -50,24 +50,42 @@ def wait_for_postgres(max_retries=30, retry_interval=2):
     logger.error(f"Failed to connect to database after {max_retries} attempts")
     return False
 
+# Arbitrary app-wide constant naming the "database init" advisory lock.
+INIT_DB_ADVISORY_LOCK_KEY = 412_338_701
+
+
 def initialize_database():
     """Initialize the PostgreSQL database for the first time"""
     logger.info("Initializing PostgreSQL database...")
-    
+
     # Wait for PostgreSQL to be ready
     if not wait_for_postgres():
         logger.error("Could not connect to PostgreSQL, aborting initialization")
         return False
-    
+
     # Create database engine
     engine = get_db_engine()
-    
-    # Create all tables
-    SQLModel.metadata.create_all(engine)
-    
-    # Populate with initial data
-    populate_database(engine)
-    
+
+    # Several processes can attempt first-time init at once (e.g. two
+    # containers booting against an empty database); serialize them so one
+    # runs create_all/seed and the rest see the finished result. The lock is
+    # session-scoped, so this connection must stay open for the duration.
+    with engine.connect() as conn:
+        conn.execute(
+            text("SELECT pg_advisory_lock(:key)"), {"key": INIT_DB_ADVISORY_LOCK_KEY}
+        )
+        try:
+            # Create all tables
+            SQLModel.metadata.create_all(engine)
+
+            # Populate with initial data (no-op if an admin already exists)
+            populate_database(engine)
+        finally:
+            conn.execute(
+                text("SELECT pg_advisory_unlock(:key)"),
+                {"key": INIT_DB_ADVISORY_LOCK_KEY},
+            )
+
     logger.info("Database initialization complete")
     return True
 
@@ -212,4 +230,6 @@ def populate_database(engine):
         logger.info("Initial data population complete")
 
 if __name__ == "__main__":
-    initialize_database()
+    # Non-zero exit on failure so container commands can gate server start
+    # on successful init (see backend/Dockerfile CMD).
+    raise SystemExit(0 if initialize_database() else 1)
