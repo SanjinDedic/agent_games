@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import timedelta
 from typing import Dict, Optional
@@ -142,41 +141,11 @@ def get_published_result(session: Session, league_name: str) -> dict:
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
 
-    active = False
-    if ensure_utc(league.expiry_date) > utc_now():
-        active = True
+    active = ensure_utc(league.expiry_date) > utc_now()
 
     for sim in league.simulation_results:
         if sim.published:
-            total_points = {}
-            table = {}
-            num_simulations = sim.num_simulations
-            for result in sim.simulation_results:
-                total_points[result.team.name] = result.score
-                for i in range(1, 4):
-                    value_name = getattr(result, f"custom_value{i}_name")
-                    value = getattr(result, f"custom_value{i}")
-                    if value_name:
-                        if value_name not in table:
-                            table[value_name] = {}
-                        table[value_name][result.team.name] = value
-
-            feedback = None
-            if sim.feedback_str is not None:
-                feedback = sim.feedback_str
-            elif sim.feedback_json is not None:
-                feedback = json.loads(sim.feedback_json)
-
-            return {
-                "league_name": league_name,
-                "id": sim.id,
-                "total_points": total_points,
-                "table": table,
-                "num_simulations": num_simulations,
-                "active": active,
-                "rewards": json.loads(sim.custom_rewards),
-                "feedback": feedback,
-            }
+            return process_simulation_results(sim, league_name, active)
 
     return None
 
