@@ -148,7 +148,12 @@ class Admin(SQLModel, table=True):
 
 class Team(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    name: str = Field(unique=True, index=True)
+    # Not globally unique: names are scoped per-institution by the composite
+    # constraints below, so different institutions can reuse a name like
+    # "Team A". A name is the team's stable identity within its institution as
+    # it moves between leagues. The index stays for name lookups (login,
+    # simulation attribution).
+    name: str = Field(index=True)
     school_name: str
     password_hash: str | None = None  # Optional for agent teams
     score: int = Field(default=0)
@@ -169,7 +174,14 @@ class Team(SQLModel, table=True):
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
-    __table_args__ = (UniqueConstraint("name", "league_id"),)
+    # Primary rule: a team name is unique within an institution. The
+    # (name, league_id) constraint is a secondary guard for teams whose league
+    # has no institution (institution_id NULL) — Postgres treats NULLs as
+    # distinct in a unique constraint, so the institution rule can't cover them.
+    __table_args__ = (
+        UniqueConstraint("name", "institution_id"),
+        UniqueConstraint("name", "league_id"),
+    )
 
     def set_password(self, password: str):
         self.password_hash = get_password_hash(password)

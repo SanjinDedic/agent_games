@@ -64,17 +64,26 @@ def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedel
 
 
 def get_team_token(session: Session, team_name: str, team_password: str):
-    """Get authentication token for team login"""
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    """Get authentication token for team login.
 
-    if not team:
+    Team names are only unique within an institution (see Team's composite
+    constraints), so a name can be shared across institutions. Login has no
+    institution context, so we match on name + password: try every team with
+    this name and authenticate the one whose password verifies. Two teams with
+    an identical name *and* password is the only ambiguous case; the first match
+    wins, which is acceptable and no worse than the old global-unique rule.
+    """
+    teams = session.exec(select(Team).where(Team.name == team_name)).all()
+
+    if not teams:
         raise InvalidCredentialsError(f"Team '{team_name}' not found")
 
-    if not team.verify_password(team_password):
-        raise InvalidCredentialsError("Invalid team password")
+    for team in teams:
+        if team.verify_password(team_password):
+            access_token = mint_team_token(team)
+            return {"access_token": access_token, "token_type": "bearer"}
 
-    access_token = mint_team_token(team)
-    return {"access_token": access_token, "token_type": "bearer"}
+    raise InvalidCredentialsError("Invalid team password")
 
 
 def get_admin_token(session: Session, username: str, password: str):

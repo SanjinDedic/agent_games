@@ -142,6 +142,89 @@ def test_team_login_success(client, db_session: Session):
     assert "access_token" in data["data"]
 
 
+def test_team_login_duplicate_name_across_institutions(client, db_session: Session):
+    """Two teams in different institutions can share a name; login matches on
+    name + password and authenticates the one whose password verifies."""
+    now = utc_now()
+    inst_a = create_test_institution(
+        session=db_session, name="login_inst_a", password_hash="hash"
+    )
+    inst_b = create_test_institution(
+        session=db_session, name="login_inst_b", password_hash="hash"
+    )
+
+    leagues = {}
+    for key, inst in (("a", inst_a), ("b", inst_b)):
+        league = League(
+            name=f"dup_login_league_{key}",
+            created_date=now,
+            expiry_date=now + timedelta(days=7),
+            game="greedy_pig",
+            institution_id=inst.id,
+        )
+        db_session.add(league)
+        db_session.commit()
+        db_session.refresh(league)
+        leagues[key] = league
+
+    # Same name in both institutions, but different passwords.
+    team_a = Team(
+        name="shared_login_name",
+        school_name="A",
+        password_hash=TEST_PASSWORD_HASHES["team_password"],
+        league_id=leagues["a"].id,
+        institution_id=inst_a.id,
+    )
+    team_b = Team(
+        name="shared_login_name",
+        school_name="B",
+        password_hash=TEST_PASSWORD_HASHES["password2"],
+        league_id=leagues["b"].id,
+        institution_id=inst_b.id,
+    )
+    db_session.add(team_a)
+    db_session.add(team_b)
+    db_session.commit()
+    db_session.refresh(team_a)
+    db_session.refresh(team_b)
+
+    # Each password logs in the corresponding team (would raise
+    # MultipleResultsFound under the old global-unique .one_or_none() lookup).
+    resp_a = client.post(
+        "/auth/team-login",
+        json={"name": "shared_login_name", "password": "team_password"},
+    )
+    assert resp_a.json()["status"] == "success"
+
+    resp_b = client.post(
+        "/auth/team-login",
+        json={"name": "shared_login_name", "password": "password2"},
+    )
+    assert resp_b.json()["status"] == "success"
+
+    # The tokens resolve to the two distinct teams.
+    from jose import jwt
+
+    from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
+
+    payload_a = jwt.decode(
+        resp_a.json()["data"]["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+    )
+    payload_b = jwt.decode(
+        resp_b.json()["data"]["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+    )
+    assert payload_a["team_id"] == team_a.id
+    assert payload_b["team_id"] == team_b.id
+
+    # A password that matches neither team fails cleanly.
+    resp_bad = client.post(
+        "/auth/team-login",
+        json={"name": "shared_login_name", "password": "definitely_wrong"},
+    )
+    assert resp_bad.json()["status"] == "failed"
+    assert "Invalid team password" in resp_bad.json()["message"]
+
+
 def test_team_login_exceptions(client, db_session: Session):
     """Test error cases for team login"""
 

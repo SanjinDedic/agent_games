@@ -276,7 +276,14 @@ def save_simulation_results(
     custom_value_names = list(results.get("table", {}).keys())[:3]
 
     for team_name, score in results["total_points"].items():
-        team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+        # Scope by league_id: names are only unique per-league, and a simulation's
+        # results belong to this one league. A bare name lookup could match a
+        # same-named team in another league (or raise on duplicates).
+        team = session.exec(
+            select(Team)
+            .where(Team.name == team_name)
+            .where(Team.league_id == league_id)
+        ).one_or_none()
         if team and (is_admin or team.institution_id == institution_id):  # Only include teams from this institution
             result_item = SimulationResultItem(
                 simulation_result_id=simulation_result.id, team_id=team.id, score=score

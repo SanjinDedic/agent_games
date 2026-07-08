@@ -365,8 +365,18 @@ def create_team_and_assign_to_league(
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-    # Check if team name already exists
-    existing_team = session.exec(select(Team).where(Team.name == team_name)).first()
+    # Check if team name already exists within scope. Names are unique
+    # per-institution (a bare name check would wrongly reject a name already
+    # used by a different institution). Fall back to the league when the league
+    # has no institution, matching the (name, league_id) secondary constraint.
+    name_conflict = select(Team).where(Team.name == team_name)
+    if league.institution_id is not None:
+        name_conflict = name_conflict.where(
+            Team.institution_id == league.institution_id
+        )
+    else:
+        name_conflict = name_conflict.where(Team.league_id == league_id)
+    existing_team = session.exec(name_conflict).first()
 
     if existing_team:
         raise TeamError(f"Team with name '{team_name}' already exists")
