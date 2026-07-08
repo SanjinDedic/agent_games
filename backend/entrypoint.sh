@@ -4,8 +4,9 @@
 #
 # Runs the one-shot schema setup ONCE per container start (never from the app
 # lifespan — every gunicorn worker runs the lifespan, so init there races across
-# workers), then execs the server passed as arguments ($@ — gunicorn in prod,
-# uvicorn in dev) so it becomes PID 1 and receives signals directly.
+# workers), then execs the server so it becomes PID 1 and receives signals
+# directly. The server is taken from the arguments ($@ — uvicorn in dev);
+# with no arguments (the Dockerfile CMD) it defaults to production gunicorn.
 #
 # Sequence; each step gates the next (set -e) so a bad deploy fails fast and
 # never serves traffic:
@@ -35,6 +36,17 @@ for migration in backend/migrations/*.sql; do
     echo "==> applying migration $(basename "$migration")"
     psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$migration"
 done
+
+if [ $# -eq 0 ]; then
+    # Production default (the Dockerfile CMD passes no args). Dev compose passes
+    # an explicit server (uvicorn --reload) instead.
+    set -- gunicorn backend.api:app \
+        --worker-class uvicorn.workers.UvicornWorker \
+        --workers "${GUNICORN_WORKERS:-3}" \
+        --timeout "${GUNICORN_TIMEOUT:-300}" \
+        --bind 0.0.0.0:8000 \
+        --access-logfile - --error-logfile -
+fi
 
 echo "==> pre-start complete; starting server: $*"
 exec "$@"
