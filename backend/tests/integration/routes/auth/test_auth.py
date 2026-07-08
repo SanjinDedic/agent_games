@@ -1,7 +1,6 @@
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-import pytz
 from sqlmodel import Session
 
 from backend.database.db_models import (
@@ -12,6 +11,7 @@ from backend.database.db_models import (
 )
 from backend.tests.conftest import TEST_PASSWORD_HASHES, create_test_institution
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 def test_admin_login_success(client, db_session: Session):
@@ -97,8 +97,8 @@ def test_team_login_success(client, db_session: Session):
     # First create a league for the teams
     league = League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
     )
     db_session.add(league)
@@ -148,8 +148,8 @@ def test_team_login_exceptions(client, db_session: Session):
     # Create a test league and team
     league = League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
     )
     db_session.add(league)
@@ -203,15 +203,14 @@ def test_token_validation(client, db_session: Session):
     """Test token validation and expiry"""
 
     # Create timezone object
-    AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
-
+    
     # Create test institution with timezone-aware datetimes
     institution = create_test_institution(
         db_session,
         name="test_institution",
         contact_person="Test Contact",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),  # Add timezone
-        subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ)
+        created_date=utc_now(),  # Add timezone
+        subscription_expiry=utc_now()
         + timedelta(days=30),  # Add timezone
         password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )

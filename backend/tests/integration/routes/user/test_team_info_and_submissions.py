@@ -3,7 +3,7 @@
 - GET /user/get-team-submissions (user_router.py)
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, delete, select
@@ -14,6 +14,7 @@ from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_submission_history
 from backend.tests.conftest import make_student_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -26,8 +27,8 @@ def institution(db_session: Session) -> Institution:
             name="Team Info Institution",
             contact_person="Tester",
             contact_email="ti@example.com",
-            created_date=datetime.now(),
-            subscription_expiry=datetime.now() + timedelta(days=30),
+            created_date=utc_now(),
+            subscription_expiry=utc_now() + timedelta(days=30),
             password_hash="hash",
         )
         db_session.add(inst)
@@ -45,8 +46,8 @@ def league_with_institution(db_session: Session, institution: Institution) -> Le
         league = League(
             name="team_info_league",
             game="prisoners_dilemma",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
             institution_id=institution.id,
         )
         db_session.add(league)
@@ -87,7 +88,7 @@ def test_get_team_submission_history_returns_newest_first(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    base = datetime.now()
+    base = utc_now()
     add_submission(db_session, code="old", timestamp=base, team_id=team.id, duration_ms=12.0)
     add_submission(
         db_session,
@@ -135,7 +136,7 @@ def test_get_team_submissions_success(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    base = datetime.now()
+    base = utc_now()
     add_submission(db_session, code="v1", timestamp=base, team_id=team.id, duration_ms=10.0)
     add_submission(
         db_session,

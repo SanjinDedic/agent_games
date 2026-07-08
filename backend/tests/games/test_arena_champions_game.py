@@ -1,7 +1,6 @@
 """Direct unit tests for ArenaChampionsGame — combat, damage, tournament logic."""
 
 import pytest
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 from backend.games.arena_champions.arena_champions import ArenaChampionsGame, BattleResult

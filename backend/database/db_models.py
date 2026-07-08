@@ -7,6 +7,8 @@ import bcrypt as _bcrypt
 from sqlalchemy import JSON, Column, DateTime, String, Text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
+from backend.time_utils import utc_now
+
 # Test runs set BCRYPT_ROUNDS=4 so runtime hashing costs ~1ms instead of ~170ms.
 _BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
 
@@ -164,7 +166,7 @@ class Team(SQLModel, table=True):
     institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
     institution: Optional["Institution"] = Relationship(back_populates="teams")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
     __table_args__ = (UniqueConstraint("name", "league_id"),)
@@ -253,7 +255,7 @@ class AgentAPIKey(SQLModel, table=True):
     )  # Ensures one API key per team
     team: Team = Relationship(back_populates="api_key")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
     last_used: datetime | None = None
     is_active: bool = Field(default=True)
@@ -266,10 +268,10 @@ class AIProviderKey(SQLModel, table=True):
     provider: str = Field(unique=True, index=True)  # e.g. "openai"
     api_key: str = Field(sa_column=Column(Text()))
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
 
@@ -312,10 +314,10 @@ class SupportTicket(SQLModel, table=True):
         default=None, foreign_key="institution.id", index=True
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
     team: Optional["Team"] = Relationship()
@@ -334,7 +336,7 @@ class SupportTicketAttachment(SQLModel, table=True):
     size_bytes: int
     original_filename: str
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
     ticket: SupportTicket = Relationship(back_populates="attachments")

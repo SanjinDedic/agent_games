@@ -26,6 +26,7 @@ from backend.routes.payments.payments_db import (
     create_invoiced_institution,
     create_paid_institution,
 )
+from backend.time_utils import utc_now
 
 # A fixed future instant used wherever a Stripe period-end timestamp is needed.
 FUTURE_DT = datetime(2027, 6, 1, tzinfo=timezone.utc)
@@ -269,7 +270,7 @@ def test_institution_signup_one_time(client, db_session, mock_stripe):
     # Email comes from the verified session, never the request body.
     assert inst.contact_email == "buyer@university.edu"
     # One-time payment => fixed 90-day window, not the subscription period end.
-    expected = datetime.now(timezone.utc) + timedelta(days=pr.ONE_OFF_DAYS)
+    expected = utc_now() + timedelta(days=pr.ONE_OFF_DAYS)
     assert abs((inst.subscription.subscription_expiry - expected).total_seconds()) < 60
     assert inst.subscription.payment_method == "card"
     assert inst.subscription.auto_renew is False
@@ -324,7 +325,7 @@ def test_institution_signup_subscription_retrieve_failure_defaults(
         select(Institution).where(Institution.name == "Sub Err College")
     ).first()
     # Falls back to the 90-day default when the subscription can't be read.
-    expected = datetime.now(timezone.utc) + timedelta(days=pr.ONE_OFF_DAYS)
+    expected = utc_now() + timedelta(days=pr.ONE_OFF_DAYS)
     assert abs((inst.subscription.subscription_expiry - expected).total_seconds()) < 60
 
 
@@ -564,7 +565,7 @@ def _make_card_sub(db_session, sub_id="sub_hook", active=True, expiry=None):
         contact_email="hook@uni.edu",
         address=None,
         password="pw",
-        subscription_expiry=expiry or (datetime.now(timezone.utc) - timedelta(days=1)),
+        subscription_expiry=expiry or (utc_now() - timedelta(days=1)),
         auto_renew=True,
         stripe_customer_id="cus_hook",
         stripe_subscription_id=sub_id,
@@ -919,7 +920,7 @@ def test_get_subscription_no_subscription_row(client, db_session):
         name="No Sub Inst",
         contact_person="P",
         contact_email="p@uni.edu",
-        created_date=datetime.now(timezone.utc),
+        created_date=utc_now(),
         docker_access=False,
         password_hash="hash",
     )

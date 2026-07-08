@@ -1,7 +1,7 @@
 # tests/integration/test_game_workflows.py
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +15,7 @@ from backend.database.db_models import (
     Team,
 )
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -40,7 +41,7 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         return "collude"
 """,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         team_id=team.id,
     )
     db_session.commit()
@@ -69,9 +70,9 @@ def test_complete_game_lifecycle(
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -211,9 +212,9 @@ async def test_concurrent_game_operations(
         name="concurrent_institution",
         contact_person="Concurrent Person",
         contact_email="concurrent@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )

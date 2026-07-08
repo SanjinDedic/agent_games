@@ -66,6 +66,7 @@ The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits th
 - `tasks/` — All Celery code: `celery_app.py` (broker config, queue routing, worker settings), `celery_utils.py` (result polling), `validation_task.py` and `simulation_task.py` (the tasks)
 - `Dockerfile` — shared image for api/workers/test-runner (build context is repo root)
 - `config.py` — Central config: dynamic game discovery (`GAMES`), league expiry settings, Stripe keys, secrets
+- `time_utils.py` — The only place time/timezones are handled. All datetimes are aware UTC: get "now" via `utc_now()` (never `datetime.now()`/`datetime.utcnow()`), normalize boundary values with `ensure_utc()` (naive == UTC) or `interpret_as_sydney()` (naive user-typed dates == Sydney), convert for display with `to_sydney()`. DB columns are `TIMESTAMPTZ`; the frontend renders Sydney via moment-timezone. The Alpine image has no system tz database, so the `tzdata` PyPI package is a required dependency.
 
 Python dependencies are managed with uv (`pyproject.toml` / `uv.lock`), Python 3.14.
 

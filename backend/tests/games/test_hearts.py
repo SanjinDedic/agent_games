@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 
@@ -14,14 +14,15 @@ from backend.games.hearts.hearts import (
     sort_hand,
 )
 from backend.games.hearts.player import Player
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def test_league():
     return League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="hearts",
     )
 

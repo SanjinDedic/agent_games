@@ -1,22 +1,22 @@
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session
 
 from backend.routes.auth.auth_core import create_access_token
 from backend.tests.conftest import TEST_PASSWORD_HASHES, create_test_institution
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def test_institution(db_session: Session):
     """Create a test institution for login tests"""
-    # Create with naive datetime to avoid timezone comparison issues
     return create_test_institution(
         db_session,
         name="test_institution",
         contact_person="Test Contact",
-        subscription_expiry=datetime.now() + timedelta(days=30),  # naive datetime
+        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )
 
@@ -29,7 +29,7 @@ def expired_institution(db_session: Session):
         name="expired_institution",
         contact_person="Expired Contact",
         contact_email="expired@example.com",
-        subscription_expiry=datetime.now() - timedelta(days=1),  # Expired
+        subscription_expiry=utc_now() - timedelta(days=1),  # Expired
         password_hash=TEST_PASSWORD_HASHES["expired_password"],
     )
 
@@ -43,7 +43,7 @@ def inactive_institution(db_session: Session):
         contact_person="Inactive Contact",
         contact_email="inactive@example.com",
         subscription_active=False,  # Inactive
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash=TEST_PASSWORD_HASHES["inactive_password"],
     )
 

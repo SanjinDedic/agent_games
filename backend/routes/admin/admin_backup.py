@@ -2,13 +2,14 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
 
 from backend.database.db_config import get_database_url
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def create_backup(label: str = "MANUAL") -> dict:
     """
     bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
     db = _parse_db_url()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
     filename = f"agent_games_{label}_{timestamp}.dump"
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -138,7 +139,7 @@ def prune_backups(days: int = 60) -> list[str]:
     """
     bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
     client = _get_s3_client()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = utc_now() - timedelta(days=days)
 
     try:
         response = client.list_objects_v2(Bucket=bucket, Prefix="backups/")

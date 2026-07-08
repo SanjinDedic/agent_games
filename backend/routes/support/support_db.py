@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import List, Optional
 
 from sqlmodel import Session, select
@@ -19,6 +18,7 @@ from backend.routes.support.support_models import (
     SupportTicketSubmitterOut,
 )
 from backend.routes.support.support_s3 import delete_attachment, presign_attachment
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def create_ticket(
     team_id: Optional[int],
     institution_id: Optional[int],
 ) -> SupportTicket:
-    now = datetime.utcnow()
+    now = utc_now()
     ticket = SupportTicket(
         category=category,
         subject=subject,
@@ -124,7 +124,7 @@ def update_ticket(
         ticket.status = status
     if admin_note is not None:
         ticket.admin_note = admin_note
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = utc_now()
 
     session.add(ticket)
     session.commit()

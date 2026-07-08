@@ -9,7 +9,7 @@ engine on worker_process_init or switch to NullPool.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlmodel import Session
@@ -18,6 +18,7 @@ from backend.tasks.celery_app import celery_app
 from backend.database.db_models import League
 from backend.database.db_session import get_db_engine
 from backend.games.game_factory import GameFactory
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +104,8 @@ def run_simulation(
     league = League(
         id=league_id,
         name="simulation_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=1),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=1),
         game=game_name,
     )
 

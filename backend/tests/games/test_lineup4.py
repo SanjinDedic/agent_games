@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,14 +6,15 @@ from sqlmodel import Session, select
 from backend.database.db_models import League, Team
 from backend.games.lineup4.lineup4 import Lineup4Game
 from backend.games.lineup4.player import Player
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def test_league():
     return League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="lineup4",
     )
 

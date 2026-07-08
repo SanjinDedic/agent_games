@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -16,9 +17,9 @@ def institution_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -177,9 +178,9 @@ def test_team_create_global_duplicate(client, institution_setup, db_session):
         name="other_inst_for_dup_test",
         contact_person="Other",
         contact_email="other@test.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )

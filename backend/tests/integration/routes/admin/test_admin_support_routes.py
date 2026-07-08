@@ -1,6 +1,5 @@
 """Integration tests for the admin-side /admin/support-tickets endpoints."""
 
-from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +14,7 @@ from backend.database.db_models import (
     SupportTicketSubmitterType,
     Team,
 )
+from backend.time_utils import utc_now
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +33,7 @@ def _seed_tickets(db_session):
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()
 
-    now = datetime.utcnow()
+    now = utc_now()
     db_session.add(
         SupportTicket(
             category=SupportTicketCategory.BUG,

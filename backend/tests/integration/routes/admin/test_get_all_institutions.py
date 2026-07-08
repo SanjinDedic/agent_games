@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -18,9 +19,9 @@ def institutions_setup(db_session: Session) -> list:
         name="first_institution",
         contact_person="First Contact",
         contact_email="first@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -32,8 +33,8 @@ def institutions_setup(db_session: Session) -> list:
     # Create a league for the first institution
     league1 = League(
         name="first_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution1.id,
     )
@@ -56,9 +57,9 @@ def institutions_setup(db_session: Session) -> list:
         name="second_institution",
         contact_person="Second Contact",
         contact_email="second@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=False,  # Inactive
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=False,
         password_hash="test_hash",
     )
@@ -72,9 +73,9 @@ def institutions_setup(db_session: Session) -> list:
         name="third_institution",
         contact_person="Third Contact",
         contact_email="third@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() - timedelta(days=1),  # Expired
+        subscription_expiry=utc_now() - timedelta(days=1),  # Expired
         docker_access=True,
         password_hash="test_hash",
     )

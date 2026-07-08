@@ -20,6 +20,7 @@ from backend.routes.payments.payments_db import (
     create_invoiced_institution,
     create_paid_institution,
 )
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +259,7 @@ async def institution_signup(
 
     # Determine access expiry: subscriptions track the billing period end;
     # one-time purchases get a fixed 90-day window.
-    expiry = datetime.now(timezone.utc) + timedelta(days=ONE_OFF_DAYS)
+    expiry = utc_now() + timedelta(days=ONE_OFF_DAYS)
     if subscription_id:
         try:
             sub = stripe.Subscription.retrieve(subscription_id).to_dict()
@@ -368,7 +369,7 @@ async def invoice_signup(
         raise HTTPException(status_code=502, detail=str(exc))
 
     period_end = _subscription_period_end(sub)
-    expiry = period_end or (datetime.now(timezone.utc) + timedelta(days=365))
+    expiry = period_end or (utc_now() + timedelta(days=365))
 
     try:
         institution = create_invoiced_institution(

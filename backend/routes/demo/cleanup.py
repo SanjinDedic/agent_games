@@ -1,7 +1,6 @@
 import logging
 import threading
 import time
-from datetime import datetime
 
 from sqlmodel import Session
 
@@ -11,6 +10,7 @@ from backend.routes.demo.demo_db import (
     cleanup_expired_demo_users,
     cleanup_old_demo_submissions,
 )
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class DemoCleanupThread(threading.Thread):
 
     def _perform_cleanup(self, engine):
         """Perform the actual cleanup operations"""
-        logger.info(f"Running scheduled demo cleanup at {datetime.now()}")
+        logger.info(f"Running scheduled demo cleanup at {utc_now().isoformat()}")
 
         with Session(engine) as session:
             # Clean up old submissions

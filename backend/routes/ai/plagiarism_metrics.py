@@ -5,9 +5,11 @@ No DB, no HTTP. Unit-testable in isolation.
 
 import ast
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple
+
+from backend.time_utils import ensure_utc
 
 # Strips `# ...` comments but only after a non-escape character. Simple heuristic;
 # avoids the overhead of a full Python parser. Good enough for structural compare.
@@ -65,13 +67,6 @@ def compute_submission_metrics(code: str) -> dict:
     }
 
 
-def _to_utc(ts: datetime) -> datetime:
-    """Convert to UTC; treat naive datetimes as UTC rather than raising."""
-    if ts.tzinfo is None:
-        return ts.replace(tzinfo=timezone.utc)
-    return ts.astimezone(timezone.utc)
-
-
 def compute_pairwise_metrics(
     prev_code: str,
     prev_ts: datetime,
@@ -98,7 +93,7 @@ def compute_pairwise_metrics(
         i2 - i1 for tag, i1, i2, _, _ in ops if tag in ("delete", "replace")
     )
 
-    elapsed_sec = max(0.0, (_to_utc(new_ts) - _to_utc(prev_ts)).total_seconds())
+    elapsed_sec = max(0.0, (ensure_utc(new_ts) - ensure_utc(prev_ts)).total_seconds())
 
     if elapsed_sec > 0:
         chars_added_per_minute: Optional[float] = round(

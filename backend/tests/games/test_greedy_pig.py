@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from io import StringIO
 from unittest.mock import patch
 
@@ -7,14 +7,15 @@ import pytest
 from backend.database.db_models import League
 from backend.games.greedy_pig.greedy_pig import GreedyPigGame
 from backend.games.greedy_pig.validation_players import players as validation_players
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def test_league():
     return League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
     )
 

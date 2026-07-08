@@ -2,10 +2,9 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import psycopg
-import pytz
 from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
@@ -21,11 +20,11 @@ from backend.database.db_models import (Admin, Institution,
                                         LeagueType, Team, TeamType,
                                         get_password_hash)
 from backend.database.db_session import get_db_engine
+from backend.time_utils import utc_now
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-AUSTRALIA_TZ = pytz.timezone("Australia/Sydney")
 
 def wait_for_postgres(max_retries=30, retry_interval=2):
     """Wait for PostgreSQL to be available"""
@@ -98,7 +97,7 @@ def populate_database(engine):
             name="Admin Institution",
             contact_person="Admin",
             contact_email="admin@admin.com",
-            created_date=datetime.now(AUSTRALIA_TZ),
+            created_date=utc_now(),
             docker_access=True,
             password_hash=get_password_hash(institution_password),
         )
@@ -109,8 +108,8 @@ def populate_database(engine):
                 institution_id=default_institution.id,
                 payment_method="admin",
                 subscription_active=True,
-                subscription_expiry=(datetime.now(AUSTRALIA_TZ) + timedelta(days=365)),
-                created_date=datetime.now(AUSTRALIA_TZ),
+                subscription_expiry=(utc_now() + timedelta(days=365)),
+                created_date=utc_now(),
             )
         )
         session.commit()
@@ -118,9 +117,9 @@ def populate_database(engine):
         # Create unassigned league
         unassigned_league = League(
             name="unassigned",
-            created_date=datetime.now(AUSTRALIA_TZ),
+            created_date=utc_now(),
             expiry_date=(
-                datetime.now(AUSTRALIA_TZ) + timedelta(days=30)
+                utc_now() + timedelta(days=30)
             ),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
@@ -131,9 +130,9 @@ def populate_database(engine):
         # Create greedy pig league
         greedy_pig_league = League(
             name="greedy_pig_league",
-            created_date=datetime.now(AUSTRALIA_TZ),
+            created_date=utc_now(),
             expiry_date=(
-                datetime.now(AUSTRALIA_TZ) + timedelta(days=30)
+                utc_now() + timedelta(days=30)
             ),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
@@ -144,9 +143,9 @@ def populate_database(engine):
         # Create prisoners dilemma league
         prisoners_dilemma_league = League(
             name="prisoners_dilemma_league",
-            created_date=datetime.now(AUSTRALIA_TZ),
+            created_date=utc_now(),
             expiry_date=(
-                datetime.now(AUSTRALIA_TZ) + timedelta(days=30)
+                utc_now() + timedelta(days=30)
             ),
             game="prisoners_dilemma",
             league_type=LeagueType.STUDENT,

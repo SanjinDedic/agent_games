@@ -1,24 +1,23 @@
 """Tests for POST /user/direct-league-signup — token-based team creation and auto-login."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from jose import jwt
 from sqlmodel import Session, select
 
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, LeagueType, Team
 from backend.routes.auth.auth_config import SECRET_KEY, ALGORITHM
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
 def signup_league(db_session: Session) -> dict:
     """Create an institution with a league that has a valid signup token."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
 
     institution = build_institution(
         name="Signup Test School",
@@ -54,7 +53,7 @@ def signup_league(db_session: Session) -> dict:
 @pytest.fixture
 def expired_league(db_session: Session) -> dict:
     """Create a league with an expired date and signup token."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
 
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")

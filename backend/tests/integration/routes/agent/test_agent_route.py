@@ -1,6 +1,6 @@
 # tests/routes/agent/test_agent_router.py
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,6 +12,7 @@ from backend.routes.auth.auth_core import create_access_token
 from backend.tests.conftest import add_submission
 
 from unittest.mock import patch
+from backend.time_utils import utc_now
 
 
 @pytest.fixture(autouse=True)
@@ -33,8 +34,8 @@ def setup_agent_league(db_session: Session) -> League:
     league = League(
         name="agent_test_league",
         game="lineup4",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         league_type="agent",
     )
     db_session.add(league)
@@ -93,7 +94,7 @@ def make_move(my_history, opponent_history, my_score, opponent_score):
             db_session,
             team_id=team.id,
             code=lineup4_code,
-            timestamp=datetime.now(),
+            timestamp=utc_now(),
         )
 
     db_session.commit()

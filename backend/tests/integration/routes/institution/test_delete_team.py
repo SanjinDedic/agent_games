@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import Institution, League, Submission, SubmissionMetadata, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -16,9 +17,9 @@ def institution_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -29,8 +30,8 @@ def institution_setup(db_session: Session) -> tuple:
     # Create a league for the teams
     league = League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -53,7 +54,7 @@ def institution_setup(db_session: Session) -> tuple:
     add_submission(
         db_session,
         code="test code",
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         team_id=team.id,
     )
     db_session.commit()
@@ -134,9 +135,9 @@ def test_delete_team_failures(client, institution_setup, db_session):
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )

@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from typing import Dict, Iterable, List, Optional
 
 from sqlmodel import Session, select
@@ -10,6 +9,7 @@ from backend.database.db_models import (
     SubmissionMetadata,
     Team,
 )
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def update_api_key(session: Session, provider: str, api_key: str) -> None:
     ).first()
     if existing:
         existing.api_key = api_key
-        existing.updated_at = datetime.now(UTC)
+        existing.updated_at = utc_now()
         session.add(existing)
     else:
         new_key = AIProviderKey(

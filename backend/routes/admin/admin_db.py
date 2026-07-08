@@ -1,10 +1,9 @@
 import json
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Dict, List, Tuple, Union
 
-import pytz
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select
 
@@ -31,9 +30,9 @@ from backend.routes.admin.admin_models import (
     CreateInstitution,
     InstitutionUpdate,
 )
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 class InstitutionError(Exception):
@@ -53,7 +52,7 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
             f"Institution with name '{institution_data.name}' already exists"
         )
 
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = Institution(
         name=institution_data.name,
         contact_person=institution_data.contact_person,
@@ -80,9 +79,9 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
     # Create unassigned league for this institution
     unassigned_league = League(
         name="unassigned",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_date=utc_now(),
         expiry_date=(
-            datetime.now(AUSTRALIA_SYDNEY_TZ)
+            utc_now()
             + timedelta(days=365)  # Long expiry for unassigned league
         ),
         game="greedy_pig",  # Default game
@@ -134,9 +133,9 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
                     subscription_active=True,
                     subscription_expiry=(
                         institution_data.subscription_expiry
-                        or datetime.now(AUSTRALIA_SYDNEY_TZ)
+                        or utc_now()
                     ),
-                    created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+                    created_date=utc_now(),
                 )
             if institution_data.subscription_active is not None:
                 subscription.subscription_active = institution_data.subscription_active
@@ -422,7 +421,7 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
 
     return {
         "schema_version": 1,
-        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "exported_at": utc_now().isoformat(),
         "institution": institution_dump,
         "leagues": leagues_dump,
         "teams": teams_dump,

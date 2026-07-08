@@ -3,7 +3,6 @@ import os
 from datetime import datetime, timedelta
 
 import pytest
-import pytz
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -24,6 +23,7 @@ from backend.database.db_models import (
 )
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 # Precomputed bcrypt hashes to avoid expensive hashing on every test.
 # Cost 4 (not the production 12) so login-flow checkpw is ~1ms instead of
@@ -56,7 +56,6 @@ TEST_PASSWORD_HASHES = {
 # Set environment variables for testing before any imports
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_tests")
 os.environ["DB_ENVIRONMENT"] = "test"
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -84,7 +83,7 @@ def build_institution(
     ``commit()``/``flush()`` cascades and persists it automatically — existing
     test code that adds/commits the institution itself keeps working unchanged.
     """
-    now = created_date or datetime.now()
+    now = created_date or utc_now()
     if subscription_expiry is None:
         subscription_expiry = now + timedelta(days=30)
     institution = Institution(
@@ -221,7 +220,7 @@ def populate_test_database(session):
     if existing_admin:
         return
 
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
 
     admin = Admin(username="admin", password_hash=_HASH_ADMIN)
     session.add(admin)
@@ -322,8 +321,8 @@ def team_token(db_session):
     if not league:
         league = League(
             name="comp_test",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
             game="greedy_pig",
         )
         db_session.add(league)
@@ -447,8 +446,8 @@ def test_league(db_session: Session) -> League:
     """Create a test league"""
     league = League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=1),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=1),
         game="greedy_pig",
     )
     db_session.add(league)
@@ -487,7 +486,7 @@ def setup_demo_data(db_session: Session) -> None:
             demo_user = DemoUser(
                 username=team_name,
                 email=f"demo{i}@example.com",
-                created_at=datetime.now(),
+                created_at=utc_now(),
             )
             db_session.add(demo_user)
             db_session.commit()
@@ -497,7 +496,7 @@ def setup_demo_data(db_session: Session) -> None:
                 add_submission(
                     db_session,
                     code=f"Demo code {j} for team {i}",
-                    timestamp=datetime.now() - timedelta(minutes=j),
+                    timestamp=utc_now() - timedelta(minutes=j),
                     team_id=team.id,
                 )
 
@@ -536,7 +535,7 @@ def institution_token(db_session: Session) -> str:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )

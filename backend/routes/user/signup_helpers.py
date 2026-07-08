@@ -1,14 +1,13 @@
 """Shared helpers for the team-signup endpoints (classic + school)."""
 
-from datetime import datetime
 from typing import Optional, Tuple
 
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
-from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ
 from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.user.user_db import get_league_by_signup_token
+from backend.time_utils import ensure_utc, utc_now
 
 
 def resolve_active_league_by_token(
@@ -23,11 +22,7 @@ def resolve_active_league_by_token(
     if not league:
         return None, "Invalid signup link or league not found"
 
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
-    expiry_date = league.expiry_date
-    if expiry_date.tzinfo is None:
-        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
-    if expiry_date < now:
+    if ensure_utc(league.expiry_date) < utc_now():
         return (
             None,
             "This league has expired and is no longer accepting new teams",

@@ -1,6 +1,6 @@
 """Tests for unassign-team and get_unassigned_league — covering previously uncovered paths."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -8,12 +8,13 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, LeagueType, Team, TeamType
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def unassign_setup(db_session: Session) -> dict:
     """Create institution with a league, unassigned league, and a team."""
-    now = datetime.now()
+    now = utc_now()
 
     institution = build_institution(
         name="unassign_test_inst",
@@ -113,9 +114,9 @@ def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
         name="other_unassign_inst",
         contact_person="Other",
         contact_email="other@test.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )

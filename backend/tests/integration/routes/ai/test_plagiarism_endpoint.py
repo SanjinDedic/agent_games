@@ -4,7 +4,7 @@ All OpenAI calls are mocked via httpx patching — no real network calls.
 """
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,6 +19,7 @@ from backend.database.db_models import (
 )
 from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 # --- Fixtures ---
@@ -69,9 +70,9 @@ def institution_setup(db_session: Session):
         name="plagiarism_test_inst",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -82,8 +83,8 @@ def institution_setup(db_session: Session):
     league = League(
         name="plagiarism_test_league",
         game="greedy_pig",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         institution_id=institution.id,
     )
     db_session.add(league)
@@ -102,7 +103,7 @@ def institution_setup(db_session: Session):
     db_session.refresh(team)
 
     # Two submissions so the default path goes through _call_llm_full_assessment.
-    base_ts = datetime.now(timezone.utc)
+    base_ts = utc_now()
     for i, code in enumerate([
         "def foo():\n    return 1\n",
         "def foo():\n    return 2  # fixed\n",
@@ -176,9 +177,9 @@ def test_assess_league_not_owned_by_institution(
         name="other_inst",
         contact_person="Other",
         contact_email="other@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -189,8 +190,8 @@ def test_assess_league_not_owned_by_institution(
     other_league = League(
         name="other_league",
         game="greedy_pig",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         institution_id=other_inst.id,
     )
     db_session.add(other_league)
@@ -323,7 +324,7 @@ def test_assess_sampling_when_over_ten_submissions(
     """Team with 15 submissions → sampled=True, analyzed=10."""
     institution, league, team, headers = institution_setup
     # Add 13 more submissions (starts with 2).
-    base_ts = datetime.now(timezone.utc)
+    base_ts = utc_now()
     for i in range(13):
         add_submission(
             db_session,
@@ -538,7 +539,7 @@ def test_assess_deterministic_flag_over_likely_threshold(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    base = datetime.now(timezone.utc)
+    base = utc_now()
     add_submission(db_session, code="x", timestamp=base, team_id=team.id)
     add_submission(
         db_session,
@@ -578,7 +579,7 @@ def test_assess_deterministic_flag_between_4_and_6(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    base = datetime.now(timezone.utc)
+    base = utc_now()
     # 500 chars in 100 seconds = 5 cps → probable
     add_submission(db_session, code="x", timestamp=base, team_id=team.id)
     add_submission(
@@ -639,7 +640,7 @@ def test_assess_deterministic_summary_sent_to_llm(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    base = datetime.now(timezone.utc)
+    base = utc_now()
     add_submission(db_session, code="x", timestamp=base, team_id=team.id)
     add_submission(
         db_session,
@@ -696,7 +697,7 @@ def test_assess_ast_construct_counts(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    base = datetime.now(timezone.utc)
+    base = utc_now()
     simple = "def foo():\n    return 1\n"
     complex_code = (
         "import os\nfrom sys import path\n"

@@ -1,11 +1,10 @@
 """Tests for school-league flow: GET /user/league-info and POST /user/direct-school-league-signup."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-import pytz
 from jose import jwt
 from sqlmodel import Session, select
 
@@ -18,14 +17,14 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
 def school_league_fixture(db_session: Session) -> dict:
     """Create an institution + a school league with a valid signup token."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
 
     institution = build_institution(
         name="School League Test School",
@@ -65,7 +64,7 @@ def school_league_fixture(db_session: Session) -> dict:
 
 @pytest.fixture
 def non_school_league_fixture(db_session: Session) -> dict:
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()
@@ -89,7 +88,7 @@ def non_school_league_fixture(db_session: Session) -> dict:
 
 @pytest.fixture
 def expired_school_league_fixture(db_session: Session) -> dict:
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()
@@ -301,7 +300,7 @@ def test_direct_league_signup_still_works_for_non_school_league(
 @pytest.fixture
 def sheet_backed_league_fixture(db_session: Session) -> dict:
     """A school league whose schools_config points at a Google Sheet URL."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()

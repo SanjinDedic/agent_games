@@ -13,7 +13,6 @@ The router handler remains thin and only deals with auth + error mapping.
 
 import json
 import logging
-from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlmodel import Session
@@ -42,6 +41,7 @@ from backend.routes.ai.plagiarism_metrics import (
     truncate_code,
 )
 from backend.routes.ai.plagiarism_prompt import SYSTEM_PROMPT
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -257,7 +257,7 @@ async def assess_team_for_plagiarism(
         deterministic_flag_summary=flag_summary,
         verdict=verdict,
         model_used=model_used,
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=utc_now().isoformat(),
     )
 
 

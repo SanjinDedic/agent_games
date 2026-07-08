@@ -1,6 +1,6 @@
 """Tests for scheduled DB maintenance (backend/database/maintenance.py)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -19,6 +19,7 @@ from backend.database.maintenance import (
     cleanup_institution_submissions,
 )
 from backend.tests.conftest import add_submission
+from backend.time_utils import utc_now
 
 
 def _get_or_create_institution(session: Session, name: str) -> Institution:
@@ -28,7 +29,7 @@ def _get_or_create_institution(session: Session, name: str) -> Institution:
             name=name,
             contact_person=name,
             contact_email=f"{name.replace(' ', '_').lower()}@test.com",
-            created_date=datetime.now(timezone.utc),
+            created_date=utc_now(),
             password_hash="x",
         )
         session.add(inst)
@@ -43,7 +44,7 @@ def _make_team(
     institution: Institution,
     team_type: TeamType = TeamType.STUDENT,
 ) -> Team:
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     league = League(
         name=f"{name}_league",
         created_date=now,
@@ -73,7 +74,7 @@ def _make_team(
 def maintenance_setup(db_session: Session) -> dict:
     """Old + fresh submissions for a Demo Institution team, and an old
     submission for a regular institution team that must survive cleanup."""
-    now = datetime.now(timezone.utc)
+    now = utc_now()
 
     demo_inst = _get_or_create_institution(db_session, "Demo Institution")
     other_inst = _get_or_create_institution(db_session, "Real School")

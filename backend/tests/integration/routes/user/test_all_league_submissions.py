@@ -1,6 +1,6 @@
 """Tests for GET /user/get-all-league-submissions/{league_id}."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -13,6 +13,7 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -24,8 +25,8 @@ def league_with_submissions(db_session: Session) -> dict:
 
     league = League(
         name="submissions_test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -49,7 +50,7 @@ def league_with_submissions(db_session: Session) -> dict:
         teams.append(team)
 
         # Add 3 submissions per team with ascending timestamps
-        base_time = datetime.now() - timedelta(hours=3)
+        base_time = utc_now() - timedelta(hours=3)
         for j in range(3):
             add_submission(
                 db_session,
@@ -62,8 +63,8 @@ def league_with_submissions(db_session: Session) -> dict:
     # Empty league (no teams)
     empty_league = League(
         name="empty_submissions_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -172,9 +173,9 @@ def test_get_all_submissions_institution_own_league(client, db_session):
         name="own_league_inst",
         contact_person="Person",
         contact_email="p@e.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -184,8 +185,8 @@ def test_get_all_submissions_institution_own_league(client, db_session):
 
     league = League(
         name="owned_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -218,9 +219,9 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         name="inst_a_for_leak_test",
         contact_person="A",
         contact_email="a@e.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -228,9 +229,9 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         name="inst_b_for_leak_test",
         contact_person="B",
         contact_email="b@e.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -243,8 +244,8 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
     # League belongs to inst_b; team + submissions inside it
     b_league = League(
         name="inst_b_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=inst_b.id,
     )
@@ -267,7 +268,7 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
     add_submission(
         db_session,
         code="# secret code",
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         team_id=b_team.id,
     )
     db_session.commit()

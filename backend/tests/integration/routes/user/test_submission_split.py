@@ -5,10 +5,9 @@
 - hint_available sees failed attempts (cooldown + submissions-between-hints)
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -31,8 +30,8 @@ from backend.routes.user.user_db import (
     save_submission,
 )
 from backend.tests.conftest import add_failed_submission, add_submission
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
@@ -43,8 +42,8 @@ def team(db_session: Session) -> Team:
 
     league = League(
         name="split_test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -99,7 +98,7 @@ def test_record_failed_submission_stores_metadata_only(db_session: Session, team
 
 
 def test_allow_submission_counts_failed_attempts(db_session: Session, team: Team):
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     for _ in range(5):
         add_failed_submission(db_session, timestamp=now, team_id=team.id)
     db_session.commit()
@@ -114,7 +113,7 @@ def test_hint_available_false_without_submissions(db_session: Session, team: Tea
 
 def test_hint_available_counts_failed_attempts(db_session: Session, team: Team):
     """Failed attempts count toward SUBMISSIONS_BETWEEN_HINTS just like passes."""
-    base = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(seconds=HINT_COOLDOWN + 60)
+    base = utc_now() - timedelta(seconds=HINT_COOLDOWN + 60)
     for i in range(SUBMISSIONS_BETWEEN_HINTS - 1):
         add_failed_submission(
             db_session, timestamp=base + timedelta(seconds=i), team_id=team.id
@@ -132,7 +131,7 @@ def test_hint_available_counts_failed_attempts(db_session: Session, team: Team):
 
 def test_hint_available_respects_cooldown(db_session: Session, team: Team):
     """Enough attempts but the first one is inside the cooldown window."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     for i in range(SUBMISSIONS_BETWEEN_HINTS):
         add_failed_submission(
             db_session, timestamp=now - timedelta(seconds=i), team_id=team.id
@@ -146,7 +145,7 @@ def test_hint_available_requires_submissions_since_last_hint(
     db_session: Session, team: Team
 ):
     """After a hint, SUBMISSIONS_BETWEEN_HINTS more attempts are required."""
-    base = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(seconds=HINT_COOLDOWN + 60)
+    base = utc_now() - timedelta(seconds=HINT_COOLDOWN + 60)
     add_submission(
         db_session,
         code="# hinted",

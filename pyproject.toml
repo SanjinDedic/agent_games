@@ -16,11 +16,12 @@ dependencies = [
     "python-dotenv>=1.2.0",
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.22",
-    "pytz>=2026.1",
     "requests>=2.33.0",
     "sqlalchemy>=2.0.48",
     "sqlmodel>=0.0.37",
     "stripe>=12.0.0",
+    # zoneinfo tz database — the Alpine base image has no system tzdata
+    "tzdata>=2025.2",
     "uvicorn[standard]>=0.42.0",
 ]
 

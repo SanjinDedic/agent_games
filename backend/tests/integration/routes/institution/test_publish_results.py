@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, SimulationResult
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -17,9 +18,9 @@ def publish_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -30,8 +31,8 @@ def publish_setup(db_session: Session) -> tuple:
     # Create a league
     league = League(
         name="publish_test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -42,14 +43,14 @@ def publish_setup(db_session: Session) -> tuple:
     # Create two simulation results
     sim_result1 = SimulationResult(
         league_id=league.id,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10, 8, 6, 4, 3, 2, 1]",
         published=False,
     )
     sim_result2 = SimulationResult(
         league_id=league.id,
-        timestamp=datetime.now() + timedelta(hours=1),
+        timestamp=utc_now() + timedelta(hours=1),
         num_simulations=20,
         custom_rewards="[10, 8, 6, 4, 3, 2, 1]",
         published=False,
@@ -180,9 +181,9 @@ def test_publish_results_failures(client, publish_setup, db_session):
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -191,8 +192,8 @@ def test_publish_results_failures(client, publish_setup, db_session):
     
     other_league = League(
         name="other_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=other_institution.id,
     )
@@ -202,7 +203,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
     # Create result for the other league
     other_result = SimulationResult(
         league_id=other_league.id,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10, 8, 6, 4, 3, 2, 1]",
         published=False,

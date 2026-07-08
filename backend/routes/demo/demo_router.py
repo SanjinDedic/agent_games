@@ -1,8 +1,7 @@
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-import pytz
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
@@ -13,9 +12,9 @@ from backend.database.db_session import get_db
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
 from backend.routes.demo.demo_models import DemoLaunchRequestWithUser
 from backend.utils import get_games_names
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 demo_router = APIRouter()
 
@@ -57,7 +56,7 @@ async def launch_demo(
                 "username": demo_user.name,
                 "expires_in_minutes": DEMO_TOKEN_EXPIRY_MINUTES,
                 "expires_at": (
-                    datetime.now(AUSTRALIA_SYDNEY_TZ) + expires_delta
+                    utc_now() + expires_delta
                 ).isoformat(),
                 "available_games": available_games,
                 "demo_leagues": [league.name for league in demo_leagues],

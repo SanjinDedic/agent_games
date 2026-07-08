@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -7,6 +7,7 @@ from backend.tests.conftest import build_institution
 from backend.database.db_models import (Institution, League, SimulationResult,
                                         Team)
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -17,9 +18,9 @@ def league_results_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -30,8 +31,8 @@ def league_results_setup(db_session: Session) -> tuple:
     # Create a league with simulation results
     league = League(
         name="results_test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -42,14 +43,14 @@ def league_results_setup(db_session: Session) -> tuple:
     # Create simulation results
     sim_result1 = SimulationResult(
         league_id=league.id,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10, 8, 6, 4, 3, 2, 1]",
         published=True,
     )
     sim_result2 = SimulationResult(
         league_id=league.id,
-        timestamp=datetime.now() + timedelta(hours=1),
+        timestamp=utc_now() + timedelta(hours=1),
         num_simulations=20,
         custom_rewards="[10, 8, 6, 4, 3, 2, 1]",
         published=False,
@@ -105,8 +106,8 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     # Create an empty league
     empty_league = League(
         name="empty_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -147,9 +148,9 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -158,8 +159,8 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
     
     other_league = League(
         name="other_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=other_institution.id,
     )

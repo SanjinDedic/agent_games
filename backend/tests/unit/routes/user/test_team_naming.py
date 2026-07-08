@@ -1,9 +1,8 @@
 """Unit tests for team-name sanitization + counter logic."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -19,8 +18,8 @@ from backend.routes.user.team_naming import (
     next_available_team_name,
     sanitize_school_name,
 )
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.mark.parametrize(
@@ -90,7 +89,7 @@ def test_create_school_team_integrity_retry(db_session: Session, monkeypatch):
     surface the competing row and naturally pick the next number — that
     behavior is covered by test_next_available_team_name_with_gaps.)
     """
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()

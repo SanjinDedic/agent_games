@@ -1,8 +1,7 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -20,6 +19,7 @@ from backend.routes.auth.auth_config import (
     TEAM_TOKEN_EXPIRY_MINUTES,
     create_access_token,
 )
+from backend.time_utils import ensure_utc, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +34,6 @@ class RateLimitExceededError(Exception):
     """Raised when API rate limit is exceeded"""
 
     pass
-
-
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 def get_institution_names(session: Session):
@@ -115,13 +112,7 @@ def get_institution_token(session: Session, institution_name: str, password: str
     if subscription is None or not subscription.subscription_active:
         raise InvalidCredentialsError("Institution subscription is not active")
 
-    # Check if subscription has expired - get current time with same timezone awareness
-    now = datetime.now()
-    if subscription.subscription_expiry.tzinfo:
-        # If expiry has timezone info, localize current time
-        now = AUSTRALIA_SYDNEY_TZ.localize(now)
-
-    if subscription.subscription_expiry < now:
+    if ensure_utc(subscription.subscription_expiry) < utc_now():
         # Update subscription_active to False
         subscription.subscription_active = False
         session.add(subscription)
@@ -161,7 +152,7 @@ def verify_agent_api_key(session: Session, api_key: str):
         )
 
     # Update last used timestamp
-    api_key_record.last_used = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    api_key_record.last_used = utc_now()
     session.commit()
 
     access_token = mint_team_token(

@@ -7,7 +7,7 @@ Verifies that:
 - Regular institutions cannot access other institutions' leagues
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -24,12 +24,13 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def two_institutions(db_session: Session) -> dict:
     """Create two separate institutions, each with a league and teams."""
-    now = datetime.now()
+    now = utc_now()
 
     # Get the Admin Institution (id=1, created by conftest)
     admin_inst = db_session.exec(
@@ -289,7 +290,7 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
     # Create a simulation result for league B
     sim = SimulationResult(
         league_id=data["league_b"].id,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10,8,6]",
     )
@@ -322,7 +323,7 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
     data = two_institutions
 
     # Create expendable leagues for deletion tests
-    now = datetime.now()
+    now = utc_now()
     delete_target = League(
         name="perm_delete_target",
         created_date=now,

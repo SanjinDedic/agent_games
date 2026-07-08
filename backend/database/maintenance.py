@@ -5,7 +5,7 @@ Run inside the api container by the daily-maintenance GitHub workflow:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from sqlmodel import Session, delete, select
 
@@ -17,6 +17,7 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.database.db_session import get_db_engine
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def cleanup_institution_submissions(
 ) -> int:
     """Delete submission attempts older than `age_hours` from teams belonging
     to the named institutions. Returns the number of attempts deleted."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=age_hours)
+    cutoff = utc_now() - timedelta(hours=age_hours)
 
     team_ids = select(Team.id).where(
         Team.institution_id.in_(
@@ -73,7 +74,7 @@ def cleanup_agent_submissions(session: Session, age_days: int = 7) -> int:
     """Delete submission attempts older than `age_days` from agent teams
     (TeamType.AGENT — teams driven via the agent router / API keys).
     Returns the number of attempts deleted."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=age_days)
+    cutoff = utc_now() - timedelta(days=age_days)
 
     team_ids = select(Team.id).where(Team.team_type == TeamType.AGENT)
     count = _delete_submissions_older_than(session, team_ids, cutoff)

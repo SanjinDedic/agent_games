@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -7,6 +7,7 @@ from sqlmodel import Session
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 
@@ -16,9 +17,9 @@ def _create_institution(db_session: Session) -> Institution:
         name="arena_inst",
         contact_person="Arena Admin",
         contact_email="arena@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )

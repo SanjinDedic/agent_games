@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 def test_institution_create_success(client, auth_headers, db_session):
@@ -16,7 +17,7 @@ def test_institution_create_success(client, auth_headers, db_session):
         "contact_person": "New Contact",
         "contact_email": "new@example.com",
         "password": "new_password",
-        "subscription_expiry": (datetime.now() + timedelta(days=30)).isoformat(),
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
         "docker_access": True,
     }
     
@@ -56,9 +57,9 @@ def test_institution_create_failures(client, auth_headers, db_session):
         name="existing_institution",
         contact_person="Existing Contact",
         contact_email="existing@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -71,7 +72,7 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_person": "New Contact",
         "contact_email": "new@example.com",
         "password": "new_password",
-        "subscription_expiry": (datetime.now() + timedelta(days=30)).isoformat(),
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
         "docker_access": True,
     }
     
@@ -89,7 +90,7 @@ def test_institution_create_failures(client, auth_headers, db_session):
     incomplete_data = {
         "name": "incomplete_institution",
         # Missing contact_person, contact_email, password
-        "subscription_expiry": (datetime.now() + timedelta(days=30)).isoformat(),
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     
     response = client.post(
@@ -105,7 +106,7 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_person": "Invalid Contact",
         "contact_email": "not_an_email",  # Invalid email format
         "password": "password",
-        "subscription_expiry": (datetime.now() + timedelta(days=30)).isoformat(),
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
         "docker_access": True,
     }
     
@@ -122,7 +123,7 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_person": "Empty Name Contact",
         "contact_email": "empty@example.com",
         "password": "password",
-        "subscription_expiry": (datetime.now() + timedelta(days=30)).isoformat(),
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
         "docker_access": True,
     }
     
