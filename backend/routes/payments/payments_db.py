@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -19,9 +18,9 @@ from backend.database.db_models import (
     LeagueType,
     get_password_hash,
 )
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 class PaidSignupError(Exception):
@@ -73,7 +72,7 @@ def create_paid_institution(
     if existing_name:
         raise PaidSignupError(f"Institution with name '{name}' already exists")
 
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = Institution(
         name=name,
         contact_person=contact_person,
@@ -160,7 +159,7 @@ def create_invoiced_institution(
             f"Institution with name '{institution_name}' already exists"
         )
 
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = Institution(
         name=institution_name,
         contact_person=teaching_contact_name,

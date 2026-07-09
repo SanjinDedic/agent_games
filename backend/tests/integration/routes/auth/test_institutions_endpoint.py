@@ -1,18 +1,19 @@
 """Tests for GET /auth/institutions — public endpoint listing institution names."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
 
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def multiple_institutions(db_session: Session) -> dict:
     """Create a mix of active, inactive, and demo institutions."""
-    now = datetime.now()
+    now = utc_now()
 
     active = build_institution(
         name="Active School",

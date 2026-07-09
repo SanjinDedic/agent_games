@@ -9,10 +9,9 @@
 
 import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -38,8 +37,8 @@ from backend.routes.user.user_db import (
     create_team_and_assign_to_league,
     get_result_by_publish_link,
 )
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
@@ -51,8 +50,8 @@ def published_league(db_session: Session) -> dict:
 
     league = League(
         name="published_test_league",
-        created_date=datetime.now(),  # tz-naive on purpose to test localization
-        expiry_date=datetime.now() + timedelta(days=7),  # tz-naive
+        created_date=utc_now(),  # tz-naive on purpose to test localization
+        expiry_date=utc_now() + timedelta(days=7),  # tz-naive
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -75,7 +74,7 @@ def published_league(db_session: Session) -> dict:
     publish_link = secrets.token_urlsafe(16)
     sim = SimulationResult(
         league_id=league.id,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10, 8, 6]",
         published=True,
@@ -119,8 +118,8 @@ def test_assign_team_demo_to_non_demo_league(db_session):
 
     league = League(
         name="non_demo_league_test",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
         is_demo=False,
@@ -153,8 +152,8 @@ def test_assign_team_not_found(db_session):
     ).first()
     league = League(
         name="assign_target_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -187,8 +186,8 @@ def test_get_published_result_no_published(db_session):
     ).first()
     league = League(
         name="no_published_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )

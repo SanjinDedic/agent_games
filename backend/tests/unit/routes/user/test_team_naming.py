@@ -1,9 +1,8 @@
 """Unit tests for team-name sanitization + counter logic."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -19,8 +18,8 @@ from backend.routes.user.team_naming import (
     next_available_team_name,
     sanitize_school_name,
 )
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.mark.parametrize(
@@ -42,7 +41,8 @@ def test_sanitize_school_name(raw, expected):
 
 def test_next_available_team_name_empty_db(db_session: Session):
     # Fresh DB has no Foo-prefixed teams
-    assert next_available_team_name(db_session, "Foo") == "Foo1"
+    league = db_session.exec(select(League).where(League.name == "unassigned")).first()
+    assert next_available_team_name(db_session, "Foo", league.institution_id) == "Foo1"
 
 
 def test_next_available_team_name_with_gaps(db_session: Session):
@@ -54,13 +54,14 @@ def test_next_available_team_name_with_gaps(db_session: Session):
                 school_name="Foo",
                 password_hash="hash",
                 league_id=league.id,
+                institution_id=league.institution_id,
                 team_type=TeamType.STUDENT,
             )
         )
     db_session.commit()
 
     # Skips 1, finds 2 (gap between 1 and 3)
-    assert next_available_team_name(db_session, "Foo") == "Foo2"
+    assert next_available_team_name(db_session, "Foo", league.institution_id) == "Foo2"
 
 
 def test_next_available_team_name_ignores_non_numeric_suffix(db_session: Session):
@@ -72,16 +73,68 @@ def test_next_available_team_name_ignores_non_numeric_suffix(db_session: Session
             school_name="Foo",
             password_hash="hash",
             league_id=league.id,
+            institution_id=league.institution_id,
             team_type=TeamType.STUDENT,
         )
     )
     db_session.commit()
-    assert next_available_team_name(db_session, "Foo") == "Foo1"
+    assert next_available_team_name(db_session, "Foo", league.institution_id) == "Foo1"
+
+
+def test_next_available_team_name_scoped_per_institution(db_session: Session):
+    """Two institutions number the same school independently: both get Foo1."""
+    inst_a = db_session.exec(
+        select(Institution).where(Institution.name == "Admin Institution")
+    ).first()
+    league_a = db_session.exec(
+        select(League).where(League.name == "unassigned")
+    ).first()
+
+    now = utc_now()
+    inst_b = Institution(
+        name="second_inst_for_naming",
+        contact_person="B",
+        contact_email="b@test.com",
+        created_date=now,
+        password_hash="hash",
+    )
+    db_session.add(inst_b)
+    db_session.commit()
+    db_session.refresh(inst_b)
+    league_b = League(
+        name="league_b_for_naming",
+        created_date=now,
+        expiry_date=now + timedelta(days=1),
+        game="greedy_pig",
+        institution_id=inst_b.id,
+        league_type=LeagueType.INSTITUTION,
+    )
+    db_session.add(league_b)
+    db_session.commit()
+    db_session.refresh(league_b)
+
+    # Institution A already has Foo1.
+    db_session.add(
+        Team(
+            name="Foo1",
+            school_name="Foo",
+            password_hash="hash",
+            league_id=league_a.id,
+            institution_id=inst_a.id,
+            team_type=TeamType.STUDENT,
+        )
+    )
+    db_session.commit()
+
+    # A's counter skips to Foo2; B (a different institution) still starts at Foo1.
+    assert next_available_team_name(db_session, "Foo", inst_a.id) == "Foo2"
+    assert next_available_team_name(db_session, "Foo", inst_b.id) == "Foo1"
 
 
 def test_next_available_team_name_empty_sanitized_raises(db_session: Session):
+    league = db_session.exec(select(League).where(League.name == "unassigned")).first()
     with pytest.raises(ValueError):
-        next_available_team_name(db_session, "")
+        next_available_team_name(db_session, "", league.institution_id)
 
 
 def test_create_school_team_integrity_retry(db_session: Session, monkeypatch):
@@ -90,7 +143,7 @@ def test_create_school_team_integrity_retry(db_session: Session, monkeypatch):
     surface the competing row and naturally pick the next number — that
     behavior is covered by test_next_available_team_name_with_gaps.)
     """
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()

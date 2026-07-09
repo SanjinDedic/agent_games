@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from celery.exceptions import TimeLimitExceeded
@@ -11,6 +11,7 @@ from backend.tasks.validation_task import (
     run_validation,
     timeout_validation_result,
 )
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -19,8 +20,8 @@ def test_league(db_session: Session) -> League:
     league = League(
         name="celery_test_league",
         game="prisoners_dilemma",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
     )
     db_session.add(league)
     db_session.commit()

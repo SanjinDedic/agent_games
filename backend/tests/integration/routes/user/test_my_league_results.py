@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlmodel import Session
 
 from backend.database.db_models import (
@@ -11,8 +10,8 @@ from backend.database.db_models import (
     Team,
 )
 from backend.routes.auth.auth_db import mint_team_token
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
@@ -21,15 +20,15 @@ def two_leagues_with_published_results(db_session: Session) -> dict:
     league_a = League(
         name="my_league_a",
         game="greedy_pig",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         info_markdown="# League A schedule",
     )
     league_b = League(
         name="my_league_b",
         game="greedy_pig",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         info_markdown="# League B schedule",
     )
     db_session.add(league_a)
@@ -51,7 +50,7 @@ def two_leagues_with_published_results(db_session: Session) -> dict:
     # League A: two published + one unpublished
     sim_a1 = SimulationResult(
         league_id=league_a.id,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10, 8, 6, 4, 2]",
         published=True,
@@ -59,7 +58,7 @@ def two_leagues_with_published_results(db_session: Session) -> dict:
     )
     sim_a2 = SimulationResult(
         league_id=league_a.id,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=1),
+        timestamp=utc_now() + timedelta(hours=1),
         num_simulations=20,
         custom_rewards="[10, 8, 6, 4, 2]",
         published=True,
@@ -67,7 +66,7 @@ def two_leagues_with_published_results(db_session: Session) -> dict:
     )
     sim_a_unpub = SimulationResult(
         league_id=league_a.id,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        timestamp=utc_now(),
         num_simulations=5,
         custom_rewards="[10, 8, 6, 4, 2]",
         published=False,
@@ -76,7 +75,7 @@ def two_leagues_with_published_results(db_session: Session) -> dict:
     # League B: one published (must NOT appear for team A)
     sim_b1 = SimulationResult(
         league_id=league_b.id,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        timestamp=utc_now(),
         num_simulations=10,
         custom_rewards="[10, 8, 6, 4, 2]",
         published=True,
@@ -142,8 +141,8 @@ def test_my_league_results_no_league(client, db_session):
     unassigned = League(
         name="my_league_empty",
         game="greedy_pig",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
     )
     db_session.add(unassigned)
     db_session.commit()

@@ -1,6 +1,6 @@
 """Tests for agent team management — create_agent_team and create_api_key in admin_db.py."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -15,6 +15,7 @@ from backend.database.db_models import (
 )
 from backend.routes.admin.admin_db import create_agent_team, create_api_key
 from backend.routes.admin.admin_models import CreateAgentTeam
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -26,8 +27,8 @@ def agent_league(db_session: Session) -> dict:
 
     league = League(
         name="agent_test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=30),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=30),
         game="greedy_pig",
         league_type=LeagueType.AGENT,
         institution_id=institution.id,
@@ -68,8 +69,8 @@ def test_create_agent_team_wrong_league_type(db_session):
 
     student_league = League(
         name="student_league_for_agent_test",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         league_type=LeagueType.STUDENT,
         institution_id=institution.id,

@@ -19,10 +19,11 @@ import cProfile
 import io
 import pstats
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from backend.database.db_models import League
 from backend.games.greedy_pig.greedy_pig import GreedyPigGame
+from backend.time_utils import utc_now
 
 
 STRATEGIES = {
@@ -225,8 +226,8 @@ def build_game_with_20_players():
         id=1,
         name="bench_league",
         game="greedy_pig",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=1),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=1),
     )
     game = GreedyPigGame(league, verbose=False)
     # Wipe the validation players that BaseGame loaded automatically

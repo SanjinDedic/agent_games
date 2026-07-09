@@ -4,7 +4,6 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple, Union
 
-import pytz
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select
 
@@ -19,9 +18,9 @@ from backend.schools.config import (GoogleSheetsSchoolsConfig,
 from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
 from backend.utils import process_simulation_results
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 class LeagueExistsError(Exception):
@@ -104,9 +103,9 @@ def create_league(
     # Create the league
     league = League(
         name=league_data.name,
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_date=utc_now(),
         expiry_date=(
-            datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24)
+            utc_now() + timedelta(hours=24)
         ),  # Default 24 hour expiry
         game=league_data.game,
         institution_id=institution_id,
@@ -151,9 +150,9 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
             # Create an unassigned league for this institution if it doesn't exist
             unassigned_league = League(
                 name="unassigned",
-                created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+                created_date=utc_now(),
                 expiry_date=(
-                    datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(hours=24*7)
+                    utc_now() + timedelta(hours=24*7)
                 ),
                 game="greedy_pig",  # Default game
                 institution_id=institution_id,
@@ -258,7 +257,7 @@ def save_simulation_results(
     # Verify the league belongs to this institution
     league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
     
-    timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    timestamp = utc_now()
     rewards_str = rewards if rewards is not None else "[10, 0, 0, 0, 0, 0, 0]"
     if isinstance(rewards_str, list):
         rewards_str = json.dumps(rewards_str)
@@ -277,7 +276,14 @@ def save_simulation_results(
     custom_value_names = list(results.get("table", {}).keys())[:3]
 
     for team_name, score in results["total_points"].items():
-        team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+        # Scope by league_id: names are only unique per-league, and a simulation's
+        # results belong to this one league. A bare name lookup could match a
+        # same-named team in another league (or raise on duplicates).
+        team = session.exec(
+            select(Team)
+            .where(Team.name == team_name)
+            .where(Team.league_id == league_id)
+        ).one_or_none()
         if team and (is_admin or team.institution_id == institution_id):  # Only include teams from this institution
             result_item = SimulationResultItem(
                 simulation_result_id=simulation_result.id, team_id=team.id, score=score
@@ -486,9 +492,9 @@ def delete_league(session: Session, league_id: int, institution_id: int, is_admi
         # Create an unassigned league if it doesn't exist
         unassigned_league = League(
             name="unassigned",
-            created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+            created_date=utc_now(),
             expiry_date=(
-                datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=365)  # Long expiry
+                utc_now() + timedelta(days=365)  # Long expiry
             ),
             game="greedy_pig",  # Default game
             institution_id=institution_id,

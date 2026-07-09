@@ -1,6 +1,5 @@
 import base64
 import logging
-from datetime import datetime
 from functools import wraps
 from typing import Callable, List, Union
 
@@ -9,11 +8,11 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from backend.routes.auth.auth_config import (
     ALGORITHM,
-    AUSTRALIA_SYDNEY_TZ,
     SECRET_KEY,
     create_access_token,
     create_service_token,
 )
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +86,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         user_role: str = payload.get("role")
         exp_timestamp = payload.get("exp")
 
-        current_timestamp = datetime.now(AUSTRALIA_SYDNEY_TZ).timestamp()
+        current_timestamp = utc_now().timestamp()
         if exp_timestamp is None or current_timestamp > exp_timestamp:
             logger.error("Token has expired")
             raise HTTPException(status_code=401, detail="Token has expired")

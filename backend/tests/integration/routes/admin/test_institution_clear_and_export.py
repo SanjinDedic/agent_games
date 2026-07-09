@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -21,13 +21,14 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
 def seeded_institution(db_session: Session) -> Institution:
     """Institution with unassigned + extra league, student + agent team,
     submission, sim result, agent API key, and a support ticket + attachment."""
-    now = datetime.now()
+    now = utc_now()
 
     institution = build_institution(
         name="clear_export_test_inst",

@@ -1,8 +1,7 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -20,6 +19,7 @@ from backend.routes.auth.auth_config import (
     TEAM_TOKEN_EXPIRY_MINUTES,
     create_access_token,
 )
+from backend.time_utils import ensure_utc, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +34,6 @@ class RateLimitExceededError(Exception):
     """Raised when API rate limit is exceeded"""
 
     pass
-
-
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 def get_institution_names(session: Session):
@@ -67,17 +64,26 @@ def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedel
 
 
 def get_team_token(session: Session, team_name: str, team_password: str):
-    """Get authentication token for team login"""
-    team = session.exec(select(Team).where(Team.name == team_name)).one_or_none()
+    """Get authentication token for team login.
 
-    if not team:
+    Team names are only unique within an institution (see Team's composite
+    constraints), so a name can be shared across institutions. Login has no
+    institution context, so we match on name + password: try every team with
+    this name and authenticate the one whose password verifies. Two teams with
+    an identical name *and* password is the only ambiguous case; the first match
+    wins, which is acceptable and no worse than the old global-unique rule.
+    """
+    teams = session.exec(select(Team).where(Team.name == team_name)).all()
+
+    if not teams:
         raise InvalidCredentialsError(f"Team '{team_name}' not found")
 
-    if not team.verify_password(team_password):
-        raise InvalidCredentialsError("Invalid team password")
+    for team in teams:
+        if team.verify_password(team_password):
+            access_token = mint_team_token(team)
+            return {"access_token": access_token, "token_type": "bearer"}
 
-    access_token = mint_team_token(team)
-    return {"access_token": access_token, "token_type": "bearer"}
+    raise InvalidCredentialsError("Invalid team password")
 
 
 def get_admin_token(session: Session, username: str, password: str):
@@ -115,13 +121,7 @@ def get_institution_token(session: Session, institution_name: str, password: str
     if subscription is None or not subscription.subscription_active:
         raise InvalidCredentialsError("Institution subscription is not active")
 
-    # Check if subscription has expired - get current time with same timezone awareness
-    now = datetime.now()
-    if subscription.subscription_expiry.tzinfo:
-        # If expiry has timezone info, localize current time
-        now = AUSTRALIA_SYDNEY_TZ.localize(now)
-
-    if subscription.subscription_expiry < now:
+    if ensure_utc(subscription.subscription_expiry) < utc_now():
         # Update subscription_active to False
         subscription.subscription_active = False
         session.add(subscription)
@@ -161,7 +161,7 @@ def verify_agent_api_key(session: Session, api_key: str):
         )
 
     # Update last used timestamp
-    api_key_record.last_used = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    api_key_record.last_used = utc_now()
     session.commit()
 
     access_token = mint_team_token(

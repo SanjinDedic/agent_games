@@ -15,7 +15,7 @@ import io
 import os
 import time
 import traceback as tb
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from billiard.exceptions import WorkerLostError
@@ -27,6 +27,7 @@ from backend.games.base_game import PlayerConstructionError
 from backend.games.game_factory import GameFactory
 from backend.tasks.celery_app import celery_app
 from backend.tasks.celery_utils import poll_task_result
+from backend.time_utils import utc_now
 
 # Universal hard cap for agent validation (single game + simulations).
 # Env-overridable so the test compose can shorten the timeout-path tests
@@ -142,8 +143,8 @@ def run_validation(
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
             test_league = League(
                 name="validation_leagueX",
-                created_date=datetime.now(),
-                expiry_date=datetime.now() + timedelta(days=1),
+                created_date=utc_now(),
+                expiry_date=utc_now() + timedelta(days=1),
                 game=game_name,
             )
             game_class = GameFactory.get_game_class(game_name)

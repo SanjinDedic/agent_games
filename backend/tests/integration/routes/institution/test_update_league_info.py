@@ -1,14 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlmodel import Session
 
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
@@ -17,9 +16,9 @@ def info_setup(db_session: Session) -> tuple:
         name="info_test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -29,8 +28,8 @@ def info_setup(db_session: Session) -> tuple:
 
     league = League(
         name="info_test_league",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -85,9 +84,9 @@ def test_update_league_info_cross_institution_rejected(client, info_setup, db_se
         name="other_info_institution",
         contact_person="Other",
         contact_email="other@example.com",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -97,8 +96,8 @@ def test_update_league_info_cross_institution_rejected(client, info_setup, db_se
 
     other_league = League(
         name="other_info_league",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=other.id,
     )

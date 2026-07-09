@@ -1,10 +1,9 @@
 import logging
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List, Tuple
 
-import pytz
 from sqlmodel import Session, delete, select
 
 from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
@@ -22,9 +21,9 @@ from backend.database.db_models import (
 )
 from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.utils import get_games_names
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 def get_or_create_demo_institution(session: Session) -> Institution:
@@ -35,7 +34,7 @@ def get_or_create_demo_institution(session: Session) -> Institution:
 
     if not demo_institution:
         # Create a default institution for demo entities
-        now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+        now = utc_now()
         demo_institution = Institution(
             name="Demo Institution",
             contact_person="Demo Admin",
@@ -108,7 +107,7 @@ def create_demo_user(
         team_type=TeamType.STUDENT,
         is_demo=True,
         league_id=unassigned_league.id,
-        created_at=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_at=utc_now(),
         password_hash=get_password_hash(demo_password),
         institution_id=demo_institution.id,  # Use the real institution ID
     )
@@ -124,7 +123,7 @@ def create_demo_user(
 def save_demo_user_info(session: Session, username: str, email: str = None):
     """Save demo user information for tracking purposes"""
     demo_user_info = DemoUser(
-        username=username, email=email, created_at=datetime.now(AUSTRALIA_SYDNEY_TZ)
+        username=username, email=email, created_at=utc_now()
     )
 
     session.add(demo_user_info)
@@ -162,8 +161,8 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
     # Create new demo league
     demo_league = League(
         name=league_name,
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game=game_name,
         league_type=LeagueType.STUDENT,
         is_demo=True,
@@ -202,7 +201,7 @@ def cleanup_old_demo_submissions(
     session: Session, age_minutes: int = DEMO_TOKEN_EXPIRY_MINUTES
 ):
     """Delete all submissions from demo users older than the specified age"""
-    cutoff_time = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=age_minutes)
+    cutoff_time = utc_now() - timedelta(minutes=age_minutes)
 
     # Get all demo teams
     demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
@@ -236,7 +235,7 @@ def cleanup_old_demo_submissions(
 
 def cleanup_expired_demo_users(session: Session, age_minutes: int = DEMO_TOKEN_EXPIRY_MINUTES):
     """Delete demo users older than the specified age"""
-    cutoff_time = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=age_minutes)
+    cutoff_time = utc_now() - timedelta(minutes=age_minutes)
 
     # Find expired demo users
     expired_users = session.exec(

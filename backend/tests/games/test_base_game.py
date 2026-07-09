@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 
 from backend.database.db_models import League
 from backend.games.base_game import BaseGame
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -12,8 +13,8 @@ def test_league(db_session):
     league = League(
         name="test_league",
         game="prisoners_dilemma",  # Use real game type
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=1),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=1),
     )
     db_session.add(league)
     db_session.commit()

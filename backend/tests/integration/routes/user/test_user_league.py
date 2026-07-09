@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -7,6 +7,7 @@ from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_by_id
 from backend.tests.conftest import make_student_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -32,8 +33,8 @@ def setup_leagues(db_session: Session, test_institution: Institution) -> dict:
     if not comp_test:
         comp_test = League(
             name="comp_test",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
             game="greedy_pig",
             institution_id=test_institution.id,
         )
@@ -48,8 +49,8 @@ def setup_leagues(db_session: Session, test_institution: Institution) -> dict:
     if not pd_league:
         pd_league = League(
             name="pd_test",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
             game="prisoners_dilemma",
             institution_id=test_institution.id,
         )

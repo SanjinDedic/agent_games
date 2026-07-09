@@ -1,9 +1,8 @@
 """Tests for demo cleanup functions and edge cases in demo_db.py."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -24,14 +23,14 @@ from backend.routes.demo.demo_db import (
     cleanup_old_demo_submissions,
     get_or_create_demo_institution,
 )
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
 def demo_setup(db_session: Session) -> dict:
     """Create demo infrastructure: institution, league, demo team with submissions."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
 
     demo_inst = get_or_create_demo_institution(db_session)
     db_session.commit()

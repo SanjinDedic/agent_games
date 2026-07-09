@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import League, SimulationResult, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -13,8 +14,8 @@ def setup_test_league(db_session: Session) -> League:
     league = League(
         name="game_test_league",
         game="prisoners_dilemma",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
     )
     db_session.add(league)
     db_session.commit()
@@ -50,7 +51,7 @@ def setup_simulation_results(
     # Create simulation with markdown feedback
     sim1 = SimulationResult(
         league_id=setup_test_league.id,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         num_simulations=100,
         custom_rewards="[10, 8, 6, 4, 2]",
         feedback_str="# Test Results\n\n- Great performance by team 1\n- Team 2 needs improvement",
@@ -61,7 +62,7 @@ def setup_simulation_results(
     # Create simulation with JSON feedback
     sim2 = SimulationResult(
         league_id=setup_test_league.id,
-        timestamp=datetime.now() + timedelta(hours=1),
+        timestamp=utc_now() + timedelta(hours=1),
         num_simulations=100,
         custom_rewards="[10, 8, 6, 4, 2]",
         feedback_json='{"analysis": {"top_team": "Team 1", "improvements": ["Team 2 strategy", "Team 3 consistency"]}}',

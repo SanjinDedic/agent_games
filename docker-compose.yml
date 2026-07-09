@@ -6,7 +6,11 @@ services:
       args:
         - RUNTIME_PACKAGES=postgresql18-client
     # Dev: single-worker uvicorn with hot reload. Production uses the Dockerfile CMD (gunicorn).
-    command: uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
+    # backend/entrypoint.sh runs the one-shot pre-start (init_db + SQL migrations,
+    # idempotent, never run from the app lifespan) then execs the server passed to it.
+    # docker-compose.test.yml overrides this to run uvicorn directly (no entrypoint) —
+    # the test suite owns the test schema.
+    command: sh backend/entrypoint.sh uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     # Non-secret config only. Mirrors config/deploy.yml env.clear.

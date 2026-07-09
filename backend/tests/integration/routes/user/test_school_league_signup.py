@@ -1,11 +1,10 @@
 """Tests for school-league flow: GET /user/league-info and POST /user/direct-school-league-signup."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-import pytz
 from jose import jwt
 from sqlmodel import Session, select
 
@@ -18,14 +17,14 @@ from backend.database.db_models import (
     TeamType,
 )
 from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
+from backend.time_utils import utc_now
 
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 @pytest.fixture
 def school_league_fixture(db_session: Session) -> dict:
     """Create an institution + a school league with a valid signup token."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
 
     institution = build_institution(
         name="School League Test School",
@@ -65,7 +64,7 @@ def school_league_fixture(db_session: Session) -> dict:
 
 @pytest.fixture
 def non_school_league_fixture(db_session: Session) -> dict:
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()
@@ -89,7 +88,7 @@ def non_school_league_fixture(db_session: Session) -> dict:
 
 @pytest.fixture
 def expired_school_league_fixture(db_session: Session) -> dict:
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()
@@ -247,21 +246,35 @@ def test_direct_school_signup_invalid_token(client):
     assert body["status"] == "error"
 
 
-def test_direct_school_signup_skips_cross_league_collision(
+def test_direct_school_signup_skips_same_institution_cross_league(
     client, school_league_fixture, db_session
 ):
-    """A WillettonSHS1 in another league forces the counter to skip."""
-    other_league = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).first()
-    pre_existing = Team(
-        name="WillettonSHS1",
-        school_name="Willetton SHS",
-        password_hash="hash",
-        league_id=other_league.id,
-        team_type=TeamType.STUDENT,
+    """A WillettonSHS1 in another league of the SAME institution forces the
+    counter to skip — names are unique per-institution across its leagues."""
+    institution = school_league_fixture["institution"]
+    now = utc_now()
+    other_league = League(
+        name="other_league_same_institution",
+        created_date=now,
+        expiry_date=now + timedelta(days=7),
+        game="greedy_pig",
+        institution_id=institution.id,
+        league_type=LeagueType.INSTITUTION,
     )
-    db_session.add(pre_existing)
+    db_session.add(other_league)
+    db_session.commit()
+    db_session.refresh(other_league)
+
+    db_session.add(
+        Team(
+            name="WillettonSHS1",
+            school_name="Willetton SHS",
+            password_hash="hash",
+            league_id=other_league.id,
+            institution_id=institution.id,
+            team_type=TeamType.STUDENT,
+        )
+    )
     db_session.commit()
 
     resp = client.post(
@@ -274,6 +287,41 @@ def test_direct_school_signup_skips_cross_league_collision(
     )
     assert resp.status_code == 200
     assert resp.json()["data"]["team_name"] == "WillettonSHS2"
+
+
+def test_direct_school_signup_reuses_name_across_institutions(
+    client, school_league_fixture, db_session
+):
+    """A WillettonSHS1 in a DIFFERENT institution does NOT force a skip; the
+    school team reuses WillettonSHS1 within its own institution."""
+    admin_institution = db_session.exec(
+        select(Institution).where(Institution.name == "Admin Institution")
+    ).first()
+    other_league = db_session.exec(
+        select(League).where(League.name == "unassigned")
+    ).first()
+    db_session.add(
+        Team(
+            name="WillettonSHS1",
+            school_name="Willetton SHS",
+            password_hash="hash",
+            league_id=other_league.id,
+            institution_id=admin_institution.id,
+            team_type=TeamType.STUDENT,
+        )
+    )
+    db_session.commit()
+
+    resp = client.post(
+        "/user/direct-school-league-signup",
+        json={
+            "signup_token": school_league_fixture["signup_token"],
+            "school_name": "Willetton SHS",
+            "password": "pw",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"]["team_name"] == "WillettonSHS1"
 
 
 def test_direct_league_signup_still_works_for_non_school_league(
@@ -301,7 +349,7 @@ def test_direct_league_signup_still_works_for_non_school_league(
 @pytest.fixture
 def sheet_backed_league_fixture(db_session: Session) -> dict:
     """A school league whose schools_config points at a Google Sheet URL."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     institution = db_session.exec(
         select(Institution).where(Institution.name == "Admin Institution")
     ).first()

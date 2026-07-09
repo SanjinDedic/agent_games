@@ -84,30 +84,33 @@ async def test_get_service_logs():
 
 
 def test_check_database_status_skipped_in_test_env(mock_logger, monkeypatch):
-    """Under DB_ENVIRONMENT=test the check must not touch the DB or auto-init —
-    the test suite owns that schema and concurrent init can deadlock a run."""
+    """Under DB_ENVIRONMENT=test the check must not touch the DB — the test
+    suite owns that schema (conftest drops, creates and truncates it at will)."""
     monkeypatch.setenv("DB_ENVIRONMENT", "test")
 
-    with patch("backend.api.get_db_engine") as mock_engine, \
-         patch("backend.api.initialize_database") as mock_init:
+    with patch("backend.api.get_db_engine") as mock_engine:
         check_database_status()
     mock_engine.assert_not_called()
-    mock_init.assert_not_called()
     mock_logger.warning.assert_any_call(
-        "DB_ENVIRONMENT=test — skipping database check/auto-init"
+        "DB_ENVIRONMENT=test — skipping database check"
     )
 
 
 def test_check_database_status_empty_db(mock_logger, non_test_env):
-    """When admin count is 0, auto-init succeeds."""
+    """When admin count is 0, warns and points at the manual init command.
+    It must NOT auto-init: every gunicorn worker runs this concurrently."""
     mock_session = MagicMock()
     mock_session.exec.return_value.first.return_value = (0,)
 
     with patch("backend.api.get_db_engine"), \
          patch("backend.api.Session", return_value=MagicMock(__enter__=lambda s: mock_session, __exit__=lambda *a: None)), \
-         patch("backend.api.initialize_database", return_value=True):
+         patch("backend.database.init_db.initialize_database") as mock_init:
         check_database_status()
-    mock_logger.warning.assert_any_call("No admin users found. Initializing database...")
+    mock_init.assert_not_called()
+    mock_logger.warning.assert_any_call("\U0001f6a8 DATABASE APPEARS EMPTY")
+    mock_logger.warning.assert_any_call(
+        "Run manually: python -m backend.database.init_db"
+    )
 
 
 def test_check_database_status_populated_db(mock_logger, non_test_env):
@@ -118,58 +121,21 @@ def test_check_database_status_populated_db(mock_logger, non_test_env):
     with patch("backend.api.get_db_engine"), \
          patch("backend.api.Session", return_value=MagicMock(__enter__=lambda s: mock_session, __exit__=lambda *a: None)):
         check_database_status()
-    mock_logger.warning.assert_any_call("\u2705 DATABASE PROPERLY INITIALIZED")
-
-
-def test_check_database_status_init_fails(mock_logger, non_test_env):
-    """When init returns False, logs failure."""
-    mock_session = MagicMock()
-    mock_session.exec.return_value.first.return_value = (0,)
-
-    with patch("backend.api.get_db_engine"), \
-         patch("backend.api.Session", return_value=MagicMock(__enter__=lambda s: mock_session, __exit__=lambda *a: None)), \
-         patch("backend.api.initialize_database", return_value=False):
-        check_database_status()
-    mock_logger.warning.assert_any_call("\u274c DATABASE INITIALIZATION FAILED")
-
-
-def test_check_database_status_init_exception(mock_logger, non_test_env):
-    """When init raises exception, logs error."""
-    mock_session = MagicMock()
-    mock_session.exec.return_value.first.return_value = (0,)
-
-    with patch("backend.api.get_db_engine"), \
-         patch("backend.api.Session", return_value=MagicMock(__enter__=lambda s: mock_session, __exit__=lambda *a: None)), \
-         patch("backend.api.initialize_database", side_effect=RuntimeError("init boom")):
-        check_database_status()
-    mock_logger.warning.assert_any_call("\u274c DATABASE INITIALIZATION ERROR: init boom")
+    mock_logger.warning.assert_any_call("✅ DATABASE PROPERLY INITIALIZED")
 
 
 def test_check_database_status_tables_missing(mock_logger, non_test_env):
-    """When DB query fails (tables don't exist), tries auto-init."""
+    """When the DB query fails (tables don't exist), warns and points at the
+    manual init command without raising — and must NOT auto-init."""
     with patch("backend.api.get_db_engine"), \
          patch("backend.api.Session", side_effect=Exception("relation does not exist")), \
-         patch("backend.api.initialize_database", return_value=True):
+         patch("backend.database.init_db.initialize_database") as mock_init:
         check_database_status()
+    mock_init.assert_not_called()
     mock_logger.warning.assert_any_call("\U0001f6a8 DATABASE CHECK FAILED")
-
-
-def test_check_database_status_tables_missing_init_fails(mock_logger, non_test_env):
-    """When tables don't exist and init returns False."""
-    with patch("backend.api.get_db_engine"), \
-         patch("backend.api.Session", side_effect=Exception("no table")), \
-         patch("backend.api.initialize_database", return_value=False):
-        check_database_status()
-    mock_logger.warning.assert_any_call("\u274c DATABASE INITIALIZATION FAILED")
-
-
-def test_check_database_status_tables_missing_init_exception(mock_logger, non_test_env):
-    """When tables don't exist and init raises exception."""
-    with patch("backend.api.get_db_engine"), \
-         patch("backend.api.Session", side_effect=Exception("no table")), \
-         patch("backend.api.initialize_database", side_effect=RuntimeError("boom")):
-        check_database_status()
-    mock_logger.warning.assert_any_call("\u274c DATABASE INITIALIZATION ERROR: boom")
+    mock_logger.warning.assert_any_call(
+        "Run manually: python -m backend.database.init_db"
+    )
 
 
 @pytest.mark.asyncio

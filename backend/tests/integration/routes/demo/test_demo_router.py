@@ -1,14 +1,15 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.routes.auth.auth_config import AUSTRALIA_SYDNEY_TZ, DEMO_TOKEN_EXPIRY_MINUTES
+from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.database.db_models import DemoUser, League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -35,8 +36,8 @@ def demo_league(db_session: Session) -> League:
     if not league:
         league = League(
             name="greedy_pig_demo",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
             game="greedy_pig",
             is_demo=True,
         )
@@ -58,8 +59,8 @@ def demo_team(db_session: Session) -> Team:
     if not unassigned:
         unassigned = League(
             name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
             game="greedy_pig",
         )
         db_session.add(unassigned)
@@ -152,7 +153,7 @@ def test_demo_leagues_creation(client: TestClient, db_session: Session):
     for league in demo_leagues:
         assert league.name.endswith("_demo")
         assert league.is_demo is True
-        assert league.expiry_date > datetime.now(AUSTRALIA_SYDNEY_TZ)
+        assert league.expiry_date > utc_now()
 
 
 def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):

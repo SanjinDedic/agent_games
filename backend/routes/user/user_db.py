@@ -1,9 +1,7 @@
-import json
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Dict, Optional
 
-import pytz
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
@@ -14,6 +12,7 @@ from backend.database.db_models import (
     TeamType,
     SimulationResult,
 )
+from backend.time_utils import ensure_utc, utc_now
 from backend.utils import process_simulation_results
 
 
@@ -24,7 +23,6 @@ class TeamError(Exception):
 
 
 logger = logging.getLogger(__name__)
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 
 class SubmissionLimitExceededError(Exception):
@@ -51,7 +49,7 @@ def allow_submission(session: Session, team_id: int) -> bool:
     if not team:
         raise TeamNotFoundError(f"Team with ID {team_id} not found")
 
-    one_minute_ago = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(minutes=1)
+    one_minute_ago = utc_now() - timedelta(minutes=1)
     recent_submissions = session.exec(
         select(SubmissionMetadata)
         .where(SubmissionMetadata.team_id == team_id)
@@ -79,7 +77,7 @@ def record_failed_submission(
     meta = SubmissionMetadata(
         team_id=team_id,
         league_id=league_id,
-        timestamp=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        timestamp=utc_now(),
         duration_ms=duration_ms,
         hint_included=hint_included,
     )
@@ -97,7 +95,7 @@ def save_submission(
     hint_included: bool = False,
 ) -> int:
     """Record a validated attempt: metadata row plus linked code row."""
-    now = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    now = utc_now()
     meta = SubmissionMetadata(
         team_id=team_id,
         league_id=league_id,
@@ -143,59 +141,23 @@ def get_published_result(session: Session, league_name: str) -> dict:
     if not league:
         raise LeagueNotFoundError(f"League '{league_name}' not found")
 
-    active = False
-    expiry_date = league.expiry_date
-    if expiry_date.tzinfo is None:
-        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
-    if expiry_date > datetime.now(AUSTRALIA_SYDNEY_TZ):
-        active = True
+    active = ensure_utc(league.expiry_date) > utc_now()
 
     for sim in league.simulation_results:
         if sim.published:
-            total_points = {}
-            table = {}
-            num_simulations = sim.num_simulations
-            for result in sim.simulation_results:
-                total_points[result.team.name] = result.score
-                for i in range(1, 4):
-                    value_name = getattr(result, f"custom_value{i}_name")
-                    value = getattr(result, f"custom_value{i}")
-                    if value_name:
-                        if value_name not in table:
-                            table[value_name] = {}
-                        table[value_name][result.team.name] = value
-
-            feedback = None
-            if sim.feedback_str is not None:
-                feedback = sim.feedback_str
-            elif sim.feedback_json is not None:
-                feedback = json.loads(sim.feedback_json)
-
-            return {
-                "league_name": league_name,
-                "id": sim.id,
-                "total_points": total_points,
-                "table": table,
-                "num_simulations": num_simulations,
-                "active": active,
-                "rewards": json.loads(sim.custom_rewards),
-                "feedback": feedback,
-            }
+            return process_simulation_results(sim, league_name, active)
 
     return None
 
 
 def get_all_published_results(session: Session) -> dict:
     """Get all published results across leagues"""
-    current_time = datetime.now(AUSTRALIA_SYDNEY_TZ)
+    current_time = utc_now()
     all_results = []
 
     leagues = session.exec(select(League)).all()
     for league in leagues:
-        expiry_date = league.expiry_date
-        if expiry_date.tzinfo is None:
-            expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
-        active = expiry_date >= current_time
+        active = ensure_utc(league.expiry_date) >= current_time
 
         for sim in league.simulation_results:
             if sim.published:
@@ -211,10 +173,7 @@ def get_all_published_results_for_league(session: Session, league_id: int) -> di
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-    expiry_date = league.expiry_date
-    if expiry_date.tzinfo is None:
-        expiry_date = AUSTRALIA_SYDNEY_TZ.localize(expiry_date)
-    active = expiry_date >= datetime.now(AUSTRALIA_SYDNEY_TZ)
+    active = ensure_utc(league.expiry_date) >= utc_now()
 
     results = [
         process_simulation_results(sim, league.name, active)
@@ -406,8 +365,18 @@ def create_team_and_assign_to_league(
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-    # Check if team name already exists
-    existing_team = session.exec(select(Team).where(Team.name == team_name)).first()
+    # Check if team name already exists within scope. Names are unique
+    # per-institution (a bare name check would wrongly reject a name already
+    # used by a different institution). Fall back to the league when the league
+    # has no institution, matching the (name, league_id) secondary constraint.
+    name_conflict = select(Team).where(Team.name == team_name)
+    if league.institution_id is not None:
+        name_conflict = name_conflict.where(
+            Team.institution_id == league.institution_id
+        )
+    else:
+        name_conflict = name_conflict.where(Team.league_id == league_id)
+    existing_team = session.exec(name_conflict).first()
 
     if existing_team:
         raise TeamError(f"Team with name '{team_name}' already exists")

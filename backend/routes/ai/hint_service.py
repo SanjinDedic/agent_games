@@ -1,4 +1,3 @@
-import datetime
 import logging
 import os
 from typing import Optional
@@ -15,6 +14,7 @@ from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for
 )
 from backend.routes.ai.hint_context import build_hint_context_from_response
 from backend.routes.ai.hint_prompt import SYSTEM_PROMPT
+from backend.time_utils import ensure_utc, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +84,8 @@ def hint_available(session: Session, team: Team) -> bool:
 
     passed_submission_count = next_submission_idx >= (last_submission_idx + SUBMISSIONS_BETWEEN_HINTS)
 
-    current_time = datetime.datetime.now(tz = datetime.timezone.utc)
-    last_time = all_subs[last_submission_idx].timestamp
+    current_time = utc_now()
+    last_time = ensure_utc(all_subs[last_submission_idx].timestamp)
     delta = current_time - last_time
 
     passed_cooldown = delta.total_seconds() >= HINT_COOLDOWN

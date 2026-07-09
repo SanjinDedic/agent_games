@@ -24,8 +24,10 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 # docker-compose.override.yml is applied automatically: it wraps the api in debugpy (port 5678)
 docker compose up -d
 
-# First-time DB init
-docker compose exec api python -m backend.database.init_db
+# On api-container start, backend/entrypoint.sh runs the one-shot pre-start
+# (idempotent, advisory-locked) before the server: init_db seeds the schema, then
+# every backend/migrations/*.sql is applied. To re-run the whole sequence:
+docker compose restart api
 
 docker compose down   # Stop all containers
 ```
@@ -41,7 +43,7 @@ npm run build    # Production build
 ```
 
 ### Database migrations
-`backend/migrations/` holds dated SQL migration files, applied to existing databases via `apply.sh`. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production.
+`backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production, and keep it in sync with the model if you later refactor those columns (a migration that `ALTER`s a table the model no longer matches becomes schema drift).
 
 ## Architecture
 
@@ -66,6 +68,7 @@ The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits th
 - `tasks/` — All Celery code: `celery_app.py` (broker config, queue routing, worker settings), `celery_utils.py` (result polling), `validation_task.py` and `simulation_task.py` (the tasks)
 - `Dockerfile` — shared image for api/workers/test-runner (build context is repo root)
 - `config.py` — Central config: dynamic game discovery (`GAMES`), league expiry settings, Stripe keys, secrets
+- `time_utils.py` — The only place time/timezones are handled. All datetimes are aware UTC: get "now" via `utc_now()` (never `datetime.now()`/`datetime.utcnow()`), normalize boundary values with `ensure_utc()` (naive == UTC) or `interpret_as_sydney()` (naive user-typed dates == Sydney), convert for display with `to_sydney()`. DB columns are `TIMESTAMPTZ`; the frontend renders Sydney via moment-timezone. The Alpine image has no system tz database, so the `tzdata` PyPI package is a required dependency.
 
 Python dependencies are managed with uv (`pyproject.toml` / `uv.lock`), Python 3.14.
 

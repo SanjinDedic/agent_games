@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -16,9 +17,9 @@ def institution_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -159,15 +160,19 @@ def test_team_create_failures(client, institution_setup, db_session):
     assert response.status_code == 403
 
 
-def test_team_create_global_duplicate(client, institution_setup, db_session):
-    """Team name that exists in another institution triggers IntegrityError → TeamError."""
+def test_team_create_name_reuse_across_institutions(client, institution_setup, db_session):
+    """The same team name is allowed in two different institutions (multi-tenant).
+
+    Team names are unique per-institution, not globally, so a name taken in one
+    institution can be reused freely by another.
+    """
     institution, _, headers = institution_setup
 
     # Create a team in this institution
     response = client.post(
         "/institution/team-create",
         headers=headers,
-        json={"name": "globally_unique_team", "password": "pass", "school_name": "School A"},
+        json={"name": "shared_team_name", "password": "pass", "school_name": "School A"},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "success"
@@ -177,9 +182,9 @@ def test_team_create_global_duplicate(client, institution_setup, db_session):
         name="other_inst_for_dup_test",
         contact_person="Other",
         contact_email="other@test.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -192,13 +197,32 @@ def test_team_create_global_duplicate(client, institution_setup, db_session):
         expires_delta=timedelta(minutes=30),
     )
 
-    # Try creating team with same name in different institution — hits DB unique constraint
+    # Same name in a different institution now succeeds.
     response = client.post(
         "/institution/team-create",
         headers={"Authorization": f"Bearer {other_token}"},
-        json={"name": "globally_unique_team", "password": "pass", "school_name": "School B"},
+        json={"name": "shared_team_name", "password": "pass", "school_name": "School B"},
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "error"
-    assert "data constraints" in data["message"].lower() or "already exists" in data["message"].lower()
+    assert data["status"] == "success"
+
+    # Both teams exist, one per institution.
+    teams = db_session.exec(
+        select(Team).where(Team.name == "shared_team_name")
+    ).all()
+    assert {t.institution_id for t in teams} == {institution.id, other.id}
+
+
+def test_team_create_duplicate_within_institution_rejected(client, institution_setup):
+    """A name already used within the same institution is still rejected."""
+    _, _, headers = institution_setup
+
+    payload = {"name": "same_inst_team", "password": "pass", "school_name": "School"}
+    first = client.post("/institution/team-create", headers=headers, json=payload)
+    assert first.json()["status"] == "success"
+
+    second = client.post("/institution/team-create", headers=headers, json=payload)
+    assert second.status_code == 200
+    assert second.json()["status"] == "error"
+    assert "already exists" in second.json()["message"].lower()

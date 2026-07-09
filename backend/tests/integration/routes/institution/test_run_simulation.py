@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +9,7 @@ from backend.tests.conftest import add_submission, build_institution
 from backend.database.db_models import (Institution, League, SimulationResult,
                                         Team)
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 def create_test_league_with_teams(db_session: Session, institution_id: int) -> League:
@@ -17,8 +18,8 @@ def create_test_league_with_teams(db_session: Session, institution_id: int) -> L
     league = League(
         name="inst_sim_test_league",
         game="prisoners_dilemma",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         institution_id=institution_id,
     )
     db_session.add(league)
@@ -47,7 +48,7 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         return "collude"
 """,
-            timestamp=datetime.now(),
+            timestamp=utc_now(),
             team_id=team.id,
         )
 
@@ -63,9 +64,9 @@ def simulation_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,  # Enable docker access
         password_hash="test_hash",
     )

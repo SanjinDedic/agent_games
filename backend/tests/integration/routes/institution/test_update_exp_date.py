@@ -1,15 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-import pytz
 from sqlmodel import Session, select
 
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 # Define the timezone used in your application
-AUSTRALIA_SYDNEY_TZ = pytz.timezone("Australia/Sydney")
 
 @pytest.fixture
 def expiry_setup(db_session: Session) -> tuple:
@@ -19,9 +18,9 @@ def expiry_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -32,8 +31,8 @@ def expiry_setup(db_session: Session) -> tuple:
     # Create a league with timezone-aware dates
     league = League(
         name="expiry_test_league",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=1),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=1),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -64,7 +63,7 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
     initial_expiry = league.expiry_date
 
     # Test case 1: Update expiry to future date - use timezone-aware datetime
-    new_expiry = datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=14)
+    new_expiry = utc_now() + timedelta(days=14)
     response = client.post(
         "/institution/update-expiry-date",
         headers=headers,
@@ -85,7 +84,7 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
     assert league.expiry_date > initial_expiry
 
     # Test case 2: Change to an even later date - use timezone-aware datetime
-    later_expiry = datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=30)
+    later_expiry = utc_now() + timedelta(days=30)
     response = client.post(
         "/institution/update-expiry-date",
         headers=headers,
@@ -109,7 +108,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
     institution, league, _, headers = expiry_setup
 
     # Test case 1: Non-existent league
-    new_expiry = datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(
+    new_expiry = utc_now() + timedelta(
         days=7
     )  # Use timezone-aware
     response = client.post(
@@ -126,7 +125,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
     assert "not found" in data["message"].lower()
 
     # Test case 2: Past expiry date - use timezone-aware datetime
-    past_date = datetime.now(AUSTRALIA_SYDNEY_TZ) - timedelta(days=1)
+    past_date = utc_now() - timedelta(days=1)
     response = client.post(
         "/institution/update-expiry-date",
         headers=headers,
@@ -164,9 +163,9 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -175,8 +174,8 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
 
     other_league = League(
         name="other_league",
-        created_date=datetime.now(AUSTRALIA_SYDNEY_TZ),
-        expiry_date=datetime.now(AUSTRALIA_SYDNEY_TZ) + timedelta(days=1),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=1),
         game="greedy_pig",
         institution_id=other_institution.id,
     )

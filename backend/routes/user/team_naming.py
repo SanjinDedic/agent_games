@@ -17,20 +17,26 @@ logger = logging.getLogger(__name__)
 MAX_COLLISION_RETRIES = 10
 
 
-def next_available_team_name(session: Session, sanitized: str) -> str:
-    """Find the lowest N >= 1 such that f'{sanitized}{N}' is globally unused
-    as Team.name.
+def next_available_team_name(
+    session: Session, sanitized: str, institution_id: int
+) -> str:
+    """Find the lowest N >= 1 such that f'{sanitized}{N}' is unused as a
+    Team.name within ``institution_id``.
 
-    Counter scope: Team.name is globally unique, so this is effectively a
-    "next globally-unused N". In practice it matches per-league counting;
-    when the same sanitized school appears across leagues, N skips past
-    whichever numbers are already taken.
+    Counter scope: names are unique per-institution (the (name, institution_id)
+    composite constraint), so counting is scoped to the institution. This must
+    match the binding constraint — a league-scoped counter would keep proposing
+    "<school>1" for a fresh league and collide forever with the institution
+    constraint on retry. Each institution numbers its schools from 1
+    independently; the same school in two institutions both get "<school>1".
     """
     if not sanitized:
         raise ValueError("Sanitized school name is empty; cannot derive team name")
 
     existing = session.exec(
-        select(Team.name).where(Team.name.like(f"{sanitized}%"))
+        select(Team.name)
+        .where(Team.name.like(f"{sanitized}%"))
+        .where(Team.institution_id == institution_id)
     ).all()
 
     used = set()
@@ -66,7 +72,7 @@ def create_school_team(
         )
 
     for attempt in range(MAX_COLLISION_RETRIES):
-        candidate = next_available_team_name(session, sanitized)
+        candidate = next_available_team_name(session, sanitized, league.institution_id)
         try:
             team = Team(
                 name=candidate,

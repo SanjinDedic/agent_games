@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, Team
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -16,9 +17,9 @@ def delete_league_setup(db_session: Session) -> tuple:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -29,8 +30,8 @@ def delete_league_setup(db_session: Session) -> tuple:
     # Create a league to delete
     league = League(
         name="league_to_delete",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=institution.id,
     )
@@ -91,8 +92,8 @@ def test_delete_league_success(client, delete_league_setup, db_session):
         # Create unassigned league for this test
         unassigned_league = League(
             name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=365),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=365),
             game="greedy_pig",
             institution_id=institution.id,
         )
@@ -153,8 +154,8 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         # Create unassigned league for this test
         unassigned_league = League(
             name="unassigned",
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=365),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=365),
             game="greedy_pig",
             institution_id=institution.id,
         )
@@ -177,9 +178,9 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         name="other_institution",
         contact_person="Other Person",
         contact_email="other@example.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="test_hash",
     )
@@ -248,9 +249,9 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
         name="no_unassigned_inst",
         contact_person="Test",
         contact_email="test@test.com",
-        created_date=datetime.now(),
+        created_date=utc_now(),
         subscription_active=True,
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=True,
         password_hash="hash",
     )
@@ -269,8 +270,8 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
     # Create a league with a team and simulation results
     league = League(
         name="league_to_delete_no_unassigned",
-        created_date=datetime.now(),
-        expiry_date=datetime.now() + timedelta(days=7),
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         institution_id=inst.id,
     )
@@ -290,12 +291,12 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
     db_session.refresh(team)
 
     # Add submission
-    add_submission(db_session, code="# test", timestamp=datetime.now(), team_id=team.id)
+    add_submission(db_session, code="# test", timestamp=utc_now(), team_id=team.id)
 
     # Add simulation result with items
     sim = SimulationResult(
         league_id=league.id,
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         num_simulations=5,
         custom_rewards="[10,8,6]",
     )

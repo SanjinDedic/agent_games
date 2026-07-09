@@ -50,4 +50,8 @@ RUN chmod -R 755 /agent_games
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn backend.api:app --worker-class uvicorn.workers.UvicornWorker --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-300} --bind 0.0.0.0:8000 --access-logfile - --error-logfile - 2>&1 | tee -a /agent_games/logs/api.log"]
+# backend/entrypoint.sh runs the one-shot pre-start (schema init/seed + idempotent
+# SQL migrations), then execs the server — production gunicorn by default, or
+# whatever is passed as arguments (dev compose passes uvicorn --reload). Kept out
+# of the app lifespan: every gunicorn worker runs the lifespan, so init there races.
+CMD ["sh", "backend/entrypoint.sh"]

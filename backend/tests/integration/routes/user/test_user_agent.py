@@ -1,13 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, delete, select
 
 from backend.database.db_models import League, Submission, SubmissionMetadata, Team
 from backend.database.submission_helpers import delete_submissions_for_teams
-from backend.routes.auth.auth_core import AUSTRALIA_SYDNEY_TZ, create_access_token
+from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_by_id
 from backend.tests.conftest import add_submission, make_student_token
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -22,8 +23,8 @@ def setup_test_league(db_session: Session) -> League:
         league = League(
             name="test_submit_league",
             game="prisoners_dilemma",  # Match the game type with test code
-            created_date=datetime.now(),
-            expiry_date=datetime.now() + timedelta(days=7),
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=7),
         )
         db_session.add(league)
         db_session.commit()
@@ -192,12 +193,12 @@ def test_get_league_submissions_success(
 
     # Add some test submissions
     add_submission(
-        db_session, code="test code 1", timestamp=datetime.now(), team_id=setup_test_team.id
+        db_session, code="test code 1", timestamp=utc_now(), team_id=setup_test_team.id
     )
     add_submission(
         db_session,
         code="test code 2",
-        timestamp=datetime.now() + timedelta(minutes=1),
+        timestamp=utc_now() + timedelta(minutes=1),
         team_id=setup_test_team.id,
     )
     db_session.commit()
@@ -271,7 +272,7 @@ def test_get_team_submission_success(
     add_submission(
         db_session,
         code="old code",
-        timestamp=datetime.now(),
+        timestamp=utc_now(),
         team_id=team.id,
         league_id=team.league_id,
     )
@@ -280,7 +281,7 @@ def test_get_team_submission_success(
     add_submission(
         db_session,
         code="latest code",
-        timestamp=datetime.now() + timedelta(minutes=1),
+        timestamp=utc_now() + timedelta(minutes=1),
         team_id=team.id,
         league_id=team.league_id,
     )

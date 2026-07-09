@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import requests
@@ -80,7 +80,7 @@ class ResultsManager:
 
             # Add metadata to result
             result["id"] = self.get_next_id()
-            result["timestamp"] = datetime.now().isoformat()
+            result["timestamp"] = datetime.now(timezone.utc).isoformat()
 
             data["results"].append(result)
 

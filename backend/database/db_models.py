@@ -7,6 +7,8 @@ import bcrypt as _bcrypt
 from sqlalchemy import JSON, Column, DateTime, String, Text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
+from backend.time_utils import utc_now
+
 # Test runs set BCRYPT_ROUNDS=4 so runtime hashing costs ~1ms instead of ~170ms.
 _BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
 
@@ -146,7 +148,12 @@ class Admin(SQLModel, table=True):
 
 class Team(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    name: str = Field(unique=True, index=True)
+    # Not globally unique: names are scoped per-institution by the composite
+    # constraints below, so different institutions can reuse a name like
+    # "Team A". A name is the team's stable identity within its institution as
+    # it moves between leagues. The index stays for name lookups (login,
+    # simulation attribution).
+    name: str = Field(index=True)
     school_name: str
     password_hash: str | None = None  # Optional for agent teams
     score: int = Field(default=0)
@@ -164,10 +171,17 @@ class Team(SQLModel, table=True):
     institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
     institution: Optional["Institution"] = Relationship(back_populates="teams")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
-    __table_args__ = (UniqueConstraint("name", "league_id"),)
+    # Primary rule: a team name is unique within an institution. The
+    # (name, league_id) constraint is a secondary guard for teams whose league
+    # has no institution (institution_id NULL) — Postgres treats NULLs as
+    # distinct in a unique constraint, so the institution rule can't cover them.
+    __table_args__ = (
+        UniqueConstraint("name", "institution_id"),
+        UniqueConstraint("name", "league_id"),
+    )
 
     def set_password(self, password: str):
         self.password_hash = get_password_hash(password)
@@ -253,7 +267,7 @@ class AgentAPIKey(SQLModel, table=True):
     )  # Ensures one API key per team
     team: Team = Relationship(back_populates="api_key")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
     last_used: datetime | None = None
     is_active: bool = Field(default=True)
@@ -266,10 +280,10 @@ class AIProviderKey(SQLModel, table=True):
     provider: str = Field(unique=True, index=True)  # e.g. "openai"
     api_key: str = Field(sa_column=Column(Text()))
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
 
@@ -312,10 +326,10 @@ class SupportTicket(SQLModel, table=True):
         default=None, foreign_key="institution.id", index=True
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
     team: Optional["Team"] = Relationship()
@@ -334,7 +348,7 @@ class SupportTicketAttachment(SQLModel, table=True):
     size_bytes: int
     original_filename: str
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True))
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
 
     ticket: SupportTicket = Relationship(back_populates="attachments")

@@ -5,6 +5,9 @@ services:
   api:
     environment:
       - DB_ENVIRONMENT=test
+    # Runs uvicorn directly, deliberately NOT via backend/entrypoint.sh: the test
+    # suite owns the test schema (built fresh from the models by conftest), so the
+    # api must not run init_db/seed or migrations against agent_games_test.
     command: uvicorn backend.api:app --host 0.0.0.0 --port 8000
   worker-validation:
     environment:

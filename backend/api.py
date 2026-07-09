@@ -16,84 +16,50 @@ from backend.routes.institution.institution_router import institution_router
 from backend.routes.payments.payments_router import payments_router
 from backend.routes.support.support_router import support_router
 from backend.routes.user.user_router import user_router
-from sqlmodel import SQLModel, Session, text
+from sqlmodel import Session, text
 
 from backend.database.db_session import get_db_engine
-from backend.database.init_db import initialize_database
 
 logger = logging.getLogger(__name__)
 
 
 def check_database_status():
-    """Check if database is initialized and warn if its not"""
+    """Read-only boot check: log whether the database looks initialized.
+
+    Must never run DDL or seed data — the lifespan executes in every gunicorn
+    worker process, so init here races across workers. Schema init/seed is a
+    one-shot pre-start step (python -m backend.database.init_db) run by the
+    container command before the server starts.
+    """
     if os.environ.get("DB_ENVIRONMENT") == "test":
         # The test suite owns the test schema (conftest drops, creates and
-        # truncates it at will); auto-init from the api races those DDL
-        # statements and can deadlock an entire test run.
-        logger.warning("DB_ENVIRONMENT=test — skipping database check/auto-init")
+        # truncates it at will); a boot-time read can hit a half-built schema
+        # and log misleading warnings.
+        logger.warning("DB_ENVIRONMENT=test — skipping database check")
         return
     try:
         engine = get_db_engine()
         with Session(engine) as session:
             # Check if admin table exists and has data
             admin_count = session.exec(text("SELECT COUNT(*) FROM admin")).first()
-            if admin_count[0] == 0:
-                logger.warning("=" * 60)
-                logger.warning("🚨 DATABASE APPEARS EMPTY")
-                logger.warning("=" * 60)
-                logger.warning("No admin users found. Initializing database...")
-                logger.warning("=" * 60)
-
-                # Automatically initialize the database
-                try:
-                    if initialize_database():
-                        logger.warning("✅ DATABASE INITIALIZATION SUCCESSFUL")
-                        logger.warning("=" * 60)
-                    else:
-                        logger.warning("❌ DATABASE INITIALIZATION FAILED")
-                        logger.warning(
-                            "Please run manually: python -m backend.database.init_db"
-                        )
-                        logger.warning("=" * 60)
-                except Exception as init_error:
-                    logger.warning(f"❌ DATABASE INITIALIZATION ERROR: {init_error}")
-                    logger.warning(
-                        "Please run manually: python -m backend.database.init_db"
-                    )
-                    logger.warning("=" * 60)
-            else:
-                # Ensure any new tables are created (create_all is idempotent)
-                SQLModel.metadata.create_all(engine)
-                logger.warning("=" * 60)
-                logger.warning("✅ DATABASE PROPERLY INITIALIZED")
-                logger.warning("=" * 60)
-                logger.warning(f"Found {admin_count[0]} admin user(s) in database.")
-                logger.warning("=" * 60)
+        if admin_count[0] == 0:
+            logger.warning("=" * 60)
+            logger.warning("🚨 DATABASE APPEARS EMPTY")
+            logger.warning("No admin users found.")
+            logger.warning("Run manually: python -m backend.database.init_db")
+            logger.warning("=" * 60)
+        else:
+            logger.warning("=" * 60)
+            logger.warning("✅ DATABASE PROPERLY INITIALIZED")
+            logger.warning(f"Found {admin_count[0]} admin user(s) in database.")
+            logger.warning("=" * 60)
     except Exception as e:
         logger.warning("=" * 60)
         logger.warning("🚨 DATABASE CHECK FAILED")
-        logger.warning("=" * 60)
         logger.warning(f"Error: {e}")
-        logger.warning("Database tables may not exist. Initializing database...")
+        logger.warning("Database tables may not exist.")
+        logger.warning("Run manually: python -m backend.database.init_db")
         logger.warning("=" * 60)
-
-        # Automatically initialize the database when tables don't exist
-        try:
-            if initialize_database():
-                logger.warning("✅ DATABASE INITIALIZATION SUCCESSFUL")
-                logger.warning("=" * 60)
-            else:
-                logger.warning("❌ DATABASE INITIALIZATION FAILED")
-                logger.warning(
-                    "Please run manually: python -m backend.database.init_db"
-                )
-                logger.warning("=" * 60)
-        except Exception as init_error:
-            logger.warning(f"❌ DATABASE INITIALIZATION ERROR: {init_error}")
-            logger.warning(
-                "Please run manually: python -m backend.database.init_db"
-            )
-            logger.warning("=" * 60)
 
 
 @asynccontextmanager

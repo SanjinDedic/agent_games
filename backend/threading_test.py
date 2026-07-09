@@ -3,7 +3,6 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime
 from statistics import mean, stdev
 
 # Add project root to path
@@ -11,14 +10,15 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from backend.database.db_models import League
 from backend.games.prisoners_dilemma.prisoners_dilemma import PrisonersDilemmaGame
+from backend.time_utils import utc_now
 
 
 def create_test_league():
     """Create a test league for running simulations"""
     return League(
         name="test_league",
-        created_date=datetime.now(),
-        expiry_date=datetime.now(),
+        created_date=utc_now(),
+        expiry_date=utc_now(),
         game="prisoners_dilemma",
     )
 
@@ -104,7 +104,7 @@ def run_performance_comparison(simulation_counts=[10, 100, 1000], num_trials=3):
         "num_trials": num_trials,
         "comparisons": [],
         "test_parameters": {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_now().isoformat(),
         },
     }
 
@@ -133,7 +133,7 @@ def run_performance_comparison(simulation_counts=[10, 100, 1000], num_trials=3):
         print(f"  {comparison}")
 
     # Save results to file
-    filename = f'threading_benchmark_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+    filename = f'threading_benchmark_{utc_now().strftime("%Y%m%d_%H%M%S")}.json'
     with open(filename, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nDetailed results saved to {filename}")

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 from botocore.exceptions import ClientError
+from backend.time_utils import utc_now
 
 
 # ─── _parse_db_url ────────────────────────────────────────────────────────────
@@ -164,7 +165,7 @@ def test_prune_backups_deletes_only_expired(mock_s3):
 
     from backend.routes.admin.admin_backup import prune_backups
 
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     mock_s3.return_value.list_objects_v2.return_value = {
         "Contents": [
             {"Key": "backups/agent_games_DAILY_old.sql", "Size": 1,
@@ -192,7 +193,7 @@ def test_prune_backups_nothing_expired(mock_s3):
 
     from backend.routes.admin.admin_backup import prune_backups
 
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     mock_s3.return_value.list_objects_v2.return_value = {
         "Contents": [
             {"Key": "backups/agent_games_DAILY_new.sql", "Size": 1,

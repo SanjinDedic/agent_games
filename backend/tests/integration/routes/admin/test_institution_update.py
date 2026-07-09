@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from backend.database.db_models import Institution
 from backend.routes.auth.auth_core import create_access_token
 from backend.tests.conftest import create_test_institution
+from backend.time_utils import utc_now
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def update_institution_setup(db_session: Session) -> Institution:
         name="update_test_institution",
         contact_person="Original Contact",
         contact_email="original@example.com",
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=False,
         password_hash="test_hash",
     )
@@ -104,7 +105,7 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
         name="other_institution",
         contact_person="Other Contact",
         contact_email="other@example.com",
-        subscription_expiry=datetime.now() + timedelta(days=30),
+        subscription_expiry=utc_now() + timedelta(days=30),
         docker_access=False,
         password_hash="test_hash",
     )
