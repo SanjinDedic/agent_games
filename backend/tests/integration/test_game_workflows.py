@@ -99,8 +99,7 @@ def test_complete_game_lifecycle(
     )
     assert league_response.status_code == 200
     league_data = league_response.json()
-    assert league_data["status"] == "success"
-    league_id = league_data["data"]["league_id"]
+    league_id = league_data["league_id"]
 
     # 2. Create and assign team
     team_response = client.post(
@@ -116,8 +115,7 @@ def test_complete_game_lifecycle(
     print("TEAM RESPONSE GAME LIFECYCLE")
     print(team_response.json())
     assert team_response.status_code == 200
-    assert team_response.json()["status"] == "success"
-    team_id = team_response.json()["data"]["team_id"]
+    team_id = team_response.json()["team_id"]
 
     # Create team token and headers
     team_token = create_access_token(
@@ -166,8 +164,7 @@ class CustomPlayer(Player):
     )
     assert sim_response.status_code == 200
     sim_data = sim_response.json()
-    assert sim_data["status"] == "success"
-    sim_id = sim_data["data"]["id"]
+    sim_id = sim_data["id"]
 
     # 5. Publish results
     publish_response = client.post(
@@ -180,7 +177,7 @@ class CustomPlayer(Player):
         },
     )
     assert publish_response.status_code == 200
-    assert publish_response.json()["status"] == "success"
+    assert publish_response.json()["published"] is True
 
     # 6. View results (as team)
     results_response = client.post(
@@ -240,8 +237,7 @@ async def test_concurrent_game_operations(
         json={"name": "concurrent_league", "game": "prisoners_dilemma"},
     )
     assert league_response.status_code == 200
-    assert league_response.json()["status"] == "success"
-    league_id = league_response.json()["data"]["league_id"]
+    league_id = league_response.json()["league_id"]
 
     # Create multiple teams
     teams = []
@@ -263,8 +259,8 @@ async def test_concurrent_game_operations(
         print(f"TEAM {i} RESPONSE")
         print(team_response.json())
         assert team_response.status_code == 200
-        teams.append(team_response.json()["data"])
-        team_id = team_response.json()["data"]["team_id"]
+        teams.append(team_response.json())
+        team_id = team_response.json()["team_id"]
 
         # Create team token with both team_id and league_id
         team_token = create_access_token(
@@ -351,7 +347,7 @@ class CustomPlayer(Player):
     print("FIRST SIMULATION RESPONSE:")
     print(first_sim.json())
 
-    if first_sim.status_code != 200 or first_sim.json().get("status") != "success":
+    if first_sim.status_code != 200:
         pytest.skip("Simulation test failed, skipping remaining tests")
 
     # If first one works, try concurrent simulations
@@ -362,8 +358,8 @@ class CustomPlayer(Player):
 
     sim_ids = []
     for response in sim_responses:
-        if response.status_code == 200 and response.json().get("status") == "success":
-            sim_ids.append(response.json()["data"]["id"])
+        if response.status_code == 200:
+            sim_ids.append(response.json()["id"])
 
     if not sim_ids:
         pytest.skip("No successful simulations, skipping publishing tests")
@@ -385,10 +381,7 @@ class CustomPlayer(Player):
     print("FIRST PUBLISH RESPONSE:")
     print(first_publish.json())
 
-    if (
-        first_publish.status_code != 200
-        or first_publish.json().get("status") != "success"
-    ):
+    if first_publish.status_code != 200:
         pytest.skip("Publishing test failed, skipping remaining tests")
 
     # If first one works, try concurrent publishing
@@ -399,7 +392,7 @@ class CustomPlayer(Player):
 
     publish_success = False
     for response in publish_responses:
-        if response.status_code == 200 and response.json().get("status") == "success":
+        if response.status_code == 200:
             publish_success = True
             break
 

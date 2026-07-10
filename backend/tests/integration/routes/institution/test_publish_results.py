@@ -92,7 +92,6 @@ def test_publish_results_success(client, publish_setup, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "published successfully" in data["message"]
 
     # Verify result was published and has string feedback
@@ -118,8 +117,6 @@ def test_publish_results_success(client, publish_setup, db_session):
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
     # Verify result was published and has JSON feedback
     db_session.refresh(sim_results[0])
@@ -139,8 +136,6 @@ def test_publish_results_success(client, publish_setup, db_session):
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
 
 def test_publish_results_failures(client, publish_setup, db_session):
@@ -156,10 +151,8 @@ def test_publish_results_failures(client, publish_setup, db_session):
             "id": sim_results[0].id,
         },
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 2: Non-existent simulation result
     response = client.post(
@@ -170,10 +163,8 @@ def test_publish_results_failures(client, publish_setup, db_session):
             "id": 99999,
         },
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 3: League from different institution
     # Create another institution and league
@@ -220,9 +211,8 @@ def test_publish_results_failures(client, publish_setup, db_session):
             "id": other_result.id,
         },
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 4: Unauthorized access (no token)
     response = client.post(

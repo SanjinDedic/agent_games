@@ -74,7 +74,6 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "updated successfully" in data["message"]
 
     # Verify expiry date was updated
@@ -94,8 +93,6 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
     # Verify expiry date was updated again
     db_session.refresh(league)
@@ -119,10 +116,8 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
             "date": new_expiry.isoformat(),
         },
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: Past expiry date - use timezone-aware datetime
     past_date = utc_now() - timedelta(days=1)
@@ -191,9 +186,8 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
             "date": new_expiry.isoformat(),
         },
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 6: Unauthorized access (no token)
     response = client.post(

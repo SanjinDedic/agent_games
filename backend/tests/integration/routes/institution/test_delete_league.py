@@ -109,7 +109,6 @@ def test_delete_league_success(client, delete_league_setup, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "deleted" in data["message"]
     assert "moved to the unassigned league" in data["message"]
     
@@ -137,10 +136,8 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         headers=headers,
         json={"league_id": 99999},
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 2: Try to delete "unassigned" league
     # First make sure it exists
@@ -167,10 +164,8 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         headers=headers,
         json={"league_id": unassigned_league.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "cannot delete" in data["message"].lower()
+    assert response.status_code == 400
+    assert "cannot delete" in response.json()["detail"].lower()
     
     # Test case 3: Try to delete league from different institution
     # Create another institution
@@ -204,9 +199,8 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         headers=other_headers,
         json={"league_id": league.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 4: Missing league_id field
     response = client.post(
@@ -321,7 +315,6 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
         json={"league_id": league.id},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
 
     # Verify unassigned league was auto-created
     unassigned = db_session.exec(

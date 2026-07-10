@@ -27,7 +27,13 @@ from backend.routes.ai.plagiarism_service import (
 )
 from backend.routes.institution.institution_db import (
     InstitutionAccessError,
+    LeagueExistsError,
     LeagueNotFoundError,
+    ProtectedLeagueError,
+    SchoolsConfigError,
+    SimulationResultNotFoundError,
+    TeamExistsError,
+    TeamNotFoundError,
 )
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
@@ -145,6 +151,40 @@ async def league_not_found_handler(request: Request, exc: LeagueNotFoundError):
 @app.exception_handler(InstitutionAccessError)
 async def institution_access_handler(request: Request, exc: InstitutionAccessError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(SimulationResultNotFoundError)
+async def simulation_result_not_found_handler(
+    request: Request, exc: SimulationResultNotFoundError
+):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LeagueExistsError)
+async def league_exists_handler(request: Request, exc: LeagueExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ProtectedLeagueError)
+async def protected_league_handler(request: Request, exc: ProtectedLeagueError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(SchoolsConfigError)
+async def schools_config_handler(request: Request, exc: SchoolsConfigError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+# TeamNotFoundError/TeamExistsError subclass TeamError; register the concrete
+# subclasses so each maps to its own code (missing -> 404, duplicate -> 409).
+@app.exception_handler(TeamNotFoundError)
+async def team_not_found_handler(request: Request, exc: TeamNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(TeamExistsError)
+async def team_exists_handler(request: Request, exc: TeamExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(UnknownProviderError)

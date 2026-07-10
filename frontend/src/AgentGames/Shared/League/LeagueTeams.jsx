@@ -81,11 +81,11 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
 
       const data = await response.json();
 
-      if (data.status === "success" && Array.isArray(data.data.teams)) {
+      if (response.ok && Array.isArray(data.teams)) {
         // Update Redux with fresh team data
-        dispatch(setTeams(data.data.teams));
-      } else if (data.status === "failed") {
-        toast.error(data.message);
+        dispatch(setTeams(data.teams));
+      } else {
+        toast.error(data.detail || 'Failed to load teams');
       }
     } catch (error) {
       console.error("Error fetching teams:", error);

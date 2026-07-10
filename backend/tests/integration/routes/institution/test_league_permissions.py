@@ -260,9 +260,8 @@ def test_run_simulation_cross_institution(client, two_institutions):
             headers=data["headers_a"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "error"
-        assert "permission" in resp.json()["message"].lower()
+        assert resp.status_code == 403
+        assert "permission" in resp.json()["detail"].lower()
 
         # Admin CAN simulate B's league
         resp = client.post(
@@ -271,7 +270,6 @@ def test_run_simulation_cross_institution(client, two_institutions):
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
         assert resp.status_code == 200
-        assert resp.json()["status"] == "success"
 
         # Admin Institution is just another institution — cannot simulate B's league
         resp = client.post(
@@ -279,8 +277,8 @@ def test_run_simulation_cross_institution(client, two_institutions):
             headers=data["headers_admin_inst"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "error"
+        assert resp.status_code == 403
+        assert "permission" in resp.json()["detail"].lower()
 
 
 def test_publish_results_cross_institution(client, two_institutions, db_session):
@@ -304,8 +302,8 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
         headers=data["headers_a"],
         json={"league_id": data["league_b"].id, "id": sim.id},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
     # Admin CAN publish B's results
     resp = client.post(
@@ -314,8 +312,7 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
         json={"league_id": data["league_b"].id, "id": sim.id},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
-    assert resp.json()["data"]["published"] is True
+    assert resp.json()["published"] is True
 
 
 def test_delete_league_cross_institution(client, two_institutions, db_session):
@@ -340,8 +337,8 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
         headers=data["headers_a"],
         json={"league_id": delete_target.id},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
     # Admin CAN delete B's league
     resp = client.post(
@@ -350,7 +347,6 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
         json={"league_id": delete_target.id},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
 
     # Verify it's actually deleted
     league = db_session.exec(

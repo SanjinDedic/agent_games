@@ -90,9 +90,9 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
 
       const data = await response.json();
 
-      if (data.status === "success" && data.data?.signup_token) {
+      if (response.ok && data.signup_token) {
         const baseUrl = `${window.location.protocol}//${window.location.host}`;
-        const signupPath = `/TeamSignup/${data.data.signup_token}`;
+        const signupPath = `/TeamSignup/${data.signup_token}`;
         const fullUrl = `${baseUrl}${signupPath}`;
 
         setSignupLink(fullUrl);
@@ -100,7 +100,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
 
         toast.success(`Signup link generated for ${leagueName}`);
       } else {
-        toast.error(data.message || "Failed to generate signup link");
+        toast.error(data.detail || "Failed to generate signup link");
       }
     } catch (error) {
       console.error("Error generating signup link:", error);

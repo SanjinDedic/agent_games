@@ -907,7 +907,7 @@ def test_create_invoiced_institution_duplicate_name(db_session):
 def test_get_subscription_returns_details(client, institution_headers):
     resp = client.get("/institution/subscription", headers=institution_headers)
     assert resp.status_code == 200
-    data = resp.json()["data"]
+    data = resp.json()
     assert data["institution_name"] == "test_institution"
     assert data["subscription"] is not None
     assert data["subscription"]["payment_method"] == "admin"
@@ -936,7 +936,7 @@ def test_get_subscription_no_subscription_row(client, db_session):
         "/institution/subscription", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["subscription"] is None
+    assert resp.json()["subscription"] is None
 
 
 def test_get_subscription_requires_auth(client):

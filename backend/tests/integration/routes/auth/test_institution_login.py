@@ -68,7 +68,7 @@ def test_institution_login_success(client, test_institution):
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    assert "teams" in response.json()
 
 
 def test_institution_login_failures(client, test_institution, expired_institution, inactive_institution):

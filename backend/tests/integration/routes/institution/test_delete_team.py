@@ -92,7 +92,6 @@ def test_delete_team_success(client, institution_setup, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "deleted successfully" in data["message"]
     
     # Verify team was actually deleted
@@ -124,10 +123,8 @@ def test_delete_team_failures(client, institution_setup, db_session):
         headers=headers,
         json={"id": 9999999},
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 2: Delete team from different institution
     # Create another institution
@@ -161,10 +158,8 @@ def test_delete_team_failures(client, institution_setup, db_session):
         headers=other_headers,
         json={"id": team.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "permission" in data["message"].lower()
+    assert response.status_code == 403
+    assert "permission" in response.json()["detail"].lower()
     
     # Test case 3: Invalid team ID format
     response = client.post(

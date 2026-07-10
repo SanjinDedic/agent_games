@@ -24,27 +24,48 @@ logger = logging.getLogger(__name__)
 
 
 class LeagueExistsError(Exception):
-    """Raised when attempting to create a league that already exists"""
+    """Raised when attempting to create a league that already exists (maps to HTTP 409)."""
     pass
 
 
 class LeagueNotFoundError(Exception):
-    """Raised when league is not found"""
+    """Raised when a league is not found or is not visible to the caller (maps to HTTP 404)."""
+    pass
+
+
+class ProtectedLeagueError(Exception):
+    """Raised when an operation targets a league that may not be modified,
+    e.g. deleting the auto-created 'unassigned' league (maps to HTTP 400)."""
+    pass
+
+
+class SimulationResultNotFoundError(Exception):
+    """Raised when a referenced simulation result does not exist (maps to HTTP 404)."""
     pass
 
 
 class TeamError(Exception):
-    """Base exception for all team-related errors"""
+    """Base exception for all team-related errors."""
+    pass
+
+
+class TeamNotFoundError(TeamError):
+    """Raised when the target team does not exist (maps to HTTP 404)."""
+    pass
+
+
+class TeamExistsError(TeamError):
+    """Raised when a team name collides within the institution (maps to HTTP 409)."""
     pass
 
 
 class InstitutionAccessError(Exception):
-    """Raised when an institution tries to access data it doesn't own"""
+    """Raised when an institution tries to access data it doesn't own (maps to HTTP 403)."""
     pass
 
 
 class SchoolsConfigError(Exception):
-    """Raised when a school league's schools_config is invalid or unreachable."""
+    """Raised when a school league's schools_config is invalid or unreachable (maps to HTTP 400)."""
     pass
 
 
@@ -137,7 +158,7 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
         ).first()
 
         if existing_team:
-            raise TeamError(f"Team with name '{team_data.name}' already exists in this institution")
+            raise TeamExistsError(f"Team with name '{team_data.name}' already exists in this institution")
 
         # Get unassigned league for this institution
         unassigned_league = session.exec(
@@ -183,16 +204,16 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Database integrity error creating team: {e}")
-        raise TeamError("Unable to create team due to data constraints")
+        raise TeamExistsError("Unable to create team due to data constraints")
 
 
 def delete_team(session: Session, team_id: int, institution_id: int) -> str:
     """Delete a team and its associated data"""
     team = session.exec(select(Team).where(Team.id == team_id)).first()
-    
+
     if not team:
-        raise TeamError(f"Team with ID {team_id} not found")
-    
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+
     # Verify the team belongs to this institution
     if team.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to delete this team")
@@ -332,7 +353,7 @@ def publish_sim_results(
 
     simulation = session.get(SimulationResult, sim_id)
     if not simulation:
-        raise ValueError(f"Simulation result with ID {sim_id} not found")
+        raise SimulationResultNotFoundError(f"Simulation result with ID {sim_id} not found")
 
     if simulation.league_id != league.id:
         raise InstitutionAccessError("You don't have permission to publish this simulation result")
@@ -402,7 +423,7 @@ def assign_team_to_league(session: Session, team_id: int, league_id: int, instit
     """Assign a team to a league within the same institution"""
     team = session.get(Team, team_id)
     if not team:
-        raise TeamError(f"Team with ID {team_id} not found")
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
 
     # Verify the team belongs to this institution (admin bypasses)
     if not is_admin and team.institution_id != institution_id:
@@ -436,7 +457,7 @@ def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
     """Move a team to the current institution's 'unassigned' league."""
     team = session.get(Team, team_id)
     if not team:
-        raise TeamError(f"Team with ID {team_id} not found")
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
 
     if team.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to modify this team")
@@ -479,7 +500,7 @@ def delete_league(session: Session, league_id: int, institution_id: int, is_admi
 
     league_name = league.name
     if league_name.lower() == "unassigned":
-        raise ValueError("Cannot delete the 'unassigned' league")
+        raise ProtectedLeagueError("Cannot delete the 'unassigned' league")
 
     # Find the unassigned league for this institution
     unassigned_league = session.exec(

@@ -24,12 +24,10 @@ function InstitutionTeam() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json();
-      if (data.status === 'success' && Array.isArray(data.data.teams)) {
-        dispatch(setTeams(data.data.teams));
-      } else if (data.status === 'failed') {
-        toast.error(data.message);
-      } else if (data.detail === 'Invalid token') {
-        navigate('/Institution');
+      if (response.ok && Array.isArray(data.teams)) {
+        dispatch(setTeams(data.teams));
+      } else {
+        toast.error(data.detail || 'Failed to load teams');
       }
     } catch (error) {
       console.error('Error fetching teams:', error);
@@ -69,13 +67,13 @@ function InstitutionTeam() {
         }),
       });
       const data = await response.json();
-      if (data.status === 'success') {
+      if (response.ok) {
         setTeam({ name: '', password: '', school_name: '' });
         setShowAddTeamForm(false);
-        toast.success(data.message);
+        toast.success('Team created successfully');
         await fetchAllTeams();
-      } else if (data.status === 'failed' || data.status === 'error') {
-        toast.error(data.message);
+      } else {
+        toast.error(data.detail || 'Failed to add team');
       }
     } catch (error) {
       console.error('Error adding team:', error);
@@ -95,11 +93,11 @@ function InstitutionTeam() {
         body: JSON.stringify({ id }),
       });
       const data = await response.json();
-      if (data.status === 'success') {
+      if (response.ok) {
         toast.success(data.message);
         await fetchAllTeams();
-      } else if (data.status === 'failed' || data.status === 'error') {
-        toast.error(data.message);
+      } else {
+        toast.error(data.detail || 'Failed to delete team');
       }
     } catch (error) {
       console.error('Error deleting team:', error);

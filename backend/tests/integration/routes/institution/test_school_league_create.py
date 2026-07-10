@@ -22,8 +22,7 @@ def test_school_league_create_success(client, institution_headers, db_session):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "success", data
-    assert data["data"]["school_league"] is True
+    assert data["school_league"] is True
 
     league = db_session.exec(
         select(League).where(League.name == "school_league_happy")
@@ -63,7 +62,6 @@ def test_non_school_league_ignores_schools(client, institution_headers, db_sessi
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
 
     league = db_session.exec(
         select(League).where(League.name == "non_school_with_schools_arg")
@@ -85,7 +83,6 @@ def test_school_list_dedup_and_strip(client, institution_headers, db_session):
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
 
     league = db_session.exec(
         select(League).where(League.name == "school_league_dedup")
@@ -148,7 +145,6 @@ def test_school_league_create_with_sheet_url(client, institution_headers, db_ses
             },
         )
     assert resp.status_code == 200, resp.json()
-    assert resp.json()["status"] == "success"
     league = db_session.exec(
         select(League).where(League.name == "sheet_backed_league")
     ).first()
@@ -205,10 +201,8 @@ def test_school_league_rejects_empty_sheet(client, institution_headers):
                 "sheet_url": "https://docs.google.com/spreadsheets/d/empty/edit",
             },
         )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "empty list" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "empty list" in resp.json()["detail"].lower()
 
 
 def test_school_league_rejects_unreachable_sheet(client, institution_headers):
@@ -226,10 +220,8 @@ def test_school_league_rejects_unreachable_sheet(client, institution_headers):
                 "sheet_url": "https://docs.google.com/spreadsheets/d/unreachable/edit",
             },
         )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "could not read the google sheet" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "could not read the google sheet" in resp.json()["detail"].lower()
 
 
 def test_school_league_rejects_non_sheets_url(client, institution_headers):
@@ -243,7 +235,5 @@ def test_school_league_rejects_non_sheets_url(client, institution_headers):
             "sheet_url": "https://example.com/some-random-page",
         },
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "google sheets url" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "google sheets url" in resp.json()["detail"].lower()
