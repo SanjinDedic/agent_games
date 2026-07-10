@@ -43,7 +43,7 @@ npm run build    # Production build
 ```
 
 ### Database migrations
-`backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production, and keep it in sync with the model if you later refactor those columns (a migration that `ALTER`s a table the model no longer matches becomes schema drift).
+`backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production, and keep it in sync with the model if you later refactor those columns (a migration that `ALTER`s a table the model no longer matches becomes schema drift). A forgotten migration is caught in CI, not by tests: the `schema-drift` job (`.github/workflows/tests_coverage_deploy.yml`) dumps the prod schema over SSH, rehearses `create_all` + migrations on a scratch copy (`backend/check_schema_drift.sh`), and diffs normalized catalog snapshots (`backend/database/schema_snapshot.sql`) against a schema built fresh from the models — any difference blocks the deploy job.
 
 ## Architecture
 

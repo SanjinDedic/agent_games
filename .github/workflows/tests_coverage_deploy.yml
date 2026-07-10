@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test-and-deploy:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -58,25 +58,97 @@ jobs:
       if: always()
       run: docker compose -f docker-compose.yml -f docker-compose.test.yml down --volumes
 
-    # --- Deploy (only on push to main) ---
+  # Blocks deploy if production's schema, after the entrypoint pre-start runs,
+  # would not match the models being shipped (e.g. a db_models.py change whose
+  # backend/migrations/*.sql was forgotten — create_all never ALTERs existing
+  # tables, so tests pass but prod breaks at runtime). Prod postgres is a Kamal
+  # accessory with no published port, so the schema is dumped over SSH through
+  # the running web container — same access pattern as daily_backup.yml.
+  schema-drift:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up SSH agent
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Dump production schema
+      run: |
+        ssh -o StrictHostKeyChecking=accept-new root@api.agentgames.io '
+          set -e
+          CONTAINER=$(docker ps -q \
+            --filter label=service=agent_games \
+            --filter label=role=web \
+            --filter status=running | head -1)
+          if [ -z "$CONTAINER" ]; then
+            echo "No running web container — cannot dump schema" >&2
+            exit 1
+          fi
+          DB_URL=$(docker exec "$CONTAINER" printenv DATABASE_URL | sed "s/+psycopg//")
+          docker exec "$CONTAINER" pg_dump --schema-only --no-owner --no-privileges "$DB_URL"
+        ' > prod_schema.sql
+        grep -q "CREATE TABLE" prod_schema.sql
+
+    - name: Build api image and start scratch postgres
+      run: |
+        docker compose -f docker-compose.yml build api
+        docker compose -f docker-compose.yml up -d --wait postgres
+
+    - name: Restore prod schema into scratch database
+      run: |
+        docker compose -f docker-compose.yml exec -T postgres createdb -U postgres drift_actual
+        docker compose -f docker-compose.yml exec -T postgres createdb -U postgres drift_expected
+        docker compose -f docker-compose.yml exec -T postgres psql -q -U postgres -d drift_actual -v ON_ERROR_STOP=1 -f - < prod_schema.sql
+
+    - name: Rehearse pre-start and compare schemas
+      run: |
+        docker compose -f docker-compose.yml run --rm --no-deps \
+          -e ACTUAL_DATABASE_URL=postgresql+psycopg://postgres:local_pw@postgres:5432/drift_actual \
+          -e EXPECTED_DATABASE_URL=postgresql+psycopg://postgres:local_pw@postgres:5432/drift_expected \
+          api sh backend/check_schema_drift.sh
+
+    - name: Cleanup drift containers
+      if: always()
+      run: docker compose -f docker-compose.yml down --volumes
+
+  # --- Deploy (only on push to main; requires green tests AND no schema drift) ---
+  deploy:
+    if: github.event_name == 'push'
+    needs: [test, schema-drift]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # The prod image is built here by kamal (COPY . picks these up); without
+    # them validation tasks have no reference players at runtime.
+    - name: Ensure validation files exist for the image build
+      env:
+        LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
+        ARENA_VALIDATION_PLAYERS: ${{ secrets.ARENA_VALIDATION_PLAYERS }}
+      run: |
+        mkdir -p backend/games/lineup4
+        echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
+        mkdir -p backend/games/arena_champions
+        echo "$ARENA_VALIDATION_PLAYERS" | base64 -d > backend/games/arena_champions/validation_players.py
+
     - name: Set up Ruby
-      if: github.event_name == 'push'
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: '3.4'
 
     - name: Install Kamal
-      if: github.event_name == 'push'
       run: gem install kamal -v 2.11.0
 
     - name: Set up SSH agent
-      if: github.event_name == 'push'
       uses: webfactory/ssh-agent@v0.9.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Write Kamal secrets file
-      if: github.event_name == 'push'
       env:
         KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
@@ -122,14 +194,12 @@ jobs:
         EOF
 
     - name: Deploy with Kamal
-      if: github.event_name == 'push'
       run: kamal deploy
 
     - name: Release kamal lock if deploy was interrupted
-      if: github.event_name == 'push' && (cancelled() || failure())
+      if: cancelled() || failure()
       run: kamal lock release || true
 
     - name: Healthcheck
-      if: github.event_name == 'push'
       run: |
         curl -fsS https://api.agentgames.io/health >/dev/null && echo "Healthcheck OK" || (echo "Healthcheck FAILED" && exit 1)

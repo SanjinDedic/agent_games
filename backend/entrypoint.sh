@@ -18,6 +18,10 @@
 #                   guarded DO blocks) and carry the ALTERs to existing tables
 #                   that create_all can't do. On a fresh DB they are no-ops.
 #
+# CI rehearses the schema half of this sequence against a copy of the prod
+# schema and blocks deploy if the result drifts from the models — keep this
+# file and backend/check_schema_drift.sh in sync.
+#
 # POSIX sh (the Alpine runtime image has no bash). Invoked explicitly from the
 # api CMD / compose command, NOT as a baked-in ENTRYPOINT: the worker and
 # test-runner containers share this image and must NOT run this pre-start.
