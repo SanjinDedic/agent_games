@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
-import { setPublishLink } from "../../../slices/leaguesSlice";
+import { setPublishLink as setPublishLinkAction } from "../../../slices/leaguesSlice";
 import useLeagueAPI from "../hooks/useLeagueAPI";
 
 /**
@@ -38,32 +38,15 @@ const LeaguePublish = ({ simulation_id, selected_league_id, selected_league_name
 
     try {
       const result = await publishResults(publishData);
-      console.log("Publish result:", result); // Debug log
 
       if (result.success && result.data) {
-        console.log("Publish data:", result.data); // Debug log
         const link = result.data.publish_link;
 
         if (link) {
-          // First update local state
           setPublishLink(link);
           setPublishSuccess(true);
-
-          // Then safely dispatch Redux action
-          try {
-            const action = setPublishLink(link);
-            console.log("Dispatching action:", action); // Debug action
-            if (action) {
-              dispatch(action);
-            } else {
-              console.error("Generated action is undefined");
-              toast.warning("Success, but state update failed");
-            }
-          } catch (err) {
-            console.error("Error dispatching action:", err);
-          }
+          dispatch(setPublishLinkAction(link));
         } else {
-          console.error("No publish_link in response data");
           toast.warning("Published successfully, but no link was returned");
           setPublishSuccess(true);
         }

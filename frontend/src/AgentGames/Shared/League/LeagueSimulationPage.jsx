@@ -32,6 +32,10 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
 
   const api = useLeagueAPI(userRole);
 
+  // The "unassigned" league is a placeholder — no simulations, results or game
+  const isPlaceholderLeague =
+    currentLeague?.name?.toLowerCase() === "unassigned";
+
   moment.tz.setDefault("Australia/Sydney");
 
   useEffect(() => {
@@ -172,7 +176,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
             <SimulationRunner league={currentLeague} userRole={userRole} />
 
             {/* Publish Button */}
-            {currentLeague && currentSimulation && (
+            {currentLeague && currentSimulation && !isPlaceholderLeague && (
               <div className="bg-white rounded-lg shadow-lg p-4">
                 <LeaguePublish
                   simulation_id={currentSimulation.id}
@@ -192,7 +196,17 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
                 Simulation Results
               </h2>
 
-              {allSimulations && allSimulations.length > 0 ? (
+              {isPlaceholderLeague ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-ui-lighter rounded-lg">
+                  <p className="text-ui-dark text-lg">
+                    The "unassigned" league is a placeholder for teams without
+                    a league.
+                  </p>
+                  <p className="text-ui mt-2">
+                    It has no game, so simulations cannot be run on it.
+                  </p>
+                </div>
+              ) : allSimulations && allSimulations.length > 0 ? (
                 <>
                   <select
                     onChange={handleTableDropdownChange}
@@ -241,7 +255,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
             </div>
 
             {/* Custom Rewards (hidden when game has no schema) */}
-            <CustomRewards />
+            {!isPlaceholderLeague && <CustomRewards />}
           </div>
         </div>
       </div>

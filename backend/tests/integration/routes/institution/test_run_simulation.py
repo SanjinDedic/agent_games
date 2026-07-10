@@ -158,6 +158,31 @@ def test_run_simulation_success(client, simulation_setup, db_session):
         assert data["rewards"] == custom_rewards
 
 
+def test_run_simulation_rejects_unassigned_league(
+    client, simulation_setup, db_session
+):
+    """The auto-created 'unassigned' placeholder league cannot be simulated"""
+    institution, _, _, _, headers = simulation_setup
+
+    unassigned = League(
+        name="unassigned",
+        game="greedy_pig",
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
+        institution_id=institution.id,
+    )
+    db_session.add(unassigned)
+    db_session.commit()
+
+    response = client.post(
+        "/institution/run-simulation",
+        headers=headers,
+        json={"league_id": unassigned.id, "num_simulations": 10},
+    )
+    assert response.status_code == 400
+    assert "unassigned" in response.json()["detail"].lower()
+
+
 def test_run_simulation_failures(client, simulation_setup, db_session):
     """Test failure cases for running simulations"""
     institution, league, team, _, headers = simulation_setup

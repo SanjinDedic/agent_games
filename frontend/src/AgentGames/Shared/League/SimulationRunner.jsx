@@ -15,9 +15,13 @@ const SimulationRunner = ({ league, userRole }) => {
   const dispatch = useDispatch();
   const rewards = useSelector((state) => state.leagues.currentRewards);
   const [simulationNumber, setSimulationNumber] = useState(1);
-  
+
   // Use the shared API hook
   const { isLoading, runSimulation } = useLeagueAPI(userRole);
+
+  // The auto-created "unassigned" league is a placeholder and cannot be simulated
+  const isPlaceholder = league?.name?.toLowerCase() === "unassigned";
+  const isDisabled = isLoading || !league?.id || isPlaceholder;
 
   // Input validation
   const handleNumberChange = (event) => {
@@ -28,7 +32,7 @@ const SimulationRunner = ({ league, userRole }) => {
   };
 
   const handleSimulation = async () => {
-    if (!league?.id) {
+    if (!league?.id || isPlaceholder) {
       return;
     }
 
@@ -50,11 +54,11 @@ const SimulationRunner = ({ league, userRole }) => {
         <div className="flex items-center justify-between gap-3">
           <button
             onClick={handleSimulation}
-            disabled={isLoading || !league?.id}
+            disabled={isDisabled}
             className={`
               flex-grow px-6 py-3 rounded-lg font-semibold text-lg transition-colors
               focus:ring-2 focus:ring-offset-2 outline-none
-              ${isLoading
+              ${isDisabled
                 ? "bg-ui-light text-ui cursor-not-allowed"
                 : "bg-notice-orange hover:bg-notice-orange/90 text-white"}
             `}
@@ -68,8 +72,8 @@ const SimulationRunner = ({ league, userRole }) => {
             onChange={handleNumberChange}
             min="1"
             max="10000"
-            disabled={isLoading}
-            className="w-24 p-2 border border-ui-light rounded-lg text-lg shadow-sm 
+            disabled={isLoading || isPlaceholder}
+            className="w-24 p-2 border border-ui-light rounded-lg text-lg shadow-sm
                      focus:ring-2 focus:ring-primary focus:border-primary outline-none
                      disabled:bg-ui-light disabled:cursor-not-allowed"
           />
@@ -77,7 +81,16 @@ const SimulationRunner = ({ league, userRole }) => {
 
         {league && (
           <div className="text-sm text-ui">
-            Selected League: {league.name} ({league.game})
+            {isPlaceholder ? (
+              <>
+                The "unassigned" league is a placeholder for teams without a
+                league — simulations cannot be run on it.
+              </>
+            ) : (
+              <>
+                Selected League: {league.name} ({league.game})
+              </>
+            )}
           </div>
         )}
       </div>

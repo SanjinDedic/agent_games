@@ -59,7 +59,8 @@ const PublishedResults = () => {
   }, [publishLink, apiUrl]);
 
   return (
-    <div className="min-h-screen bg-ui-lighter">
+    // pt-14 clears the fixed site navbar so the page header stays visible
+    <div className="min-h-screen bg-ui-lighter pt-14">
       <header className="bg-league-blue shadow-md p-4">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Published Results</h1>

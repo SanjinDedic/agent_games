@@ -1,7 +1,4 @@
-import { createSlice, createAction } from '@reduxjs/toolkit';
-
-// Define a standalone action creator for setPublishLink to ensure it's properly created
-export const setPublishLink = createAction('leagues/setPublishLink');
+import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   list: [],
@@ -125,17 +122,10 @@ const leaguesSlice = createSlice({
       state.currentLeagueResultSelected = null;
       state.currentPublishLink = null;
     },
-  },
-  // Handle the standalone action creator
-  extraReducers: (builder) => {
-    builder.addCase(setPublishLink, (state, action) => {
+    setPublishLink: (state, action) => {
       state.currentPublishLink = action.payload;
-      
-      // Also update the publish_link in the current selected result
       if (state.currentLeagueResultSelected) {
         state.currentLeagueResultSelected.publish_link = action.payload;
-        
-        // Update the publish_link in the results array as well
         const resultIndex = state.currentLeagueResults.findIndex(
           result => result.id === state.currentLeagueResultSelected.id
         );
@@ -143,8 +133,8 @@ const leaguesSlice = createSlice({
           state.currentLeagueResults[resultIndex].publish_link = action.payload;
         }
       }
-    });
-  }
+    },
+  },
 });
 
 export const {
@@ -159,7 +149,8 @@ export const {
   setRewards,
   setRewardMeta,
   clearResults,
-  addSimulationResult
+  addSimulationResult,
+  setPublishLink
 } = leaguesSlice.actions;
 
 export default leaguesSlice.reducer;
