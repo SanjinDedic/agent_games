@@ -8,6 +8,12 @@ from fastapi.responses import JSONResponse
 
 from backend.models_api import ResponseModel
 from backend.routes.auth.auth_db import InvalidCredentialsError
+from backend.routes.admin.admin_db import (
+    AgentTeamError,
+    InstitutionExistsError,
+    InstitutionNotFoundError,
+)
+from backend.routes.support.support_db import SupportError
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
@@ -91,6 +97,28 @@ app = FastAPI(lifespan=lifespan)
 async def invalid_credentials_handler(request: Request, exc: InvalidCredentialsError):
     """Map failed authentication to HTTP 401 with a consistent {"detail": ...} body."""
     return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+# Domain exceptions -> HTTP status codes, applied wherever they propagate uncaught.
+# Each maps to a consistent {"detail": ...} body (FastAPI's own convention).
+@app.exception_handler(InstitutionNotFoundError)
+async def institution_not_found_handler(request: Request, exc: InstitutionNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InstitutionExistsError)
+async def institution_exists_handler(request: Request, exc: InstitutionExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(AgentTeamError)
+async def agent_team_error_handler(request: Request, exc: AgentTeamError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(SupportError)
+async def support_error_handler(request: Request, exc: SupportError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 app.add_middleware(

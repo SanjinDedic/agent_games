@@ -149,10 +149,9 @@ def test_clear_institution_data_success(client, auth_headers, seeded_institution
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success", data
-    assert data["data"]["teams_deleted"] == 2
-    assert data["data"]["leagues_deleted"] == 1  # comp_league only; unassigned kept
-    assert data["data"]["tickets_deleted"] == 1
+    assert data["teams_deleted"] == 2
+    assert data["leagues_deleted"] == 1  # comp_league only; unassigned kept
+    assert data["tickets_deleted"] == 1
 
     # Institution row still present
     db_session.expire_all()
@@ -185,10 +184,8 @@ def test_clear_institution_data_not_found(client, auth_headers):
         headers=auth_headers,
         json={"id": 99999},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
 def test_clear_institution_data_unauthorized(client):
@@ -220,9 +217,7 @@ def test_export_institution_data_success(client, auth_headers, seeded_institutio
         headers=auth_headers,
     )
     assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "success", body
-    dump = body["data"]
+    dump = response.json()
 
     assert dump["schema_version"] == 1
     assert "exported_at" in dump
@@ -263,10 +258,8 @@ def test_export_institution_not_found(client, auth_headers):
         "/admin/institution-export/99999",
         headers=auth_headers,
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "error"
-    assert "not found" in body["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
 def test_export_institution_unauthorized(client):
@@ -288,8 +281,6 @@ def test_delete_institution_with_agent_team_regression(
         json={"id": inst_id},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success", data
 
     db_session.expire_all()
     assert db_session.get(Institution, inst_id) is None

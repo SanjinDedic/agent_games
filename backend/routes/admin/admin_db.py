@@ -41,6 +41,27 @@ class InstitutionError(Exception):
     pass
 
 
+class InstitutionNotFoundError(InstitutionError):
+    """Raised when the target institution does not exist (maps to HTTP 404)."""
+
+    pass
+
+
+class InstitutionExistsError(InstitutionError):
+    """Raised when an institution name collides with an existing one (maps to HTTP 409)."""
+
+    pass
+
+
+class AgentTeamError(ValueError):
+    """Raised for invalid agent-team / API-key operations (maps to HTTP 400).
+
+    Subclasses ValueError so existing callers/tests that catch ValueError keep working.
+    """
+
+    pass
+
+
 def create_institution(session: Session, institution_data: CreateInstitution) -> Dict:
     """Create a new institution"""
     existing_institution = session.exec(
@@ -48,7 +69,7 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
     ).first()
 
     if existing_institution:
-        raise InstitutionError(
+        raise InstitutionExistsError(
             f"Institution with name '{institution_data.name}' already exists"
         )
 
@@ -105,7 +126,9 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
     institution = session.get(Institution, institution_data.id)
 
     if not institution:
-        raise InstitutionError(f"Institution with ID {institution_data.id} not found")
+        raise InstitutionNotFoundError(
+            f"Institution with ID {institution_data.id} not found"
+        )
 
     try:
         # Update fields if provided
@@ -154,7 +177,9 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
         }
     except IntegrityError as e:
         session.rollback()
-        raise InstitutionError(f"Institution name '{institution_data.name}' already exists")
+        raise InstitutionExistsError(
+            f"Institution name '{institution_data.name}' already exists"
+        )
 
 
 def _purge_institution_data(
@@ -266,7 +291,9 @@ def delete_institution(session: Session, institution_id: int) -> str:
     institution = session.get(Institution, institution_id)
 
     if not institution:
-        raise InstitutionError(f"Institution with ID {institution_id} not found")
+        raise InstitutionNotFoundError(
+            f"Institution with ID {institution_id} not found"
+        )
 
     purge = _purge_institution_data(session, institution_id, keep_unassigned=False)
     session.delete(institution)
@@ -285,7 +312,9 @@ def clear_institution_data(session: Session, institution_id: int) -> Dict:
     institution = session.get(Institution, institution_id)
 
     if not institution:
-        raise InstitutionError(f"Institution with ID {institution_id} not found")
+        raise InstitutionNotFoundError(
+            f"Institution with ID {institution_id} not found"
+        )
 
     purge = _purge_institution_data(session, institution_id, keep_unassigned=True)
     session.commit()
@@ -305,7 +334,9 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
     institution = session.get(Institution, institution_id)
 
     if not institution:
-        raise InstitutionError(f"Institution with ID {institution_id} not found")
+        raise InstitutionNotFoundError(
+            f"Institution with ID {institution_id} not found"
+        )
 
     teams = session.exec(
         select(Team).where(Team.institution_id == institution_id)
@@ -471,7 +502,9 @@ def toggle_institution_docker_access(
     institution = session.get(Institution, institution_id)
 
     if not institution:
-        raise InstitutionError(f"Institution with ID {institution_id} not found")
+        raise InstitutionNotFoundError(
+            f"Institution with ID {institution_id} not found"
+        )
 
     institution.docker_access = enable
     session.add(institution)
@@ -543,9 +576,9 @@ def create_agent_team(session: Session, team_data: CreateAgentTeam) -> Dict:
     # Check if league exists and is agent type
     league = session.get(League, team_data.league_id)
     if not league:
-        raise ValueError(f"League with ID {team_data.league_id} not found")
+        raise AgentTeamError(f"League with ID {team_data.league_id} not found")
     if league.league_type != LeagueType.AGENT:
-        raise ValueError("Can only create agent teams in agent leagues")
+        raise AgentTeamError("Can only create agent teams in agent leagues")
 
     # Create team
     team = Team(
@@ -566,9 +599,9 @@ def create_api_key(session: Session, team_id: int) -> Dict:
     """Create a new API key for an agent team"""
     team = session.get(Team, team_id)
     if not team:
-        raise ValueError(f"Team with ID {team_id} not found")
+        raise AgentTeamError(f"Team with ID {team_id} not found")
     if team.team_type != TeamType.AGENT:
-        raise ValueError("Can only create API keys for agent teams")
+        raise AgentTeamError("Can only create API keys for agent teams")
 
     # Generate secure API key
     api_key = secrets.token_urlsafe(32)

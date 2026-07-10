@@ -45,7 +45,6 @@ def test_toggle_docker_access_success(client, auth_headers, docker_access_setup,
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "docker access enabled" in data["message"].lower()
     
     # Verify change in database
@@ -60,7 +59,6 @@ def test_toggle_docker_access_success(client, auth_headers, docker_access_setup,
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "docker access disabled" in data["message"].lower()
     
     # Verify change in database
@@ -76,11 +74,9 @@ def test_toggle_docker_access_failures(client, auth_headers, db_session):
         headers=auth_headers,
         json={"institution_id": 99999, "enable": True},  # Non-existent ID
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
-    
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
     # Test case 2: Missing institution_id
     response = client.post(
         "/admin/toggle-docker-access",

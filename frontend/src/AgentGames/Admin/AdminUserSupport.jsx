@@ -43,10 +43,10 @@ function AdminUserSupport() {
     authFetch(`${apiUrl}/admin/support-tickets?${params.toString()}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          const list = data.data?.tickets || [];
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) {
+          const list = data.tickets || [];
           setTickets(list);
           setNoteDrafts(
             list.reduce((acc, t) => {
@@ -55,7 +55,7 @@ function AdminUserSupport() {
             }, {})
           );
         } else {
-          toast.error(data.message || 'Failed to load tickets');
+          toast.error(data.detail || 'Failed to load tickets');
         }
       })
       .catch((err) => {
@@ -81,9 +81,9 @@ function AdminUserSupport() {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) {
           setTickets((prev) => prev.filter((t) => t.id !== ticket.id));
           setNoteDrafts((prev) => {
             const next = { ...prev };
@@ -92,7 +92,7 @@ function AdminUserSupport() {
           });
           toast.success('Ticket deleted');
         } else {
-          toast.error(data.message || 'Failed to delete ticket');
+          toast.error(data.detail || 'Failed to delete ticket');
         }
       })
       .catch((err) => {
@@ -112,15 +112,15 @@ function AdminUserSupport() {
       },
       body: JSON.stringify({ ticket_id: ticketId, ...payload }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success' && data.data?.ticket) {
-          const updated = data.data.ticket;
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok && data.ticket) {
+          const updated = data.ticket;
           setTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
           setNoteDrafts((prev) => ({ ...prev, [updated.id]: updated.admin_note || '' }));
           toast.success('Ticket updated');
         } else {
-          toast.error(data.message || 'Failed to update ticket');
+          toast.error(data.detail || 'Failed to update ticket');
         }
       })
       .catch((err) => {

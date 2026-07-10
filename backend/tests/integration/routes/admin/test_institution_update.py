@@ -45,9 +45,8 @@ def test_institution_update_success(client, auth_headers, update_institution_set
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "institution updated successfully" in data["message"].lower()
-    
+    assert data["id"] == institution.id
+
     # Verify updates in database
     db_session.refresh(institution)
     assert institution.name == "updated_institution"
@@ -68,9 +67,7 @@ def test_institution_update_success(client, auth_headers, update_institution_set
         json=partial_update,
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    
+
     # Verify only specified fields were updated
     db_session.refresh(institution)
     assert institution.name == "updated_institution"  # Unchanged
@@ -93,11 +90,9 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
         headers=auth_headers,
         json=update_data,
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
-    
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
     # Test case 2: Duplicate institution name
     # Create another institution first
     create_test_institution(
@@ -122,14 +117,12 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
         json=duplicate_name_update,
     )
     
-    # This might either return a 200 with error or a database integrity error
-    # Either case would be valid - we'll check for both possibilities
-    if response.status_code == 200:
-        data = response.json()
-        if data["status"] == "error":
-            assert ("already exists" in data["message"].lower() or 
-        "duplicate" in data["message"].lower() or 
-        "unique constraint" in data["message"].lower())
+    # Depending on whether a unique constraint exists on the name, this either
+    # succeeds (200) or conflicts (409). Both are acceptable; on a conflict the
+    # detail explains why.
+    assert response.status_code in (200, 409)
+    if response.status_code == 409:
+        assert "already exists" in response.json()["detail"].lower()
     
     # Test case 3: Missing ID
     missing_id_update = {

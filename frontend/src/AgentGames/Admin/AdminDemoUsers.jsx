@@ -31,16 +31,16 @@ function AdminDemoUsers() {
 
             const data = await response.json();
 
-            if (data.status === "success") {
+            if (response.ok) {
                 // Make sure demo_users exists and handle any None/null values
-                const demoUsers = data.data?.demo_users || [];
+                const demoUsers = data.demo_users || [];
                 // Ensure all user objects have an email property, even if it's null
                 setDemoUsers(demoUsers.map(user => ({
                     ...user,
                     email: user.email !== undefined ? user.email : null
                 })));
             } else {
-                toast.error(data.message || 'Failed to fetch demo users');
+                toast.error(data.detail || 'Failed to fetch demo users');
             }
         } catch (error) {
             console.error('Error fetching demo users:', error);
@@ -75,12 +75,12 @@ function AdminDemoUsers() {
 
         const data = await response.json();
 
-        if (data.status === "success") {
+        if (response.ok) {
           toast.success("All demo users deleted successfully");
           // Explicitly fetch users after deletion to ensure UI updates correctly
           handleRefresh();
         } else {
-          toast.error(data.message || "Failed to delete demo users");
+          toast.error(data.detail || "Failed to delete demo users");
         }
       } catch (error) {
         console.error("Error deleting demo users:", error);

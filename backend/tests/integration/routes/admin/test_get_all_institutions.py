@@ -98,17 +98,15 @@ def test_get_all_institutions_success(client, auth_headers, institutions_setup):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "institutions retrieved successfully" in data["message"].lower()
-    
+
     # Verify the response contains all created institutions
-    assert "institutions" in data["data"]
-    institution_names = [inst["name"] for inst in data["data"]["institutions"]]
+    assert "institutions" in data
+    institution_names = [inst["name"] for inst in data["institutions"]]
     for institution in institutions:
         assert institution.name in institution_names
     
     # Verify each institution has the expected fields
-    for inst in data["data"]["institutions"]:
+    for inst in data["institutions"]:
         assert "id" in inst
         assert "name" in inst
         assert "contact_person" in inst
@@ -122,7 +120,7 @@ def test_get_all_institutions_success(client, auth_headers, institutions_setup):
     
     # Verify first institution has the expected team and league counts
     first_inst = next(
-        inst for inst in data["data"]["institutions"]
+        inst for inst in data["institutions"]
         if inst["name"] == "first_institution"
     )
     assert first_inst["team_count"] == 1

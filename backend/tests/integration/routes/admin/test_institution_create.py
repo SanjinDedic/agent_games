@@ -28,9 +28,7 @@ def test_institution_create_success(client, auth_headers, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "institution created successfully" in data["message"].lower()
-    assert "id" in data["data"]
+    assert "id" in data
     
     # Verify institution was created in database
     institution = db_session.exec(
@@ -81,10 +79,8 @@ def test_institution_create_failures(client, auth_headers, db_session):
         headers=auth_headers,
         json=institution_data,
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "already exists" in data["message"].lower()
+    assert response.status_code == 409
+    assert "already exists" in response.json()["detail"].lower()
     
     # Test case 2: Missing required fields
     incomplete_data = {

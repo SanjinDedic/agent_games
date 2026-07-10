@@ -16,10 +16,9 @@ from backend.database.db_models import (
 def test_get_demo_users(client, auth_headers, setup_demo_data):
     response = client.get("admin/get_all_demo_users", headers=auth_headers)
     data = response.json()
-    print("HERE ARE ALL THDEMO USERS:", data)
     assert response.status_code == 200
-    assert "demo_users" in data["data"]
-    assert "demo_team_name" in data["data"]["demo_users"][0]
+    assert "demo_users" in data
+    assert "demo_team_name" in data["demo_users"][0]
 
 
 def test_delete_all_demo_users(client, auth_headers, setup_demo_data, db_session):
@@ -31,7 +30,7 @@ def test_delete_all_demo_users(client, auth_headers, setup_demo_data, db_session
 
     response = client.get("/admin/get_all_demo_users", headers=auth_headers)
     demo_users = response.json()
-    assert demo_users["data"] == {"demo_users": []}
+    assert demo_users == {"demo_users": []}
 
     # check that there are no
     # Direct database verification for teams
