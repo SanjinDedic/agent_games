@@ -41,19 +41,15 @@ function DockerStatus() {
       }
 
       const data = await response.json();
-      if (data.status === "success") {
-        setServiceStatus({
-          web: {
-            name: "web",
-            status: "running",
-            health: "Service web is healthy (HTTP 200)",
-            is_healthy: true,
-          },
-          ...data.data.statuses,
-        });
-      } else {
-        toast.error("Failed to fetch service status");
-      }
+      setServiceStatus({
+        web: {
+          name: "web",
+          status: "running",
+          health: "Service web is healthy (HTTP 200)",
+          is_healthy: true,
+        },
+        ...data.statuses,
+      });
     } catch (error) {
       console.error("Error fetching service status:", error);
       toast.error(`Error: ${error.message}`);
