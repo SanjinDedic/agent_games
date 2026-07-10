@@ -119,7 +119,12 @@ async def submit_agent(
             status_code=400, detail="Team is not assigned to a valid league."
         )
 
-    allow_submission(session, team.id)
+    # Hint requests are governed by hint rationing alone (cooldown +
+    # submissions-between-hints below), not the per-minute submission limit —
+    # otherwise a student who just burned quick failed attempts finds the
+    # hint button rate-limited exactly when the hint is offered.
+    if not generate_hint:
+        allow_submission(session, team.id)
 
     # hint_available is deterministic on recorded attempts, and nothing is
     # recorded until after validation — so checking before the (expensive)

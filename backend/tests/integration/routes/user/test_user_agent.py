@@ -456,6 +456,63 @@ def test_submit_agent_hint_request_rejected_when_unavailable(
     assert "not allowed to request a hint" in response.json()["detail"]
 
 
+def test_submit_agent_hint_request_bypasses_rate_limit(
+    client,
+    db_session: Session,
+    student_token: str,
+    setup_test_team: Team,
+    monkeypatch,
+):
+    """Hint requests answer to hint rationing only: with the per-minute
+    submission limit saturated, a plain submission 429s but a hint request
+    still goes through."""
+    _make_hints_available(db_session, setup_test_team.id)
+    now = utc_now()
+    for _ in range(5):
+        add_failed_submission(db_session, timestamp=now, team_id=setup_test_team.id)
+    db_session.commit()
+
+    # Sanity: a plain submission is rate limited right now
+    response = client.post(
+        "/user/submit-agent",
+        json={"code": "irrelevant"},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 429
+    assert "per minute" in response.json()["detail"]
+
+    fake_hint = Hint(
+        line_number=1,
+        quoted_line="import os",
+        assumptions=["the sandbox allows importing os"],
+        small_hint="Is the os module available to agent code?",
+        big_hint="Agent code cannot import os; remove the import.",
+        priority=1,
+        bug=True,
+    )
+
+    async def fake_provide_hints(*args, **kwargs):
+        return [fake_hint]
+
+    monkeypatch.setattr(user_router_module, "provide_hints", fake_provide_hints)
+
+    unsafe_code = """
+import os
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+    response = client.post(
+        "/user/submit-agent?generate_hint=true",
+        json={"code": unsafe_code},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 400
+    assert response.json()["hint"]["small_hint"] == fake_hint.small_hint
+
+
 def test_submit_agent_rate_limit(
     client,
     db_session: Session,
