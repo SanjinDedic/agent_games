@@ -16,29 +16,56 @@ from backend.time_utils import ensure_utc, utc_now
 from backend.utils import process_simulation_results
 
 
+logger = logging.getLogger(__name__)
+
+
 class TeamError(Exception):
-    """Base exception for all team-related errors"""
+    """Base exception for all team-related errors."""
 
     pass
 
 
-logger = logging.getLogger(__name__)
+class TeamExistsError(TeamError):
+    """Raised when a signup collides with an existing team name (maps to HTTP 409)."""
+
+    pass
 
 
 class SubmissionLimitExceededError(Exception):
-    """Raised when submission rate limit is exceeded"""
+    """Raised when the submission rate limit is exceeded (maps to HTTP 429)."""
 
     pass
 
 
 class TeamNotFoundError(Exception):
-    """Raised when team is not found"""
+    """Raised when a team is not found (maps to HTTP 404)."""
 
     pass
 
 
 class LeagueNotFoundError(Exception):
-    """Raised when league is not found"""
+    """Raised when a league is not found (maps to HTTP 404)."""
+
+    pass
+
+
+class LeagueExpiredError(Exception):
+    """Raised when a signup targets a league past its expiry (maps to HTTP 410)."""
+
+    pass
+
+
+class DemoLeagueError(ValueError):
+    """Raised when a demo user targets a non-demo league (maps to HTTP 403).
+
+    Subclasses ValueError for compatibility with callers that predate the class.
+    """
+
+    pass
+
+
+class ResultNotFoundError(Exception):
+    """Raised when a published result is not found (maps to HTTP 404)."""
 
     pass
 
@@ -120,7 +147,7 @@ def assign_team_to_league(
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
     if is_demo and not league.is_demo:
-        raise ValueError("Demo users can only join demo leagues")
+        raise DemoLeagueError("Demo users can only join demo leagues")
 
     team = session.get(Team, team_id)
     if not team:
@@ -379,7 +406,7 @@ def create_team_and_assign_to_league(
     existing_team = session.exec(name_conflict).first()
 
     if existing_team:
-        raise TeamError(f"Team with name '{team_name}' already exists")
+        raise TeamExistsError(f"Team with name '{team_name}' already exists")
 
     # Create the team with connection to both league and institution
     team = Team(
@@ -408,7 +435,9 @@ def get_result_by_publish_link(session: Session, publish_link: str) -> dict:
     ).first()
 
     if not simulation:
-        raise ValueError(f"Published result with link '{publish_link}' not found")
+        raise ResultNotFoundError(
+            f"Published result with link '{publish_link}' not found"
+        )
 
     # Get league for this simulation
     league = simulation.league

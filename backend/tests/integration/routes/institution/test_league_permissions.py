@@ -194,37 +194,37 @@ def test_get_all_leagues_scoped(client, two_institutions):
     # Institution A sees its leagues but not B's
     resp = client.get("/user/get-all-leagues", headers=data["headers_a"])
     assert resp.status_code == 200
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" in names
     assert "perm_league_b" not in names
 
     # Institution B sees its leagues but not A's
     resp = client.get("/user/get-all-leagues", headers=data["headers_b"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_b" in names
     assert "perm_league_a" not in names
 
     # Admin role sees all
     resp = client.get("/user/get-all-leagues", headers=data["headers_admin"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" in names
     assert "perm_league_b" in names
 
     # Admin Institution (id=1) is just another institution — sees only its own leagues
     resp = client.get("/user/get-all-leagues", headers=data["headers_admin_inst"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" not in names
     assert "perm_league_b" not in names
 
     # Student with institution_id sees only their institution's leagues
     resp = client.get("/user/get-all-leagues", headers=data["headers_student_a"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" in names
     assert "perm_league_b" not in names
 
     # Student without institution_id gets empty list
     resp = client.get("/user/get-all-leagues", headers=data["headers_student_no_inst"])
-    leagues = resp.json()["data"]["leagues"]
+    leagues = resp.json()["leagues"]
     assert leagues == []
 
 

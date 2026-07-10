@@ -60,12 +60,12 @@ export const fetchAllRankings = ({ force = false } = {}) => async (dispatch, get
   try {
     const response = await fetch(`${apiUrl}/user/get-published-results-for-all-leagues`);
     const data = await response.json();
-    if (data.status === 'success') {
-      const results = data.data?.all_results || [];
+    if (response.ok) {
+      const results = data.all_results || [];
       dispatch(setAllRankings(results));
       return { success: true, results };
     }
-    return { success: false, error: data.message || 'Failed to fetch published results' };
+    return { success: false, error: data.detail || 'Failed to fetch published results' };
   } catch (error) {
     console.error('Error fetching published results:', error);
     return { success: false, error: 'Network error' };
@@ -93,11 +93,11 @@ export const fetchMyLeagueRankings = ({ force = false } = {}) => async (dispatch
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     const data = await response.json();
-    if (data.status === 'success') {
-      dispatch(setMyLeagueRankings(data.data || {}));
-      return { success: true, results: data.data?.all_results || [] };
+    if (response.ok) {
+      dispatch(setMyLeagueRankings(data || {}));
+      return { success: true, results: data?.all_results || [] };
     }
-    return { success: false, error: data.message || 'Failed to fetch published results' };
+    return { success: false, error: data.detail || 'Failed to fetch published results' };
   } catch (error) {
     console.error('Error fetching my league published results:', error);
     return { success: false, error: 'Network error' };

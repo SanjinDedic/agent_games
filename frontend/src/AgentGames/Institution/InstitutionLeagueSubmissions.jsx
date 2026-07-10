@@ -135,10 +135,10 @@ function InstitutionLeagueSubmissions() {
           },
         });
         const data = await resp.json();
-        if (data.status === "success") {
-          const map = data.data?.teams || {};
-          const ids = data.data?.team_ids || {};
-          setLeagueName(data.data?.league_name || "");
+        if (resp.ok) {
+          const map = data.teams || {};
+          const ids = data.team_ids || {};
+          setLeagueName(data.league_name || "");
           setSubmissions(map);
           setTeamIds(ids);
           const firstTeam = Object.keys(map).sort()[0] || "";
@@ -149,7 +149,7 @@ function InstitutionLeagueSubmissions() {
         } else if (data.detail === "Invalid token") {
           navigate("/Institution");
         } else {
-          setError(data.message || "Failed to load submissions");
+          setError(data.detail || "Failed to load submissions");
         }
       } catch (e) {
         setError("Error fetching submissions");

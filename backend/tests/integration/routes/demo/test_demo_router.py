@@ -168,7 +168,7 @@ def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    assert "leagues" in response.json()
 
 
 def test_demo_token_includes_institution_id(client: TestClient, db_session: Session):
@@ -190,5 +190,5 @@ def test_demo_token_includes_institution_id(client: TestClient, db_session: Sess
         headers={"Authorization": f"Bearer {token}"},
     )
     assert leagues_response.status_code == 200
-    leagues = leagues_response.json()["data"]["leagues"]
+    leagues = leagues_response.json()["leagues"]
     assert len(leagues) > 0, "Demo user should see demo leagues"

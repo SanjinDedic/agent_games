@@ -174,12 +174,14 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
         team = _make_team(db_session, greedy_pig_league, name)
         teams_by_name[name] = team
         response = _submit(client, team, code)
-        assert response.status_code == 200
-        status = response.json()["status"]
         if name in valid_teams:
-            assert status == "success", f"{name} should pass validation: {response.json()}"
+            assert (
+                response.status_code == 200
+            ), f"{name} should pass validation: {response.json()}"
         else:
-            assert status == "error", f"{name} should fail validation: {response.json()}"
+            assert (
+                response.status_code == 400
+            ), f"{name} should fail validation: {response.json()}"
 
     # 1b. DB-level invariants of the split write path.
     for name, team in teams_by_name.items():

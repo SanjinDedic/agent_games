@@ -93,10 +93,7 @@ def test_get_all_submissions_success(client, league_with_submissions):
         headers=data["headers"],
     )
     assert resp.status_code == 200
-    result = resp.json()
-    assert result["status"] == "success"
-
-    payload = result["data"]
+    payload = resp.json()
     assert payload["league_name"] == "submissions_test_league"
 
     teams = payload["teams"]
@@ -128,9 +125,8 @@ def test_get_all_submissions_empty_league(client, league_with_submissions):
     )
     assert resp.status_code == 200
     result = resp.json()
-    assert result["status"] == "success"
-    assert result["data"]["teams"] == {}
-    assert result["data"]["league_name"] == "empty_submissions_league"
+    assert result["teams"] == {}
+    assert result["league_name"] == "empty_submissions_league"
 
 
 def test_get_all_submissions_no_auth(client, league_with_submissions):
@@ -147,10 +143,8 @@ def test_get_all_submissions_invalid_league(client, league_with_submissions):
         "/user/get-all-league-submissions/99999",
         headers=league_with_submissions["headers"],
     )
-    assert resp.status_code == 200
-    result = resp.json()
-    assert result["status"] == "error"
-    assert "not found" in result["message"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
 
 def test_get_all_submissions_student_forbidden(client, league_with_submissions):
@@ -207,8 +201,7 @@ def test_get_all_submissions_institution_own_league(client, db_session):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
-    assert resp.json()["data"]["league_name"] == "owned_league"
+    assert resp.json()["league_name"] == "owned_league"
 
 
 def test_get_all_submissions_institution_cannot_see_other_institution(
@@ -286,9 +279,7 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         f"/user/get-all-league-submissions/{b_league.id}",
         headers={"Authorization": f"Bearer {a_token}"},
     )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "error"
-    assert "permission" in data["message"].lower()
+    assert resp.status_code == 403
+    assert "permission" in resp.json()["detail"].lower()
     # Critical: the secret code must NOT leak in the error response.
     assert "secret code" not in resp.text

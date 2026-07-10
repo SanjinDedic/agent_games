@@ -85,10 +85,9 @@ class CustomPlayer(Player):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "Submission ID:" in data["message"]
-    assert "results" in data["data"]
-    assert "feedback" in data["data"]
+    assert data["submission_id"] is not None
+    assert "results" in data
+    assert "feedback" in data
 
     # Verify submission was saved
     latest_submission = db_session.exec(
@@ -118,8 +117,7 @@ class CustomPlayer(Player):
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
+    assert response.json()["submission_id"] is not None
 
 
 def test_submit_agent_exceptions(
@@ -143,10 +141,8 @@ class CustomPlayer(Player):
         json={"code": unsafe_code},
         headers={"Authorization": f"Bearer {student_token}"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "Agent code is not safe" in data["message"]
+    assert response.status_code == 400
+    assert "Agent code is not safe" in response.json()["detail"]
 
     # Test case 2: Submit with syntax error
     invalid_code = """
@@ -161,10 +157,8 @@ class CustomPlayer(Player):
         json={"code": invalid_code},
         headers={"Authorization": f"Bearer {student_token}"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "syntax error" in data["message"].lower()
+    assert response.status_code == 400
+    assert "syntax error" in response.json()["detail"].lower()
 
     # Test case 3: Submit without authorization
     response = client.post("/user/submit-agent", json={"code": "valid_code"})
@@ -218,11 +212,9 @@ def test_get_league_submissions_success(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "data" in data
-    assert setup_test_team.name in data["data"]
+    assert setup_test_team.name in data
     assert (
-        data["data"][setup_test_team.name] == "test code 2"
+        data[setup_test_team.name] == "test code 2"
     )  # Should get latest submission
 
 
@@ -235,9 +227,7 @@ def test_get_league_submissions_exceptions(client, student_token: str, auth_head
         headers=auth_headers,
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert not data["data"]  # Should be empty dict
+    assert response.json() == {}
 
     # Test case 2: Unauthorized access (no token)
     response = client.get("/user/get-league-submissions/1")
@@ -301,9 +291,7 @@ def test_get_team_submission_success(
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["code"] == "latest code"
+    assert response.json()["code"] == "latest code"
 
 
 def test_get_team_submission_exceptions(client):
@@ -330,10 +318,8 @@ def test_get_team_submission_exceptions(client):
         "/user/get-team-submission",
         headers={"Authorization": f"Bearer {non_existent_token}"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["code"] is None
-    assert data["status"] == "error"
+    assert response.status_code == 400
+    assert "team token" in response.json()["detail"]
 
 
 def test_submit_agent_rate_limit(
@@ -367,9 +353,7 @@ class CustomPlayer(Player):
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert f"Submission ID: {i+1}" in data["message"]
+        assert response.json()["submission_id"] == i + 1
 
     # Verify we have exactly 5 submissions
     submissions = db_session.exec(
@@ -385,10 +369,8 @@ class CustomPlayer(Player):
         json={"code": valid_code},
         headers={"Authorization": f"Bearer {student_token}"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "5 submissions per minute" in data["message"]
+    assert response.status_code == 429
+    assert "5 submissions per minute" in response.json()["detail"]
 
     # Verify we still have exactly 5 submissions
     submissions = db_session.exec(

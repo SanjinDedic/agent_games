@@ -24,11 +24,11 @@ export const useLeagueAPI = (userRole) => {
     try {
       const response = await fetch(`${apiUrl}/user/league-info/${leagueToken}`);
       const data = await response.json();
-      
-      if (data.status === 'success') {
-        return { success: true, data: data.data };
+
+      if (response.ok) {
+        return { success: true, data };
       } else {
-        return { success: false, error: data.message || 'Failed to fetch league info' };
+        return { success: false, error: data.detail || 'Failed to fetch league info' };
       }
     } catch (error) {
       console.error('Error fetching league info:', error);
@@ -49,13 +49,13 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success" && data.data?.leagues) {
-        dispatch(setLeagues(data.data.leagues));
-        return { success: true, leagues: data.data.leagues };
+
+      if (response.ok && data.leagues) {
+        dispatch(setLeagues(data.leagues));
+        return { success: true, leagues: data.leagues };
       } else {
-        toast.error(data.message || 'Failed to fetch leagues');
-        return { success: false, error: data.message || 'Failed to fetch leagues' };
+        toast.error(data.detail || 'Failed to fetch leagues');
+        return { success: false, error: data.detail || 'Failed to fetch leagues' };
       }
     } catch (error) {
       console.error('Error fetching leagues:', error);
@@ -89,15 +89,15 @@ export const useLeagueAPI = (userRole) => {
       
       const data = await response.json();
 
-      if (data.status === "success") {
-        if (data.data?.access_token) {
-          dispatch(setToken(data.data.access_token));
+      if (response.ok) {
+        if (data.access_token) {
+          dispatch(setToken(data.access_token));
         }
         toast.success(data.message || 'Successfully joined league');
         return { success: true };
       } else {
-        toast.error(data.message || 'Failed to join league');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to join league');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error assigning to league:', error);
@@ -469,15 +469,15 @@ export const useLeagueAPI = (userRole) => {
         body: JSON.stringify({ game_name: gameName }),
       });
       const data = await response.json();
-      if (data.status === "success" && data.data) {
+      if (response.ok) {
         dispatch(setRewardMeta({
-          schema: data.data.reward_schema ?? null,
-          instructions: data.data.reward_instructions ?? "",
+          schema: data.reward_schema ?? null,
+          instructions: data.reward_instructions ?? "",
         }));
         return { success: true };
       }
       dispatch(setRewardMeta({ schema: null, instructions: "" }));
-      return { success: false, error: data.message || "Failed to fetch reward meta" };
+      return { success: false, error: data.detail || "Failed to fetch reward meta" };
     } catch (error) {
       console.error("Error fetching reward metadata:", error);
       dispatch(setRewardMeta({ schema: null, instructions: "" }));

@@ -35,6 +35,15 @@ from backend.routes.institution.institution_db import (
     TeamExistsError,
     TeamNotFoundError,
 )
+from backend.routes.user.user_db import (
+    DemoLeagueError,
+    LeagueExpiredError,
+    ResultNotFoundError,
+    SubmissionLimitExceededError,
+    LeagueNotFoundError as UserLeagueNotFoundError,
+    TeamExistsError as UserTeamExistsError,
+    TeamNotFoundError as UserTeamNotFoundError,
+)
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
@@ -219,6 +228,43 @@ async def ai_timeout_handler(request: Request, exc: AIRequestTimeoutError):
 
 @app.exception_handler(SimulationLimitExceededError)
 async def simulation_limit_handler(request: Request, exc: SimulationLimitExceededError):
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+
+# User-domain exceptions (user_db defines its own league/team lookup errors,
+# distinct classes from institution_db's; each maps to the same code).
+@app.exception_handler(UserLeagueNotFoundError)
+async def user_league_not_found_handler(request: Request, exc: UserLeagueNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(UserTeamNotFoundError)
+async def user_team_not_found_handler(request: Request, exc: UserTeamNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(UserTeamExistsError)
+async def user_team_exists_handler(request: Request, exc: UserTeamExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ResultNotFoundError)
+async def result_not_found_handler(request: Request, exc: ResultNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LeagueExpiredError)
+async def league_expired_handler(request: Request, exc: LeagueExpiredError):
+    return JSONResponse(status_code=410, content={"detail": str(exc)})
+
+
+@app.exception_handler(DemoLeagueError)
+async def demo_league_handler(request: Request, exc: DemoLeagueError):
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(SubmissionLimitExceededError)
+async def submission_limit_handler(request: Request, exc: SubmissionLimitExceededError):
     return JSONResponse(status_code=429, content={"detail": str(exc)})
 
 

@@ -20,23 +20,23 @@ export const useSubmissionAPI = () => {
   const getLatestSubmission = useCallback(async () => {
     try {
       const response = await authFetch(`${apiUrl}/user/get-team-submission`, {
-        headers: { 
-          'Authorization': `Bearer ${accessToken}` 
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
         },
       });
-      
+
       const data = await response.json();
-      
-      if (data.status === "success" && data.data && data.data.code) {
-        return { 
-          success: true, 
-          hasSubmission: true, 
-          code: data.data.code 
+
+      if (response.ok && data.code) {
+        return {
+          success: true,
+          hasSubmission: true,
+          code: data.code
         };
       } else {
-        return { 
-          success: true, 
-          hasSubmission: false 
+        return {
+          success: true,
+          hasSubmission: false
         };
       }
     } catch (error) {
@@ -61,15 +61,15 @@ export const useSubmissionAPI = () => {
 
       const data = await response.json();
 
-      if (data.status === "success" && data.data && Array.isArray(data.data.submissions)) {
+      if (response.ok && Array.isArray(data.submissions)) {
         return {
           success: true,
-          submissions: data.data.submissions,
+          submissions: data.submissions,
         };
       } else {
         return {
           success: false,
-          error: data.message || "Failed to load submissions",
+          error: data.detail || "Failed to load submissions",
         };
       }
     } catch (error) {
@@ -95,27 +95,27 @@ export const useSubmissionAPI = () => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success" && data.data) {
+
+      if (response.ok) {
         let starterCode = '';
-        if (data.data.starter_code) {
-          starterCode = data.data.starter_code;
+        if (data.starter_code) {
+          starterCode = data.starter_code;
           if (starterCode.startsWith("\n")) {
             starterCode = starterCode.slice(1);
           }
         }
-        
+
         return {
           success: true,
           starterCode,
-          instructions: data.data.game_instructions,
-          rewardSchema: data.data.reward_schema ?? null,
-          rewardInstructions: data.data.reward_instructions ?? "",
+          instructions: data.game_instructions,
+          rewardSchema: data.reward_schema ?? null,
+          rewardInstructions: data.reward_instructions ?? "",
         };
       } else {
-        return { 
-          success: false, 
-          error: "Failed to get game instructions" 
+        return {
+          success: false,
+          error: "Failed to get game instructions"
         };
       }
     } catch (error) {
@@ -157,19 +157,21 @@ export const useSubmissionAPI = () => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
+      if (response.ok) {
         return {
           success: true,
-          output: data.data.results,
-          feedback: data.data.feedback,
+          output: data.results,
+          feedback: data.feedback,
           hint: data.hint ?? null,
           hint_available: data.hint_available ?? false
         };
       } else {
-        toast.error(data.message || "Error in submission");
+        // Failed validation is a 400 whose body carries the hint fields
+        // next to the standard error detail.
+        toast.error(data.detail || "Error in submission");
         return {
           success: false,
-          error: data.message,
+          error: data.detail,
           hint: data.hint ?? null,
           hint_available: data.hint_available ?? false
         };

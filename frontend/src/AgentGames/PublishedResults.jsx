@@ -25,26 +25,26 @@ const PublishedResults = () => {
         const response = await fetch(`${apiUrl}/user/published-result/${publishLink}`);
         const data = await response.json();
 
-        if (data.status === "success" && data.data) {
+        if (response.ok) {
           // Make sure to include the game property in feedback if not present
-          if (data.data.feedback && !data.data.feedback.game && data.data.game) {
+          if (data.feedback && !data.feedback.game && data.game) {
             // If feedback doesn't have game property but results do, add it
-            if (typeof data.data.feedback === 'object') {
-              data.data.feedback.game = data.data.game;
+            if (typeof data.feedback === 'object') {
+              data.feedback.game = data.game;
             } else {
               // If feedback is a string, convert it to an object with game
-              data.data.feedback = {
-                message: data.data.feedback,
-                game: data.data.game
+              data.feedback = {
+                message: data.feedback,
+                game: data.game
               };
             }
           }
-          
-          setResults(data.data);
-          document.title = `Results for ${data.data.league_name}`;
+
+          setResults(data);
+          document.title = `Results for ${data.league_name}`;
         } else {
-          setError(data.message || "Failed to load results");
-          toast.error(data.message || "Failed to load results");
+          setError(data.detail || "Failed to load results");
+          toast.error(data.detail || "Failed to load results");
         }
       } catch (error) {
         console.error("Error fetching published results:", error);

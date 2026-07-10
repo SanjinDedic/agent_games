@@ -40,8 +40,8 @@ const LeagueCreation = () => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
-        const gamesList = data.data.games || [];
+      if (response.ok) {
+        const gamesList = data.games || [];
         setGames(gamesList);
 
         // Set default game to first in list if available

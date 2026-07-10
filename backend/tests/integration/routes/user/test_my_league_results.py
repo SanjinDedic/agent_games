@@ -112,9 +112,7 @@ def test_my_league_results_scoped_to_league(client, two_leagues_with_published_r
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    body = data["data"]
+    body = response.json()
     assert body["league_name"] == "my_league_a"
     assert body["info_markdown"] == "# League A schedule"
 
@@ -165,9 +163,8 @@ def test_my_league_results_no_league(client, db_session):
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "success"
-    assert body["data"]["league_name"] == "my_league_empty"
-    assert body["data"]["all_results"] == []
+    assert body["league_name"] == "my_league_empty"
+    assert body["all_results"] == []
 
 
 def test_get_all_leagues_includes_info_markdown(client, two_leagues_with_published_results):
@@ -179,7 +176,7 @@ def test_get_all_leagues_includes_info_markdown(client, two_leagues_with_publish
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
-    leagues = response.json()["data"]["leagues"]
+    leagues = response.json()["leagues"]
     by_name = {l["name"]: l for l in leagues}
     # team_a is institution_id=None => admin-only sees all; student with no
     # institution returns empty. We assert the field exists when present.

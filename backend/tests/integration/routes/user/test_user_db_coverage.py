@@ -26,10 +26,10 @@ from backend.database.db_models import (
 )
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import (
-    TeamNotFoundError,
+    DemoLeagueError,
     LeagueNotFoundError,
-    TeamError,
-    SubmissionLimitExceededError,
+    ResultNotFoundError,
+    TeamNotFoundError,
     allow_submission,
     assign_team_to_league,
     get_published_result,
@@ -139,7 +139,7 @@ def test_assign_team_demo_to_non_demo_league(db_session):
     db_session.add(demo_team)
     db_session.commit()
 
-    with pytest.raises(ValueError, match="Demo users can only join demo leagues"):
+    with pytest.raises(DemoLeagueError, match="Demo users can only join demo leagues"):
         assign_team_to_league(
             db_session, demo_team.id, league.id, is_demo=True
         )
@@ -215,8 +215,8 @@ def test_get_result_by_publish_link(db_session, published_league):
 
 
 def test_get_result_by_publish_link_not_found(db_session):
-    """get_result_by_publish_link raises ValueError for invalid link."""
-    with pytest.raises(ValueError, match="not found"):
+    """get_result_by_publish_link raises ResultNotFoundError for invalid link."""
+    with pytest.raises(ResultNotFoundError, match="not found"):
         get_result_by_publish_link(db_session, "nonexistent_link_abc")
 
 
