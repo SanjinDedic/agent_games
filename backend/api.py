@@ -2,10 +2,12 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.models_api import ResponseModel
+from backend.routes.auth.auth_db import InvalidCredentialsError
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
@@ -83,6 +85,13 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error during application shutdown: {e}")
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(InvalidCredentialsError)
+async def invalid_credentials_handler(request: Request, exc: InvalidCredentialsError):
+    """Map failed authentication to HTTP 401 with a consistent {"detail": ...} body."""
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
 
 app.add_middleware(
     CORSMiddleware,

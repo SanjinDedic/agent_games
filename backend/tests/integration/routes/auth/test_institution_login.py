@@ -58,12 +58,11 @@ def test_institution_login_success(client, test_institution):
     
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
-    assert data["data"]["token_type"] == "bearer"
-    
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
     # Verify token works with an institution endpoint
-    token = data["data"]["access_token"]
+    token = data["access_token"]
     response = client.get(
         "/institution/get-all-teams",
         headers={"Authorization": f"Bearer {token}"}
@@ -80,20 +79,16 @@ def test_institution_login_failures(client, test_institution, expired_institutio
         "/auth/institution-login",
         json={"name": "non_existent", "password": "inst_password"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "not found" in data["message"].lower()
-    
+    assert response.status_code == 401
+    assert "not found" in response.json()["detail"].lower()
+
     # Test case 2: Wrong password
     response = client.post(
         "/auth/institution-login",
         json={"name": "test_institution", "password": "wrong_password"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "invalid password" in data["message"].lower()
+    assert response.status_code == 401
+    assert "invalid password" in response.json()["detail"].lower()
     
     # Test case 3: Missing name
     response = client.post(
@@ -121,20 +116,16 @@ def test_institution_login_failures(client, test_institution, expired_institutio
         "/auth/institution-login",
         json={"name": "expired_institution", "password": "expired_password"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "expired" in data["message"].lower()
-    
+    assert response.status_code == 401
+    assert "expired" in response.json()["detail"].lower()
+
     # Test case 7: Inactive subscription
     response = client.post(
         "/auth/institution-login",
         json={"name": "inactive_institution", "password": "inactive_password"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "not active" in data["message"].lower()
+    assert response.status_code == 401
+    assert "not active" in response.json()["detail"].lower()
 
 
 def test_token_expiration(client, test_institution):

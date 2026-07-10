@@ -270,16 +270,12 @@ def test_agent_api_key_validation(
     # Test case 1: Valid API key login
     response = client.post("/auth/agent-login", json={"api_key": setup_api_key.key})
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
+    assert "access_token" in response.json()
 
     # Test case 2: Invalid API key
     response = client.post("/auth/agent-login", json={"api_key": "invalid_key"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "invalid" in data["message"].lower()
+    assert response.status_code == 401
+    assert "invalid" in response.json()["detail"].lower()
 
     # Test case 3: Inactive API key
     setup_api_key.is_active = False
@@ -287,10 +283,8 @@ def test_agent_api_key_validation(
     db_session.commit()
 
     response = client.post("/auth/agent-login", json={"api_key": setup_api_key.key})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "invalid" in data["message"].lower()
+    assert response.status_code == 401
+    assert "invalid" in response.json()["detail"].lower()
 
 
 def test_agent_rate_limiting(

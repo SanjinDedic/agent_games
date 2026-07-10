@@ -58,11 +58,11 @@ function Admin() {
       });
 
       const data = await response.json();
-      if (data.status === "success") {
-        dispatch(setToken(data.data.access_token));
+      if (response.ok) {
+        dispatch(setToken(data.access_token));
         navigate("/AdminInstitutions");
-      } else if (data.status === "failed") {
-        setErrorMessage(data.message);
+      } else {
+        setErrorMessage(data.detail || "Login failed");
       }
     } catch (error) {
       console.error("Error:", error);

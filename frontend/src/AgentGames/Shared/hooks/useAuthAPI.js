@@ -25,12 +25,12 @@ export const useAuthAPI = () => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
-        dispatch(setToken(data.data.access_token));
+      if (response.ok) {
+        dispatch(setToken(data.access_token));
         dispatch(setCurrentTeam(username));
         return { success: true };
       } else {
-        return { success: false, error: data.message };
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error during login:', error);
