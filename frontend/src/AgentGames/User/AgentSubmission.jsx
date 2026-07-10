@@ -165,11 +165,16 @@ function AgentSubmission() {
     if (result.hint_available && !allowHint) toast.success("A hint is now available");
     setAllowHint(result.hint_available);
 
-    // A hint can come back even when validation fails — that's the main use case
+    // A hint only comes back when validation fails — hints exist to help
+    // students reach valid code, not to improve a valid agent.
     if (result.hint) {
       setHint(result.hint);
     } else {
-      // submitCode already surfaced the error via toast
+      if (result.hint_cancelled) {
+        // The edited code passed validation, so no hint was generated or consumed
+        toast.success("Submission valid — hint cancelled");
+      }
+      // otherwise submitCode already surfaced the error via toast
       setHintModalOpen(false);
     }
 

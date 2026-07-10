@@ -163,7 +163,10 @@ export const useSubmissionAPI = () => {
           output: data.results,
           feedback: data.feedback,
           hint: data.hint ?? null,
-          hint_available: data.hint_available ?? false
+          hint_available: data.hint_available ?? false,
+          // True when a hint was requested but the code passed validation,
+          // so the backend skipped the hint without consuming the attempt.
+          hint_cancelled: data.hint_cancelled ?? false
         };
       } else {
         // Failed validation is a 400 whose body carries the hint fields
@@ -173,7 +176,8 @@ export const useSubmissionAPI = () => {
           success: false,
           error: data.detail,
           hint: data.hint ?? null,
-          hint_available: data.hint_available ?? false
+          hint_available: data.hint_available ?? false,
+          hint_cancelled: false
         };
       }
     } catch (error) {

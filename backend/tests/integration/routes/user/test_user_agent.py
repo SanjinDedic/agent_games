@@ -3,11 +3,22 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, delete, select
 
+import backend.routes.user.user_router as user_router_module
 from backend.database.db_models import League, Submission, SubmissionMetadata, Team
 from backend.database.submission_helpers import delete_submissions_for_teams
+from backend.routes.ai.ai_models import Hint
+from backend.routes.ai.hint_service import (
+    HINT_COOLDOWN,
+    SUBMISSIONS_BETWEEN_HINTS,
+    hint_available,
+)
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_by_id
-from backend.tests.conftest import add_submission, make_student_token
+from backend.tests.conftest import (
+    add_failed_submission,
+    add_submission,
+    make_student_token,
+)
 from backend.time_utils import utc_now
 
 
@@ -320,6 +331,129 @@ def test_get_team_submission_exceptions(client):
     )
     assert response.status_code == 400
     assert "team token" in response.json()["detail"]
+
+
+def _make_hints_available(db_session: Session, team_id: int) -> None:
+    """Seed old failed attempts: enough to pass the submissions-between-hints
+    gap and old enough to pass the cooldown, so hint rationing allows a hint."""
+    base = utc_now() - timedelta(seconds=HINT_COOLDOWN + 60)
+    for i in range(SUBMISSIONS_BETWEEN_HINTS):
+        add_failed_submission(
+            db_session, timestamp=base + timedelta(seconds=i), team_id=team_id
+        )
+    db_session.commit()
+
+
+def test_submit_agent_hint_cancelled_on_valid_code(
+    client,
+    db_session: Session,
+    student_token: str,
+    setup_test_team: Team,
+    monkeypatch,
+):
+    """A hint requested alongside code that passes validation is cancelled:
+    no LLM call, the attempt isn't consumed, and the response says so."""
+    _make_hints_available(db_session, setup_test_team.id)
+
+    async def fail_provide_hints(*args, **kwargs):
+        raise AssertionError("provide_hints must not be called for valid code")
+
+    monkeypatch.setattr(user_router_module, "provide_hints", fail_provide_hints)
+
+    valid_code = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+    response = client.post(
+        "/user/submit-agent?generate_hint=true",
+        json={"code": valid_code},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["hint"] is None
+    assert data["hint_available"] is False
+    assert data["hint_cancelled"] is True
+
+    latest_meta = db_session.exec(
+        select(SubmissionMetadata)
+        .where(SubmissionMetadata.team_id == setup_test_team.id)
+        .order_by(SubmissionMetadata.id.desc())
+    ).first()
+    assert latest_meta.hint_included is False
+
+    # The ration wasn't spent, so a hint is still available for a future
+    # failed attempt.
+    assert hint_available(db_session, setup_test_team) is True
+
+
+def test_submit_agent_hint_returned_when_validation_fails(
+    client,
+    db_session: Session,
+    student_token: str,
+    setup_test_team: Team,
+    monkeypatch,
+):
+    """A hint requested alongside failing code is generated, returned in the
+    400 body, and consumes the hint attempt."""
+    _make_hints_available(db_session, setup_test_team.id)
+
+    fake_hint = Hint(
+        line_number=1,
+        quoted_line="import os",
+        assumptions=["the sandbox allows importing os"],
+        small_hint="Is the os module available to agent code?",
+        big_hint="Agent code cannot import os; remove the import.",
+        priority=1,
+        bug=True,
+    )
+
+    async def fake_provide_hints(*args, **kwargs):
+        return [fake_hint]
+
+    monkeypatch.setattr(user_router_module, "provide_hints", fake_provide_hints)
+
+    unsafe_code = """
+import os
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+    response = client.post(
+        "/user/submit-agent?generate_hint=true",
+        json={"code": unsafe_code},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert data["hint"]["small_hint"] == fake_hint.small_hint
+    assert data["hint_available"] is False
+
+    latest_meta = db_session.exec(
+        select(SubmissionMetadata)
+        .where(SubmissionMetadata.team_id == setup_test_team.id)
+        .order_by(SubmissionMetadata.id.desc())
+    ).first()
+    assert latest_meta.hint_included is True
+
+
+def test_submit_agent_hint_request_rejected_when_unavailable(
+    client, student_token: str, setup_test_team: Team
+):
+    """With no prior attempts, hint rationing denies the request with a 429
+    before any validation runs."""
+    response = client.post(
+        "/user/submit-agent?generate_hint=true",
+        json={"code": "irrelevant"},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 429
+    assert "not allowed to request a hint" in response.json()["detail"]
 
 
 def test_submit_agent_rate_limit(

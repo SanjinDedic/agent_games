@@ -100,6 +100,12 @@ async def submit_agent(
     A submission whose code fails validation is a business failure -> HTTP 400,
     but the body still carries the hint fields next to "detail" because a hint
     is most useful exactly when validation fails.
+
+    Hints exist to help students reach valid code, not to improve a valid
+    agent — so a hint is only generated when this submission fails validation.
+    If a hint is requested but the code passes, the hint is cancelled: no LLM
+    call, the attempt isn't consumed, and the success body carries
+    "hint_cancelled": true so the frontend can say so.
     """
     team_name = current_user["team_name"]
     team = get_team_by_id(session, current_user["team_id"])
@@ -151,25 +157,32 @@ async def submit_agent(
         # every kill/timeout/worker-loss to a clean validation failure.
         validation_result = await await_validation_result(async_result)
 
-    hint: Hint | None = None
-    if generate_hint:
-        hints = await provide_hints(
-            session, submission.code, validation_result, team.league.game, team_name
-        )
-        logger.info(f"Generated hints: {hints}")
-        hint = sorted(hints, key=lambda x: x.priority)[0] if hints else None
-        if hint is None:
-            # No submission is recorded on this path, so the hint attempt
-            # isn't consumed.
-            raise HTTPException(
-                status_code=502,
-                detail="LLM provider failed to generate a valid hint",
-            )
-        allow_hint = False
-
     duration_ms = validation_result.get("duration_ms")
+    validation_failed = validation_result.get("status") == "error"
 
-    if validation_result.get("status") == "error":
+    hint: Hint | None = None
+    hint_cancelled = False
+    if generate_hint:
+        if not validation_failed:
+            # The code passed validation, so the student no longer needs the
+            # hint: skip the LLM call and don't consume the attempt.
+            hint_cancelled = True
+        else:
+            hints = await provide_hints(
+                session, submission.code, validation_result, team.league.game, team_name
+            )
+            logger.info(f"Generated hints: {hints}")
+            hint = sorted(hints, key=lambda x: x.priority)[0] if hints else None
+            if hint is None:
+                # No submission is recorded on this path, so the hint attempt
+                # isn't consumed.
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM provider failed to generate a valid hint",
+                )
+            allow_hint = False
+
+    if validation_failed:
         record_failed_submission(
             session,
             team.id,
@@ -186,13 +199,15 @@ async def submit_agent(
             },
         )
 
+    # hint_included is always False here: a hint is never delivered with a
+    # valid submission (cancelled above), so the ration isn't spent.
     submission_id = save_submission(
         session,
         submission.code,
         team.id,
         league_id=team.league_id,
         duration_ms=duration_ms,
-        hint_included=generate_hint,
+        hint_included=False,
     )
     return {
         "submission_id": submission_id,
@@ -200,8 +215,11 @@ async def submit_agent(
         "results": validation_result.get("simulation_results"),
         "feedback": validation_result.get("feedback"),
         "duration_ms": duration_ms,
-        "hint": hint,
-        "hint_available": allow_hint,
+        "hint": None,
+        # Hints only apply to failed validation, so a passing submission
+        # never advertises one regardless of rationing.
+        "hint_available": False,
+        "hint_cancelled": hint_cancelled,
     }
 
 
