@@ -35,6 +35,10 @@ from backend.routes.institution.institution_db import (
     TeamExistsError,
     TeamNotFoundError,
 )
+from backend.routes.payments.payments_db import (
+    InstitutionExistsError as PaidInstitutionExistsError,
+    PaidSignupError,
+)
 from backend.routes.user.user_db import (
     DemoLeagueError,
     LeagueExpiredError,
@@ -266,6 +270,21 @@ async def demo_league_handler(request: Request, exc: DemoLeagueError):
 @app.exception_handler(SubmissionLimitExceededError)
 async def submission_limit_handler(request: Request, exc: SubmissionLimitExceededError):
     return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+
+# Payments-domain exceptions: signup validation -> 400; the duplicate-name
+# subclass -> 409 (matches the other "exists" mappings). Starlette resolves
+# handlers by MRO, so the subclass handler wins over the base.
+@app.exception_handler(PaidSignupError)
+async def paid_signup_error_handler(request: Request, exc: PaidSignupError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(PaidInstitutionExistsError)
+async def paid_institution_exists_handler(
+    request: Request, exc: PaidInstitutionExistsError
+):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 app.add_middleware(
