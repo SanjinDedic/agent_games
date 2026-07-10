@@ -8,6 +8,7 @@ MOVE_CAP = 1000
 ATTACKER_BOOSTS = 5
 DEFENDER_BOOSTS = 10
 DEFENDER_START_X = 70
+MINES_PER_PLAYER = 1
 
 DIRECTIONS = {
     "N": (0, 1),
@@ -35,13 +36,20 @@ class CustomPlayer(Player):
         #   opp_pos     - opponent's (x, y)
         #   my_boosts   - boosts you have left (attacker starts with 5, defender 10)
         #   opp_boosts  - opponent's remaining boosts
+        #   my_mines    - mines you have left to lay (everyone starts with 1)
+        #   opp_mines   - opponent's mines left to lay
+        #   my_mine     - where your laid mine sits, or None
+        #   opp_frozen  - True if the opponent hit a mine (they can't move again)
         #   my_trace    - list of every cell you have visited
         #   opp_trace   - list of every cell your opponent has visited
         #   grid_size   - 100
         #   move_cap    - 1000
         #
         # Return "N" / "S" / "E" / "W" / "STAY",
-        # or {"direction": "E", "boost": True} to jump 2 cells (uses a boost).
+        # or {"direction": "E", "boost": True} to jump 2 cells (uses a boost),
+        # or {"direction": "N", "mine": True} to lay a mine on the cell you are
+        # leaving. An opponent who ends a move on your mine is blown up and
+        # can't move for the rest of the match (your own mine never hurts you).
 
         my_x, my_y = game_state["my_pos"]
         opp_x, opp_y = game_state["opp_pos"]
@@ -77,6 +85,7 @@ other is about to do.
   rightmost column (x = 99). Has **5 boosts**.
 - **Defender** starts at column 70 and wins by catching the attacker or by
   holding out until the move cap (1000 turns). Has **10 boosts**.
+- **Both** carry **one mine**.
 
 ## 2. Your Task
 
@@ -88,6 +97,8 @@ Each turn, return a move:
 - One cell in a direction: `"N"`, `"S"`, `"E"`, `"W"`, or `"STAY"`.
 - **Boost**: `{"direction": "E", "boost": True}` jumps **2 cells**, leaping
   over the middle cell — including over the other player!
+- **Mine**: `{"direction": "N", "mine": True}` lays your mine on the cell you
+  are standing on *before* you move. You only have one per match.
 - Invalid moves (off the grid, boosting with none left, errors in your code)
   count as `"STAY"`.
 
@@ -96,6 +107,14 @@ players end on the **same cell**, or the players **swap cells** (moved through
 each other). A boost-jump *over* an opponent is safe — but landing on the cell
 they end their move on is a catch.
 
+**Mines** — an opponent who **ends a move** on your mine is blown up: they
+never move again for the rest of the match. Your own mine never hurts you, and
+a boost-jump *over* a mine is safe. Mines are invisible — but they can only be
+laid on a cell the owner was standing on, so the opponent's trace is the map of
+every possible mine. A blown-up defender cannot catch anyone (stepping onto a
+mine beats a same-cell or swap catch on the same turn); a blown-up attacker is
+a sitting duck — walk over and catch them.
+
 ## 3. Available Information
 
 `game_state` contains:
@@ -103,6 +122,9 @@ they end their move on is a catch.
 - `role` — `"attacker"` or `"defender"`
 - `my_pos` / `opp_pos` — (x, y) positions; x=0 is the left edge, x=99 the goal
 - `my_boosts` / `opp_boosts` — boosts remaining
+- `my_mines` / `opp_mines` — mines left to lay (everyone starts with 1)
+- `my_mine` — where your laid mine sits, or `None` (the opponent's is hidden)
+- `opp_frozen` — `True` once the opponent has been blown up by your mine
 - `my_trace` / `opp_trace` — every cell each dot has visited, in order
 - `grid_size` (100) and `move_cap` (1000)
 
@@ -124,6 +146,11 @@ they end their move on is a catch.
   from behind; save boosts to recover when they jump over you.
 - As attacker, a boost wasted in open field is a boost you won't have at the
   wall.
+- A mine laid on your own cell just before you dodge turns a chasing defender's
+  swap-catch into their funeral. Save it for the moment you're about to be
+  caught.
+- Once the opponent's mine count hits 0, every cell in their trace could be the
+  mine. If you never end a move on their old cells, you can never be blown up.
 - Add feedback with `self.add_feedback()` to debug your strategy in the replay.
 """
 
@@ -164,6 +191,7 @@ Defaults: `[100, 100, 100, 100, 50]`.
         self.attacker_boosts = ATTACKER_BOOSTS
         self.defender_boosts = DEFENDER_BOOSTS
         self.defender_start_x = DEFENDER_START_X
+        self.mines_per_player = MINES_PER_PLAYER
         self.game_feedback = {"game": "breakthrough", "matches": []}
 
     def _validate_rewards(self, custom_rewards):
@@ -176,19 +204,20 @@ Defaults: `[100, 100, 100, 100, 50]`.
         return [float(v) for v in DEFAULT_REWARDS]
 
     def _normalize_move(self, raw):
-        """Return (direction, boost) or None if the move is invalid."""
+        """Return (direction, boost, mine) or None if the move is invalid."""
         if isinstance(raw, str):
-            direction, boost = raw, False
+            direction, boost, mine = raw, False, False
         elif isinstance(raw, dict):
             direction = raw.get("direction")
             boost = bool(raw.get("boost", False))
+            mine = bool(raw.get("mine", False))
         else:
             return None
         if direction not in DIRECTIONS:
             return None
         if direction == "STAY":
             boost = False
-        return direction, boost
+        return direction, boost, mine
 
     def _safe_decision(self, player, game_state):
         """Get a player's move; anything invalid resolves to STAY."""
@@ -197,12 +226,12 @@ Defaults: `[100, 100, 100, 100, 50]`.
         except Exception as e:
             if self.verbose:
                 player.add_feedback(f"Error in make_decision ({e}) — treated as STAY")
-            return "STAY", False
+            return "STAY", False, False
         move = self._normalize_move(raw)
         if move is None:
             if self.verbose:
                 player.add_feedback(f"Invalid move {raw!r} — treated as STAY")
-            return "STAY", False
+            return "STAY", False, False
         return move
 
     def _resolve_move(self, pos, direction, boost, boosts_left):
@@ -216,7 +245,10 @@ Defaults: `[100, 100, 100, 100, 50]`.
             return pos, False
         return (nx, ny), boost
 
-    def _build_state(self, role, turn, my_pos, opp_pos, my_boosts, opp_boosts, my_trace, opp_trace):
+    def _build_state(
+        self, role, turn, my_pos, opp_pos, my_boosts, opp_boosts, my_trace, opp_trace,
+        my_mines, opp_mines, my_mine, opp_frozen,
+    ):
         return {
             "turn": turn,
             "role": role,
@@ -224,6 +256,10 @@ Defaults: `[100, 100, 100, 100, 50]`.
             "opp_pos": opp_pos,
             "my_boosts": my_boosts,
             "opp_boosts": opp_boosts,
+            "my_mines": my_mines,
+            "opp_mines": opp_mines,
+            "my_mine": my_mine,
+            "opp_frozen": opp_frozen,
             "my_trace": list(my_trace),
             "opp_trace": list(opp_trace),
             "grid_size": self.grid_size,
@@ -262,6 +298,9 @@ Defaults: `[100, 100, 100, 100, 50]`.
         attacker.role = "attacker"
         defender.role = "defender"
         a_boosts, d_boosts = self.attacker_boosts, self.defender_boosts
+        a_mines = d_mines = self.mines_per_player
+        a_mine_pos = d_mine_pos = None  # where each player's own mine sits
+        a_frozen = d_frozen = False
         a_trace, d_trace = [a_pos], [d_pos]
         furthest_x = a_pos[0]
         goal_x = self.grid_size - 1
@@ -271,6 +310,7 @@ Defaults: `[100, 100, 100, 100, 50]`.
             "defender": str(defender.name),
             "start": {"a": list(a_pos), "d": list(d_pos)},
             "boosts": {"attacker": a_boosts, "defender": d_boosts},
+            "mines": {"attacker": a_mines, "defender": d_mines},
             "grid_size": self.grid_size,
             "turns": [],
             "result": None,
@@ -281,14 +321,33 @@ Defaults: `[100, 100, 100, 100, 50]`.
         turn = 0
         while turn < self.move_cap:
             turn += 1
-            a_state = self._build_state(
-                "attacker", turn, a_pos, d_pos, a_boosts, d_boosts, a_trace, d_trace
-            )
-            d_state = self._build_state(
-                "defender", turn, d_pos, a_pos, d_boosts, a_boosts, d_trace, a_trace
-            )
-            a_dir, a_boost = self._safe_decision(attacker, a_state)
-            d_dir, d_boost = self._safe_decision(defender, d_state)
+            if a_frozen:
+                a_dir, a_boost, a_mine = "STAY", False, False
+            else:
+                a_state = self._build_state(
+                    "attacker", turn, a_pos, d_pos, a_boosts, d_boosts, a_trace, d_trace,
+                    a_mines, d_mines, a_mine_pos, d_frozen,
+                )
+                a_dir, a_boost, a_mine = self._safe_decision(attacker, a_state)
+            if d_frozen:
+                d_dir, d_boost, d_mine = "STAY", False, False
+            else:
+                d_state = self._build_state(
+                    "defender", turn, d_pos, a_pos, d_boosts, a_boosts, d_trace, a_trace,
+                    d_mines, a_mines, d_mine_pos, a_frozen,
+                )
+                d_dir, d_boost, d_mine = self._safe_decision(defender, d_state)
+
+            # Mines are laid on the cell the player stands on, before moving
+            a_laid = d_laid = None
+            if a_mine and a_mines > 0:
+                a_mines -= 1
+                a_mine_pos = a_pos
+                a_laid = a_pos
+            if d_mine and d_mines > 0:
+                d_mines -= 1
+                d_mine_pos = d_pos
+                d_laid = d_pos
 
             new_a, a_used = self._resolve_move(a_pos, a_dir, a_boost, a_boosts)
             new_d, d_used = self._resolve_move(d_pos, d_dir, d_boost, d_boosts)
@@ -297,8 +356,20 @@ Defaults: `[100, 100, 100, 100, 50]`.
             if d_used:
                 d_boosts -= 1
 
-            # Same cell, or moved through each other
-            caught = new_a == new_d or (new_a == d_pos and new_d == a_pos)
+            # Ending a move on the opponent's mine blows you up (owner is immune)
+            a_hit = d_mine_pos is not None and new_a == d_mine_pos
+            d_hit = a_mine_pos is not None and new_d == a_mine_pos
+            if a_hit:
+                a_frozen = True
+                d_mine_pos = None
+            if d_hit:
+                d_frozen = True
+                a_mine_pos = None
+
+            # Same cell, or moved through each other; a blown-up defender can't catch
+            caught = not d_frozen and (
+                new_a == new_d or (new_a == d_pos and new_d == a_pos)
+            )
 
             a_pos, d_pos = new_a, new_d
             if a_trace[-1] != a_pos:
@@ -314,6 +385,14 @@ Defaults: `[100, 100, 100, 100, 50]`.
                     "ab": int(a_used),
                     "db": int(d_used),
                 }
+                if a_laid:
+                    turn_record["am"] = list(a_laid)
+                if d_laid:
+                    turn_record["dm"] = list(d_laid)
+                if a_hit:
+                    turn_record["ax"] = 1
+                if d_hit:
+                    turn_record["dx"] = 1
                 if attacker.feedback:
                     turn_record["af"] = list(attacker.feedback)
                 if defender.feedback:
@@ -328,8 +407,12 @@ Defaults: `[100, 100, 100, 100, 50]`.
             if caught:
                 result = "caught"
                 break
-            if a_pos[0] >= goal_x:
+            if not a_frozen and a_pos[0] >= goal_x:
                 result = "breakthrough"
+                break
+            if a_frozen and d_frozen:
+                # Nobody can ever move again — play out as a timeout
+                turn = self.move_cap
                 break
 
         if result is None:

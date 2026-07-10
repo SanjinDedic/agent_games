@@ -83,9 +83,10 @@ def test_validation_players_have_strategies(game):
 
 
 def test_normalize_move_accepts_string_and_dict(game):
-    assert game._normalize_move("E") == ("E", False)
-    assert game._normalize_move({"direction": "N", "boost": True}) == ("N", True)
-    assert game._normalize_move({"direction": "W"}) == ("W", False)
+    assert game._normalize_move("E") == ("E", False, False)
+    assert game._normalize_move({"direction": "N", "boost": True}) == ("N", True, False)
+    assert game._normalize_move({"direction": "W"}) == ("W", False, False)
+    assert game._normalize_move({"direction": "S", "mine": True}) == ("S", False, True)
 
 
 def test_normalize_move_rejects_garbage(game):
@@ -96,7 +97,7 @@ def test_normalize_move_rejects_garbage(game):
 
 
 def test_normalize_move_stay_never_boosts(game):
-    assert game._normalize_move({"direction": "STAY", "boost": True}) == ("STAY", False)
+    assert game._normalize_move({"direction": "STAY", "boost": True}) == ("STAY", False, False)
 
 
 def test_resolve_move_off_grid_stays(game):
@@ -258,12 +259,181 @@ def test_traces_and_state_shape(small_game):
     )
     for key in (
         "turn", "role", "my_pos", "opp_pos", "my_boosts", "opp_boosts",
+        "my_mines", "opp_mines", "my_mine", "opp_frozen",
         "my_trace", "opp_trace", "grid_size", "move_cap",
     ):
         assert key in seen
     assert seen["role"] == "attacker"
     assert seen["my_trace"][0] == (0, 5)
     assert len(seen["my_trace"]) > 1  # trail grew as the attacker moved
+
+
+# ---------------------------------------------------------------------------
+# Mines
+# ---------------------------------------------------------------------------
+
+
+MINE_N = {"direction": "N", "mine": True}
+
+
+def test_defender_steps_on_mine_and_freezes(small_game):
+    # Attacker mines (0,5) and dodges N; chasing defender steps W onto the mine.
+    # Frozen defender never moves again; attacker strolls to the goal.
+    match, _, _ = play(
+        small_game,
+        [MINE_N, "E"],
+        ["W", "W"],
+        start=((0, 5), (1, 5)),
+    )
+    assert match["result"] == "breakthrough"
+    assert match["final"]["d"] == [0, 5]  # stuck on the mine cell
+
+
+def test_mine_beats_swap_catch(small_game):
+    # Attacker mines its cell and steps E onto the defender's cell while the
+    # defender steps W onto the mine — a swap, but the mine fires first.
+    match, _, _ = play(
+        small_game,
+        [{"direction": "E", "mine": True}, "E"],
+        ["W", "W"],
+        start=((0, 5), (1, 5)),
+    )
+    assert match["result"] == "breakthrough"
+    assert match["final"]["d"] == [0, 5]
+
+
+def test_own_mine_is_harmless(small_game):
+    # Attacker lays a mine and stays on it for a turn before walking on.
+    match, _, _ = play(
+        small_game,
+        [{"direction": "STAY", "mine": True}, "E"],
+        ["STAY"],
+        start=((0, 5), (5, 0)),
+    )
+    assert match["result"] == "breakthrough"
+
+
+def test_boost_jump_over_mine_is_safe(small_game):
+    # Turn 2 the attacker mines (1,5); turn 3 the defender boost-jumps
+    # from (2,5) over the mine to (0,5) and must not be blown up.
+    match, _, _ = play(
+        small_game,
+        ["E", {"direction": "N", "mine": True}, "N", "STAY"],
+        ["STAY", "STAY", {"direction": "W", "boost": True}, "STAY"],
+        start=((0, 5), (2, 5)),
+    )
+    assert match["result"] != "caught"
+    assert match["final"]["d"] == [0, 5]
+
+
+def test_frozen_attacker_can_still_be_caught(small_game):
+    # Defender mines (5,5) and retreats E; the attacker walks onto the mine
+    # on turn 3 and freezes; the defender walks back and collects the catch.
+    match, _, _ = play(
+        small_game,
+        ["E", "E", "E", "E", "E", "E"],
+        [{"direction": "E", "mine": True}, "STAY", "STAY", "W", "W"],
+        start=((2, 5), (5, 5)),
+    )
+    assert match["result"] == "caught"
+    assert match["final"]["a"] == [5, 5]
+
+
+def test_mine_on_goal_column_denies_breakthrough(small_game):
+    # Defender mines the goal cell (9,5) and steps aside; the attacker
+    # reaches the goal column but lands on the mine — no breakthrough.
+    small_game.move_cap = 4
+    match, _, _ = play(
+        small_game,
+        ["E", "E", "STAY"],
+        [{"direction": "N", "mine": True}, "STAY"],
+        start=((7, 5), (9, 5)),
+    )
+    assert match["result"] == "timeout"
+    assert match["final"]["a"] == [9, 5]  # frozen on the goal column, no win
+
+
+def test_only_one_mine_per_match(small_game):
+    small_game.verbose = True
+    match, _, _ = play(
+        small_game,
+        [MINE_N, {"direction": "S", "mine": True}, "STAY"],
+        ["STAY"],
+        start=((0, 5), (9, 0)),
+    )
+    small_game.verbose = False
+    lays = [t for t in match["turns"] if "am" in t]
+    assert len(lays) == 1
+    assert lays[0]["am"] == [0, 5]
+
+
+def test_mine_events_in_turn_records(small_game):
+    small_game.verbose = True
+    match, _, _ = play(
+        small_game,
+        [MINE_N, "E"],
+        ["W", "W"],
+        start=((0, 5), (1, 5)),
+    )
+    small_game.verbose = False
+    assert match["turns"][0]["am"] == [0, 5]
+    exploded = [t for t in match["turns"] if t.get("dx")]
+    assert len(exploded) == 1
+    assert exploded[0]["d"] == [0, 5]
+
+
+def test_both_frozen_ends_as_timeout(small_game):
+    # Both mine their cells and walk into each other's mine on the same turn.
+    small_game.move_cap = 10
+    match, a_score, d_score = play(
+        small_game,
+        [{"direction": "E", "mine": True}],
+        [{"direction": "W", "mine": True}],
+        start=((3, 5), (4, 5)),
+    )
+    assert match["result"] == "timeout"
+    assert d_score == pytest.approx(100)  # full survival, as if held to the cap
+
+
+# ---------------------------------------------------------------------------
+# Mine validation players
+# ---------------------------------------------------------------------------
+
+
+def test_mine_trapper_mines_when_cornered():
+    from backend.games.breakthrough.validation_players import MineTrapper
+
+    trapper = MineTrapper()
+    state = {
+        "turn": 10, "role": "attacker", "my_pos": (50, 5), "opp_pos": (51, 5),
+        "my_boosts": 0, "opp_boosts": 10, "my_mines": 1, "opp_mines": 1,
+        "my_mine": None, "opp_frozen": False,
+        "my_trace": [(49, 5), (50, 5)], "opp_trace": [(52, 5), (51, 5)],
+        "grid_size": 100, "move_cap": 1000,
+    }
+    move = trapper.make_decision(state)
+    assert isinstance(move, dict) and move.get("mine") is True
+
+
+def test_mine_avoider_never_lands_on_laid_mine_trace():
+    from backend.games.breakthrough.validation_players import MineAvoider, _landing
+
+    avoider = MineAvoider()
+    # Chasing an attacker who has laid their mine; the straight chase cell
+    # (51,5) is on the opponent's trace and must be avoided.
+    opp_trace = [(49, 5), (50, 5), (51, 5), (52, 5)]
+    state = {
+        "turn": 20, "role": "defender", "my_pos": (50, 5), "opp_pos": (52, 5),
+        "my_boosts": 5, "opp_boosts": 5, "my_mines": 1, "opp_mines": 0,
+        "my_mine": None, "opp_frozen": False,
+        "my_trace": [(50, 5)], "opp_trace": opp_trace,
+        "grid_size": 100, "move_cap": 1000,
+    }
+    move = avoider.make_decision(state)
+    direction = move["direction"] if isinstance(move, dict) else move
+    boost = isinstance(move, dict) and move.get("boost", False)
+    landing = _landing((50, 5), direction, boost, 100)
+    assert landing not in set(opp_trace)
 
 
 # ---------------------------------------------------------------------------
