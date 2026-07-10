@@ -1,57 +1,47 @@
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from backend.tasks.celery_utils import poll_task_result
-from backend.tasks.simulation_task import run_simulation as run_simulation_task
-from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.agent.agent_db import (
-    SimulationLimitExceededError,
-    allow_simulation,
-    get_league_by_id,
-)
+from backend.config import GAMES
+from backend.database.db_session import get_db
+from backend.routes.agent.agent_db import allow_simulation, get_league_by_id
 from backend.routes.agent.agent_models import SimulationRequest
 from backend.routes.auth.auth_core import get_current_user, verify_ai_agent_role
-from backend.database.db_session import get_db
-
-logger = logging.getLogger(__name__)
+from backend.tasks.celery_utils import poll_task_result
+from backend.tasks.simulation_task import run_simulation as run_simulation_task
 
 agent_router = APIRouter()
 
+# Business failures surface via the HTTP status line, not a masked 200 envelope:
+# SimulationLimitExceededError -> 429 (central handler in api.py); a missing league
+# (404) and an unknown game (400) are request problems the router owns, raised here.
+# Anything unexpected surfaces as a 500 rather than a swallowed error. The route
+# returns the task's payload directly.
 
-@agent_router.post("/simulate", response_model=ResponseModel)
+
+@agent_router.post("/simulate")
 @verify_ai_agent_role
 async def run_simulation(
     request: SimulationRequest,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    try:
-        league = get_league_by_id(session, request.league_id)
-        if not league:
-            return ErrorResponseModel(
-                status="error", message=f"League with ID {request.league_id} not found"
-            )
-        team_id = current_user["team_id"]
-        allow_simulation(team_id)
+    league = get_league_by_id(session, request.league_id)
+    if not league:
+        raise HTTPException(
+            status_code=404, detail=f"League with ID {request.league_id} not found"
+        )
+    if request.game_name not in GAMES:
+        raise HTTPException(
+            status_code=400, detail=f"Unknown game: {request.game_name}"
+        )
 
-        async_result = run_simulation_task.delay(
-            league_id=request.league_id,
-            game_name=request.game_name,
-            num_simulations=request.num_simulations,
-            custom_rewards=request.custom_rewards,
-            player_feedback=request.player_feedback,
-        )
-        simulation_result = await poll_task_result(async_result, timeout=60)
-        return ResponseModel(
-            status="success",
-            message="Simulation completed successfully",
-            data=simulation_result,
-        )
-    except SimulationLimitExceededError as e:
-        return ErrorResponseModel(status="error", message=str(e))
-    # Catch any exceptions and return an error response
-    except Exception as e:
-        logger.error(f"Error during simulation: {e}")
-        return ErrorResponseModel(status="error", message=f"Simulation error: {str(e)}")
+    allow_simulation(current_user["team_id"])  # SimulationLimitExceededError -> 429
+
+    async_result = run_simulation_task.delay(
+        league_id=request.league_id,
+        game_name=request.game_name,
+        num_simulations=request.num_simulations,
+        custom_rewards=request.custom_rewards,
+        player_feedback=request.player_feedback,
+    )
+    return await poll_task_result(async_result, timeout=60)

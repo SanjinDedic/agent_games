@@ -151,9 +151,7 @@ def test_agent_simulation_success(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "data" in data
-    assert "simulation_results" in data["data"]
+    assert "simulation_results" in data
 
     # Test case 2: Simulation with custom rewards
     response = client.post(
@@ -168,8 +166,7 @@ def test_agent_simulation_success(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "data" in data
+    assert "simulation_results" in data
 
     # Test case 3: Simulation with player feedback
     response = client.post(
@@ -184,8 +181,7 @@ def test_agent_simulation_success(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "data" in data
+    assert "simulation_results" in data
 
 
 def test_agent_simulation_exceptions(
@@ -204,10 +200,8 @@ def test_agent_simulation_exceptions(
         headers=headers,
         json={"league_id": 99999, "game_name": "lineup4", "num_simulations": 10},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: Invalid game name
     response = client.post(
@@ -219,9 +213,8 @@ def test_agent_simulation_exceptions(
             "num_simulations": 10,
         },
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 400
+    assert "unknown game" in response.json()["detail"].lower()
 
     # Test case 3: Invalid number of simulations
     response = client.post(
@@ -310,10 +303,8 @@ def test_agent_rate_limiting(
     for _ in range(3):
         response = client.post("/agent/simulate", headers=headers, json=payload)
         assert response.status_code == 200
-        assert response.json()["status"] == "success"
+        assert "simulation_results" in response.json()
 
     response = client.post("/agent/simulate", headers=headers, json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "rate limit" in data["message"].lower()
+    assert response.status_code == 429
+    assert "rate limit" in response.json()["detail"].lower()

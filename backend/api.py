@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.models_api import ResponseModel
+from backend.routes.agent.agent_db import SimulationLimitExceededError
 from backend.routes.auth.auth_db import InvalidCredentialsError
 from backend.routes.admin.admin_db import (
     AgentTeamError,
@@ -174,6 +175,11 @@ async def llm_response_error_handler(request: Request, exc: LLMResponseError):
 @app.exception_handler(AIRequestTimeoutError)
 async def ai_timeout_handler(request: Request, exc: AIRequestTimeoutError):
     return JSONResponse(status_code=504, content={"detail": str(exc)})
+
+
+@app.exception_handler(SimulationLimitExceededError)
+async def simulation_limit_handler(request: Request, exc: SimulationLimitExceededError):
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
 
 
 app.add_middleware(

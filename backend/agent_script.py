@@ -109,13 +109,12 @@ class AgentAPI:
                 f"{self.base_url}/auth/agent-login", json={"api_key": self.api_key}
             )
 
-            data = response.json()
-            if data["status"] == "success":
-                self.token = data["data"]["access_token"]
+            if response.ok:
+                self.token = response.json()["access_token"]
                 print("Authentication successful")
                 return True
             else:
-                print(f"Authentication failed: {data['message']}")
+                print(f"Authentication failed: {response.json().get('detail')}")
                 return False
 
         except Exception as e:
@@ -167,15 +166,16 @@ class AgentAPI:
 
             result = response.json()
 
-            # Save the simulation result
-            if result["status"] == "success":
+            # Save the simulation result. On an HTTP error the body is {"detail": ...};
+            # on success it is the task payload with "simulation_results".
+            if response.ok:
                 self.results_manager.add_result(
                     {
                         "team_name": self.team_name,
                         "game_name": game_name,
                         "num_simulations": num_simulations,
                         "custom_rewards": custom_rewards,
-                        "results": result["data"] if "data" in result else None,
+                        "results": result,
                     }
                 )
 
@@ -211,20 +211,21 @@ def main():
             num_simulations=10,
         )
 
-        if simulation_result:
-            print(simulation_result)
+        if simulation_result and "simulation_results" in simulation_result:
             print("\nSimulation Results:")
-            print(f"Status: {simulation_result['status']}")
-            print(f"Message: {simulation_result['message']}")
-            if simulation_result.get("data"):
-                results = simulation_result["data"]["simulation_results"]
-                print("\nPoints Distribution:")
-                for player, points in results.get("total_points", {}).items():
-                    print(f"{player}: {points} points")
-                print(f"\nTotal Simulations Run: {results.get('num_simulations')}")
-                if "table" in results:
-                    print("\nDetailed Statistics:")
-                    print(results["table"])
+            results = simulation_result["simulation_results"]
+            print("\nPoints Distribution:")
+            for player, points in results.get("total_points", {}).items():
+                print(f"{player}: {points} points")
+            print(f"\nTotal Simulations Run: {results.get('num_simulations')}")
+            if "table" in results:
+                print("\nDetailed Statistics:")
+                print(results["table"])
+        elif simulation_result:
+            print(
+                "\nSimulation failed: "
+                f"{simulation_result.get('detail') or simulation_result.get('message')}"
+            )
 
 
 if __name__ == "__main__":
