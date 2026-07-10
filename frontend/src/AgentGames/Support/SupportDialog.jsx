@@ -81,11 +81,11 @@ function SupportDialog() {
         body: formData,
       });
       const data = await response.json();
-      if (data.status === 'success') {
+      if (response.ok) {
         toast.success('Thanks — your message has been sent to the team.');
         dispatch(closeSupportDialog());
       } else {
-        toast.error(data.message || 'Failed to submit ticket.');
+        toast.error(data.detail || 'Failed to submit ticket.');
       }
     } catch (err) {
       console.error('Support submit failed:', err);

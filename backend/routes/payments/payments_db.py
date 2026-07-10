@@ -24,9 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 class PaidSignupError(Exception):
-    """Raised when a payment-gated institution signup cannot be completed."""
+    """Raised when a payment-gated institution signup cannot be completed (400)."""
 
-    pass
+
+class InstitutionExistsError(PaidSignupError):
+    """Raised when the requested institution name is already taken (409)."""
 
 
 def create_paid_institution(
@@ -70,7 +72,7 @@ def create_paid_institution(
         select(Institution).where(Institution.name == name)
     ).first()
     if existing_name:
-        raise PaidSignupError(f"Institution with name '{name}' already exists")
+        raise InstitutionExistsError(f"Institution with name '{name}' already exists")
 
     now = utc_now()
     institution = Institution(
@@ -155,7 +157,7 @@ def create_invoiced_institution(
         select(Institution).where(Institution.name == institution_name)
     ).first()
     if existing_name:
-        raise PaidSignupError(
+        raise InstitutionExistsError(
             f"Institution with name '{institution_name}' already exists"
         )
 

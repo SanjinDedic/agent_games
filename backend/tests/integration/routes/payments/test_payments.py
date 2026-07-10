@@ -141,7 +141,7 @@ def test_create_checkout_one_time(client, mock_stripe):
         json={"tier": "club", "auto_renew": False},
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["url"] == "https://checkout.test/cs_1"
+    assert resp.json()["url"] == "https://checkout.test/cs_1"
 
     params = mock_stripe.checkout_create.call_args.kwargs
     assert params["mode"] == "payment"
@@ -197,7 +197,7 @@ def test_create_checkout_stripe_error(client, mock_stripe):
 def test_get_checkout_paid(client, mock_stripe):
     resp = client.get("/payments/checkout/cs_paid")
     assert resp.status_code == 200
-    data = resp.json()["data"]
+    data = resp.json()
     assert data["email"] == "buyer@university.edu"
     assert data["tier"] == "club"
     assert data["auto_renew"] is False
@@ -222,7 +222,7 @@ def test_get_checkout_already_registered(client, db_session, mock_stripe):
     )
     resp = client.get("/payments/checkout/cs_dup")
     assert resp.status_code == 200
-    assert resp.json()["data"]["already_registered"] is True
+    assert resp.json()["already_registered"] is True
 
 
 def test_get_checkout_not_paid(client, mock_stripe):
@@ -258,7 +258,7 @@ def test_institution_signup_one_time(client, db_session, mock_stripe):
         },
     )
     assert resp.status_code == 200
-    body = resp.json()["data"]
+    body = resp.json()
     assert body["institution_name"] == "Signup College"
     assert body["token_type"] == "bearer"
     assert body["access_token"]
@@ -424,7 +424,7 @@ def test_institution_signup_duplicate_name(client, db_session, mock_stripe):
             "password": "longpassword",
         },
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 409
     assert "already exists" in resp.json()["detail"]
 
 
@@ -451,7 +451,7 @@ def _invoice_payload(**overrides) -> dict:
 def test_invoice_signup_success(client, db_session, mock_stripe):
     resp = client.post("/payments/invoice-signup", json=_invoice_payload())
     assert resp.status_code == 200
-    body = resp.json()["data"]
+    body = resp.json()
     assert body["institution_name"] == "Invoice University"
     assert body["hosted_invoice_url"] == "https://invoice.test/in_1"
     assert body["access_token"]
@@ -483,7 +483,7 @@ def test_invoice_signup_finalize_fallback(client, db_session, mock_stripe):
         "/payments/invoice-signup", json=_invoice_payload(institution_name="Fallback U")
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["hosted_invoice_url"] == "https://invoice.test/retrieved"
+    assert resp.json()["hosted_invoice_url"] == "https://invoice.test/retrieved"
     mock_stripe.inv_retrieve.assert_called_once()
 
 
@@ -520,7 +520,7 @@ def test_invoice_signup_duplicate_name(client, db_session, mock_stripe):
     resp = client.post(
         "/payments/invoice-signup", json=_invoice_payload(institution_name="Dup Invoice U")
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 409
     # Name rejected before any Stripe objects are created.
     mock_stripe.cust_create.assert_not_called()
 

@@ -73,8 +73,8 @@ function InstitutionInvoiceSignup() {
             // Subscription tab, passing the hosted invoice link through so it's
             // surfaced there rather than lost.
             toast.success('Institution created — your invoice has been issued.');
-            const token = json?.data?.access_token;
-            const hostedInvoiceUrl = json?.data?.hosted_invoice_url || null;
+            const token = json?.access_token;
+            const hostedInvoiceUrl = json?.hosted_invoice_url || null;
             if (token) {
                 dispatch(setToken(token));
                 navigate('/InstitutionSubscription', {

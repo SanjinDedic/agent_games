@@ -49,9 +49,8 @@ function Institutions() {
                 body: JSON.stringify({ tier, auto_renew: autoRenew }),
             });
             const json = await res.json();
-            const url = json?.data?.url;
-            if (url) {
-                window.location.href = url;
+            if (res.ok && json?.url) {
+                window.location.href = json.url;
                 return;
             }
             alert('Could not start checkout. Please try again.');

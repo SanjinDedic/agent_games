@@ -49,7 +49,7 @@ function InstitutionSignup() {
                         'We could not verify your payment. If you were charged, contact support.'
                     );
                 } else {
-                    const data = json?.data || {};
+                    const data = json || {};
                     setInfo(data);
                     setAddress(data.address || '');
                 }
@@ -94,7 +94,7 @@ function InstitutionSignup() {
             }
             // Auto-login: the backend returns a token for the new institution,
             // so log straight in and land on the Subscription tab.
-            const token = json?.data?.access_token;
+            const token = json?.access_token;
             if (token) {
                 dispatch(setToken(token));
                 toast.success('Institution created — you are now logged in.');

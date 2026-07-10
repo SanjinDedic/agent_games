@@ -10,13 +10,12 @@ from sqlmodel import Session, select
 from backend import config
 from backend.database.db_models import Institution, InstitutionSubscription
 from backend.database.db_session import get_db
-from backend.models_api import ResponseModel
 from backend.routes.auth.auth_config import (
     INSTITUTION_TOKEN_EXPIRY_MINUTES,
     create_access_token,
 )
 from backend.routes.payments.payments_db import (
-    PaidSignupError,
+    InstitutionExistsError,
     create_invoiced_institution,
     create_paid_institution,
 )
@@ -137,7 +136,7 @@ def _institution_access_token(institution: Institution) -> str:
     )
 
 
-@payments_router.post("/create-checkout-session", response_model=ResponseModel)
+@payments_router.post("/create-checkout-session")
 async def create_checkout_session(body: CheckoutRequest):
     """Create a Stripe Checkout Session for an institution purchase.
 
@@ -177,14 +176,10 @@ async def create_checkout_session(body: CheckoutRequest):
         logger.exception("Stripe checkout session creation failed")
         raise HTTPException(status_code=502, detail=str(exc))
 
-    return ResponseModel(
-        status="success",
-        message="Checkout session created",
-        data={"url": checkout.url},
-    )
+    return {"url": checkout.url}
 
 
-@payments_router.get("/checkout/{session_id}", response_model=ResponseModel)
+@payments_router.get("/checkout/{session_id}")
 async def get_checkout_session(
     session_id: str, session: Session = Depends(get_db)
 ):
@@ -214,20 +209,16 @@ async def get_checkout_session(
 
     details = checkout.get("customer_details") or {}
     metadata = checkout.get("metadata") or {}
-    return ResponseModel(
-        status="success",
-        message="Checkout session verified",
-        data={
-            "email": details.get("email"),
-            "tier": metadata.get("tier"),
-            "auto_renew": checkout.get("mode") == "subscription",
-            "address": _format_address(details),
-            "already_registered": already is not None,
-        },
-    )
+    return {
+        "email": details.get("email"),
+        "tier": metadata.get("tier"),
+        "auto_renew": checkout.get("mode") == "subscription",
+        "address": _format_address(details),
+        "already_registered": already is not None,
+    }
 
 
-@payments_router.post("/institution-signup", response_model=ResponseModel)
+@payments_router.post("/institution-signup")
 async def institution_signup(
     body: InstitutionSignupRequest, session: Session = Depends(get_db)
 ):
@@ -272,37 +263,32 @@ async def institution_signup(
                 subscription_id,
             )
 
-    try:
-        institution = create_paid_institution(
-            session,
-            name=body.name,
-            contact_person=body.contact_person,
-            contact_email=email,
-            address=body.address,
-            password=body.password,
-            subscription_expiry=expiry,
-            auto_renew=auto_renew,
-            stripe_customer_id=customer_id,
-            stripe_subscription_id=subscription_id,
-            stripe_checkout_session_id=body.session_id,
-            tier=tier,
-        )
-    except PaidSignupError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    return ResponseModel(
-        status="success",
-        message="Institution created",
-        data={
-            "institution_name": institution.name,
-            # Auto-login: log the buyer straight in after signup.
-            "access_token": _institution_access_token(institution),
-            "token_type": "bearer",
-        },
+    # PaidSignupError / InstitutionExistsError propagate to the central
+    # handlers in api.py (400 / 409).
+    institution = create_paid_institution(
+        session,
+        name=body.name,
+        contact_person=body.contact_person,
+        contact_email=email,
+        address=body.address,
+        password=body.password,
+        subscription_expiry=expiry,
+        auto_renew=auto_renew,
+        stripe_customer_id=customer_id,
+        stripe_subscription_id=subscription_id,
+        stripe_checkout_session_id=body.session_id,
+        tier=tier,
     )
 
+    return {
+        "institution_name": institution.name,
+        # Auto-login: log the buyer straight in after signup.
+        "access_token": _institution_access_token(institution),
+        "token_type": "bearer",
+    }
 
-@payments_router.post("/invoice-signup", response_model=ResponseModel)
+
+@payments_router.post("/invoice-signup")
 async def invoice_signup(
     body: InvoiceSignupRequest, session: Session = Depends(get_db)
 ):
@@ -332,9 +318,7 @@ async def invoice_signup(
     if not name:
         raise HTTPException(status_code=400, detail="Institution name cannot be empty")
     if session.exec(select(Institution).where(Institution.name == name)).first():
-        raise HTTPException(
-            status_code=400, detail=f"Institution with name '{name}' already exists"
-        )
+        raise InstitutionExistsError(f"Institution with name '{name}' already exists")
 
     try:
         customer = stripe.Customer.create(
@@ -371,36 +355,31 @@ async def invoice_signup(
     period_end = _subscription_period_end(sub)
     expiry = period_end or (utc_now() + timedelta(days=365))
 
-    try:
-        institution = create_invoiced_institution(
-            session,
-            institution_name=name,
-            institution_address=body.institution_address,
-            business_contact_name=body.business_contact_name,
-            business_contact_email=body.business_contact_email,
-            teaching_contact_name=body.teaching_contact_name,
-            teaching_contact_email=body.teaching_contact_email,
-            password=body.password,
-            subscription_expiry=expiry,
-            stripe_customer_id=customer.id,
-            stripe_subscription_id=sub.get("id"),
-            stripe_invoice_id=invoice.get("id"),
-            tier=body.tier,
-        )
-    except PaidSignupError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    return ResponseModel(
-        status="success",
-        message="Invoiced institution created",
-        data={
-            "institution_name": institution.name,
-            "hosted_invoice_url": invoice.get("hosted_invoice_url"),
-            # Auto-login: log the buyer straight in after signup.
-            "access_token": _institution_access_token(institution),
-            "token_type": "bearer",
-        },
+    # PaidSignupError / InstitutionExistsError propagate to the central
+    # handlers in api.py (400 / 409).
+    institution = create_invoiced_institution(
+        session,
+        institution_name=name,
+        institution_address=body.institution_address,
+        business_contact_name=body.business_contact_name,
+        business_contact_email=body.business_contact_email,
+        teaching_contact_name=body.teaching_contact_name,
+        teaching_contact_email=body.teaching_contact_email,
+        password=body.password,
+        subscription_expiry=expiry,
+        stripe_customer_id=customer.id,
+        stripe_subscription_id=sub.get("id"),
+        stripe_invoice_id=invoice.get("id"),
+        tier=body.tier,
     )
+
+    return {
+        "institution_name": institution.name,
+        "hosted_invoice_url": invoice.get("hosted_invoice_url"),
+        # Auto-login: log the buyer straight in after signup.
+        "access_token": _institution_access_token(institution),
+        "token_type": "bearer",
+    }
 
 
 @payments_router.post("/webhook")

@@ -24,9 +24,8 @@ def test_team_can_submit_ticket(mock_upload, client, team_headers, db_session):
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["status"] == "success"
-    assert body["data"]["ticket_id"] > 0
-    assert body["data"]["attachments"] == 0
+    assert body["ticket_id"] > 0
+    assert body["attachments"] == 0
     assert mock_upload.call_count == 0
 
     tickets = db_session.exec(select(SupportTicket)).all()
@@ -58,8 +57,7 @@ def test_team_can_submit_ticket_with_attachments(
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["status"] == "success"
-    assert body["data"]["attachments"] == 2
+    assert body["attachments"] == 2
     assert mock_upload.call_count == 2
 
     attachments = db_session.exec(select(SupportTicketAttachment)).all()

@@ -9,10 +9,3 @@ class ResponseModel(BaseModel):
     status: str
     message: str
     data: Optional[dict] = None
-
-
-class ErrorResponseModel(BaseModel):
-    """Error response model for API endpoints"""
-
-    status: str
-    message: str
