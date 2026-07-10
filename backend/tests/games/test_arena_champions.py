@@ -43,7 +43,7 @@ def _create_league(client: TestClient, institution_id: int) -> tuple[int, dict]:
         json={"name": league_name, "game": "arena_champions"},
     )
     assert resp.status_code == 200, resp.text
-    data = resp.json()["data"]
+    data = resp.json()
     return data["league_id"], headers
 
 
@@ -59,7 +59,7 @@ def _create_team_and_assign(client: TestClient, headers: dict, league_id: int, t
         },
     )
     assert create_resp.status_code == 200, create_resp.text
-    team_id = create_resp.json()["data"]["team_id"]
+    team_id = create_resp.json()["team_id"]
 
     # Assign to our arena league
     assign_resp = client.post(

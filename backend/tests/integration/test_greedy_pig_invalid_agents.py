@@ -206,12 +206,11 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
     )
     assert sim_response.status_code == 200, sim_response.text
     sim_data = sim_response.json()
-    assert sim_data["status"] == "success", sim_data
 
     # 3. Only the two validated teams should have played. If failed code ever
     #    gets a Submission row again, the rejected agents (which load and
     #    play fine) leak in and this assertion fails.
-    total_points = sim_data["data"]["total_points"]
+    total_points = sim_data["total_points"]
     assert set(total_points.keys()) == set(valid_teams), (
         f"Only validated teams should reach the simulation, got: {set(total_points.keys())}"
     )
