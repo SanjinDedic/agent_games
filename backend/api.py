@@ -14,6 +14,20 @@ from backend.routes.admin.admin_db import (
     InstitutionNotFoundError,
 )
 from backend.routes.support.support_db import SupportError
+from backend.routes.ai.clients import (
+    AIRequestTimeoutError,
+    LLMResponseError,
+    NoApiKeyError,
+    UnknownProviderError,
+)
+from backend.routes.ai.plagiarism_service import (
+    NoSubmissionsError,
+    PayloadTooLargeError,
+)
+from backend.routes.institution.institution_db import (
+    InstitutionAccessError,
+    LeagueNotFoundError,
+)
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
@@ -119,6 +133,47 @@ async def agent_team_error_handler(request: Request, exc: AgentTeamError):
 @app.exception_handler(SupportError)
 async def support_error_handler(request: Request, exc: SupportError):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+# AI / plagiarism + league-access domain exceptions -> HTTP status codes.
+@app.exception_handler(LeagueNotFoundError)
+async def league_not_found_handler(request: Request, exc: LeagueNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InstitutionAccessError)
+async def institution_access_handler(request: Request, exc: InstitutionAccessError):
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(UnknownProviderError)
+async def unknown_provider_handler(request: Request, exc: UnknownProviderError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoApiKeyError)
+async def no_api_key_handler(request: Request, exc: NoApiKeyError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoSubmissionsError)
+async def no_submissions_handler(request: Request, exc: NoSubmissionsError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(PayloadTooLargeError)
+async def payload_too_large_handler(request: Request, exc: PayloadTooLargeError):
+    return JSONResponse(status_code=413, content={"detail": str(exc)})
+
+
+@app.exception_handler(LLMResponseError)
+async def llm_response_error_handler(request: Request, exc: LLMResponseError):
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
+
+
+@app.exception_handler(AIRequestTimeoutError)
+async def ai_timeout_handler(request: Request, exc: AIRequestTimeoutError):
+    return JSONResponse(status_code=504, content={"detail": str(exc)})
 
 
 app.add_middleware(

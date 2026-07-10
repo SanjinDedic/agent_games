@@ -150,8 +150,8 @@ async def assess_team_for_plagiarism(
 ) -> PlagiarismReport:
     """Run the full assessment pipeline for a team.
 
-    Raises the exceptions above on failure. The router is responsible for
-    translating them into ErrorResponseModel.
+    Raises the exceptions above on failure. The exception handlers in api.py
+    translate them into HTTP status codes.
     """
     all_subs = get_team_submissions_ordered(session, team.id)
     if not all_subs:

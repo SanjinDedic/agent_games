@@ -201,10 +201,10 @@ function InstitutionLeagueSubmissions() {
         }),
       });
       const data = await resp.json();
-      if (data.status === "success") {
-        setReport(data.data);
+      if (resp.ok) {
+        setReport(data);
       } else {
-        toast.error(data.message || "Assessment failed");
+        toast.error(data.detail || "Assessment failed");
       }
     } catch (e) {
       toast.error("Network error running assessment");
