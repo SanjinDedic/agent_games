@@ -1,13 +1,11 @@
-import logging
 import time
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel import Session
 
 from backend.config import BENCHMARK_TOKEN
 from backend.database.db_models import Institution
 from backend.database.db_session import get_db
-from backend.models_api import ErrorResponseModel, ResponseModel
 from backend.routes.auth.auth_core import get_current_user, verify_admin_or_institution
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
@@ -18,9 +16,12 @@ from backend.tasks.validation_task import (
     enqueue_validation,
 )
 
-logger = logging.getLogger(__name__)
-
 diagnostics_router = APIRouter()
+
+# Business failures surface via the HTTP status line: missing Docker access and a
+# disabled / mis-tokened benchmark endpoint -> 403, raised here. An error while
+# collecting service status or running the validator surfaces as a 500 rather than
+# a masked 200. Each route returns its payload directly.
 
 
 async def check_docker_access(current_user: dict, session: Session) -> bool:
@@ -42,35 +43,23 @@ async def check_docker_access(current_user: dict, session: Session) -> bool:
     return False
 
 
-@diagnostics_router.get("/status", response_model=ResponseModel)
+@diagnostics_router.get("/status")
 @verify_admin_or_institution
 async def get_status(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Get health status for the Celery broker and worker services"""
-    has_access = await check_docker_access(current_user, session)
-    if not has_access:
-        return ErrorResponseModel(
-            status="error",
-            message="You don't have Docker access. Please contact the administrator.",
+    if not await check_docker_access(current_user, session):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have Docker access. Please contact the administrator.",
         )
 
-    try:
-        statuses = await get_all_services_status()
-        return ResponseModel(
-            status="success",
-            message="Services status retrieved successfully",
-            data={"statuses": statuses},
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving service status: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve service status: {str(e)}"
-        )
+    return {"statuses": await get_all_services_status()}
 
 
-@diagnostics_router.post("/benchmark-submit", response_model=ResponseModel)
+@diagnostics_router.post("/benchmark-submit")
 async def benchmark_submit(
     submission: BenchmarkSubmission,
     x_benchmark_token: str = Header(default=""),
@@ -86,43 +75,30 @@ async def benchmark_submit(
     throughput, which is what changes with code changes to the simulation path.
     """
     if not BENCHMARK_TOKEN:
-        return ErrorResponseModel(
-            status="error", message="Benchmark endpoint disabled."
-        )
+        raise HTTPException(status_code=403, detail="Benchmark endpoint disabled.")
     if x_benchmark_token != BENCHMARK_TOKEN:
-        return ErrorResponseModel(
-            status="error", message="Invalid benchmark token."
-        )
+        raise HTTPException(status_code=403, detail="Invalid benchmark token.")
 
     t0 = time.perf_counter()
-    try:
-        is_safe, error_message = validate_code(submission.code)
-        if not is_safe:
-            result = {
-                "status": "error",
-                "message": f"Agent code is not safe: {error_message}",
-                "duration_ms": None,
-            }
-        else:
-            async_result = enqueue_validation(
-                code=submission.code,
-                game_name=submission.game_name,
-                team_name="benchmark",
-                num_simulations=submission.num_simulations,
-            )
-            result = await await_validation_result(async_result)
-    except Exception as e:
-        return ErrorResponseModel(
-            status="error", message=f"Validator request failed: {str(e)}"
+    is_safe, error_message = validate_code(submission.code)
+    if not is_safe:
+        result = {
+            "status": "error",
+            "message": f"Agent code is not safe: {error_message}",
+            "duration_ms": None,
+        }
+    else:
+        async_result = enqueue_validation(
+            code=submission.code,
+            game_name=submission.game_name,
+            team_name="benchmark",
+            num_simulations=submission.num_simulations,
         )
+        result = await await_validation_result(async_result)
     round_trip_ms = (time.perf_counter() - t0) * 1000
 
-    return ResponseModel(
-        status=result.get("status", "success"),
-        message="benchmark ok",
-        data={
-            "validator_status": result.get("status"),
-            "validator_duration_ms": result.get("duration_ms"),
-            "round_trip_ms": round_trip_ms,
-        },
-    )
+    return {
+        "validator_status": result.get("status"),
+        "validator_duration_ms": result.get("duration_ms"),
+        "round_trip_ms": round_trip_ms,
+    }

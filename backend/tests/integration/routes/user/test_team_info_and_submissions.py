@@ -152,9 +152,7 @@ def test_get_team_submissions_success(
         headers={"Authorization": f"Bearer {team_token}"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    submissions = data["data"]["submissions"]
+    submissions = response.json()["submissions"]
     assert len(submissions) == 2
     # Newest first
     assert submissions[0]["code"] == "v2"
@@ -175,12 +173,10 @@ def test_get_team_submissions_empty_for_team_with_no_submissions(
         headers={"Authorization": f"Bearer {team_token}"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["submissions"] == []
+    assert response.json()["submissions"] == []
 
 
-def test_get_team_submissions_unknown_team_returns_empty(client):
+def test_get_team_submissions_requires_team_token(client):
     token = create_access_token(
         data={"sub": "ghost_team_2", "role": "student"},
         expires_delta=timedelta(minutes=30),
@@ -189,9 +185,8 @@ def test_get_team_submissions_unknown_team_returns_empty(client):
         "/user/get-team-submissions",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 400
+    assert "team token" in response.json()["detail"]
 
 
 def test_get_team_submissions_unauthorized(client):

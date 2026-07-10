@@ -66,28 +66,23 @@ def test_list_all_tickets(client, admin_headers, db_session):
     resp = client.get("/admin/support-tickets?submitter_type=all", headers=admin_headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["status"] == "success"
-    assert len(body["data"]["tickets"]) == 2
+    assert len(body["tickets"]) == 2
 
 
 def test_invalid_submitter_type_returns_error(client, admin_headers):
     resp = client.get(
         "/admin/support-tickets?submitter_type=nope", headers=admin_headers
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "invalid submitter_type" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "invalid submitter_type" in resp.json()["detail"].lower()
 
 
 def test_invalid_status_filter_returns_error(client, admin_headers):
     resp = client.get(
         "/admin/support-tickets?status=unknown", headers=admin_headers
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "invalid status" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "invalid status" in resp.json()["detail"].lower()
 
 
 def test_list_with_presign_failure_returns_empty_url(
@@ -117,7 +112,7 @@ def test_list_with_presign_failure_returns_empty_url(
             "/admin/support-tickets?submitter_type=team", headers=admin_headers
         )
     assert resp.status_code == 200
-    tickets = resp.json()["data"]["tickets"]
+    tickets = resp.json()["tickets"]
     assert len(tickets) == 1
     assert tickets[0]["attachments"][0]["url"] == ""
 
@@ -126,7 +121,7 @@ def test_filter_by_team_submitter(client, admin_headers, db_session):
     _seed_tickets(db_session)
     resp = client.get("/admin/support-tickets?submitter_type=team", headers=admin_headers)
     assert resp.status_code == 200
-    tickets = resp.json()["data"]["tickets"]
+    tickets = resp.json()["tickets"]
     assert len(tickets) == 1
     assert tickets[0]["submitter_type"] == "team"
     assert tickets[0]["submitter"]["name"] == "TeamA"
@@ -138,7 +133,7 @@ def test_filter_by_institution_submitter(client, admin_headers, db_session):
         "/admin/support-tickets?submitter_type=institution", headers=admin_headers
     )
     assert resp.status_code == 200
-    tickets = resp.json()["data"]["tickets"]
+    tickets = resp.json()["tickets"]
     assert len(tickets) == 1
     assert tickets[0]["submitter_type"] == "institution"
     assert tickets[0]["submitter"]["name"] == "Admin Institution"
@@ -150,7 +145,7 @@ def test_filter_by_status(client, admin_headers, db_session):
         "/admin/support-tickets?submitter_type=all&status=resolved", headers=admin_headers
     )
     assert resp.status_code == 200
-    tickets = resp.json()["data"]["tickets"]
+    tickets = resp.json()["tickets"]
     assert len(tickets) == 1
     assert tickets[0]["status"] == "resolved"
 
@@ -179,7 +174,7 @@ def test_update_ticket_status_and_note(client, admin_headers, db_session):
         },
     )
     assert resp.status_code == 200, resp.text
-    updated = resp.json()["data"]["ticket"]
+    updated = resp.json()["ticket"]
     assert updated["status"] == "in_progress"
     assert updated["admin_note"] == "Investigating"
 
@@ -202,10 +197,8 @@ def test_update_missing_ticket_returns_error(client, admin_headers):
         headers=admin_headers,
         json={"ticket_id": 9999, "status": "resolved"},
     )
-    assert resp.status_code == 200  # app returns ErrorResponseModel, not HTTP error
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not found" in body["message"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
 
 def test_update_invalid_status(client, admin_headers, db_session):
@@ -217,10 +210,8 @@ def test_update_invalid_status(client, admin_headers, db_session):
         headers=admin_headers,
         json={"ticket_id": ticket.id, "status": "nope"},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "invalid status" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "invalid status" in resp.json()["detail"].lower()
 
 
 @patch("backend.routes.support.support_db.delete_attachment")
@@ -247,8 +238,7 @@ def test_delete_ticket_removes_row_and_attachments(
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["status"] == "success"
-    assert body["data"]["attachments_deleted"] == 1
+    assert body["attachments_deleted"] == 1
 
     mock_delete.assert_called_once_with("tickets/X/file")
     assert db_session.get(SupportTicket, ticket.id) is None
@@ -262,10 +252,8 @@ def test_delete_ticket_removes_row_and_attachments(
 
 def test_delete_missing_ticket_returns_error(client, admin_headers):
     resp = client.delete("/admin/support-ticket/9999", headers=admin_headers)
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not found" in body["message"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
 
 def test_delete_requires_admin(client, student_headers, db_session):

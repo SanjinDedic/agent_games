@@ -117,9 +117,7 @@ def expired_school_league_fixture(db_session: Session) -> dict:
 def test_league_info_includes_schools(client, school_league_fixture):
     resp = client.get(f"/user/league-info/{school_league_fixture['signup_token']}")
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success"
-    payload = data["data"]
+    payload = resp.json()
     assert payload["school_league"] is True
     assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
 
@@ -129,7 +127,7 @@ def test_league_info_non_school_omits_schools(client, non_school_league_fixture)
         f"/user/league-info/{non_school_league_fixture['signup_token']}"
     )
     assert resp.status_code == 200
-    payload = resp.json()["data"]
+    payload = resp.json()
     assert payload["school_league"] is False
     assert "schools" not in payload
 
@@ -143,10 +141,8 @@ def test_direct_school_signup_happy_path(client, school_league_fixture, db_sessi
             "password": "securepass123",
         },
     )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success", data
-    result = data["data"]
+    assert resp.status_code == 200, resp.json()
+    result = resp.json()
     assert result["team_name"] == "WillettonSHS1"
     assert result["league_id"] == school_league_fixture["league"].id
 
@@ -181,8 +177,8 @@ def test_direct_school_signup_counter(client, school_league_fixture):
             "password": "pw2",
         },
     )
-    assert r1.json()["data"]["team_name"] == "WillettonSHS1"
-    assert r2.json()["data"]["team_name"] == "WillettonSHS2"
+    assert r1.json()["team_name"] == "WillettonSHS1"
+    assert r2.json()["team_name"] == "WillettonSHS2"
 
 
 def test_direct_school_signup_school_not_in_list(client, school_league_fixture):
@@ -194,10 +190,8 @@ def test_direct_school_signup_school_not_in_list(client, school_league_fixture):
             "password": "pw",
         },
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not in this league" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "not in this league" in resp.json()["detail"].lower()
 
 
 def test_direct_school_signup_rejects_non_school_league(
@@ -211,10 +205,8 @@ def test_direct_school_signup_rejects_non_school_league(
             "password": "pw",
         },
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not a school league" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "not a school league" in resp.json()["detail"].lower()
 
 
 def test_direct_school_signup_expired_league(client, expired_school_league_fixture):
@@ -226,10 +218,8 @@ def test_direct_school_signup_expired_league(client, expired_school_league_fixtu
             "password": "pw",
         },
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "expired" in body["message"].lower()
+    assert resp.status_code == 410
+    assert "expired" in resp.json()["detail"].lower()
 
 
 def test_direct_school_signup_invalid_token(client):
@@ -241,9 +231,7 @@ def test_direct_school_signup_invalid_token(client):
             "password": "pw",
         },
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
+    assert resp.status_code == 404
 
 
 def test_direct_school_signup_skips_same_institution_cross_league(
@@ -286,7 +274,7 @@ def test_direct_school_signup_skips_same_institution_cross_league(
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["team_name"] == "WillettonSHS2"
+    assert resp.json()["team_name"] == "WillettonSHS2"
 
 
 def test_direct_school_signup_reuses_name_across_institutions(
@@ -321,7 +309,7 @@ def test_direct_school_signup_reuses_name_across_institutions(
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["team_name"] == "WillettonSHS1"
+    assert resp.json()["team_name"] == "WillettonSHS1"
 
 
 def test_direct_league_signup_still_works_for_non_school_league(
@@ -338,7 +326,7 @@ def test_direct_league_signup_still_works_for_non_school_league(
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
+    assert resp.json()["team_name"] == "classic_regression_team"
     team = db_session.exec(
         select(Team).where(Team.name == "classic_regression_team")
     ).first()
@@ -395,7 +383,7 @@ def test_sheet_backed_league_info_and_signup(
             f"/user/league-info/{sheet_backed_league_fixture['signup_token']}"
         )
         assert info.status_code == 200
-        payload = info.json()["data"]
+        payload = info.json()
         assert payload["school_league"] is True
         assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
 
@@ -408,8 +396,7 @@ def test_sheet_backed_league_info_and_signup(
             },
         )
     assert signup.status_code == 200
-    assert signup.json()["status"] == "success"
-    assert signup.json()["data"]["team_name"] == "PerthModern1"
+    assert signup.json()["team_name"] == "PerthModern1"
 
 
 def test_sheet_backed_signup_rejects_school_not_in_sheet(
@@ -428,7 +415,5 @@ def test_sheet_backed_signup_rejects_school_not_in_sheet(
                 "password": "pw",
             },
         )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["status"] == "error"
-    assert "not in this league" in body["message"].lower()
+    assert resp.status_code == 400
+    assert "not in this league" in resp.json()["detail"].lower()

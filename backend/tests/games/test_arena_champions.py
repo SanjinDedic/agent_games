@@ -43,7 +43,7 @@ def _create_league(client: TestClient, institution_id: int) -> tuple[int, dict]:
         json={"name": league_name, "game": "arena_champions"},
     )
     assert resp.status_code == 200, resp.text
-    data = resp.json()["data"]
+    data = resp.json()
     return data["league_id"], headers
 
 
@@ -59,7 +59,7 @@ def _create_team_and_assign(client: TestClient, headers: dict, league_id: int, t
         },
     )
     assert create_resp.status_code == 200, create_resp.text
-    team_id = create_resp.json()["data"]["team_id"]
+    team_id = create_resp.json()["team_id"]
 
     # Assign to our arena league
     assign_resp = client.post(
@@ -112,9 +112,8 @@ class CustomPlayer(Player):
         headers=headers,
         json={"code": valid_agent_code},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body.get("status") == "success", body
+    assert resp.status_code == 200, resp.json()
+    assert resp.json()["submission_id"] is not None
 
 
 def test_submission_fails_when_sum_proportions_exceeds_one(client: TestClient, db_session: Session):
@@ -144,9 +143,7 @@ class CustomPlayer(Player):
         headers=headers,
         json={"code": bad_sum_code},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body.get("status") == "error", body
+    assert resp.status_code == 400, resp.json()
 
 
 def test_submission_fails_when_max_health_out_of_range(client: TestClient, db_session: Session):
@@ -176,6 +173,4 @@ class CustomPlayer(Player):
         headers=headers,
         json={"code": bad_max_code},
     )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body.get("status") == "error", body
+    assert resp.status_code == 400, resp.json()

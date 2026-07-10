@@ -35,12 +35,12 @@ function AdminInstitutions() {
         'Authorization': `Bearer ${accessToken}`
       }
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          setInstitutions(data.data.institutions || []);
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
+          setInstitutions(data.institutions || []);
         } else {
-          toast.error(data.message || 'Failed to load institutions');
+          toast.error(data.detail || 'Failed to load institutions');
         }
         setIsLoading(false);
       })
@@ -85,9 +85,9 @@ function AdminInstitutions() {
       },
       body: JSON.stringify(institutionForm),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
           toast.success('Institution created successfully');
           setShowAddForm(false);
           setInstitutionForm({
@@ -100,7 +100,7 @@ function AdminInstitutions() {
           });
           fetchInstitutions(); // Refresh the list
         } else {
-          toast.error(data.message || 'Failed to create institution');
+          toast.error(data.detail || 'Failed to create institution');
         }
         setIsLoading(false);
       })
@@ -122,13 +122,13 @@ function AdminInstitutions() {
         },
         body: JSON.stringify({ id }),
       })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === "success") {
+        .then(async response => {
+          const data = await response.json();
+          if (response.ok) {
             toast.success(data.message || 'Institution deleted successfully');
             fetchInstitutions(); // Refresh the list
           } else {
-            toast.error(data.message || 'Failed to delete institution');
+            toast.error(data.detail || 'Failed to delete institution');
           }
           setIsLoading(false);
         })
@@ -147,11 +147,11 @@ function AdminInstitutions() {
         'Authorization': `Bearer ${accessToken}`
       }
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
           const blob = new Blob(
-            [JSON.stringify(data.data, null, 2)],
+            [JSON.stringify(data, null, 2)],
             { type: 'application/json' }
           );
           const safeName = name.replace(/[^a-zA-Z0-9-_]+/g, '_');
@@ -159,7 +159,7 @@ function AdminInstitutions() {
           saveAs(blob, `${safeName}-export-${dateStr}.json`);
           toast.success('Institution data exported');
         } else {
-          toast.error(data.message || 'Failed to export institution');
+          toast.error(data.detail || 'Failed to export institution');
         }
         setIsLoading(false);
       })
@@ -189,13 +189,13 @@ function AdminInstitutions() {
       },
       body: JSON.stringify({ id }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
           toast.success(data.message || 'Institution data cleared');
           fetchInstitutions();
         } else {
-          toast.error(data.message || 'Failed to clear institution data');
+          toast.error(data.detail || 'Failed to clear institution data');
         }
         setIsLoading(false);
       })
@@ -216,13 +216,13 @@ function AdminInstitutions() {
       },
       body: JSON.stringify({ institution_id: institutionId, enable }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
           toast.success(data.message || `Docker access ${enable ? 'enabled' : 'disabled'} successfully`);
           fetchInstitutions(); // Refresh the list
         } else {
-          toast.error(data.message || 'Failed to update Docker access');
+          toast.error(data.detail || 'Failed to update Docker access');
         }
         setIsLoading(false);
       })

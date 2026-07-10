@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from fastapi import HTTPException
 from sqlmodel import Session
 
 from backend.routes.diagnostics.diagnostics_router import get_status
-from backend.models_api import ErrorResponseModel, ResponseModel
 
 
 @pytest.mark.asyncio
@@ -49,9 +49,7 @@ async def test_status_success():
 
             response = await get_status(current_user=mock_user, session=mock_session)
 
-            assert isinstance(response, ResponseModel)
-            assert response.status == "success"
-            assert "statuses" in response.data
+            assert response == {"statuses": mock_statuses}
             assert mock_get_all_services_status.called
 
 
@@ -68,11 +66,11 @@ async def test_status_no_access():
     ) as mock_check_docker_access:
         mock_check_docker_access.return_value = False
 
-        response = await get_status(current_user=mock_user, session=mock_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await get_status(current_user=mock_user, session=mock_session)
 
-        assert isinstance(response, ErrorResponseModel)
-        assert response.status == "error"
-        assert "access" in response.message.lower()
+        assert exc_info.value.status_code == 403
+        assert "access" in exc_info.value.detail.lower()
 
 
 @pytest.mark.asyncio
@@ -94,8 +92,5 @@ async def test_status_exception():
             side_effect=Exception("Test exception"),
         ):
 
-            response = await get_status(current_user=mock_user, session=mock_session)
-
-            assert isinstance(response, ErrorResponseModel)
-            assert response.status == "error"
-            assert "failed to retrieve service status" in response.message.lower()
+            with pytest.raises(Exception, match="Test exception"):
+                await get_status(current_user=mock_user, session=mock_session)

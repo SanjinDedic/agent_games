@@ -16,9 +16,8 @@ def test_league_create_success(client, institution_headers, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "league_id" in data["data"]
-    assert data["data"]["name"] == "new_test_league"
+    assert "league_id" in data
+    assert data["name"] == "new_test_league"
 
     # Verify league was created in database
     league = db_session.exec(
@@ -45,10 +44,8 @@ def test_league_create_failures(client, institution_headers, db_session):
         headers=institution_headers,
         json={"name": "duplicate_league", "game": "greedy_pig"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "already exists" in data["message"].lower()
+    assert response.status_code == 409
+    assert "already exists" in response.json()["detail"].lower()
 
     # Test case 2: Invalid game name
     response = client.post(

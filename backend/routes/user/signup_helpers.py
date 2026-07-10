@@ -1,34 +1,27 @@
 """Shared helpers for the team-signup endpoints (classic + school)."""
 
-from typing import Optional, Tuple
-
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
 from backend.routes.auth.auth_db import mint_team_token
-from backend.routes.user.user_db import get_league_by_signup_token
+from backend.routes.user.user_db import LeagueExpiredError, get_league_by_signup_token
 from backend.time_utils import ensure_utc, utc_now
 
 
-def resolve_active_league_by_token(
-    session: Session, signup_token: str
-) -> Tuple[Optional[League], Optional[str]]:
+def resolve_active_league_by_token(session: Session, signup_token: str) -> League:
     """Resolve a league from a signup token and check it's still open.
 
-    Returns (league, None) on success or (None, error_message) if the token
-    doesn't match or the league has expired.
+    Raises LeagueNotFoundError (HTTP 404) for an unknown token and
+    LeagueExpiredError (HTTP 410) for a league past its expiry date.
     """
     league = get_league_by_signup_token(session, signup_token)
-    if not league:
-        return None, "Invalid signup link or league not found"
 
     if ensure_utc(league.expiry_date) < utc_now():
-        return (
-            None,
-            "This league has expired and is no longer accepting new teams",
+        raise LeagueExpiredError(
+            "This league has expired and is no longer accepting new teams"
         )
 
-    return league, None
+    return league
 
 
 def team_signup_success_data(team: Team, league: League) -> dict:

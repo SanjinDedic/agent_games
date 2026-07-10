@@ -64,9 +64,8 @@ def test_list_institutions_success(client, multiple_institutions):
     resp = client.get("/auth/institutions")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "success"
 
-    names = data["data"]["institutions"]
+    names = data["institutions"]
 
     # Active institution is included
     assert "Active School" in names
@@ -85,16 +84,14 @@ def test_list_institutions_no_auth_required(client, multiple_institutions):
     """Endpoint is public — no auth token needed."""
     resp = client.get("/auth/institutions")
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
 
 
 def test_list_institutions_response_format(client, multiple_institutions):
     """Response has the expected structure."""
     resp = client.get("/auth/institutions")
     data = resp.json()
-    assert "data" in data
-    assert "institutions" in data["data"]
-    assert isinstance(data["data"]["institutions"], list)
+    assert "institutions" in data
+    assert isinstance(data["institutions"], list)
     # All items are strings
-    for name in data["data"]["institutions"]:
+    for name in data["institutions"]:
         assert isinstance(name, str)

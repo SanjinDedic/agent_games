@@ -30,9 +30,8 @@ def test_admin_login_success(client, db_session: Session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
-    assert data["data"]["token_type"] == "bearer"
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
 
     # Test case 2: Login with different admin
     admin2 = Admin(username="admin2", password_hash=TEST_PASSWORD_HASHES["password2"])
@@ -43,9 +42,7 @@ def test_admin_login_success(client, db_session: Session):
         "/auth/admin-login", json={"username": "admin2", "password": "password2"}
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
+    assert "access_token" in response.json()
 
 
 def test_admin_login_exceptions(client, db_session: Session):
@@ -63,20 +60,16 @@ def test_admin_login_exceptions(client, db_session: Session):
         "/auth/admin-login",
         json={"username": "non_existent", "password": "test_password"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "Invalid credentials" in data["message"]
+    assert response.status_code == 401
+    assert "Invalid credentials" in response.json()["detail"]
 
     # Test case 2: Wrong password
     response = client.post(
         "/auth/admin-login",
         json={"username": "test_admin", "password": "wrong_password"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "Invalid credentials" in data["message"]
+    assert response.status_code == 401
+    assert "Invalid credentials" in response.json()["detail"]
 
     # Test case 3: Missing username
     response = client.post("/auth/admin-login", json={"password": "test_password"})
@@ -119,9 +112,8 @@ def test_team_login_success(client, db_session: Session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
-    assert data["data"]["token_type"] == "bearer"
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
 
     # Test case 2: Login with different team
     team2 = Team(
@@ -137,9 +129,7 @@ def test_team_login_success(client, db_session: Session):
         "/auth/team-login", json={"name": "team2", "password": "password2"}
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
+    assert "access_token" in response.json()
 
 
 def test_team_login_duplicate_name_across_institutions(client, db_session: Session):
@@ -194,13 +184,13 @@ def test_team_login_duplicate_name_across_institutions(client, db_session: Sessi
         "/auth/team-login",
         json={"name": "shared_login_name", "password": "team_password"},
     )
-    assert resp_a.json()["status"] == "success"
+    assert resp_a.status_code == 200
 
     resp_b = client.post(
         "/auth/team-login",
         json={"name": "shared_login_name", "password": "password2"},
     )
-    assert resp_b.json()["status"] == "success"
+    assert resp_b.status_code == 200
 
     # The tokens resolve to the two distinct teams.
     from jose import jwt
@@ -208,10 +198,10 @@ def test_team_login_duplicate_name_across_institutions(client, db_session: Sessi
     from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
 
     payload_a = jwt.decode(
-        resp_a.json()["data"]["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+        resp_a.json()["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
     )
     payload_b = jwt.decode(
-        resp_b.json()["data"]["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+        resp_b.json()["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
     )
     assert payload_a["team_id"] == team_a.id
     assert payload_b["team_id"] == team_b.id
@@ -221,8 +211,8 @@ def test_team_login_duplicate_name_across_institutions(client, db_session: Sessi
         "/auth/team-login",
         json={"name": "shared_login_name", "password": "definitely_wrong"},
     )
-    assert resp_bad.json()["status"] == "failed"
-    assert "Invalid team password" in resp_bad.json()["message"]
+    assert resp_bad.status_code == 401
+    assert "Invalid team password" in resp_bad.json()["detail"]
 
 
 def test_team_login_exceptions(client, db_session: Session):
@@ -251,19 +241,15 @@ def test_team_login_exceptions(client, db_session: Session):
     response = client.post(
         "/auth/team-login", json={"name": "non_existent", "password": "team_password"}
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 401
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: Wrong password
     response = client.post(
         "/auth/team-login", json={"name": "test_team", "password": "wrong_password"}
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "failed"
-    assert "Invalid team password" in data["message"]
+    assert response.status_code == 401
+    assert "Invalid team password" in response.json()["detail"]
 
     # Test case 3: Missing team name
     response = client.post("/auth/team-login", json={"password": "team_password"})
@@ -304,8 +290,7 @@ def test_token_validation(client, db_session: Session):
         json={"name": "test_institution", "password": "inst_password"},
     )
     assert response.status_code == 200
-    print(response.json())
-    token = response.json()["data"]["access_token"]
+    token = response.json()["access_token"]
 
     # Test valid token with institution endpoint
     response = client.get(

@@ -40,8 +40,8 @@ const LeagueCreation = () => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
-        const gamesList = data.data.games || [];
+      if (response.ok) {
+        const gamesList = data.games || [];
         setGames(gamesList);
 
         // Set default game to first in list if available
@@ -159,16 +159,16 @@ const LeagueCreation = () => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
+      if (response.ok) {
         toast.success("League created successfully!");
 
         // Create the signup URL from the signup token
-        if (data.data && data.data.signup_token) {
+        if (data.signup_token) {
           // Using window.location to dynamically build the URL based on current domain
           const baseUrl = `${window.location.protocol}//${window.location.host}`;
-          const signupPath = `/TeamSignup/${data.data.signup_token}`;
+          const signupPath = `/TeamSignup/${data.signup_token}`;
           setSignupUrl(`${baseUrl}${signupPath}`);
-          setCreatedSchoolLeague(Boolean(data.data.school_league));
+          setCreatedSchoolLeague(Boolean(data.school_league));
         }
 
         // Reset form after successful creation
@@ -182,7 +182,7 @@ const LeagueCreation = () => {
           sheetUrl: "",
         });
       } else {
-        setError(data.message || "Failed to create league");
+        setError(data.detail || "Failed to create league");
       }
     } catch (err) {
       console.error("Error creating league:", err);

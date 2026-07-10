@@ -22,12 +22,12 @@ function AdminBackup() {
     authFetch(`${apiUrl}/admin/list-backups`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          setBackups(data.data.backups || []);
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) {
+          setBackups(data.backups || []);
         } else {
-          toast.error(data.message || 'Failed to load backups');
+          toast.error(data.detail || 'Failed to load backups');
         }
         setIsLoading(false);
       })
@@ -49,13 +49,13 @@ function AdminBackup() {
         Authorization: `Bearer ${accessToken}`,
       },
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) {
           toast.success(data.message || 'Backup created successfully');
           fetchBackups();
         } else {
-          toast.error(data.message || 'Backup failed');
+          toast.error(data.detail || 'Backup failed');
         }
         setIsCreating(false);
       })
@@ -84,12 +84,12 @@ function AdminBackup() {
       },
       body: JSON.stringify({ s3_key: backup.s3_key }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) {
           toast.success(data.message || 'Database restored successfully');
         } else {
-          toast.error(data.message || 'Restore failed');
+          toast.error(data.detail || 'Restore failed');
         }
         setRestoringKey(null);
       })

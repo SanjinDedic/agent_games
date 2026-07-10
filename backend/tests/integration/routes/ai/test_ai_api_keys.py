@@ -37,9 +37,7 @@ def test_get_api_keys_empty(client, auth_headers):
     """Initially no keys are configured"""
     response = client.get("/ai/api-keys", headers=auth_headers)
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["openai_api_key"] == ""
+    assert response.json()["openai_api_key"] == ""
 
 
 def test_get_api_keys_unauthenticated(client):
@@ -72,9 +70,7 @@ def test_update_api_key(client, auth_headers):
         json={"openai_api_key": "sk-test1234567890abcdef"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["openai_api_key"] == "sk-t****cdef"
+    assert response.json()["openai_api_key"] == "sk-t****cdef"
 
 
 def test_update_then_get_api_key(client, auth_headers):
@@ -86,7 +82,7 @@ def test_update_then_get_api_key(client, auth_headers):
     )
     response = client.get("/ai/api-keys", headers=auth_headers)
     assert response.status_code == 200
-    assert response.json()["data"]["openai_api_key"] == "sk-t****cdef"
+    assert response.json()["openai_api_key"] == "sk-t****cdef"
 
 
 def test_update_api_key_overwrite(client, auth_headers):
@@ -101,7 +97,7 @@ def test_update_api_key_overwrite(client, auth_headers):
         headers=auth_headers,
         json={"openai_api_key": "sk-second00000000000000"},
     )
-    assert response.json()["data"]["openai_api_key"] == "sk-s****0000"
+    assert response.json()["openai_api_key"] == "sk-s****0000"
 
 
 def test_update_api_key_none_no_change(client, auth_headers):
@@ -116,7 +112,7 @@ def test_update_api_key_none_no_change(client, auth_headers):
         headers=auth_headers,
         json={},  # openai_api_key defaults to None
     )
-    assert response.json()["data"]["openai_api_key"] == "sk-t****cdef"
+    assert response.json()["openai_api_key"] == "sk-t****cdef"
 
 
 def test_update_api_key_unauthenticated(client):
@@ -140,7 +136,7 @@ def test_validate_no_stored_key(client, auth_headers):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["data"]["valid"] is False
+    assert data["valid"] is False
     assert "no api key configured" in data["message"].lower()
 
 
@@ -151,10 +147,8 @@ def test_validate_unknown_provider(client, auth_headers):
         headers=auth_headers,
         json={"provider": "unknown_provider", "api_key": "some-key"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "unknown provider" in data["message"].lower()
+    assert response.status_code == 400
+    assert "unknown provider" in response.json()["detail"].lower()
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -175,8 +169,7 @@ def test_validate_valid_key(mock_client_cls, client, auth_headers):
         json={"provider": "openai", "api_key": "sk-valid-key"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["valid"] is True
+    assert response.json()["valid"] is True
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -197,8 +190,7 @@ def test_validate_invalid_key(mock_client_cls, client, auth_headers):
         json={"provider": "openai", "api_key": "sk-invalid-key"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["valid"] is False
+    assert response.json()["valid"] is False
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -226,8 +218,7 @@ def test_validate_stored_key(mock_client_cls, client, auth_headers):
         json={"provider": "openai"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["valid"] is True
+    assert response.json()["valid"] is True
 
     # Verify the correct key was used in the request
     mock_client.get.assert_called_once()
@@ -251,7 +242,5 @@ def test_validate_timeout(mock_client_cls, client, auth_headers):
         headers=auth_headers,
         json={"provider": "openai", "api_key": "sk-some-key"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "timed out" in data["message"].lower()
+    assert response.status_code == 504
+    assert "timed out" in response.json()["detail"].lower()

@@ -69,14 +69,13 @@ def test_generate_signup_link_success(client, signup_link_setup, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "signup_token" in data["data"]
+    assert "signup_token" in data
 
     # Verify link was saved to database
     db_session.refresh(league)
     assert league.signup_link is not None
     assert league.signup_link != original_signup_link
-    assert league.signup_link == data["data"]["signup_token"]
+    assert league.signup_link == data["signup_token"]
 
     # Test regenerating link
     response = client.post(
@@ -86,12 +85,11 @@ def test_generate_signup_link_success(client, signup_link_setup, db_session):
     )
     assert response.status_code == 200
     new_data = response.json()
-    assert new_data["status"] == "success"
-    assert new_data["data"]["signup_token"] != data["data"]["signup_token"]
+    assert new_data["signup_token"] != data["signup_token"]
 
     # Verify new link was saved
     db_session.refresh(league)
-    assert league.signup_link == new_data["data"]["signup_token"]
+    assert league.signup_link == new_data["signup_token"]
 
 
 def test_generate_signup_link_failures(client, signup_link_setup, db_session):
@@ -104,10 +102,8 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
         headers=headers,
         json={"league_id": 99999},
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: League from different institution
     # Create another institution
@@ -141,10 +137,8 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
         headers=headers,
         json={"league_id": other_league.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "permission" in data["message"].lower()
+    assert response.status_code == 403
+    assert "permission" in response.json()["detail"].lower()
 
     # Test case 3: Missing league_id (Pydantic 422)
     response = client.post(

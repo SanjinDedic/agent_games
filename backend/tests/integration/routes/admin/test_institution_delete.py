@@ -79,7 +79,6 @@ def test_institution_delete_success(client, auth_headers, delete_institution_set
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "institution" in data["message"].lower()
     assert "deleted" in data["message"].lower()
     
@@ -107,11 +106,9 @@ def test_institution_delete_failures(client, auth_headers, db_session):
         headers=auth_headers,
         json={"id": 99999},  # Non-existent ID
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
-    
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
     # Test case 2: Missing ID
     response = client.post(
         "/admin/institution-delete",

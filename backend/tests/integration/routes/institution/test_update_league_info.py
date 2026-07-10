@@ -59,8 +59,6 @@ def test_update_league_info_success(client, info_setup, db_session):
         json={"league_id": league.id, "info_markdown": markdown},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
     db_session.refresh(league)
     assert league.info_markdown == markdown
@@ -72,7 +70,6 @@ def test_update_league_info_success(client, info_setup, db_session):
         json={"league_id": league.id, "info_markdown": ""},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
     db_session.refresh(league)
     assert league.info_markdown == ""
 
@@ -111,9 +108,8 @@ def test_update_league_info_cross_institution_rejected(client, info_setup, db_se
         headers=headers,
         json={"league_id": other_league.id, "info_markdown": "should fail"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     db_session.refresh(other_league)
     assert other_league.info_markdown == ""
 
@@ -148,5 +144,5 @@ def test_update_league_info_not_found(client, info_setup):
         headers=headers,
         json={"league_id": 999999, "info_markdown": "x"},
     )
-    assert response.status_code == 200
-    assert response.json()["status"] == "error"
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()

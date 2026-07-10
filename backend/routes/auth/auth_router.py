@@ -3,10 +3,8 @@ import logging
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from backend.models_api import ResponseModel
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_db import (
-    InvalidCredentialsError,
     get_admin_token,
     get_institution_token,
     get_institution_names,
@@ -17,89 +15,47 @@ from backend.routes.auth.auth_models import (
     AdminLogin,
     AgentLogin,
     InstitutionLogin,
+    InstitutionsResponse,
     TeamLogin,
+    TokenResponse,
 )
 
 logger = logging.getLogger(__name__)
 
 auth_router = APIRouter()
 
+# Invalid credentials raise InvalidCredentialsError, mapped to HTTP 401 by the
+# handler registered in api.py. Any other exception surfaces as a 500. This
+# keeps each route a single expression instead of a per-route try/except.
 
-@auth_router.get("/institutions", response_model=ResponseModel)
+
+@auth_router.get("/institutions", response_model=InstitutionsResponse)
 def list_institutions(session: Session = Depends(get_db)):
-    """
-    Public endpoint to list institution names for the login selector
-    """
-    try:
-        names = get_institution_names(session)
-        return ResponseModel(status="success", message="Institutions retrieved", data={"institutions": names})
-    except Exception as e:
-        logger.error(f"Error listing institutions: {str(e)}")
-        return ResponseModel(status="failed", message="Failed to retrieve institutions")
+    """Public endpoint to list institution names for the login selector."""
+    return InstitutionsResponse(institutions=get_institution_names(session))
 
 
-@auth_router.post("/admin-login", response_model=ResponseModel)
+@auth_router.post("/admin-login", response_model=TokenResponse)
 def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
-    """
-    Endpoint for administrator login
-    """
+    """Authenticate an administrator and issue an access token."""
     logger.info(f'Admin login attempt for username: "{login.username}"')
-    try:
-        token = get_admin_token(session, login.username, login.password)
-        return ResponseModel(status="success", message="Login successful", data=token)
-    except InvalidCredentialsError as e:
-        return ResponseModel(status="failed", message=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error during admin login: {str(e)}")
-        return ResponseModel(status="failed", message="An unexpected error occurred")
+    return get_admin_token(session, login.username, login.password)
 
 
-@auth_router.post("/team-login", response_model=ResponseModel)
+@auth_router.post("/team-login", response_model=TokenResponse)
 def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
-    """
-    Endpoint for team login
-    """
-    try:
-        team_token = get_team_token(session, credentials.name, credentials.password)
-        logger.info(f"Generated token for team {credentials.name}: {team_token}")
-        print(f"Generated token for team {credentials.name}: {team_token}")
-        return ResponseModel(
-            status="success", message="Login successful", data=team_token
-        )
-    except InvalidCredentialsError as e:
-        return ResponseModel(status="failed", message=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error during team login: {str(e)}")
-        return ResponseModel(status="failed", message="An unexpected error occurred")
+    """Authenticate a team and issue an access token."""
+    return get_team_token(session, credentials.name, credentials.password)
 
 
-@auth_router.post("/institution-login", response_model=ResponseModel)
+@auth_router.post("/institution-login", response_model=TokenResponse)
 def institution_login(login: InstitutionLogin, session: Session = Depends(get_db)):
-    """
-    Endpoint for institution login
-    """
+    """Authenticate an institution and issue an access token."""
     logger.info(f'Institution login attempt for name: "{login.name}"')
-    try:
-        token = get_institution_token(session, login.name, login.password)
-        return ResponseModel(status="success", message="Login successful", data=token)
-    except InvalidCredentialsError as e:
-        return ResponseModel(status="failed", message=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error during institution login: {str(e)}")
-        return ResponseModel(status="failed", message="An unexpected error occurred")
+    return get_institution_token(session, login.name, login.password)
 
 
-# Add this new endpoint with your other login endpoints
-@auth_router.post("/agent-login", response_model=ResponseModel)
+@auth_router.post("/agent-login", response_model=TokenResponse)
 def agent_login(credentials: AgentLogin, session: Session = Depends(get_db)):
-    """Endpoint for agent login via API key"""
-    try:
-        agent_token = verify_agent_api_key(session, credentials.api_key)
-        return ResponseModel(
-            status="success", message="Login successful", data=agent_token
-        )
-    except InvalidCredentialsError as e:
-        return ResponseModel(status="failed", message=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error during agent login: {str(e)}")
-        return ResponseModel(status="failed", message="An unexpected error occurred")
+    """Authenticate an agent via API key and issue an access token."""
+    return verify_agent_api_key(session, credentials.api_key)

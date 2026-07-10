@@ -12,20 +12,17 @@ def test_get_game_instructions_greedy_pig():
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "starter_code" in data["data"]
-    assert "game_instructions" in data["data"]
-    assert "Greedy Pig Game Instructions" in data["data"]["game_instructions"]
+    assert "starter_code" in data
+    assert "game_instructions" in data
+    assert "Greedy Pig Game Instructions" in data["game_instructions"]
 
 
 def test_get_game_instructions_non_existent_game():
     response = client.post(
         "user/get-game-instructions", json={"game_name": "non_existent_game"}
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "Unknown game" in data["message"]
+    assert response.status_code == 400
+    assert "Unknown game" in response.json()["detail"]
 
 
 def test_get_game_instructions_missing_game_name():
@@ -49,8 +46,7 @@ def test_starter_code_content():
     for game in GAMES:
         response = client.post("user/get-game-instructions", json={"game_name": game})
         assert response.status_code == 200
-        data = response.json()
-        starter_code = data["data"]["starter_code"]
+        starter_code = response.json()["starter_code"]
         assert "CustomPlayer" in starter_code
         if game == "arena_champions":
             assert "make_combat_decision" in starter_code
@@ -64,8 +60,7 @@ def test_game_instructions_content():
             continue
         response = client.post("user/get-game-instructions", json={"game_name": game})
         assert response.status_code == 200
-        data = response.json()
-        instructions = data["data"]["game_instructions"]
+        instructions = response.json()["game_instructions"]
         assert "Game Objective" in instructions
         assert "Your Task" in instructions
         assert "Available Information" in instructions

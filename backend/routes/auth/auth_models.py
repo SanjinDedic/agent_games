@@ -50,3 +50,16 @@ class AgentLogin(BaseModel):
         if isinstance(v, str) and not v.strip():
             raise ValueError("API key must not be empty")
         return v
+
+
+class TokenResponse(BaseModel):
+    """Access token issued on a successful login."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
+class InstitutionsResponse(BaseModel):
+    """Public list of institution names for the login selector."""
+
+    institutions: list[str]

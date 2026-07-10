@@ -1,13 +1,16 @@
 import logging
 
-from backend.routes.ai.ai_models import Hint
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
-from backend.database.db_models import League, Team
+from backend.config import GAMES
+from backend.database.db_models import Team
+from backend.database.db_session import get_db
 from backend.games.game_factory import GameFactory
-from backend.models_api import ErrorResponseModel, ResponseModel
-from backend.routes.ai.hint_context import build_hint_context_from_response
+from backend.routes.ai.ai_models import Hint
+from backend.routes.ai.hint_service import hint_available, provide_hints
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_institution,
@@ -16,206 +19,216 @@ from backend.routes.auth.auth_core import (
     verify_any_role,
 )
 from backend.routes.auth.auth_db import mint_team_token
-from backend.database.db_session import get_db
-from backend.routes.institution.institution_db import (
-    InstitutionAccessError,
-    LeagueNotFoundError,
-    get_league_by_id,
-)
+from backend.routes.institution.institution_db import get_league_by_id
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
-from backend.routes.ai.hint_service import provide_hints, hint_available
+from backend.routes.user.code_validation import validate_code
+from backend.routes.user.signup_helpers import (
+    resolve_active_league_by_token,
+    team_signup_success_data,
+)
+from backend.routes.user.team_naming import create_school_team
 from backend.routes.user.user_db import (
-    SubmissionLimitExceededError,
-    TeamNotFoundError,
     allow_submission,
     assign_team_to_league,
     create_team_and_assign_to_league,
-    get_all_leagues,
-    get_leagues_for_user,
     get_all_published_results,
     get_all_published_results_for_league,
     get_all_submissions_for_league,
     get_latest_submissions_for_league,
     get_league_by_signup_token,
+    get_leagues_for_user,
     get_published_result,
+    get_result_by_publish_link,
     get_team_by_id,
     get_team_submission,
     get_team_submission_history,
     record_failed_submission,
     save_submission,
-    get_result_by_publish_link,
 )
 from backend.routes.user.user_models import (
-    AgentSubmitResponse,
     DirectLeagueSignup,
     DirectSchoolLeagueSignup,
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
 )
-from backend.routes.user.code_validation import validate_code
+from backend.schools.providers import SchoolsProviderError, get_schools_provider
 from backend.tasks.validation_task import (
     await_validation_result,
     enqueue_validation,
 )
-from backend.routes.user.signup_helpers import (
-    resolve_active_league_by_token,
-    team_signup_success_data,
-)
-from backend.routes.user.team_naming import create_school_team
-from backend.schools.providers import SchoolsProviderError, get_schools_provider
 from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
 
 user_router = APIRouter()
 
+# Business failures surface via the HTTP status line, not a masked 200 envelope.
+# Lookups raise domain exceptions mapped centrally in api.py: user_db's
+# TeamNotFoundError / LeagueNotFoundError / ResultNotFoundError -> 404,
+# TeamExistsError -> 409, LeagueExpiredError -> 410, DemoLeagueError -> 403,
+# SubmissionLimitExceededError -> 429; institution_db's LeagueNotFoundError -> 404
+# and InstitutionAccessError -> 403 cover the league-ownership checks; the AI
+# client errors (LLMResponseError -> 502, AIRequestTimeoutError -> 504,
+# NoApiKeyError -> 400) cover hint generation. Request problems the router owns
+# (non-team token, unknown game, school not in list) are raised inline. Anything
+# unexpected surfaces as a 500 rather than a swallowed error. Each route returns
+# its payload directly; action endpoints keep a "message" carrying the outcome.
 
-@user_router.post("/submit-agent", response_model=AgentSubmitResponse)
+
+def _require_team_id(current_user: dict) -> int:
+    """Reject tokens that don't carry a team_id (admin/institution tokens)."""
+    team_id = current_user.get("team_id")
+    if team_id is None:
+        raise HTTPException(
+            status_code=400, detail="This endpoint requires a team token"
+        )
+    return team_id
+
+
+@user_router.post("/submit-agent")
 @verify_ai_agent_service_or_student
 async def submit_agent(
     submission: SubmissionCode,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
-    generate_hint: bool = False
+    generate_hint: bool = False,
 ):
-    """Submit agent code for validation and storage"""
+    """Submit agent code for validation and storage.
+
+    A submission whose code fails validation is a business failure -> HTTP 400,
+    but the body still carries the hint fields next to "detail" because a hint
+    is most useful exactly when validation fails.
+
+    Hints exist to help students reach valid code, not to improve a valid
+    agent — so a hint is only generated when this submission fails validation.
+    If a hint is requested but the code passes, the hint is cancelled: no LLM
+    call, the attempt isn't consumed, and the success body carries
+    "hint_cancelled": true so the frontend can say so.
+    """
     team_name = current_user["team_name"]
-    team_id = current_user["team_id"]
-    try:
-        team = get_team_by_id(session, team_id)
-    except TeamNotFoundError:
-        return AgentSubmitResponse(status="error", message=f"Team '{team_name}' not found")
+    team = get_team_by_id(session, current_user["team_id"])
 
-    # Check league assignment first
     if not team.league:
-        return AgentSubmitResponse(
-            status="error", message="Team is not assigned to a league."
+        raise HTTPException(
+            status_code=400, detail="Team is not assigned to a league."
         )
-
     if team.league.name == "unassigned":
-        return AgentSubmitResponse(
-            status="error", message="Team is not assigned to a valid league."
+        raise HTTPException(
+            status_code=400, detail="Team is not assigned to a valid league."
         )
 
-    try:
-        if not allow_submission(session, team.id):
-            return AgentSubmitResponse(
-                status="error", message="You can only make 5 submissions per minute."
-            )
-    except SubmissionLimitExceededError as e:
-        return AgentSubmitResponse(status="error", message=str(e))
+    # Hint requests are governed by hint rationing alone (cooldown +
+    # submissions-between-hints below), not the per-minute submission limit —
+    # otherwise a student who just burned quick failed attempts finds the
+    # hint button rate-limited exactly when the hint is offered.
+    if not generate_hint:
+        allow_submission(session, team.id)
+
+    # hint_available is deterministic on recorded attempts, and nothing is
+    # recorded until after validation — so checking before the (expensive)
+    # validation run is equivalent and avoids wasting it on a rejected request.
+    allow_hint = hint_available(session, team)
+    if generate_hint and not allow_hint:
+        raise HTTPException(
+            status_code=429,
+            detail="You are not allowed to request a hint right now",
+        )
+
+    # AST safety check runs here, before enqueue: cheap, and unsafe code
+    # never reaches a worker. The "Agent code is not safe: " prefix is
+    # matched by hint_context.classify_outcome — do not reword.
+    is_safe, error_message = validate_code(submission.code)
+    if not is_safe:
+        validation_result = {
+            "status": "error",
+            "message": f"Agent code is not safe: {error_message}",
+            "feedback": None,
+            "simulation_results": None,
+            "duration_ms": None,
+            "traceback": None,
+            "stdout": None,
+        }
+    else:
+        logger.info(f"Enqueueing validation task for team {team_name}")
+        async_result = enqueue_validation(
+            code=submission.code,
+            game_name=team.league.game,
+            team_name=team_name,
+            num_simulations=20,
+        )
+        # Polls the backend (no thread, no shared pubsub consumer) and maps
+        # every kill/timeout/worker-loss to a clean validation failure.
+        validation_result = await await_validation_result(async_result)
+
+    duration_ms = validation_result.get("duration_ms")
+    validation_failed = validation_result.get("status") == "error"
 
     hint: Hint | None = None
-
-    try:
-        # AST safety check runs here, before enqueue: cheap, and unsafe code
-        # never reaches a worker. The "Agent code is not safe: " prefix is
-        # matched by hint_context.classify_outcome — do not reword.
-        is_safe, error_message = validate_code(submission.code)
-        if not is_safe:
-            validation_result = {
-                "status": "error",
-                "message": f"Agent code is not safe: {error_message}",
-                "feedback": None,
-                "simulation_results": None,
-                "duration_ms": None,
-                "traceback": None,
-                "stdout": None,
-            }
+    hint_cancelled = False
+    if generate_hint:
+        if not validation_failed:
+            # The code passed validation, so the student no longer needs the
+            # hint: skip the LLM call and don't consume the attempt.
+            hint_cancelled = True
         else:
-            logger.info(f"Enqueueing validation task for team {team_name}")
-            async_result = enqueue_validation(
-                code=submission.code,
-                game_name=team.league.game,
-                team_name=team_name,
-                num_simulations=20,
+            hints = await provide_hints(
+                session, submission.code, validation_result, team.league.game, team_name
             )
-            # Polls the backend (no thread, no shared pubsub consumer) and maps
-            # every kill/timeout/worker-loss to a clean validation failure.
-            validation_result = await await_validation_result(async_result)
-
-
-        allow_hint = hint_available(session, team)
-
-        if generate_hint and not allow_hint:
-            return AgentSubmitResponse(status="error", message="You are not allowed to request a hint right now")
-
-
-        if generate_hint:
-            try:
-                hints = await provide_hints(session, submission.code, validation_result, team.league.game, team_name)
-                logger.info(f"Generated hints: {hints}")
-    
-                hint = sorted(hints, key = lambda x: x.priority)[0] if hints else None
-            except Exception as e:
-                logger.error(f"Error or timeout during hint generation {e}")
-                return AgentSubmitResponse(status="error", message=f"An error occured during hint generation: {str(e)}")
-
+            logger.info(f"Generated hints: {hints}")
+            hint = sorted(hints, key=lambda x: x.priority)[0] if hints else None
             if hint is None:
-                # No submission is recorded on this path, so the hint attempt isn't consumed
-                return AgentSubmitResponse(
-                    status="error",
-                    message="LLM provider failed to generate a valid hint",
-                    hint_available=allow_hint,
+                # No submission is recorded on this path, so the hint attempt
+                # isn't consumed.
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM provider failed to generate a valid hint",
                 )
-
             allow_hint = False
 
-        if validation_result.get("status") == "error":
-            duration_ms = validation_result.get("duration_ms")
-            record_failed_submission(
-                session,
-                team.id,
-                league_id=team.league_id,
-                duration_ms=duration_ms,
-                hint_included=generate_hint,
-            )
-            return AgentSubmitResponse(
-                status="error",
-                message=validation_result.get("message", "Code validation failed"),
-                hint=hint,
-                hint_available=allow_hint
-            )
-
-    except Exception as e:
-        logger.error(f"Error or timeout during validation {e}")
-        return AgentSubmitResponse(
-            status="error", message=f"An error occurred during validation: {str(e)}"
-        )
-
-    try:
-        duration_ms = validation_result.get("duration_ms")
-        submission_id = save_submission(
+    if validation_failed:
+        record_failed_submission(
             session,
-            submission.code,
             team.id,
             league_id=team.league_id,
             duration_ms=duration_ms,
             hint_included=generate_hint,
         )
-        return AgentSubmitResponse(
-            status="success",
-            message=f"Code submitted successfully. Submission ID: {submission_id}",
-            data={
-                "team_name": team_name,
-                "results": validation_result.get("simulation_results"),
-                "feedback": validation_result.get("feedback"),
-                "duration_ms": duration_ms,
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": validation_result.get("message", "Code validation failed"),
+                "hint": jsonable_encoder(hint),
+                "hint_available": allow_hint,
             },
-            hint=hint,
-            hint_available=allow_hint
-        )
-    except Exception as e:
-        logger.error(f"Error saving submission: {e}")
-        return AgentSubmitResponse(
-            status="error",
-            message=f"An error occurred while saving the submission: {str(e)}",
         )
 
+    # hint_included is always False here: a hint is never delivered with a
+    # valid submission (cancelled above), so the ration isn't spent.
+    submission_id = save_submission(
+        session,
+        submission.code,
+        team.id,
+        league_id=team.league_id,
+        duration_ms=duration_ms,
+        hint_included=False,
+    )
+    return {
+        "submission_id": submission_id,
+        "team_name": team_name,
+        "results": validation_result.get("simulation_results"),
+        "feedback": validation_result.get("feedback"),
+        "duration_ms": duration_ms,
+        "hint": None,
+        # Hints only apply to failed validation, so a passing submission
+        # never advertises one regardless of rationing.
+        "hint_available": False,
+        "hint_cancelled": hint_cancelled,
+    }
 
-@user_router.post("/league-assign", response_model=AgentSubmitResponse)
+
+@user_router.post("/league-assign")
 @verify_admin_or_student
 async def assign_team_to_league_endpoint(
     league: LeagueAssignRequest,
@@ -223,63 +236,32 @@ async def assign_team_to_league_endpoint(
     session: Session = Depends(get_db),
 ):
     """Assign a team to a league and return a refreshed token carrying the new league_id."""
-    team_id = current_user.get("team_id")
-    if team_id is None:
-        return ErrorResponseModel(
-            status="error", message="This endpoint requires a team token"
-        )
-    team_name = current_user["team_name"]
-    is_demo = current_user["is_demo"]
-    logger.info(f'Team Name "{team_name}" about to assign to league_id={league.league_id}')
-    try:
-        msg = assign_team_to_league(session, team_id, league.league_id, is_demo)
-        team = get_team_by_id(session, team_id)
-        role = current_user.get("role", "student")
-        token_role = "ai_agent" if role == "ai_agent" else "student"
-        access_token = mint_team_token(team, role=token_role)
-        return AgentSubmitResponse(
-            status="success",
-            message=msg,
-            data={"access_token": access_token, "token_type": "bearer"},
-        )
-    except Exception as e:
-        logger.error(
-            f'Error assigning team "{team_name}" to league_id={league.league_id}: {str(e)}'
-        )
-        return ErrorResponseModel(
-            status="error",
-            message="An error occurred while assigning team to league" + str(e),
-        )
+    team_id = _require_team_id(current_user)
+    logger.info(
+        f'Team "{current_user["team_name"]}" about to assign to league_id={league.league_id}'
+    )
+    msg = assign_team_to_league(
+        session, team_id, league.league_id, current_user["is_demo"]
+    )
+    team = get_team_by_id(session, team_id)
+    role = current_user.get("role", "student")
+    token_role = "ai_agent" if role == "ai_agent" else "student"
+    return {
+        "message": msg,
+        "access_token": mint_team_token(team, role=token_role),
+        "token_type": "bearer",
+    }
 
 
-@user_router.post("/get-published-results-for-league", response_model=ResponseModel)
+@user_router.post("/get-published-results-for-league")
 def get_published_results_for_league_endpoint(
     league: LeagueName, session: Session = Depends(get_db)
 ):
-    """Get published results for a specific league"""
-    try:
-        published_results = get_published_result(session, league.name)
-        if published_results:
-            return ResponseModel(
-                status="success",
-                message="Published results retrieved successfully",
-                data=published_results,
-            )
-        return ResponseModel(
-            status="success",
-            message="No published results found for the specified league",
-            data=None,
-        )
-    except Exception as e:
-        return ErrorResponseModel(
-            status="error",
-            message="An error occurred while retrieving published results " + str(e),
-        )
+    """Get published results for a specific league (null when nothing is published)."""
+    return get_published_result(session, league.name)
 
 
-@user_router.get(
-    "/get-all-published-results-for-my-league", response_model=ResponseModel
-)
+@user_router.get("/get-all-published-results-for-my-league")
 @verify_any_role
 async def get_all_published_results_for_my_league_endpoint(
     current_user: dict = Depends(get_current_user),
@@ -292,115 +274,51 @@ async def get_all_published_results_for_my_league_endpoint(
     """
     league_id = current_user.get("league_id")
     if not league_id:
-        return ResponseModel(
-            status="success",
-            message="No league assigned to user",
-            data={"all_results": [], "league_name": None, "info_markdown": ""},
-        )
-    try:
-        data = get_all_published_results_for_league(session, league_id)
-        return ResponseModel(
-            status="success",
-            message="Published results retrieved successfully",
-            data=data,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving published results for my league: {e}")
-        return ErrorResponseModel(
-            status="error",
-            message=f"Failed to retrieve published results: {str(e)}",
-        )
+        return {"all_results": [], "league_name": None, "info_markdown": ""}
+    return get_all_published_results_for_league(session, league_id)
 
 
-@user_router.get("/get-published-results-for-all-leagues", response_model=ResponseModel)
+@user_router.get("/get-published-results-for-all-leagues")
 def get_published_results_for_all_leagues_endpoint(session: Session = Depends(get_db)):
     """Get all published results across leagues"""
-    try:
-        published_results = get_all_published_results(session)
-        if published_results:
-            return ResponseModel(
-                status="success",
-                message="Published results retrieved successfully",
-                data=published_results,
-            )
-        return ResponseModel(
-            status="success",
-            message="No published results found",
-            data=None,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving all published results: {str(e)}")
-        return ErrorResponseModel(
-            status="error",
-            message="An error occurred while retrieving published results " + str(e),
-        )
+    return get_all_published_results(session)
 
 
-@user_router.post("/get-game-instructions", response_model=ResponseModel)
+@user_router.post("/get-game-instructions")
 async def get_game_instructions(game: GameName):
     """Get instructions for a specific game"""
-    try:
-        game_class = GameFactory.get_game_class(game.game_name)
-        return ResponseModel(
-            status="success",
-            message="Game instructions retrieved successfully",
-            data={
-                "starter_code": game_class.starter_code,
-                "game_instructions": game_class.game_instructions,
-                "reward_schema": game_class.reward_schema,
-                "reward_instructions": game_class.reward_instructions,
-            },
+    if game.game_name not in GAMES:
+        raise HTTPException(
+            status_code=400, detail=f"Unknown game: {game.game_name}"
         )
-    except Exception as e:
-        return ErrorResponseModel(
-            status="error", message=f"An error occurred: {str(e)}"
-        )
+    game_class = GameFactory.get_game_class(game.game_name)
+    return {
+        "starter_code": game_class.starter_code,
+        "game_instructions": game_class.game_instructions,
+        "reward_schema": game_class.reward_schema,
+        "reward_instructions": game_class.reward_instructions,
+    }
 
 
-@user_router.post("/get-available-games", response_model=ResponseModel)
+@user_router.post("/get-available-games")
 async def get_available_games():
     """Get list of available games"""
-    try:
-        game_names = get_games_names()
-        return ResponseModel(
-            status="success",
-            message="Available games retrieved successfully",
-            data={"games": game_names},
-        )
-    except Exception as e:
-        return ErrorResponseModel(
-            status="error", message=f"An error occurred: {str(e)}"
-        )
+    return {"games": get_games_names()}
 
 
-@user_router.get("/get-all-leagues", response_model=ResponseModel)
+@user_router.get("/get-all-leagues")
 @verify_any_role
 async def get_leagues_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Get all leagues - accessible to both admin and student roles"""
-    logger.info("Received request for get-all-leagues")
-    logger.info(f"Current user data: {current_user}")
-
-    try:
-        role = current_user.get("role")
-        institution_id = current_user.get("institution_id")
-
-        leagues = get_leagues_for_user(session, role, institution_id)
-        return ResponseModel(
-            status="success",
-            message="Leagues retrieved successfully",
-            data=leagues,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving leagues: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve leagues: {str(e)}"
-        )
+    return get_leagues_for_user(
+        session, current_user.get("role"), current_user.get("institution_id")
+    )
 
 
-@user_router.get("/get-league-submissions/{league_id}", response_model=ResponseModel)
+@user_router.get("/get-league-submissions/{league_id}")
 @verify_admin_or_institution
 async def get_league_submissions(
     league_id: int,
@@ -416,36 +334,15 @@ async def get_league_submissions(
     if role not in ("admin", "service"):
         institution_id, _ = _resolve_institution(current_user)
         if not institution_id:
-            return ErrorResponseModel(
-                status="error", message="Institution ID not found in token"
+            raise HTTPException(
+                status_code=400, detail="Institution ID not found in token"
             )
-        try:
-            get_league_by_id(session, league_id, institution_id, is_admin=False)
-        except LeagueNotFoundError:
-            return ErrorResponseModel(
-                status="error", message=f"League {league_id} not found"
-            )
-        except InstitutionAccessError:
-            return ErrorResponseModel(
-                status="error",
-                message="You don't have permission to access this league",
-            )
+        get_league_by_id(session, league_id, institution_id, is_admin=False)
 
-    try:
-        submissions = get_latest_submissions_for_league(session, league_id)
-        return ResponseModel(
-            status="success",
-            message="Submissions retrieved successfully",
-            data=submissions,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving submissions: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve submissions: {str(e)}"
-        )
+    return get_latest_submissions_for_league(session, league_id)
 
 
-@user_router.get("/get-all-league-submissions/{league_id}", response_model=ResponseModel)
+@user_router.get("/get-all-league-submissions/{league_id}")
 @verify_admin_or_institution
 async def get_all_league_submissions(
     league_id: int,
@@ -455,245 +352,143 @@ async def get_all_league_submissions(
     """Get all submissions for all teams in a league with timestamps.
 
     Access is restricted to the institution that owns the league (admins
-    bypass the ownership check). Returns 'error' status for leagues the
-    caller does not own or that do not exist — never leaks cross-institution
-    data.
+    bypass the ownership check). A league the caller does not own raises
+    InstitutionAccessError -> 403 — never leaks cross-institution data.
     """
-    try:
-        institution_id, is_admin = _resolve_institution(current_user)
-        if not institution_id:
-            return ErrorResponseModel(
-                status="error", message="Institution ID not found in token"
-            )
-
-        try:
-            league = get_league_by_id(
-                session, league_id, institution_id, is_admin=is_admin
-            )
-        except LeagueNotFoundError:
-            return ErrorResponseModel(
-                status="error", message=f"League {league_id} not found"
-            )
-        except InstitutionAccessError:
-            return ErrorResponseModel(
-                status="error",
-                message="You don't have permission to access this league",
-            )
-
-        result = get_all_submissions_for_league(session, league_id)
-        return ResponseModel(
-            status="success",
-            message="All submissions retrieved successfully",
-            data={
-                "league_name": league.name,
-                "teams": result["teams"],
-                "team_ids": result["team_ids"],
-            },
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving all submissions: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve submissions: {str(e)}"
+    institution_id, is_admin = _resolve_institution(current_user)
+    if not institution_id:
+        raise HTTPException(
+            status_code=400, detail="Institution ID not found in token"
         )
 
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
+    result = get_all_submissions_for_league(session, league_id)
+    return {
+        "league_name": league.name,
+        "teams": result["teams"],
+        "team_ids": result["team_ids"],
+    }
 
-@user_router.get("/get-team-submission", response_model=ResponseModel)
+
+@user_router.get("/get-team-submission")
 @verify_any_role
 async def get_team_submission_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Get latest submission for the current team, scoped to current league."""
-    team_id = current_user.get("team_id")
-    if team_id is None:
-        return ResponseModel(
-            status="error",
-            message="This endpoint requires a team token",
-            data={"code": None},
-        )
-    try:
-        team = session.get(Team, team_id)
-        league_id = team.league_id if team else current_user.get("league_id")
-        submission_data = get_team_submission(session, team_id, league_id=league_id)
-        return ResponseModel(
-            status="success",
-            message="Submission retrieved successfully",
-            data=submission_data,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving submission: {e}")
-        return ResponseModel(
-            status="error",
-            message=f"Failed to retrieve submission: {str(e)}",
-            data={"code": None},
-        )
+    team_id = _require_team_id(current_user)
+    team = session.get(Team, team_id)
+    league_id = team.league_id if team else current_user.get("league_id")
+    return get_team_submission(session, team_id, league_id=league_id)
 
 
-@user_router.get("/get-team-submissions", response_model=ResponseModel)
+@user_router.get("/get-team-submissions")
 @verify_any_role
 async def get_team_submissions_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Get full submission history for the current team"""
-    team_id = current_user.get("team_id")
-    if team_id is None:
-        return ErrorResponseModel(
-            status="error", message="This endpoint requires a team token"
-        )
-    try:
-        submissions = get_team_submission_history(session, team_id)
-        return ResponseModel(
-            status="success",
-            message="Submissions retrieved successfully",
-            data={"submissions": submissions},
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving submission history: {e}")
-        return ErrorResponseModel(
-            status="error",
-            message=f"Failed to retrieve submissions: {str(e)}",
-        )
+    team_id = _require_team_id(current_user)
+    return {"submissions": get_team_submission_history(session, team_id)}
 
 
-@user_router.post("/direct-league-signup", response_model=ResponseModel)
+@user_router.post("/direct-league-signup")
 async def direct_league_signup(
     signup: DirectLeagueSignup,
     session: Session = Depends(get_db),
 ):
     """Create a team and directly assign it to a league using the signup token"""
-    try:
-        league, error = resolve_active_league_by_token(session, signup.signup_token)
-        if error:
-            return ErrorResponseModel(status="error", message=error)
-
-        team = create_team_and_assign_to_league(
-            session, signup.team_name, signup.password, league.id, signup.school_name
-        )
-
-        return ResponseModel(
-            status="success",
-            message=f"Team '{team.name}' created and assigned to league '{league.name}' successfully!",
-            data=team_signup_success_data(team, league),
-        )
-    except Exception as e:
-        logger.error(f"Error in direct league signup: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to complete signup: {str(e)}"
-        )
+    league = resolve_active_league_by_token(session, signup.signup_token)
+    team = create_team_and_assign_to_league(
+        session, signup.team_name, signup.password, league.id, signup.school_name
+    )
+    return {
+        "message": (
+            f"Team '{team.name}' created and assigned to league "
+            f"'{league.name}' successfully!"
+        ),
+        **team_signup_success_data(team, league),
+    }
 
 
-@user_router.get("/league-info/{signup_token}", response_model=ResponseModel)
+@user_router.get("/league-info/{signup_token}")
 async def get_league_by_token(
     signup_token: str,
     session: Session = Depends(get_db),
 ):
     """Get league information by its signup token"""
-    try:
-        league = get_league_by_signup_token(session, signup_token)
+    league = get_league_by_signup_token(session, signup_token)
 
-        if not league:
-            return ErrorResponseModel(
-                status="error", message="Invalid signup link or league not found"
-            )
+    data = {
+        "id": league.id,
+        "name": league.name,
+        "game": league.game,
+        "created_date": league.created_date,
+        "expiry_date": league.expiry_date,
+        "school_league": league.school_league,
+    }
 
-        data = {
-            "id": league.id,
-            "name": league.name,
-            "game": league.game,
-            "created_date": league.created_date,
-            "expiry_date": league.expiry_date,
-            "school_league": league.school_league,
-        }
+    if league.school_league:
+        try:
+            provider = get_schools_provider(league)
+            schools = provider.list_schools() if provider else []
+        except SchoolsProviderError as e:
+            # Soft fallback: the signup page still renders without the list.
+            logger.error(f"Schools provider error for league {league.id}: {e}")
+            schools = []
+        data["schools"] = schools
 
-        if league.school_league:
-            try:
-                provider = get_schools_provider(league)
-                schools = provider.list_schools() if provider else []
-            except SchoolsProviderError as e:
-                logger.error(f"Schools provider error for league {league.id}: {e}")
-                schools = []
-            data["schools"] = schools
-
-        return ResponseModel(
-            status="success",
-            message="League information retrieved successfully",
-            data=data,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving league by token: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve league information: {str(e)}"
-        )
+    return data
 
 
-@user_router.post("/direct-school-league-signup", response_model=ResponseModel)
+@user_router.post("/direct-school-league-signup")
 async def direct_school_league_signup(
     signup: DirectSchoolLeagueSignup,
     session: Session = Depends(get_db),
 ):
     """Create a team in a school league using the server-assigned team name."""
+    league = resolve_active_league_by_token(session, signup.signup_token)
+
+    if not league.school_league:
+        raise HTTPException(
+            status_code=400, detail="This league is not a school league"
+        )
+
     try:
-        league, error = resolve_active_league_by_token(session, signup.signup_token)
-        if error:
-            return ErrorResponseModel(status="error", message=error)
-
-        if not league.school_league:
-            return ErrorResponseModel(
-                status="error", message="This league is not a school league"
-            )
-
-        try:
-            provider = get_schools_provider(league)
-        except SchoolsProviderError as e:
-            return ErrorResponseModel(
-                status="error", message=f"School list unavailable: {str(e)}"
-            )
-
+        provider = get_schools_provider(league)
         allowed = set(provider.list_schools()) if provider else set()
-        if signup.school_name not in allowed:
-            return ErrorResponseModel(
-                status="error",
-                message=(
-                    f"School '{signup.school_name}' is not in this league's "
-                    "allowed list"
-                ),
-            )
-
-        team = create_school_team(
-            session, league.id, signup.school_name, signup.password
+    except SchoolsProviderError as e:
+        # Unlike league-info there is no soft fallback: signup must not
+        # proceed against an unverifiable school list.
+        raise HTTPException(
+            status_code=502, detail=f"School list unavailable: {str(e)}"
         )
 
-        return ResponseModel(
-            status="success",
-            message=(
-                f"Team '{team.name}' created and assigned to league "
-                f"'{league.name}' successfully!"
+    if signup.school_name not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"School '{signup.school_name}' is not in this league's "
+                "allowed list"
             ),
-            data=team_signup_success_data(team, league),
-        )
-    except Exception as e:
-        logger.error(f"Error in direct school-league signup: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to complete signup: {str(e)}"
         )
 
+    team = create_school_team(session, league.id, signup.school_name, signup.password)
+    return {
+        "message": (
+            f"Team '{team.name}' created and assigned to league "
+            f"'{league.name}' successfully!"
+        ),
+        **team_signup_success_data(team, league),
+    }
 
-@user_router.get("/published-result/{publish_link}", response_model=ResponseModel)
+
+@user_router.get("/published-result/{publish_link}")
 async def get_published_result_by_link(
     publish_link: str,
     session: Session = Depends(get_db),
 ):
     """Get a published result by its unique publish link"""
-    try:
-        result = get_result_by_publish_link(session, publish_link)
-        return ResponseModel(
-            status="success",
-            message="Published result retrieved successfully",
-            data=result,
-        )
-    except Exception as e:
-        logger.error(f"Error retrieving published result: {e}")
-        return ErrorResponseModel(
-            status="error", message=f"Failed to retrieve published result: {str(e)}"
-        )
+    return get_result_by_publish_link(session, publish_link)

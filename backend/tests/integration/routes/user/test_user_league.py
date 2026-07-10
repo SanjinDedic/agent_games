@@ -113,15 +113,12 @@ def test_league_assign_success(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
     assert "assigned to league" in data["message"]
     # Successful assign returns a refreshed token carrying the new league_id.
-    assert "access_token" in data["data"]
+    assert "access_token" in data
     from jose import jwt
     from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
-    payload = jwt.decode(
-        data["data"]["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
-    )
+    payload = jwt.decode(data["access_token"], SECRET_KEY, algorithms=[ALGORITHM])
     assert payload["league_id"] == setup_leagues["comp_test"].id
 
     # Verify assignment in database
@@ -142,9 +139,7 @@ def test_league_assign_success(
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "assigned to league" in data["message"]
+    assert "assigned to league" in response.json()["message"]
 
     # Verify assignment
     team = get_team_by_id(db_session, setup_unassigned_team.id)
@@ -162,10 +157,8 @@ def test_league_assign_exceptions(
         json={"league_id": 99999},
         headers={"Authorization": f"Bearer {student_token}"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Verify team remains in original league
     team = get_team_by_id(db_session, setup_unassigned_team.id)
@@ -200,11 +193,9 @@ def test_get_all_leagues_success(client, student_token: str, setup_leagues: dict
         "/user/get-all-leagues", headers={"Authorization": f"Bearer {student_token}"}
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
     # Verify league data
-    leagues = data["data"]["leagues"]
+    leagues = response.json()["leagues"]
     league_names = [league["name"] for league in leagues]
     assert "comp_test" in league_names
     assert "pd_test" in league_names
@@ -241,5 +232,4 @@ def test_get_all_leagues_exceptions(client):
         "/user/get-all-leagues", headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
+    assert "leagues" in response.json()

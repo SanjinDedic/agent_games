@@ -48,3 +48,15 @@ class DemoGameSelectRequest(BaseModel):
     """Model for selecting a game in demo mode"""
 
     game_name: str = Field(..., description="Name of the game to try in demo mode")
+
+
+class DemoLaunchResponse(BaseModel):
+    """Credentials and context returned when a demo session is launched."""
+
+    access_token: str
+    token_type: str = "bearer"
+    username: str
+    expires_in_minutes: int
+    expires_at: str
+    available_games: list[str]
+    demo_leagues: list[str]

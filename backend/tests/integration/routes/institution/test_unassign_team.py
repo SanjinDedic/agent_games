@@ -89,7 +89,6 @@ def test_unassign_team_success(client, unassign_setup, db_session):
         json={"team_id": data["team"].id},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
     assert "unassigned" in resp.json()["message"].lower()
 
     # Verify in DB
@@ -104,8 +103,8 @@ def test_unassign_team_not_found(client, unassign_setup):
         headers=unassign_setup["headers"],
         json={"team_id": 99999},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
 
 def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
@@ -134,5 +133,5 @@ def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
         headers={"Authorization": f"Bearer {other_token}"},
         json={"team_id": unassign_setup["team"].id},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
+    assert resp.status_code == 403
+    assert "permission" in resp.json()["detail"].lower()

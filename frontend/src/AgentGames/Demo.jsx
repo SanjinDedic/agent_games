@@ -86,15 +86,13 @@ function Demo() {
 
             const data = await response.json();
 
-            if (data.status === 'success') {
-                const demoData = data.data;
+            if (response.ok) {
+                dispatch(setToken(data.access_token));
 
-                dispatch(setToken(demoData.access_token));
-
-                toast.success(`Demo started! You have ${demoData.expires_in_minutes} minutes to explore.`);
+                toast.success(`Demo started! You have ${data.expires_in_minutes} minutes to explore.`);
                 navigate('/AgentLeagueSignUp');
             } else {
-                toast.error(data.message || 'Failed to start demo');
+                toast.error(data.detail || 'Failed to start demo');
             }
         } catch (error) {
             console.error('Error launching demo:', error);

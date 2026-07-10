@@ -15,8 +15,7 @@ def test_backup_database_success(mock_backup, client, admin_headers):
     }
     resp = client.post("/admin/backup-database", headers=admin_headers)
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
-    assert resp.json()["data"]["filename"] == "agent_games_20260404.sql"
+    assert resp.json()["filename"] == "agent_games_20260404.sql"
     mock_backup.assert_called_once()
 
 
@@ -46,9 +45,7 @@ def test_list_backups_success(mock_list, client, admin_headers):
     resp = client.get("/admin/list-backups", headers=admin_headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "success"
-    assert "1 backup" in data["message"]
-    assert len(data["data"]["backups"]) == 1
+    assert len(data["backups"]) == 1
     mock_list.assert_called_once()
 
 
@@ -71,7 +68,7 @@ def test_restore_database_success(mock_restore, client, admin_headers):
         json={"s3_key": "backups/agent_games_20260404.sql"},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
+    assert resp.json()["filename"] == "agent_games_20260404.sql"
     mock_restore.assert_called_once_with("backups/agent_games_20260404.sql")
 
 

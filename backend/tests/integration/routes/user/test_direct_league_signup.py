@@ -88,11 +88,8 @@ def test_direct_signup_success(client, signup_league, db_session):
         },
     )
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success"
-    assert "created and assigned" in data["message"]
-
-    result = data["data"]
+    result = resp.json()
+    assert "created and assigned" in result["message"]
     assert result["team_name"] == "signup_team_1"
     assert result["league_name"] == "signup_test_league"
     assert result["league_id"] == signup_league["league"].id
@@ -122,7 +119,7 @@ def test_direct_signup_token_usable(client, signup_league):
             "school_name": "",
         },
     )
-    token = resp.json()["data"]["access_token"]
+    token = resp.json()["access_token"]
 
     # Use token to access an authenticated endpoint
     resp = client.get(
@@ -130,7 +127,7 @@ def test_direct_signup_token_usable(client, signup_league):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
+    assert "leagues" in resp.json()
 
 
 def test_direct_signup_failures(client, signup_league, expired_league, db_session):
@@ -145,9 +142,8 @@ def test_direct_signup_failures(client, signup_league, expired_league, db_sessio
             "school_name": "",
         },
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
-    assert "not found" in resp.json()["message"].lower() or "signup" in resp.json()["message"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
     # Expired league
     resp = client.post(
@@ -159,9 +155,8 @@ def test_direct_signup_failures(client, signup_league, expired_league, db_sessio
             "school_name": "",
         },
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
-    assert "expired" in resp.json()["message"].lower()
+    assert resp.status_code == 410
+    assert "expired" in resp.json()["detail"].lower()
 
     # Duplicate team name — first create one successfully
     client.post(
@@ -183,9 +178,8 @@ def test_direct_signup_failures(client, signup_league, expired_league, db_sessio
             "school_name": "",
         },
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
-    assert "already exists" in resp.json()["message"].lower()
+    assert resp.status_code == 409
+    assert "already exists" in resp.json()["detail"].lower()
 
     # Empty team name
     resp = client.post(

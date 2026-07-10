@@ -194,37 +194,37 @@ def test_get_all_leagues_scoped(client, two_institutions):
     # Institution A sees its leagues but not B's
     resp = client.get("/user/get-all-leagues", headers=data["headers_a"])
     assert resp.status_code == 200
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" in names
     assert "perm_league_b" not in names
 
     # Institution B sees its leagues but not A's
     resp = client.get("/user/get-all-leagues", headers=data["headers_b"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_b" in names
     assert "perm_league_a" not in names
 
     # Admin role sees all
     resp = client.get("/user/get-all-leagues", headers=data["headers_admin"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" in names
     assert "perm_league_b" in names
 
     # Admin Institution (id=1) is just another institution — sees only its own leagues
     resp = client.get("/user/get-all-leagues", headers=data["headers_admin_inst"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" not in names
     assert "perm_league_b" not in names
 
     # Student with institution_id sees only their institution's leagues
     resp = client.get("/user/get-all-leagues", headers=data["headers_student_a"])
-    names = [l["name"] for l in resp.json()["data"]["leagues"]]
+    names = [l["name"] for l in resp.json()["leagues"]]
     assert "perm_league_a" in names
     assert "perm_league_b" not in names
 
     # Student without institution_id gets empty list
     resp = client.get("/user/get-all-leagues", headers=data["headers_student_no_inst"])
-    leagues = resp.json()["data"]["leagues"]
+    leagues = resp.json()["leagues"]
     assert leagues == []
 
 
@@ -260,9 +260,8 @@ def test_run_simulation_cross_institution(client, two_institutions):
             headers=data["headers_a"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "error"
-        assert "permission" in resp.json()["message"].lower()
+        assert resp.status_code == 403
+        assert "permission" in resp.json()["detail"].lower()
 
         # Admin CAN simulate B's league
         resp = client.post(
@@ -271,7 +270,6 @@ def test_run_simulation_cross_institution(client, two_institutions):
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
         assert resp.status_code == 200
-        assert resp.json()["status"] == "success"
 
         # Admin Institution is just another institution — cannot simulate B's league
         resp = client.post(
@@ -279,8 +277,8 @@ def test_run_simulation_cross_institution(client, two_institutions):
             headers=data["headers_admin_inst"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "error"
+        assert resp.status_code == 403
+        assert "permission" in resp.json()["detail"].lower()
 
 
 def test_publish_results_cross_institution(client, two_institutions, db_session):
@@ -304,8 +302,8 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
         headers=data["headers_a"],
         json={"league_id": data["league_b"].id, "id": sim.id},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
     # Admin CAN publish B's results
     resp = client.post(
@@ -314,8 +312,7 @@ def test_publish_results_cross_institution(client, two_institutions, db_session)
         json={"league_id": data["league_b"].id, "id": sim.id},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
-    assert resp.json()["data"]["published"] is True
+    assert resp.json()["published"] is True
 
 
 def test_delete_league_cross_institution(client, two_institutions, db_session):
@@ -340,8 +337,8 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
         headers=data["headers_a"],
         json={"league_id": delete_target.id},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "error"
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
     # Admin CAN delete B's league
     resp = client.post(
@@ -350,7 +347,6 @@ def test_delete_league_cross_institution(client, two_institutions, db_session):
         json={"league_id": delete_target.id},
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
 
     # Verify it's actually deleted
     league = db_session.exec(

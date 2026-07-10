@@ -77,14 +77,13 @@ def test_launch_demo_success(client: TestClient, db_session: Session):
     response = client.post("/demo/launch_demo")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
-    assert "username" in data["data"]
-    assert "available_games" in data["data"]
-    assert "demo_leagues" in data["data"]
+    assert "access_token" in data
+    assert "username" in data
+    assert "available_games" in data
+    assert "demo_leagues" in data
 
     # Verify demo user was created in DB
-    username = data["data"]["username"]
+    username = data["username"]
     team = db_session.exec(select(Team).where(Team.name == username)).first()
     assert team is not None
     assert team.is_demo is True
@@ -98,11 +97,10 @@ def test_launch_demo_with_user_info(client: TestClient, db_session: Session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "access_token" in data["data"]
+    assert "access_token" in data
 
     # Verify username was used
-    assert "TestUser_Demo" in data["data"]["username"]
+    assert "TestUser_Demo" in data["username"]
 
     # Verify DemoUser record was created
     demo_user = db_session.exec(
@@ -162,7 +160,7 @@ def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):
     response = client.post("/demo/launch_demo")
     assert response.status_code == 200
     data = response.json()
-    token = data["data"]["access_token"]
+    token = data["access_token"]
 
     # 2. Use token to access a non-demo endpoint that accepts student role
     response = client.get(
@@ -170,7 +168,7 @@ def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    assert "leagues" in response.json()
 
 
 def test_demo_token_includes_institution_id(client: TestClient, db_session: Session):
@@ -180,7 +178,7 @@ def test_demo_token_includes_institution_id(client: TestClient, db_session: Sess
 
     response = client.post("/demo/launch_demo")
     assert response.status_code == 200
-    token = response.json()["data"]["access_token"]
+    token = response.json()["access_token"]
 
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     assert "institution_id" in payload, "Demo token must include institution_id"
@@ -192,5 +190,5 @@ def test_demo_token_includes_institution_id(client: TestClient, db_session: Sess
         headers={"Authorization": f"Bearer {token}"},
     )
     assert leagues_response.status_code == 200
-    leagues = leagues_response.json()["data"]["leagues"]
+    leagues = leagues_response.json()["leagues"]
     assert len(leagues) > 0, "Demo user should see demo leagues"

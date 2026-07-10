@@ -148,10 +148,8 @@ def test_assess_no_api_key_returns_error(client, institution_setup):
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not configured" in data["message"].lower()
+    assert response.status_code == 400
+    assert "not configured" in response.json()["detail"].lower()
 
 
 def test_assess_team_not_found_in_league(client, institution_setup, stored_openai_key):
@@ -161,10 +159,8 @@ def test_assess_team_not_found_in_league(client, institution_setup, stored_opena
         headers=headers,
         json={"league_id": league.id, "team_id": 999999},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
 def test_assess_league_not_owned_by_institution(
@@ -204,10 +200,8 @@ def test_assess_league_not_owned_by_institution(
         headers=headers_a,
         json={"league_id": other_league.id, "team_id": team_a.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "permission" in data["message"].lower()
+    assert response.status_code == 403
+    assert "permission" in response.json()["detail"].lower()
 
 
 def test_assess_wrong_role_forbidden(client, institution_setup, stored_openai_key):
@@ -239,10 +233,8 @@ def test_assess_no_submissions(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "no submissions" in data["message"].lower()
+    assert response.status_code == 400
+    assert "no submissions" in response.json()["detail"].lower()
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -259,9 +251,7 @@ def test_assess_two_submissions_happy_path(
         json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    report = data["data"]
+    report = response.json()
     assert report["team_name"] == team.name
     assert report["league_id"] == league.id
     assert report["submission_count_total"] == 2
@@ -308,9 +298,7 @@ def test_assess_single_submission_progression_not_applicable(
         json={"league_id": league.id, "team_id": team.id},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    report = data["data"]
+    report = response.json()
     assert report["submission_count_total"] == 1
     assert report["submission_count_analyzed"] == 1
     assert len(report["pairwise_metrics"]) == 0
@@ -343,9 +331,7 @@ def test_assess_sampling_when_over_ten_submissions(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "success"
-    report = data["data"]
+    report = response.json()
     assert report["submission_count_total"] == 15
     assert report["submission_count_analyzed"] == 10
     assert report["sampled"] is True
@@ -366,9 +352,8 @@ def test_assess_llm_returns_non_json(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "error"
-    assert "malformed" in data["message"].lower() or "non-json" in data["message"].lower()
+    assert response.status_code == 502
+    assert "schema" in response.json()["detail"].lower()
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -386,9 +371,8 @@ def test_assess_llm_returns_bad_literal(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "error"
-    assert "malformed" in data["message"].lower() or "schema" in data["message"].lower()
+    assert response.status_code == 502
+    assert "schema" in response.json()["detail"].lower()
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -406,8 +390,7 @@ def test_assess_llm_extra_keys_rejected(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "error"
+    assert response.status_code == 502
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -430,9 +413,8 @@ def test_assess_openai_500(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "error"
-    assert "500" in data["message"] or "malformed" in data["message"].lower()
+    assert response.status_code == 502
+    assert "500" in response.json()["detail"]
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -465,9 +447,7 @@ def test_assess_failover_to_google_on_openai_error(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["model_used"] == "gemini-3.5-flash"
+    assert response.json()["model_used"] == "gemini-3.5-flash"
 
     # Second call went to the Google OpenAI-compatible endpoint.
     fallback_url = mock_client.post.call_args_list[1].args[0]
@@ -492,9 +472,8 @@ def test_assess_openai_timeout(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "error"
-    assert "timed out" in data["message"].lower()
+    assert response.status_code == 502
+    assert "timed out" in response.json()["detail"].lower()
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
@@ -511,7 +490,7 @@ def test_assess_anonymization_strips_team_name(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    assert response.json()["status"] == "success"
+    assert response.status_code == 200
 
     # Inspect the outbound request body.
     assert mock_client.post.call_count == 1
@@ -558,9 +537,7 @@ def test_assess_deterministic_flag_over_likely_threshold(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "success"
-    report = data["data"]
+    report = response.json()
     assert report["deterministic_concern_level"] == "likely_plagiarism"
     assert any(
         "most likely plagiarising" in f for f in report["deterministic_flag_summary"]
@@ -599,9 +576,7 @@ def test_assess_deterministic_flag_between_4_and_6(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    assert data["status"] == "success"
-    report = data["data"]
+    report = response.json()
     assert report["deterministic_concern_level"] == "probable_plagiarism"
     assert "probably plagiarising" in report["deterministic_flag_summary"][0]
     assert report["pairwise_metrics"][0]["deterministic_flag"] == "probable_plagiarism"
@@ -622,8 +597,7 @@ def test_assess_normal_typing_speed_flag(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    data = response.json()
-    report = data["data"]
+    report = response.json()
     # Typing speed is normal even though other flags (template, comments) may fire.
     assert report["pairwise_metrics"][0]["deterministic_flag"] == "normal"
     assert not any(
@@ -681,7 +655,7 @@ def test_assess_template_similarity_present(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    report = response.json()["data"]
+    report = response.json()
     # greedy_pig league → template available → similarity is a float.
     for sm in report["submission_metrics"]:
         assert sm["template_similarity"] is not None
@@ -720,7 +694,7 @@ def test_assess_ast_construct_counts(
         headers=headers,
         json={"league_id": league.id, "team_id": team.id},
     )
-    report = response.json()["data"]
+    report = response.json()
     assert report["submission_metrics"][0]["ast_construct_count"] == 1  # just FunctionDef
     assert report["submission_metrics"][1]["ast_construct_count"] >= 5  # imports + class + funcs + comprehension
     pm = report["pairwise_metrics"][0]
@@ -748,6 +722,4 @@ def test_assess_admin_can_assess_any_league(
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"league_id": league.id, "team_id": team.id},
         )
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["team_name"] == team.name
+    assert response.json()["team_name"] == team.name

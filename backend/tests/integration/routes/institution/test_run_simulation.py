@@ -127,11 +127,9 @@ def test_run_simulation_success(client, simulation_setup, db_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "success"
-        
+
         # Verify simulation details in response
-        assert "data" in data
-        result_data = data["data"]
+        result_data = data
         assert "total_points" in result_data
         assert team.name in result_data["total_points"]
         assert "table" in result_data
@@ -157,8 +155,7 @@ def test_run_simulation_success(client, simulation_setup, db_session):
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "success"
-        assert data["data"]["rewards"] == custom_rewards
+        assert data["rewards"] == custom_rewards
 
 
 def test_run_simulation_failures(client, simulation_setup, db_session):
@@ -171,10 +168,8 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
         headers=headers,
         json={"league_id": 99999, "num_simulations": 10},
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 2: Institution without Docker access
     # Update institution to remove Docker access
@@ -187,10 +182,8 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
         headers=headers,
         json={"league_id": league.id, "num_simulations": 10},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "docker access" in data["message"].lower()
+    assert response.status_code == 403
+    assert "docker access" in response.json()["detail"].lower()
     
     # Test case 3: Invalid number of simulations
     response = client.post(

@@ -2,10 +2,52 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.models_api import ResponseModel
+from backend.routes.agent.agent_db import SimulationLimitExceededError
+from backend.routes.auth.auth_db import InvalidCredentialsError
+from backend.routes.admin.admin_db import (
+    AgentTeamError,
+    InstitutionExistsError,
+    InstitutionNotFoundError,
+)
+from backend.routes.support.support_db import SupportError
+from backend.routes.ai.clients import (
+    AIRequestTimeoutError,
+    LLMResponseError,
+    NoApiKeyError,
+    UnknownProviderError,
+)
+from backend.routes.ai.plagiarism_service import (
+    NoSubmissionsError,
+    PayloadTooLargeError,
+)
+from backend.routes.institution.institution_db import (
+    InstitutionAccessError,
+    LeagueExistsError,
+    LeagueNotFoundError,
+    ProtectedLeagueError,
+    SchoolsConfigError,
+    SimulationResultNotFoundError,
+    TeamExistsError,
+    TeamNotFoundError,
+)
+from backend.routes.payments.payments_db import (
+    InstitutionExistsError as PaidInstitutionExistsError,
+    PaidSignupError,
+)
+from backend.routes.user.user_db import (
+    DemoLeagueError,
+    LeagueExpiredError,
+    ResultNotFoundError,
+    SubmissionLimitExceededError,
+    LeagueNotFoundError as UserLeagueNotFoundError,
+    TeamExistsError as UserTeamExistsError,
+    TeamNotFoundError as UserTeamNotFoundError,
+)
 from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
@@ -83,6 +125,167 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error during application shutdown: {e}")
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(InvalidCredentialsError)
+async def invalid_credentials_handler(request: Request, exc: InvalidCredentialsError):
+    """Map failed authentication to HTTP 401 with a consistent {"detail": ...} body."""
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+# Domain exceptions -> HTTP status codes, applied wherever they propagate uncaught.
+# Each maps to a consistent {"detail": ...} body (FastAPI's own convention).
+@app.exception_handler(InstitutionNotFoundError)
+async def institution_not_found_handler(request: Request, exc: InstitutionNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InstitutionExistsError)
+async def institution_exists_handler(request: Request, exc: InstitutionExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(AgentTeamError)
+async def agent_team_error_handler(request: Request, exc: AgentTeamError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(SupportError)
+async def support_error_handler(request: Request, exc: SupportError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+# AI / plagiarism + league-access domain exceptions -> HTTP status codes.
+@app.exception_handler(LeagueNotFoundError)
+async def league_not_found_handler(request: Request, exc: LeagueNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InstitutionAccessError)
+async def institution_access_handler(request: Request, exc: InstitutionAccessError):
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(SimulationResultNotFoundError)
+async def simulation_result_not_found_handler(
+    request: Request, exc: SimulationResultNotFoundError
+):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LeagueExistsError)
+async def league_exists_handler(request: Request, exc: LeagueExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ProtectedLeagueError)
+async def protected_league_handler(request: Request, exc: ProtectedLeagueError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(SchoolsConfigError)
+async def schools_config_handler(request: Request, exc: SchoolsConfigError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+# TeamNotFoundError/TeamExistsError subclass TeamError; register the concrete
+# subclasses so each maps to its own code (missing -> 404, duplicate -> 409).
+@app.exception_handler(TeamNotFoundError)
+async def team_not_found_handler(request: Request, exc: TeamNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(TeamExistsError)
+async def team_exists_handler(request: Request, exc: TeamExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(UnknownProviderError)
+async def unknown_provider_handler(request: Request, exc: UnknownProviderError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoApiKeyError)
+async def no_api_key_handler(request: Request, exc: NoApiKeyError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoSubmissionsError)
+async def no_submissions_handler(request: Request, exc: NoSubmissionsError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(PayloadTooLargeError)
+async def payload_too_large_handler(request: Request, exc: PayloadTooLargeError):
+    return JSONResponse(status_code=413, content={"detail": str(exc)})
+
+
+@app.exception_handler(LLMResponseError)
+async def llm_response_error_handler(request: Request, exc: LLMResponseError):
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
+
+
+@app.exception_handler(AIRequestTimeoutError)
+async def ai_timeout_handler(request: Request, exc: AIRequestTimeoutError):
+    return JSONResponse(status_code=504, content={"detail": str(exc)})
+
+
+@app.exception_handler(SimulationLimitExceededError)
+async def simulation_limit_handler(request: Request, exc: SimulationLimitExceededError):
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+
+# User-domain exceptions (user_db defines its own league/team lookup errors,
+# distinct classes from institution_db's; each maps to the same code).
+@app.exception_handler(UserLeagueNotFoundError)
+async def user_league_not_found_handler(request: Request, exc: UserLeagueNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(UserTeamNotFoundError)
+async def user_team_not_found_handler(request: Request, exc: UserTeamNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(UserTeamExistsError)
+async def user_team_exists_handler(request: Request, exc: UserTeamExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ResultNotFoundError)
+async def result_not_found_handler(request: Request, exc: ResultNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LeagueExpiredError)
+async def league_expired_handler(request: Request, exc: LeagueExpiredError):
+    return JSONResponse(status_code=410, content={"detail": str(exc)})
+
+
+@app.exception_handler(DemoLeagueError)
+async def demo_league_handler(request: Request, exc: DemoLeagueError):
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(SubmissionLimitExceededError)
+async def submission_limit_handler(request: Request, exc: SubmissionLimitExceededError):
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+
+# Payments-domain exceptions: signup validation -> 400; the duplicate-name
+# subclass -> 409 (matches the other "exists" mappings). Starlette resolves
+# handlers by MRO, so the subclass handler wins over the base.
+@app.exception_handler(PaidSignupError)
+async def paid_signup_error_handler(request: Request, exc: PaidSignupError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(PaidInstitutionExistsError)
+async def paid_institution_exists_handler(
+    request: Request, exc: PaidInstitutionExistsError
+):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
 
 app.add_middleware(
     CORSMiddleware,

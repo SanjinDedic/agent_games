@@ -16,11 +16,10 @@ async def test_status_success(client, auth_headers):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "statuses" in data["data"]
+    assert "statuses" in data
 
     # Verify the response structure
-    statuses = data["data"]["statuses"]
+    statuses = data["statuses"]
     assert isinstance(statuses, dict)
 
     # Should have the broker and both worker services
@@ -45,19 +44,16 @@ async def test_status_unauthorized(client):
 
 @pytest.mark.asyncio
 async def test_status_exception(client, auth_headers):
-    """Test handling of exceptions during status retrieval."""
+    """A failure collecting service status is no longer masked as a 200 error;
+    it propagates (a 500 in production) so monitoring sees it."""
 
     # Mock service status functions to raise an exception
     # Need to patch it where it's imported, not where it's defined
-    with patch("backend.routes.diagnostics.diagnostics_router.get_all_services_status", 
+    with patch("backend.routes.diagnostics.diagnostics_router.get_all_services_status",
                side_effect=Exception("Test exception")):
 
-        response = client.get("/diagnostics/status", headers=auth_headers)
-
-        assert response.status_code == 200  # FastAPI still returns 200 for ErrorResponseModel
-        data = response.json()
-        assert data["status"] == "error"
-        assert "failed to retrieve service status" in data["message"].lower() or "error" in data["message"].lower()
+        with pytest.raises(Exception, match="Test exception"):
+            client.get("/diagnostics/status", headers=auth_headers)
 
 
 @pytest.mark.asyncio
@@ -83,7 +79,5 @@ async def test_status_no_docker_access(client):
 
         response = client.get("/diagnostics/status", headers=headers)
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "error"
-        assert "access" in data["message"].lower()
+        assert response.status_code == 403
+        assert "access" in response.json()["detail"].lower()

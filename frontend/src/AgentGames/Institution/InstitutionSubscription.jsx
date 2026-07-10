@@ -57,12 +57,10 @@ function InstitutionSubscription() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const json = await response.json();
-      if (json.status === 'success') {
-        setData(json.data);
-      } else if (json.detail === 'Invalid token') {
-        navigate('/Institution');
+      if (response.ok) {
+        setData(json);
       } else {
-        toast.error(json.message || 'Could not load subscription');
+        toast.error(json.detail || 'Could not load subscription');
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);

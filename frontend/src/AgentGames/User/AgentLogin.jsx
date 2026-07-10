@@ -37,8 +37,8 @@ function AgentLogin() {
       try {
         const response = await fetch(`${apiUrl}/auth/institutions`);
         const data = await response.json();
-        if (data.status === "success") {
-          setInstitutions(data.data.institutions);
+        if (response.ok) {
+          setInstitutions(data.institutions);
         }
       } catch (error) {
         console.error('Error fetching institutions:', error);

@@ -81,10 +81,9 @@ def test_get_game_instructions_success(client):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "starter_code" in data["data"]
-    assert "game_instructions" in data["data"]
-    assert "Prisoner's Dilemma Game Instructions" in data["data"]["game_instructions"]
+    assert "starter_code" in data
+    assert "game_instructions" in data
+    assert "Prisoner's Dilemma Game Instructions" in data["game_instructions"]
 
     # Test case 2: Get greedy pig instructions
     response = client.post(
@@ -92,10 +91,9 @@ def test_get_game_instructions_success(client):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "starter_code" in data["data"]
-    assert "game_instructions" in data["data"]
-    assert "Greedy Pig Game Instructions" in data["data"]["game_instructions"]
+    assert "starter_code" in data
+    assert "game_instructions" in data
+    assert "Greedy Pig Game Instructions" in data["game_instructions"]
 
 
 def test_get_game_instructions_exceptions(client):
@@ -105,10 +103,8 @@ def test_get_game_instructions_exceptions(client):
     response = client.post(
         "/user/get-game-instructions", json={"game_name": "non_existent_game"}
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "Unknown game" in data["message"]
+    assert response.status_code == 400
+    assert "Unknown game" in response.json()["detail"]
 
     # Test case 2: Empty game name
     response = client.post("/user/get-game-instructions", json={"game_name": ""})
@@ -124,10 +120,7 @@ def test_get_available_games(client):
 
     response = client.post("/user/get-available-games")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert "games" in data["data"]
-    games = data["data"]["games"]
+    games = response.json()["games"]
     assert "prisoners_dilemma" in games
     assert "greedy_pig" in games
 
@@ -146,17 +139,16 @@ def test_get_published_results_for_league_success(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert data["data"] is not None
-    assert data["data"]["league_name"] == "game_test_league"
-    assert "# Test Results" in data["data"]["feedback"]
-    assert data["data"]["active"] is True
+    assert data is not None
+    assert data["league_name"] == "game_test_league"
+    assert "# Test Results" in data["feedback"]
+    assert data["active"] is True
 
     # Verify expected data structure
-    assert "total_points" in data["data"]
-    assert "num_simulations" in data["data"]
-    assert "table" in data["data"]
-    assert "rewards" in data["data"]
+    assert "total_points" in data
+    assert "num_simulations" in data
+    assert "table" in data
+    assert "rewards" in data
 
 
 def test_get_published_results_for_league_exceptions(client):
@@ -166,26 +158,20 @@ def test_get_published_results_for_league_exceptions(client):
     response = client.post(
         "/user/get-published-results-for-league", json={"name": "non_existent_league"}
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: Empty league name
     response = client.post("/user/get-published-results-for-league", json={"name": ""})
     assert response.status_code == 422
 
-    # Test case 3: League with no published results
-    # Create a league without any results
+    # Test case 3: League with no published results returns null
     response = client.post(
         "/user/get-published-results-for-league",
         json={"name": "unassigned"},  # Using existing unassigned league
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"] is None
-    assert "No published results found" in data["message"]
+    assert response.json() is None
 
 
 def test_get_published_results_for_all_leagues_success(
@@ -199,11 +185,10 @@ def test_get_published_results_for_all_leagues_success(
     response = client.get("/user/get-published-results-for-all-leagues")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "all_results" in data["data"]
+    assert "all_results" in data
 
     # Verify result structure
-    results = data["data"]["all_results"]
+    results = data["all_results"]
     assert len(results) > 0
     for result in results:
         assert "league_name" in result
@@ -226,6 +211,4 @@ def test_get_published_results_for_all_leagues_empty(client, db_session: Session
 
     response = client.get("/user/get-published-results-for-all-leagues")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["data"]["all_results"] == []
+    assert response.json()["all_results"] == []

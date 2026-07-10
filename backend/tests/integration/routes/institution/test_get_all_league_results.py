@@ -86,11 +86,10 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "results" in data["data"]
-    
+    assert "results" in data
+
     # Verify all results are included
-    results = data["data"]["results"]
+    results = data["results"]
     assert len(results) == len(simulation_results)
     
     # Check result data structure
@@ -122,9 +121,8 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "results" in data["data"]
-    assert len(data["data"]["results"]) == 0
+    assert "results" in data
+    assert len(data["results"]) == 0
 
 
 def test_get_all_league_results_failures(client, league_results_setup, db_session):
@@ -137,10 +135,8 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
         headers=headers,
         json={"league_id": 99999},
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 2: League from different institution
     # Create another institution and league
@@ -173,10 +169,8 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
         headers=headers,
         json={"league_id": other_league.id},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "not found" in data["message"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 3: Missing league_id field
     response = client.post(

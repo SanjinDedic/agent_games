@@ -58,9 +58,8 @@ def test_team_create_success(client, institution_setup, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "team_id" in data["data"]
-    assert data["data"]["name"] == "test_team"
+    assert "team_id" in data
+    assert data["name"] == "test_team"
 
     # Verify team was created in database
     team = db_session.exec(select(Team).where(Team.name == "test_team")).first()
@@ -81,8 +80,6 @@ def test_team_create_success(client, institution_setup, db_session):
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
 
 def test_team_create_failures(client, institution_setup, db_session):
@@ -111,10 +108,8 @@ def test_team_create_failures(client, institution_setup, db_session):
             "school_name": "Different School",
         },
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "already exists" in data["message"].lower()
+    assert response.status_code == 409
+    assert "already exists" in response.json()["detail"].lower()
 
     # Test case 2: Missing required fields
     response = client.post(
@@ -175,7 +170,6 @@ def test_team_create_name_reuse_across_institutions(client, institution_setup, d
         json={"name": "shared_team_name", "password": "pass", "school_name": "School A"},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
 
     # Create another institution
     other = build_institution(
@@ -204,8 +198,6 @@ def test_team_create_name_reuse_across_institutions(client, institution_setup, d
         json={"name": "shared_team_name", "password": "pass", "school_name": "School B"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
 
     # Both teams exist, one per institution.
     teams = db_session.exec(
@@ -220,9 +212,8 @@ def test_team_create_duplicate_within_institution_rejected(client, institution_s
 
     payload = {"name": "same_inst_team", "password": "pass", "school_name": "School"}
     first = client.post("/institution/team-create", headers=headers, json=payload)
-    assert first.json()["status"] == "success"
+    assert first.status_code == 200
 
     second = client.post("/institution/team-create", headers=headers, json=payload)
-    assert second.status_code == 200
-    assert second.json()["status"] == "error"
-    assert "already exists" in second.json()["message"].lower()
+    assert second.status_code == 409
+    assert "already exists" in second.json()["detail"].lower()

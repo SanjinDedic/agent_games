@@ -52,10 +52,10 @@ function AdminAPIKeys() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json();
-      if (data.status === 'success') {
-        setKeys(data.data);
+      if (response.ok) {
+        setKeys(data);
       } else {
-        toast.error(data.message || 'Failed to fetch API keys');
+        toast.error(data.detail || 'Failed to fetch API keys');
       }
     } catch (err) {
       toast.error('Network error: Failed to fetch API keys');
@@ -90,8 +90,8 @@ function AdminAPIKeys() {
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (data.status === 'success') {
-        setKeys(data.data);
+      if (response.ok) {
+        setKeys(data);
         setEditValues(perProviderState(''));
         // Clear validation results for keys that were updated
         setValidationResult((prev) => {
@@ -103,7 +103,7 @@ function AdminAPIKeys() {
         });
         toast.success('API keys updated successfully');
       } else {
-        toast.error(data.message || 'Failed to update API keys');
+        toast.error(data.detail || 'Failed to update API keys');
       }
     } catch (err) {
       toast.error('Network error: Failed to update API keys');
@@ -146,13 +146,13 @@ function AdminAPIKeys() {
       const data = await response.json();
       const timestamp = formatTimestamp();
 
-      if (data.status === 'success' && data.data?.valid) {
+      if (response.ok && data.valid) {
         setValidationResult((prev) => ({
           ...prev,
           [provider.id]: { status: 'valid', timestamp },
         }));
         toast.success(`${provider.name} key is valid`);
-      } else if (data.status === 'success') {
+      } else if (response.ok) {
         setValidationResult((prev) => ({
           ...prev,
           [provider.id]: { status: 'invalid', timestamp },
@@ -163,7 +163,7 @@ function AdminAPIKeys() {
           ...prev,
           [provider.id]: { status: 'error', timestamp },
         }));
-        toast.error(data.message || 'Validation failed');
+        toast.error(data.detail || 'Validation failed');
       }
     } catch (err) {
       const timestamp = formatTimestamp();

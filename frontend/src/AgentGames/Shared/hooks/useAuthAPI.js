@@ -25,12 +25,12 @@ export const useAuthAPI = () => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
-        dispatch(setToken(data.data.access_token));
+      if (response.ok) {
+        dispatch(setToken(data.access_token));
         dispatch(setCurrentTeam(username));
         return { success: true };
       } else {
-        return { success: false, error: data.message };
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error during login:', error);
@@ -56,21 +56,21 @@ export const useAuthAPI = () => {
 
       const data = await response.json();
 
-      if (data.status === 'success') {
-        const teamName = data.data.team_name;
+      if (response.ok) {
+        const teamName = data.team_name;
 
-        dispatch(setToken(data.data.access_token));
+        dispatch(setToken(data.access_token));
         dispatch(setCurrentTeam(teamName));
 
         toast.success(data.message || 'Signed up successfully!');
 
         return {
           success: true,
-          leagueId: data.data.league_id,
+          leagueId: data.league_id,
           teamName,
         };
       }
-      return { success: false, error: data.message || 'Failed to sign up' };
+      return { success: false, error: data.detail || 'Failed to sign up' };
     } catch (error) {
       console.error('Error during signup:', error);
       return { success: false, error: 'Network error during signup' };

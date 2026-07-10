@@ -24,11 +24,11 @@ export const useLeagueAPI = (userRole) => {
     try {
       const response = await fetch(`${apiUrl}/user/league-info/${leagueToken}`);
       const data = await response.json();
-      
-      if (data.status === 'success') {
-        return { success: true, data: data.data };
+
+      if (response.ok) {
+        return { success: true, data };
       } else {
-        return { success: false, error: data.message || 'Failed to fetch league info' };
+        return { success: false, error: data.detail || 'Failed to fetch league info' };
       }
     } catch (error) {
       console.error('Error fetching league info:', error);
@@ -49,13 +49,13 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success" && data.data?.leagues) {
-        dispatch(setLeagues(data.data.leagues));
-        return { success: true, leagues: data.data.leagues };
+
+      if (response.ok && data.leagues) {
+        dispatch(setLeagues(data.leagues));
+        return { success: true, leagues: data.leagues };
       } else {
-        toast.error(data.message || 'Failed to fetch leagues');
-        return { success: false, error: data.message || 'Failed to fetch leagues' };
+        toast.error(data.detail || 'Failed to fetch leagues');
+        return { success: false, error: data.detail || 'Failed to fetch leagues' };
       }
     } catch (error) {
       console.error('Error fetching leagues:', error);
@@ -89,15 +89,15 @@ export const useLeagueAPI = (userRole) => {
       
       const data = await response.json();
 
-      if (data.status === "success") {
-        if (data.data?.access_token) {
-          dispatch(setToken(data.data.access_token));
+      if (response.ok) {
+        if (data.access_token) {
+          dispatch(setToken(data.access_token));
         }
         toast.success(data.message || 'Successfully joined league');
         return { success: true };
       } else {
-        toast.error(data.message || 'Failed to join league');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to join league');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error assigning to league:', error);
@@ -126,8 +126,8 @@ export const useLeagueAPI = (userRole) => {
         },
       );
       const data = await response.json();
-      if (data.status === 'success') {
-        const results = data.data?.results || [];
+      if (response.ok) {
+        const results = data.results || [];
         if (results.length === 0) {
           dispatch(clearResults());
           toast.info('No results in the selected League');
@@ -136,9 +136,9 @@ export const useLeagueAPI = (userRole) => {
         }
         return { success: true, results };
       }
-      toast.error(data.message || 'Failed to fetch league results');
+      toast.error(data.detail || 'Failed to fetch league results');
       dispatch(clearResults());
-      return { success: false, error: data.message };
+      return { success: false, error: data.detail };
     } catch (error) {
       console.error('Error fetching league results:', error);
       return { success: false, error: 'Network error' };
@@ -164,23 +164,23 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success") {
+
+      if (response.ok) {
         toast.update(toastId, {
-          render: data.message,
+          render: "Simulation completed successfully",
           type: "success",
           isLoading: false,
           autoClose: 2000
         });
-        return { success: true, data: data.data };
+        return { success: true, data };
       } else {
         toast.update(toastId, {
-          render: data.message || 'Failed to run simulation',
+          render: data.detail || 'Failed to run simulation',
           type: "error",
           isLoading: false,
           autoClose: 2000
         });
-        return { success: false, error: data.message };
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Simulation error:', error);
@@ -214,13 +214,13 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success") {
-        toast.success(data.message);
-        return { success: true, data: data.data };
+
+      if (response.ok) {
+        toast.success('League created successfully');
+        return { success: true, data };
       } else {
-        toast.error(data.message || 'Failed to create league');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to create league');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error creating league:', error);
@@ -251,16 +251,16 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success") {
+
+      if (response.ok) {
         toast.success(data.message);
-        return { 
-          success: true, 
-          data: data.data  // Return the complete data including publish_link
+        return {
+          success: true,
+          data  // Complete payload including message + publish_link
         };
       } else {
-        toast.error(data.message || 'Failed to publish results');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to publish results');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error publishing results:', error);
@@ -291,13 +291,13 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success") {
+
+      if (response.ok) {
         toast.success(data.message);
         return { success: true };
       } else {
-        toast.error(data.message || 'Failed to update expiry date');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to update expiry date');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error updating expiry date:', error);
@@ -328,7 +328,7 @@ export const useLeagueAPI = (userRole) => {
 
       const data = await response.json();
 
-      if (data.status === 'success') {
+      if (response.ok) {
         dispatch(updateLeagueInfoAction({
           league_id: leagueId,
           info_markdown: infoMarkdown ?? '',
@@ -336,8 +336,8 @@ export const useLeagueAPI = (userRole) => {
         toast.success(data.message);
         return { success: true };
       }
-      toast.error(data.message || 'Failed to update league info');
-      return { success: false, error: data.message };
+      toast.error(data.detail || 'Failed to update league info');
+      return { success: false, error: data.detail };
     } catch (error) {
       console.error('Error updating league info:', error);
       toast.error('Network error while updating league info');
@@ -367,13 +367,13 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success") {
+
+      if (response.ok) {
         toast.success(data.message);
         return { success: true };
       } else {
-        toast.error(data.message || 'Failed to assign team to league');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to assign team to league');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error assigning team to league:', error);
@@ -401,12 +401,12 @@ export const useLeagueAPI = (userRole) => {
 
       const data = await response.json();
 
-      if (data.status === "success") {
+      if (response.ok) {
         toast.success(data.message);
         return { success: true };
       } else {
-        toast.error(data.message || 'Failed to unassign team');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to unassign team');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error unassigning team:', error);
@@ -434,14 +434,14 @@ export const useLeagueAPI = (userRole) => {
       });
       
       const data = await response.json();
-      
-      if (data.status === "success") {
+
+      if (response.ok) {
         // Refresh leagues after deletion
         await fetchUserLeagues();
         return { success: true, message: data.message };
       } else {
-        toast.error(data.message || 'Failed to delete league');
-        return { success: false, error: data.message };
+        toast.error(data.detail || 'Failed to delete league');
+        return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error deleting league:', error);
@@ -469,15 +469,15 @@ export const useLeagueAPI = (userRole) => {
         body: JSON.stringify({ game_name: gameName }),
       });
       const data = await response.json();
-      if (data.status === "success" && data.data) {
+      if (response.ok) {
         dispatch(setRewardMeta({
-          schema: data.data.reward_schema ?? null,
-          instructions: data.data.reward_instructions ?? "",
+          schema: data.reward_schema ?? null,
+          instructions: data.reward_instructions ?? "",
         }));
         return { success: true };
       }
       dispatch(setRewardMeta({ schema: null, instructions: "" }));
-      return { success: false, error: data.message || "Failed to fetch reward meta" };
+      return { success: false, error: data.detail || "Failed to fetch reward meta" };
     } catch (error) {
       console.error("Error fetching reward metadata:", error);
       dispatch(setRewardMeta({ schema: null, instructions: "" }));

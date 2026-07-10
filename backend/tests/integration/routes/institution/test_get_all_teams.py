@@ -75,11 +75,10 @@ def test_get_all_teams_success(client, institution_with_teams, db_session):
     response = client.get("/institution/get-all-teams", headers=headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "teams" in data["data"]
-    
+    assert "teams" in data
+
     # Verify all teams are returned
-    teams_data = data["data"]["teams"]
+    teams_data = data["teams"]
     assert len(teams_data) == len(teams)
     
     # Check team names are present
@@ -123,10 +122,8 @@ def test_get_all_teams_failures(client, institution_with_teams, db_session):
         "/institution/get-all-teams",
         headers={"Authorization": f"Bearer {incomplete_token}"},
     )
-    assert response.status_code == 200  # API returns 200 with error status
-    data = response.json()
-    assert data["status"] == "error"
-    assert "institution id" in data["message"].lower()
+    assert response.status_code == 400
+    assert "institution id" in response.json()["detail"].lower()
     
     # Test case 4: Expired token
     expired_token = create_access_token(
