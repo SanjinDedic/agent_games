@@ -33,12 +33,9 @@ jobs:
     - name: Ensure validation files exist for tests
       env:
         LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
-        ARENA_VALIDATION_PLAYERS: ${{ secrets.ARENA_VALIDATION_PLAYERS }}
       run: |
         mkdir -p backend/games/lineup4
         echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
-        mkdir -p backend/games/arena_champions
-        echo "$ARENA_VALIDATION_PLAYERS" | base64 -d > backend/games/arena_champions/validation_players.py
 
     - name: Run tests with coverage
       run: |
@@ -128,12 +125,9 @@ jobs:
     - name: Ensure validation files exist for the image build
       env:
         LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
-        ARENA_VALIDATION_PLAYERS: ${{ secrets.ARENA_VALIDATION_PLAYERS }}
       run: |
         mkdir -p backend/games/lineup4
         echo "$LINEUP4_VALIDATION_PLAYERS" | base64 -d > backend/games/lineup4/validation_players.py
-        mkdir -p backend/games/arena_champions
-        echo "$ARENA_VALIDATION_PLAYERS" | base64 -d > backend/games/arena_champions/validation_players.py
 
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
@@ -157,7 +151,6 @@ jobs:
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         LINEUP4_VALIDATION_PLAYERS: ${{ secrets.LINEUP4_VALIDATION_PLAYERS }}
-        ARENA_VALIDATION_PLAYERS: ${{ secrets.ARENA_VALIDATION_PLAYERS }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION: ap-southeast-2
@@ -179,7 +172,6 @@ jobs:
         POSTGRES_PASSWORD=$POSTGRES_PASSWORD
         DATABASE_URL=$DATABASE_URL
         LINEUP4_VALIDATION_PLAYERS=$LINEUP4_VALIDATION_PLAYERS
-        ARENA_VALIDATION_PLAYERS=$ARENA_VALIDATION_PLAYERS
         AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
         AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
         AWS_REGION=$AWS_REGION
