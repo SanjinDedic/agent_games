@@ -69,6 +69,35 @@ export const useTutorialAPI = () => {
   }, [apiUrl, accessToken]);
 
   /**
+   * Get the team's attempted/passed status for each exercise in a tutorial
+   */
+  const getTutorialProgress = useCallback(async (tutorialId) => {
+    try {
+      const response = await authFetch(
+        `${apiUrl}/tutorial/tutorial/${tutorialId}/progress`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && Array.isArray(data.progress)) {
+        return { success: true, progress: data.progress };
+      }
+      return {
+        success: false,
+        error: data.detail || "Failed to load tutorial progress",
+      };
+    } catch (error) {
+      console.error("Error loading tutorial progress:", error);
+      return { success: false, error: "Network error while loading progress" };
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
    * Get the team's latest submission for an exercise
    */
   const getLatestExerciseSubmission = useCallback(async (exerciseId) => {
@@ -195,6 +224,7 @@ export const useTutorialAPI = () => {
     isLoading,
     getTutorials,
     getTutorial,
+    getTutorialProgress,
     getLatestExerciseSubmission,
     getExerciseSubmissions,
     submitExercise,

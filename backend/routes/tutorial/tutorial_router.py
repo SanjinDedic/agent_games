@@ -15,6 +15,7 @@ from backend.routes.tutorial.tutorial_db import (
     get_exercise_by_id,
     get_exercise_submission_history,
     get_latest_exercise_submission,
+    get_tutorial_progress,
     get_tutorial_with_exercises,
     get_tutorials,
     record_failed_exercise_submission,
@@ -140,6 +141,18 @@ async def get_tutorial_endpoint(
 ):
     """Get one tutorial with its exercises in order."""
     return get_tutorial_with_exercises(session, tutorial_id)
+
+
+@tutorial_router.get("/tutorial/{tutorial_id}/progress")
+@verify_ai_agent_service_or_student
+async def get_tutorial_progress_endpoint(
+    tutorial_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Current team's attempted/passed status for each exercise, in order."""
+    team_id = _require_team_id(current_user)
+    return get_tutorial_progress(session, team_id, tutorial_id)
 
 
 @tutorial_router.get("/exercise/{exercise_id}/latest-submission")

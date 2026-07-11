@@ -333,6 +333,64 @@ def test_submit_exercise_rate_limit(
     assert "per minute" in response.json()["detail"]
 
 
+def test_tutorial_progress(
+    client, db_session, team_headers, auth_headers, tutorial_with_exercise
+):
+    """Progress reports attempted/passed per exercise, in exercise order."""
+    exercises = {e.title: e for e in tutorial_with_exercise.exercises}
+    word_counter = exercises["Word Counter"]
+    second = exercises["Second Exercise"]
+    url = f"/tutorial/tutorial/{tutorial_with_exercise.id}/progress"
+
+    # Empty state: every exercise present, nothing attempted
+    response = client.get(url, headers=team_headers)
+    assert response.status_code == 200
+    progress = response.json()["progress"]
+    assert [p["exercise_id"] for p in progress] == [word_counter.id, second.id]
+    assert all(not p["attempted"] and not p["passed"] for p in progress)
+
+    team = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
+    now = utc_now()
+
+    # A failed-to-run attempt on the second exercise: metadata only, no code
+    db_session.add(
+        ExerciseSubmissionMetadata(
+            team_id=team.id, exercise_id=second.id, timestamp=now
+        )
+    )
+    # A failing run then a passing run on the word counter
+    for code, passed in [("bad code", False), ("good code", True)]:
+        meta = ExerciseSubmissionMetadata(
+            team_id=team.id, exercise_id=word_counter.id, timestamp=now
+        )
+        db_session.add(meta)
+        db_session.flush()
+        db_session.add(
+            ExerciseSubmission(
+                code=code,
+                timestamp=now,
+                passed=passed,
+                test_results=[],
+                metadata_id=meta.id,
+            )
+        )
+    db_session.commit()
+
+    response = client.get(url, headers=team_headers)
+    assert response.status_code == 200
+    by_id = {p["exercise_id"]: p for p in response.json()["progress"]}
+    assert by_id[word_counter.id]["attempted"] is True
+    assert by_id[word_counter.id]["passed"] is True
+    assert by_id[second.id]["attempted"] is True
+    assert by_id[second.id]["passed"] is False
+
+    # Unknown tutorial 404s; admin tokens are not team tokens
+    response = client.get("/tutorial/tutorial/99999/progress", headers=team_headers)
+    assert response.status_code == 404
+    response = client.get(url, headers=auth_headers)
+    assert response.status_code == 403
+
+
 def test_exercise_submission_history(
     client, db_session, team_headers, word_counter_exercise
 ):

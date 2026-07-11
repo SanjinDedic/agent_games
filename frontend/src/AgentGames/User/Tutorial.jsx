@@ -1,19 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ExerciseSubmission from "./ExerciseSubmission";
+import TutorialOverview from "./TutorialOverview";
 import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
 
 /**
- * Tutorial page: loads the first tutorial with its ordered exercises and
- * shows the selected exercise in the shared submission workspace. The
- * exercise picker renders inside the workspace's right-hand panel.
+ * Tutorial page. Two views driven by the `exercise` search param:
+ * without it, an overview listing the tutorial's exercises in order with the
+ * team's progress; with it, the selected exercise in the shared submission
+ * workspace, with back/previous/next navigation in the panel header. Keeping
+ * the selection in the URL makes refresh and browser-back behave.
  */
 function Tutorial() {
-  const { getTutorials, getTutorial } = useTutorialAPI();
+  const { getTutorials, getTutorial, getTutorialProgress } = useTutorialAPI();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [tutorial, setTutorial] = useState(null);
-  const [selectedExerciseId, setSelectedExerciseId] = useState(null);
+  const [progressByExerciseId, setProgressByExerciseId] = useState({});
   const [loadError, setLoadError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const selectedExerciseId = Number(searchParams.get("exercise")) || null;
+
+  const loadProgress = useCallback(
+    async (tutorialId) => {
+      const result = await getTutorialProgress(tutorialId);
+      if (result.success) {
+        setProgressByExerciseId(
+          Object.fromEntries(result.progress.map((p) => [p.exercise_id, p]))
+        );
+      }
+    },
+    [getTutorialProgress]
+  );
 
   useEffect(() => {
     const loadTutorial = async () => {
@@ -36,13 +55,20 @@ function Tutorial() {
       }
 
       setTutorial(detailResult.tutorial);
-      setSelectedExerciseId(detailResult.tutorial.exercises[0]?.id ?? null);
       setIsLoading(false);
     };
 
     loadTutorial();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch progress whenever the overview is (re)shown, so an exercise passed
+  // in the workspace is marked completed the moment the student comes back.
+  useEffect(() => {
+    if (tutorial && selectedExerciseId === null) {
+      loadProgress(tutorial.id);
+    }
+  }, [tutorial, selectedExerciseId, loadProgress]);
 
   if (isLoading) {
     return (
@@ -70,9 +96,28 @@ function Tutorial() {
     );
   }
 
-  const selectedExercise =
-    tutorial.exercises.find((e) => e.id === selectedExerciseId) ||
-    tutorial.exercises[0];
+  const exercises = tutorial.exercises; // already in order_index order
+  const selectedIndex = exercises.findIndex((e) => e.id === selectedExerciseId);
+
+  const showExercise = (exerciseId) =>
+    setSearchParams({ exercise: String(exerciseId) });
+  const showOverview = () => setSearchParams({});
+
+  if (selectedIndex === -1) {
+    return (
+      <TutorialOverview
+        tutorial={tutorial}
+        progressByExerciseId={progressByExerciseId}
+        onSelectExercise={showExercise}
+      />
+    );
+  }
+
+  const selectedExercise = exercises[selectedIndex];
+  const previousExercise = exercises[selectedIndex - 1];
+  const nextExercise = exercises[selectedIndex + 1];
+  const navButtonClass =
+    "py-1 px-3 text-sm rounded bg-ui-lighter text-ui-dark hover:bg-ui-light/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <ExerciseSubmission
@@ -80,30 +125,30 @@ function Tutorial() {
       exercise={selectedExercise}
       tutorialTitle={tutorial.title}
       panelHeader={
-        <div className="mx-4 mt-4 bg-white rounded-lg shadow border border-ui-light/30 p-4">
-          <h1 className="text-xl font-bold text-ui-dark">{tutorial.title}</h1>
-          {tutorial.description && (
-            <p className="mt-1 text-sm text-ui-dark/70">
-              {tutorial.description}
-            </p>
-          )}
-          {tutorial.exercises.length > 1 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {tutorial.exercises.map((exercise, idx) => (
-                <button
-                  key={exercise.id}
-                  onClick={() => setSelectedExerciseId(exercise.id)}
-                  className={`py-1 px-3 text-sm rounded-full transition-colors ${
-                    exercise.id === selectedExercise.id
-                      ? "bg-primary text-white"
-                      : "bg-ui-lighter text-ui-dark hover:bg-ui-light/50"
-                  }`}
-                >
-                  {idx + 1}. {exercise.title}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="mx-4 mt-4 bg-white rounded-lg shadow border border-ui-light/30 p-3 flex items-center gap-3">
+          <button onClick={showOverview} className={navButtonClass}>
+            ← All exercises
+          </button>
+          <span className="flex-1 min-w-0 truncate text-sm text-ui-dark">
+            <span className="font-medium">
+              {selectedIndex + 1}. {selectedExercise.title}
+            </span>
+            <span className="text-ui-dark/50"> — {selectedIndex + 1} of {exercises.length}</span>
+          </span>
+          <button
+            onClick={() => showExercise(previousExercise.id)}
+            disabled={!previousExercise}
+            className={navButtonClass}
+          >
+            ← Previous
+          </button>
+          <button
+            onClick={() => showExercise(nextExercise.id)}
+            disabled={!nextExercise}
+            className={navButtonClass}
+          >
+            Next →
+          </button>
         </div>
       }
     />

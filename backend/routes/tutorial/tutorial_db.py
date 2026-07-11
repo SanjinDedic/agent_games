@@ -108,6 +108,60 @@ def get_tutorial_with_exercises(session: Session, tutorial_id: int) -> dict:
     }
 
 
+def get_tutorial_progress(
+    session: Session, team_id: int, tutorial_id: int
+) -> dict:
+    """One team's progress through a tutorial, one row per exercise in order.
+
+    An exercise is `attempted` once any submission attempt exists (including
+    ones whose code never ran) and `passed` once any stored run passed.
+    """
+    tutorial = session.get(Tutorial, tutorial_id)
+    if not tutorial:
+        raise TutorialNotFoundError(f"Tutorial with ID {tutorial_id} not found")
+
+    attempted_ids = set(
+        session.exec(
+            select(ExerciseSubmissionMetadata.exercise_id)
+            .join(
+                Exercise,
+                Exercise.id == ExerciseSubmissionMetadata.exercise_id,
+            )
+            .where(Exercise.tutorial_id == tutorial_id)
+            .where(ExerciseSubmissionMetadata.team_id == team_id)
+            .distinct()
+        ).all()
+    )
+    passed_ids = set(
+        session.exec(
+            select(ExerciseSubmissionMetadata.exercise_id)
+            .join(
+                ExerciseSubmission,
+                ExerciseSubmission.metadata_id == ExerciseSubmissionMetadata.id,
+            )
+            .join(
+                Exercise,
+                Exercise.id == ExerciseSubmissionMetadata.exercise_id,
+            )
+            .where(Exercise.tutorial_id == tutorial_id)
+            .where(ExerciseSubmissionMetadata.team_id == team_id)
+            .where(ExerciseSubmission.passed == True)  # noqa: E712
+            .distinct()
+        ).all()
+    )
+
+    return {
+        "progress": [
+            {
+                "exercise_id": exercise.id,
+                "attempted": exercise.id in attempted_ids,
+                "passed": exercise.id in passed_ids,
+            }
+            for exercise in tutorial.exercises
+        ]
+    }
+
+
 def record_failed_exercise_submission(
     session: Session,
     team_id: int,
