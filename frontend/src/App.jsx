@@ -3,6 +3,7 @@ import AgentHome from './AgentGames/AgentHome';
 import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
+import Tutorial from './AgentGames/User/Tutorial';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
 import Institutions from './AgentGames/Institutions';
 import InstitutionSignup from './AgentGames/InstitutionSignup';
@@ -58,6 +59,14 @@ function App() {
             element={
               <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
                 <AgentSubmission />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="Tutorial"
+            element={
+              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
+                <Tutorial />
               </AuthProtection>
             }
           />
@@ -206,7 +215,11 @@ function App() {
 
 function CreditLink() {
   const { pathname } = useLocation();
-  const hideOn = [/^\/AgentSubmission\b/, /^\/InstitutionLeagueSubmissions\//];
+  const hideOn = [
+    /^\/AgentSubmission\b/,
+    /^\/Tutorial\b/,
+    /^\/InstitutionLeagueSubmissions\//,
+  ];
   if (hideOn.some((re) => re.test(pathname))) return null;
 
   return (

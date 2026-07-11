@@ -46,6 +46,7 @@ celery_app = Celery(
     include=[
         "backend.tasks.validation_task",
         "backend.tasks.simulation_task",
+        "backend.tasks.exercise_task",
     ],
 )
 
