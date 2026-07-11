@@ -212,37 +212,26 @@ bonuses or per-outcome payoffs to tune.
         self, player, opponent, turn: int, role: str, last_opponent_action: str = None
     ) -> str:
         """Get action from player with explicit role validation"""
+        opponent_stats = opponent.get_combat_info()
         try:
-            opponent_stats = opponent.get_combat_info()
             action = player.make_combat_decision(
                 opponent_stats, turn, role, last_opponent_action
             )
-
-            # Validate action matches role
-            if not self.validate_action_for_role(action, role):
-                valid_actions = (
-                    ["attack", "big_attack", "precise_attack"]
-                    if role == "attacker"
-                    else ["defend", "dodge", "brace"]
-                )
-                # Emit a clear, per-turn feedback message for the student/frontend
-                default_action = "attack" if role == "attacker" else "defend"
-                # Also add a concise human-readable line
-                player.add_feedback(
-                    f"System default: Invalid action '{action}' for role '{role}'. Defaulting to '{default_action}'."
-                )
-                # Default to appropriate action based on role
-                action = default_action
-
-            return action
         except Exception as e:
-            # Emit a clear, per-turn feedback message for the student/frontend
-            default_action = "attack" if role == "attacker" else "defend"
-            player.add_feedback(
-                f"System default: Error in make_combat_decision ({type(e).__name__}). Defaulting to '{default_action}'."
+            raise ValueError(f"Invalid action by {player.name}: {e}")
+
+        if not self.validate_action_for_role(action, role):
+            valid_actions = (
+                ["attack", "big_attack", "precise_attack"]
+                if role == "attacker"
+                else ["defend", "dodge", "brace"]
             )
-            self.record_error_trace(f"{player.name}.make_combat_decision")
-            return default_action
+            raise ValueError(
+                f"Invalid action by {player.name}: {action!r} for role "
+                f"'{role}' (must be one of {valid_actions})"
+            )
+
+        return action
 
     def calculate_damage(
         self, attacker, defender, attack_action: str, defense_action: str

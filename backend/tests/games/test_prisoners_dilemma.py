@@ -152,18 +152,8 @@ def test_invalid_player_decision(test_league):
 
     player1.make_decision = mock_decision
 
-    # Play a pairing and verify the invalid decision is handled correctly
-    game.play_pairing(player1, player2)
-
-    # Check if the decision defaulted to 'collude'
-    assert game.histories[player1.name][player2.name][0] == "collude"
-    assert len(game.game_feedback["pairings"]) > 0
-
-    # Check pairing data for invalid decision handling
-    assert any(
-        "round_number" in pairing["rounds"][0]
-        for pairing in game.game_feedback["pairings"]
-    )
+    with pytest.raises(ValueError, match=f"Invalid decision by {player1.name}"):
+        game.play_pairing(player1, player2)
 
 
 def test_player_decision_exception(test_league):
@@ -176,15 +166,5 @@ def test_player_decision_exception(test_league):
 
     player1.make_decision = mock_decision
 
-    # Play a pairing and verify the exception is handled correctly
-    game.play_pairing(player1, player2)
-
-    # Check if the decision defaulted to 'collude'
-    assert game.histories[player1.name][player2.name][0] == "collude"
-    assert len(game.game_feedback["pairings"]) > 0
-
-    # Check pairing data for exception handling
-    assert any(
-        "round_number" in pairing["rounds"][0]
-        for pairing in game.game_feedback["pairings"]
-    )
+    with pytest.raises(ValueError, match=f"Invalid decision by {player1.name}"):
+        game.play_pairing(player1, player2)

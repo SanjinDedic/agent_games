@@ -210,3 +210,8 @@ docker compose restart api worker-validation worker-simulation
 - Player feedback can be strings or dictionaries
 - Always use str(player.name) for consistency
 - Reset feedback at start of each game
+- **Never substitute a default action for a bad agent.** If `make_decision`
+  raises or returns something invalid, abort the game by re-raising as
+  `ValueError(f"Invalid move by {player.name}: ...")` — the validation task
+  turns that into an error the student sees (with the chained traceback in the
+  AI hint context). Silently defaulting lets broken code pass validation.

@@ -21,11 +21,11 @@ the three deterministic signals we can derive today:
 
 The validator also captures two runtime signals where it can:
 
-- ``traceback``: an escaping exception's chained traceback (runtime_error), a
-  construction failure's underlying traceback (construction_error), or agent
-  exceptions a game engine swallowed mid-game while substituting a default
-  action (collected via ``BaseGame.record_error_trace`` — these can accompany
-  a ``success`` outcome).
+- ``traceback``: an escaping exception's chained traceback (runtime_error) or
+  a construction failure's underlying traceback (construction_error). Game
+  engines abort on a bad agent — an invalid return value or an exception is
+  re-raised as ValueError, never substituted with a default action — so a
+  traceback always accompanies an ``error`` outcome.
 - ``stdout``: everything the run printed (including the student's own prints).
 
 Both are rendered as their own sections when present.
@@ -212,8 +212,8 @@ class HintContext:
     feedback: Union[str, dict, None] = None
     simulation_results: Optional[dict] = None
     duration_ms: Optional[float] = None
-    # Populated by the validator: chained/collected tracebacks (may accompany
-    # a success outcome when the game swallowed agent exceptions) and stdout.
+    # Populated by the validator: the chained traceback of a failed run, and
+    # everything the run printed.
     traceback: Optional[str] = None
     stdout: Optional[str] = None
     # Full source of the game package — attached only when the code parsed (no
@@ -398,11 +398,6 @@ def build_hint_context(ctx: HintContext) -> str:
     if ctx.traceback:
         lines.append("")
         lines.append("--- Stack Trace ---")
-        if ctx.sim_completed:
-            lines.append(
-                "The game completed only because the engine swallowed these agent "
-                "exceptions and substituted a default action:"
-            )
         lines.append(_truncate(ctx.traceback.strip(), MAX_FEEDBACK_CHARS))
     if ctx.stdout:
         lines.append("")

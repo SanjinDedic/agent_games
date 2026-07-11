@@ -213,13 +213,18 @@ and the rewards list is paid out top-down.
             for player in self.active_players.copy():
                 if not player.has_banked_this_turn:
                     player.unbanked_money += roll
+                    player_state = self.get_game_state()
                     try:
-                        player_state = self.get_game_state()
                         decision = player.make_decision(player_state)
                     except Exception as e:
-                        print(f"Error in player {player.name}'s decision: {e}")
-                        self.record_error_trace(f"{player.name}.make_decision")
-                        decision = "bank"
+                        raise ValueError(
+                            f"Invalid decision by {player.name}: {e}"
+                        )
+                    if decision not in ("bank", "continue"):
+                        raise ValueError(
+                            f"Invalid decision by {player.name}: {decision!r} "
+                            "(must be 'bank' or 'continue')"
+                        )
 
                     forced_bank = (
                         decision != "bank"

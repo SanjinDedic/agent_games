@@ -152,7 +152,7 @@ def test_code_validator_unsafe_functions():
 
 
 def test_validation_task_simulation_error(celery_workers):
-    """Test handling of simulation errors"""
+    """A crashing agent fails validation — no default action is substituted."""
     error_code = """
 from games.prisoners_dilemma.player import Player
 
@@ -166,8 +166,10 @@ class CustomPlayer(Player):
         team_name="test_team",
         num_simulations=10,
     ).get(timeout=20)
-    assert result["status"] == "success"
-    assert result["simulation_results"]["table"]["defections"]["test_team"] == 0
+    assert result["status"] == "error"
+    assert result["message"].startswith("Error during simulation:")
+    assert "Invalid decision by test_team" in result["message"]
+    assert "ZeroDivisionError" in result["traceback"]
 
 
 def test_validation_task_player_feedback(celery_workers):

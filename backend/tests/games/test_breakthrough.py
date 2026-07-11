@@ -231,16 +231,27 @@ def test_boost_stock_depletes(small_game):
     assert match["final"]["a"] == [2, 5]
 
 
-def test_exception_in_make_decision_is_stay(small_game, test_league):
+def test_exception_in_make_decision_aborts_match(small_game, test_league):
     small_game.move_cap = 4
     attacker = Exploder()
     attacker.name = "A"
     defender = Scripted(["STAY"], name="D")
-    match, _, _ = small_game.play_match(
-        attacker, defender, small_game._validate_rewards(None), start_positions=((0, 5), (9, 0))
-    )
-    assert match["result"] == "timeout"
-    assert match["final"]["a"] == [0, 5]
+    with pytest.raises(ValueError, match="Invalid move by A"):
+        small_game.play_match(
+            attacker, defender, small_game._validate_rewards(None),
+            start_positions=((0, 5), (9, 0)),
+        )
+
+
+def test_invalid_return_aborts_match(small_game, test_league):
+    small_game.move_cap = 4
+    attacker = Scripted(["hoard"], name="A")
+    defender = Scripted(["STAY"], name="D")
+    with pytest.raises(ValueError, match="Invalid move by A"):
+        small_game.play_match(
+            attacker, defender, small_game._validate_rewards(None),
+            start_positions=((0, 5), (9, 0)),
+        )
 
 
 def test_traces_and_state_shape(small_game):

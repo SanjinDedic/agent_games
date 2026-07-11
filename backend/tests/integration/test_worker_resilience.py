@@ -9,9 +9,9 @@ resource-exhaustion modes the platform must survive:
    500m, shared across --concurrency=4) is exhausted in ~9 frames — long before
    Python's ~1000-frame recursion limit. The kernel OOM killer SIGKILLs the
    child; billiard surfaces that to .get() as WorkerLostError. Pinning the
-   payload in class state is deliberate: a bare recursion that raised
-   MemoryError would be swallowed by the game engine's `except Exception`, so
-   the persistent hoard guarantees the cgroup — not Python — wins the race.
+   payload in class state is deliberate: every doubled chunk touches its pages
+   on allocation, so the cgroup cap — not a Python MemoryError, which would
+   abort the run as an agent error — is what terminates the child.
 
 2. CPU bomb. A busy loop that also swallows exceptions inside itself, so the
    soft-limit SoftTimeLimitExceeded cannot stop it. Only the hard time_limit=6
@@ -37,9 +37,9 @@ from backend.tasks.validation_task import run_validation
 
 # --- Hostile agents (both pass the AST safety check) ------------------------
 
-# Infinite memory through recursion. `_hoard` is class-level so the doubled
-# payloads survive even if a MemoryError is raised and swallowed mid-flight —
-# the container's memory cap, not Python, is what terminates the child.
+# Infinite memory through recursion. `_hoard` is class-level and every chunk
+# touches its pages on allocation, so the container's memory cap — not a
+# Python MemoryError — is what terminates the child.
 MEMORY_BOMB_RECURSION = """
 from games.greedy_pig.player import Player
 

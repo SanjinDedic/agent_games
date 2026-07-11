@@ -6,11 +6,6 @@ from abc import ABC
 
 logger = logging.getLogger(__name__)
 
-# Cap on collected agent-error tracebacks per game instance (see
-# record_error_trace). Traces are deduplicated before the cap applies, so this
-# only limits *distinct* failure sites, not repeats of the same crash.
-MAX_ERROR_TRACES = 5
-
 
 class PlayerConstructionError(Exception):
     """A submission could not be turned into a live player instance.
@@ -57,25 +52,7 @@ class BaseGame(ABC):
         self.scores = {}
         self.game_feedback = []  # Can be overridden by games to be a dict if needed
         self.player_feedback = {}
-        # Tracebacks of agent exceptions the game swallowed to keep playing
-        # (see record_error_trace). Deliberately NOT cleared by reset(): the
-        # validation task reads these after the feedback game + all
-        # simulations to surface them in the AI hint context.
-        self.error_traces = []
         self.load_validation_players()
-
-    def record_error_trace(self, label):
-        """Capture the in-flight exception's traceback without stopping the game.
-
-        Call from an ``except`` block that swallows an agent exception and
-        substitutes a default action. The validation task hands these traces
-        to the AI hint context, so a student whose agent crashes mid-game
-        still sees where. Deduplicated and capped: a crash-every-turn agent
-        across hundreds of simulations records each distinct traceback once.
-        """
-        trace = f"[{label}]\n{traceback.format_exc().rstrip()}"
-        if trace not in self.error_traces and len(self.error_traces) < MAX_ERROR_TRACES:
-            self.error_traces.append(trace)
 
     def add_feedback(self, message):
         """Add a feedback message if verbose mode is on"""
