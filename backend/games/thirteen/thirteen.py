@@ -394,11 +394,15 @@ hand first). Default: 1st = **4**, 2nd = **2**, 3rd = **1**, 4th = **0**.
         except Exception as e:
             raise ValueError(f"Invalid move by {player.name}: {e}")
         legal_set = {tuple(sort_hand(m)) for m in legal}
-        if tuple(sort_hand(move)) not in legal_set:
+        try:
+            move_key = tuple(sort_hand(move))
+        except (KeyError, TypeError, IndexError):
+            move_key = None  # unparseable card codes are never legal
+        if move_key not in legal_set:
             raise ValueError(
-                f"Invalid move by {player.name}: {move} is not a legal move"
+                f"Invalid move by {player.name}: {move} is not one of {legal}"
             )
-        return sort_hand(move)
+        return list(move_key)
 
     def _play_deal(self, table, rng, verbose):
         """Play one full deal. Returns (finish_order, winner, stats, record)."""

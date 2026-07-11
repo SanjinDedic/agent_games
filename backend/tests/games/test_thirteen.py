@@ -53,6 +53,11 @@ class Broken(Player):
         raise RuntimeError("boom")
 
 
+class BadCardCode(Player):
+    def make_decision(self, game_state):
+        return ["ZZ"]
+
+
 def _add_players(game, n, cls=FirstMove):
     for i in range(n):
         p = cls()
@@ -200,6 +205,16 @@ def test_broken_agent_raises_value_error(test_league):
     _add_players(game, 3)
     _add_players(game, 1, Broken)
     with pytest.raises(ValueError, match="Invalid"):
+        game._play_table_game(game.players, random.Random(0), verbose=False)
+
+
+def test_unparseable_card_code_raises_value_error(test_league):
+    """['ZZ'] must surface as an invalid-move ValueError, not a bare KeyError."""
+    game = ThirteenGame(test_league)
+    game.players = []
+    _add_players(game, 3)
+    _add_players(game, 1, BadCardCode)
+    with pytest.raises(ValueError, match=r"Invalid move by .*ZZ.* is not one of"):
         game._play_table_game(game.players, random.Random(0), verbose=False)
 
 
