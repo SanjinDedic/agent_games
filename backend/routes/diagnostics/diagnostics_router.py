@@ -1,11 +1,8 @@
 import time
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlmodel import Session
 
 from backend.config import BENCHMARK_TOKEN
-from backend.database.db_models import Institution
-from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import get_current_user, verify_admin_or_institution
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
@@ -18,44 +15,18 @@ from backend.tasks.validation_task import (
 
 diagnostics_router = APIRouter()
 
-# Business failures surface via the HTTP status line: missing Docker access and a
-# disabled / mis-tokened benchmark endpoint -> 403, raised here. An error while
-# collecting service status or running the validator surfaces as a 500 rather than
-# a masked 200. Each route returns its payload directly.
-
-
-async def check_docker_access(current_user: dict, session: Session) -> bool:
-    """Check if the current user has Docker access"""
-    if current_user["role"] == "admin":
-        return True
-
-    if current_user["role"] == "institution":
-        institution_id = current_user.get("institution_id")
-        if not institution_id:
-            return False
-
-        institution = session.get(Institution, institution_id)
-        if not institution or not institution.docker_access:
-            return False
-
-        return True
-
-    return False
+# Business failures surface via the HTTP status line: a disabled / mis-tokened
+# benchmark endpoint -> 403, raised here. An error while collecting service
+# status or running the validator surfaces as a 500 rather than a masked 200.
+# Each route returns its payload directly.
 
 
 @diagnostics_router.get("/status")
 @verify_admin_or_institution
 async def get_status(
     current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
 ):
     """Get health status for the Celery broker and worker services"""
-    if not await check_docker_access(current_user, session):
-        raise HTTPException(
-            status_code=403,
-            detail="You don't have Docker access. Please contact the administrator.",
-        )
-
     return {"statuses": await get_all_services_status()}
 
 

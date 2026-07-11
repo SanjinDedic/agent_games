@@ -18,7 +18,6 @@ def test_institution_create_success(client, auth_headers, db_session):
         "contact_email": "new@example.com",
         "password": "new_password",
         "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
-        "docker_access": True,
     }
     
     response = client.post(
@@ -37,7 +36,6 @@ def test_institution_create_success(client, auth_headers, db_session):
     assert institution is not None
     assert institution.contact_person == "New Contact"
     assert institution.contact_email == "new@example.com"
-    assert institution.docker_access is True
     
     # Verify unassigned league was created
     unassigned_league = db_session.exec(
@@ -58,7 +56,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(existing_institution)
@@ -71,7 +68,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_email": "new@example.com",
         "password": "new_password",
         "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
-        "docker_access": True,
     }
     
     response = client.post(
@@ -103,7 +99,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_email": "not_an_email",  # Invalid email format
         "password": "password",
         "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
-        "docker_access": True,
     }
     
     response = client.post(
@@ -120,7 +115,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_email": "empty@example.com",
         "password": "password",
         "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
-        "docker_access": True,
     }
     
     response = client.post(

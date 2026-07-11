@@ -116,7 +116,6 @@ def populate_database(engine):
             contact_person="Admin",
             contact_email="admin@admin.com",
             created_date=utc_now(),
-            docker_access=True,
             password_hash=get_password_hash(institution_password),
         )
         session.add(default_institution)

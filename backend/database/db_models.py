@@ -51,7 +51,6 @@ class Institution(SQLModel, table=True):
     contact_email: str
     address: Optional[str] = None
     created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    docker_access: bool = Field(default=False)
     password_hash: str
     teams: List["Team"] = Relationship(back_populates="institution")
     leagues: List["League"] = Relationship(back_populates="institution")

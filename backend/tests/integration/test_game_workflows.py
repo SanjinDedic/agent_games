@@ -73,7 +73,6 @@ def test_complete_game_lifecycle(
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -211,7 +210,6 @@ async def test_concurrent_game_operations(
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)

@@ -73,7 +73,6 @@ def institution_setup(db_session: Session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(institution)
@@ -176,7 +175,6 @@ def test_assess_league_not_owned_by_institution(
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(other_inst)

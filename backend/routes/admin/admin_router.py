@@ -12,7 +12,6 @@ from backend.routes.admin.admin_db import (
     export_institution_data,
     get_all_demo_users,
     get_all_institutions,
-    toggle_institution_docker_access,
     update_institution,
 )
 from backend.routes.admin.admin_models import (
@@ -23,7 +22,6 @@ from backend.routes.admin.admin_models import (
     DeleteInstitution,
     InstitutionUpdate,
     RestoreBackup,
-    ToggleDockerAccess,
     UpdateSupportTicket,
 )
 from backend.routes.auth.auth_core import get_current_user, verify_admin_role
@@ -118,21 +116,6 @@ async def get_institutions_endpoint(
 ):
     """Get all institutions."""
     return get_all_institutions(session)
-
-
-@admin_router.post("/toggle-docker-access")
-@verify_admin_role
-async def toggle_docker_access_endpoint(
-    access: ToggleDockerAccess,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Toggle Docker access for an institution."""
-    return {
-        "message": toggle_institution_docker_access(
-            session, access.institution_id, access.enable
-        )
-    }
 
 
 # Agent-related endpoints

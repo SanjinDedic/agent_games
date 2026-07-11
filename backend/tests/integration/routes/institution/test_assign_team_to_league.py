@@ -20,7 +20,6 @@ def assignment_setup(db_session: Session) -> tuple:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -140,7 +139,6 @@ def test_assign_team_to_league_failures(client, assignment_setup, db_session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(other_institution)

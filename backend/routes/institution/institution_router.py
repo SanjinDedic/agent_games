@@ -197,16 +197,6 @@ async def run_simulation_endpoint(
             "Cannot run simulations on the 'unassigned' league"
         )
 
-    # Check if institution has Docker access. For admin managing another
-    # institution's league, check the league's owning institution.
-    check_institution_id = league.institution_id if is_admin else institution_id
-    institution = session.get(Institution, check_institution_id)
-    if not institution.docker_access:
-        raise HTTPException(
-            status_code=403,
-            detail="Your institution does not have Docker access. Please contact the administrator.",
-        )
-
     # Enqueue the simulation task and wait for the result
     async_result = run_simulation.delay(
         league_id=simulation_config.league_id,

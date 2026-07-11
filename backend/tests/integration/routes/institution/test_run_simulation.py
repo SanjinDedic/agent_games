@@ -59,7 +59,7 @@ class CustomPlayer(Player):
 @pytest.fixture
 def simulation_setup(db_session: Session) -> tuple:
     """Setup institution, league, and team for simulation testing"""
-    # Create an institution with docker access
+    # Create an institution
     institution = build_institution(
         name="test_institution",
         contact_person="Test Person",
@@ -67,7 +67,6 @@ def simulation_setup(db_session: Session) -> tuple:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,  # Enable docker access
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -196,21 +195,7 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
     
-    # Test case 2: Institution without Docker access
-    # Update institution to remove Docker access
-    institution.docker_access = False
-    db_session.add(institution)
-    db_session.commit()
-    
-    response = client.post(
-        "/institution/run-simulation",
-        headers=headers,
-        json={"league_id": league.id, "num_simulations": 10},
-    )
-    assert response.status_code == 403
-    assert "docker access" in response.json()["detail"].lower()
-    
-    # Test case 3: Invalid number of simulations
+    # Test case 2: Invalid number of simulations
     response = client.post(
         "/institution/run-simulation",
         headers=headers,
@@ -218,7 +203,7 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
     )
     assert response.status_code == 422
     
-    # Test case 4: Unauthorized access (no token)
+    # Test case 3: Unauthorized access (no token)
     response = client.post(
         "/institution/run-simulation",
         json={"league_id": league.id, "num_simulations": 10},

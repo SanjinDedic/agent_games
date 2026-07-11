@@ -46,7 +46,6 @@ def two_institutions(db_session: Session) -> dict:
         created_date=now,
         subscription_active=True,
         subscription_expiry=now + timedelta(days=30),
-        docker_access=True,
         password_hash="hash_a",
     )
     db_session.add(inst_a)
@@ -61,7 +60,6 @@ def two_institutions(db_session: Session) -> dict:
         created_date=now,
         subscription_active=True,
         subscription_expiry=now + timedelta(days=30),
-        docker_access=True,
         password_hash="hash_b",
     )
     db_session.add(inst_b)

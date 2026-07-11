@@ -19,7 +19,6 @@ def info_setup(db_session: Session) -> tuple:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -84,7 +83,6 @@ def test_update_league_info_cross_institution_rejected(client, info_setup, db_se
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(other)

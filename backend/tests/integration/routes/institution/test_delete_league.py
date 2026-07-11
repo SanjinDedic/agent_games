@@ -20,7 +20,6 @@ def delete_league_setup(db_session: Session) -> tuple:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -176,7 +175,6 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(other_institution)
@@ -246,7 +244,6 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(inst)
