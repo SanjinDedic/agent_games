@@ -12,6 +12,7 @@ from backend.routes.auth.auth_core import (
     verify_institution_role,
 )
 from backend.routes.institution.institution_db import (
+    ProtectedLeagueError,
     assign_team_to_league,
     create_league,
     create_team,
@@ -191,14 +192,9 @@ async def run_simulation_endpoint(
         session, simulation_config.league_id, institution_id, is_admin=is_admin
     )
 
-    # Check if institution has Docker access. For admin managing another
-    # institution's league, check the league's owning institution.
-    check_institution_id = league.institution_id if is_admin else institution_id
-    institution = session.get(Institution, check_institution_id)
-    if not institution.docker_access:
-        raise HTTPException(
-            status_code=403,
-            detail="Your institution does not have Docker access. Please contact the administrator.",
+    if league.name == "unassigned":
+        raise ProtectedLeagueError(
+            "Cannot run simulations on the 'unassigned' league"
         )
 
     # Enqueue the simulation task and wait for the result

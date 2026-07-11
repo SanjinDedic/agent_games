@@ -20,7 +20,6 @@ def delete_institution_setup(db_session: Session) -> Institution:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)

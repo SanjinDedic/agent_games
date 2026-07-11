@@ -34,6 +34,11 @@ async def run_simulation(
         raise HTTPException(
             status_code=400, detail=f"Unknown game: {request.game_name}"
         )
+    if league.name == "unassigned":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot run simulations on the 'unassigned' league",
+        )
 
     allow_simulation(current_user["team_id"])  # SimulationLimitExceededError -> 429
 

@@ -22,7 +22,6 @@ def institutions_setup(db_session: Session) -> list:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution1)
@@ -60,7 +59,6 @@ def institutions_setup(db_session: Session) -> list:
         created_date=utc_now(),
         subscription_active=False,  # Inactive
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=False,
         password_hash="test_hash",
     )
     db_session.add(institution2)
@@ -76,7 +74,6 @@ def institutions_setup(db_session: Session) -> list:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() - timedelta(days=1),  # Expired
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution3)
@@ -114,7 +111,6 @@ def test_get_all_institutions_success(client, auth_headers, institutions_setup):
         assert "created_date" in inst
         assert "subscription_active" in inst
         assert "subscription_expiry" in inst
-        assert "docker_access" in inst
         assert "team_count" in inst
         assert "league_count" in inst
     

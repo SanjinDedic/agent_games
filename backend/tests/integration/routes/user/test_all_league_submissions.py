@@ -170,7 +170,6 @@ def test_get_all_submissions_institution_own_league(client, db_session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(institution)
@@ -215,7 +214,6 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     inst_b = build_institution(
@@ -225,7 +223,6 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(inst_a)

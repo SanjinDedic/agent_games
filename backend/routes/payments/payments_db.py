@@ -81,7 +81,6 @@ def create_paid_institution(
         contact_email=contact_email,
         address=address,
         created_date=now,
-        docker_access=False,
     )
     institution.set_password(password)
 
@@ -168,7 +167,6 @@ def create_invoiced_institution(
         contact_email=teaching_contact_email,
         address=institution_address,
         created_date=now,
-        docker_access=False,
     )
     institution.set_password(password)
 

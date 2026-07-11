@@ -79,7 +79,6 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
         contact_person=institution_data.contact_person,
         contact_email=institution_data.contact_email,
         created_date=now,
-        docker_access=institution_data.docker_access,
     )
     institution.set_password(institution_data.password)
 
@@ -138,8 +137,6 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
             institution.contact_person = institution_data.contact_person
         if institution_data.contact_email is not None:
             institution.contact_email = institution_data.contact_email
-        if institution_data.docker_access is not None:
-            institution.docker_access = institution_data.docker_access
         if institution_data.password is not None:
             institution.set_password(institution_data.password)
 
@@ -486,32 +483,12 @@ def get_all_institutions(session: Session) -> Dict:
                     if inst.subscription
                     else None
                 ),
-                "docker_access": inst.docker_access,
                 "team_count": len(inst.teams),
                 "league_count": len(inst.leagues),
             }
             for inst in institutions
         ]
     }
-
-
-def toggle_institution_docker_access(
-    session: Session, institution_id: int, enable: bool
-) -> str:
-    """Toggle Docker access for an institution"""
-    institution = session.get(Institution, institution_id)
-
-    if not institution:
-        raise InstitutionNotFoundError(
-            f"Institution with ID {institution_id} not found"
-        )
-
-    institution.docker_access = enable
-    session.add(institution)
-    session.commit()
-
-    status = "enabled" if enable else "disabled"
-    return f"Docker access {status} for institution '{institution.name}'"
 
 
 # Demo user management functions

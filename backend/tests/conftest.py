@@ -70,7 +70,6 @@ def build_institution(
     created_date=None,
     subscription_active=True,
     subscription_expiry=None,
-    docker_access=True,
     payment_method="admin",
     **extra,
 ):
@@ -91,7 +90,6 @@ def build_institution(
         contact_person=contact_person,
         contact_email=contact_email,
         created_date=now,
-        docker_access=docker_access,
         password_hash=password_hash,
         **extra,
     )
@@ -232,7 +230,6 @@ def populate_test_database(session):
         contact_email="admin@admin.com",
         created_date=now,
         subscription_expiry=now + timedelta(days=365),
-        docker_access=True,
         password_hash=_HASH_INSTITUTION,
     )
 
@@ -536,7 +533,6 @@ def institution_token(db_session: Session) -> str:
         contact_person="Test Person",
         contact_email="test@example.com",
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
 

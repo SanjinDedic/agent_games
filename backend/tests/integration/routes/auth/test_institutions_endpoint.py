@@ -22,7 +22,6 @@ def multiple_institutions(db_session: Session) -> dict:
         created_date=now,
         subscription_active=True,
         subscription_expiry=now + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(active)
@@ -34,7 +33,6 @@ def multiple_institutions(db_session: Session) -> dict:
         created_date=now,
         subscription_active=False,
         subscription_expiry=now - timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(inactive)
@@ -46,7 +44,6 @@ def multiple_institutions(db_session: Session) -> dict:
         created_date=now,
         subscription_active=True,
         subscription_expiry=now + timedelta(days=365),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(demo)

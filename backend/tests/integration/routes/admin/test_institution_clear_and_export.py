@@ -37,7 +37,6 @@ def seeded_institution(db_session: Session) -> Institution:
         created_date=now,
         subscription_active=True,
         subscription_expiry=now + timedelta(days=30),
-        docker_access=True,
         password_hash="hashed",
     )
     db_session.add(institution)

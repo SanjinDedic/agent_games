@@ -3,7 +3,9 @@ import moment from 'moment-timezone';
 
 const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) => {
   const isActive = moment().isBefore(moment(league.expiry_date));
-  
+  // The "unassigned" league is a placeholder — its game assignment is meaningless
+  const isPlaceholder = league.name.toLowerCase() === "unassigned";
+
   const handleDelete = (e) => {
     e.stopPropagation(); // Prevent triggering onSelect when clicking delete
     onDelete(league);
@@ -25,7 +27,9 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
             <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-success' : 'bg-danger'}`}></div>
             <h3 className="font-medium truncate">{league.name}</h3>
           </div>
-          <div className="text-xs text-ui mt-1">Game: {league.game}</div>
+          <div className="text-xs text-ui mt-1">
+            {isPlaceholder ? "Placeholder league" : `Game: ${league.game}`}
+          </div>
         </div>
         <button
           onClick={handleDelete}

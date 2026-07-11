@@ -18,7 +18,6 @@ def update_institution_setup(db_session: Session) -> Institution:
         contact_person="Original Contact",
         contact_email="original@example.com",
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=False,
         password_hash="test_hash",
     )
 
@@ -34,7 +33,6 @@ def test_institution_update_success(client, auth_headers, update_institution_set
         "contact_person": "Updated Contact",
         "contact_email": "updated@example.com",
         "subscription_active": False,
-        "docker_access": True,
         "password": "new_password",
     }
     
@@ -53,7 +51,6 @@ def test_institution_update_success(client, auth_headers, update_institution_set
     assert institution.contact_person == "Updated Contact"
     assert institution.contact_email == "updated@example.com"
     assert institution.subscription.subscription_active is False
-    assert institution.docker_access is True
     
     # Test partial update
     partial_update = {
@@ -101,7 +98,6 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
         contact_person="Other Contact",
         contact_email="other@example.com",
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=False,
         password_hash="test_hash",
     )
     

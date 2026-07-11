@@ -40,7 +40,6 @@ def get_or_create_demo_institution(session: Session) -> Institution:
             contact_person="Demo Admin",
             contact_email="demo@example.com",
             created_date=now,
-            docker_access=True,
             password_hash=get_password_hash("demo_password"),
         )
         # Subscription state lives on the 1:1 record; assigning via the

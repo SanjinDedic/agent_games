@@ -20,7 +20,6 @@ def institution_setup(db_session: Session) -> tuple:
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -179,7 +178,6 @@ def test_team_create_name_reuse_across_institutions(client, institution_setup, d
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(other)

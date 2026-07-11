@@ -14,7 +14,6 @@ class CreateInstitution(BaseModel):
     contact_email: EmailStr
     password: str
     subscription_expiry: datetime
-    docker_access: bool = False
 
     @field_validator("name")
     def validate_name(cls, v):
@@ -32,7 +31,6 @@ class InstitutionUpdate(BaseModel):
     contact_email: Optional[EmailStr] = None
     subscription_active: Optional[bool] = None
     subscription_expiry: Optional[datetime] = None
-    docker_access: Optional[bool] = None
     password: Optional[str] = None
 
 
@@ -46,13 +44,6 @@ class ClearInstitutionData(BaseModel):
     """Model for clearing all teams/leagues/data for an institution while keeping the institution row."""
 
     id: int
-
-
-class ToggleDockerAccess(BaseModel):
-    """Model for toggling Docker access for an institution"""
-
-    institution_id: int
-    enable: bool
 
 
 class CreateAgentTeam(BaseModel):

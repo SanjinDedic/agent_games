@@ -23,7 +23,6 @@ def unassign_setup(db_session: Session) -> dict:
         created_date=now,
         subscription_active=True,
         subscription_expiry=now + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(institution)
@@ -116,7 +115,6 @@ def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
         created_date=utc_now(),
         subscription_active=True,
         subscription_expiry=utc_now() + timedelta(days=30),
-        docker_access=True,
         password_hash="hash",
     )
     db_session.add(other_inst)

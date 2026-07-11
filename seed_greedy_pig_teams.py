@@ -244,14 +244,26 @@ class CustomPlayer(Player):
 }
 
 
-def post(path, token=None, json_body=None):
+def _request(method, path, token=None, json_body=None):
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    r = requests.post(f"{API}{path}", headers=headers, json=json_body or {}, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    if data.get("status") == "error":
-        raise RuntimeError(f"{path} -> {data.get('message')}")
-    return data
+    r = requests.request(
+        method, f"{API}{path}", headers=headers, json=json_body, timeout=30
+    )
+    if not r.ok:
+        try:
+            detail = r.json().get("detail", r.text)
+        except ValueError:
+            detail = r.text
+        raise RuntimeError(f"{method} {path} -> {r.status_code}: {detail}")
+    return r.json()
+
+
+def post(path, token=None, json_body=None):
+    return _request("POST", path, token=token, json_body=json_body or {})
+
+
+def get(path, token=None):
+    return _request("GET", path, token=token)
 
 
 def institution_login():
@@ -259,7 +271,7 @@ def institution_login():
         "/auth/institution-login",
         json_body={"name": INSTITUTION_NAME, "password": INSTITUTION_PASSWORD},
     )
-    return data["data"]["access_token"]
+    return data["access_token"]
 
 
 def team_login(name):
@@ -267,7 +279,7 @@ def team_login(name):
         "/auth/team-login",
         json_body={"name": name, "password": TEAM_PASSWORD},
     )
-    return data["data"]["access_token"]
+    return data["access_token"]
 
 
 def create_team(inst_token, name):
@@ -283,19 +295,32 @@ def create_team(inst_token, name):
         )
         print(f"  created team {name}")
     except RuntimeError as e:
-        # already exists is fine for a throwaway re-run
-        if "already" in str(e).lower() or "exists" in str(e).lower():
+        # duplicate team is a 409 with "... already exists ..." — fine for a re-run
+        if "already exists" in str(e).lower():
             print(f"  team {name} already exists — reusing")
         else:
             raise
 
 
-def assign_league(team_token, league_name):
-    post(
+def find_league_id(inst_token, league_name):
+    leagues = get("/user/get-all-leagues", token=inst_token)["leagues"]
+    for league in leagues:
+        if league["name"] == league_name:
+            return league["id"]
+    raise RuntimeError(
+        f"league '{league_name}' not found — create it first "
+        f"(available: {[l['name'] for l in leagues]})"
+    )
+
+
+def assign_league(team_token, league_id):
+    # returns a refreshed token carrying the new league_id
+    data = post(
         "/user/league-assign",
         token=team_token,
-        json_body={"name": league_name},
+        json_body={"league_id": league_id},
     )
+    return data["access_token"]
 
 
 def submit(team_token, code):
@@ -310,6 +335,9 @@ def main():
     print(f"logging in as institution '{INSTITUTION_NAME}'...")
     inst_token = institution_login()
 
+    league_id = find_league_id(inst_token, LEAGUE_NAME)
+    print(f"league '{LEAGUE_NAME}' has id {league_id}")
+
     print("creating teams...")
     for name in TEAMS:
         create_team(inst_token, name)
@@ -317,11 +345,11 @@ def main():
     for name in TEAMS:
         print(f"\n=== {name} ===")
         token = team_login(name)
-        assign_league(token, LEAGUE_NAME)
+        token = assign_league(token, league_id)
         print(f"  assigned to league '{LEAGUE_NAME}'")
         for i, code in enumerate(SUBMISSIONS[name], start=1):
             resp = submit(token, code)
-            print(f"  submission {i}/4 OK — {resp.get('message', '')[:80]}")
+            print(f"  submission {i}/4 OK — id {resp.get('submission_id')}")
             # stay under the 5-submissions-per-minute cap
             time.sleep(13)
 
@@ -331,8 +359,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except requests.HTTPError as e:
-        print(f"HTTP error: {e.response.status_code} {e.response.text}", file=sys.stderr)
+    except requests.RequestException as e:
+        print(f"request failed (is the API up?): {e}", file=sys.stderr)
         sys.exit(1)
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)

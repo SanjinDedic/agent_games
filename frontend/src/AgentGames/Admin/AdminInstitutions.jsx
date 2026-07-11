@@ -21,7 +21,6 @@ function AdminInstitutions() {
     contact_email: '',
     password: '',
     subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default to 1 year
-    docker_access: false
   });
 
   useEffect(() => {
@@ -96,7 +95,6 @@ function AdminInstitutions() {
             contact_email: '',
             password: '',
             subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-            docker_access: false
           });
           fetchInstitutions(); // Refresh the list
         } else {
@@ -206,33 +204,6 @@ function AdminInstitutions() {
       });
   };
 
-  const toggleDockerAccess = (institutionId, enable) => {
-    setIsLoading(true);
-    authFetch(`${apiUrl}/admin/toggle-docker-access`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({ institution_id: institutionId, enable }),
-    })
-      .then(async response => {
-        const data = await response.json();
-        if (response.ok) {
-          toast.success(data.message || `Docker access ${enable ? 'enabled' : 'disabled'} successfully`);
-          fetchInstitutions(); // Refresh the list
-        } else {
-          toast.error(data.detail || 'Failed to update Docker access');
-        }
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error updating Docker access:', error);
-        toast.error('Error connecting to server');
-        setIsLoading(false);
-      });
-  };
-
   return (
     <div className="min-h-screen bg-ui-lighter pt-20 px-6 pb-8">
       <div className="max-w-7xl mx-auto">
@@ -310,17 +281,6 @@ function AdminInstitutions() {
                       minDate={new Date()}
                     />
                   </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="docker_access"
-                      name="docker_access"
-                      checked={institutionForm.docker_access}
-                      onChange={handleInputChange}
-                      className="mr-2"
-                    />
-                    <label htmlFor="docker_access" className="text-ui-dark">Enable Docker Access</label>
-                  </div>
                 </div>
                 <div className="flex justify-end">
                   <button
@@ -356,7 +316,6 @@ function AdminInstitutions() {
                         <th className="px-4 py-2 text-left text-ui-dark">Teams</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Leagues</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Subscription</th>
-                        <th className="px-4 py-2 text-left text-ui-dark">Docker Access</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Actions</th>
                       </tr>
                     </thead>
@@ -379,25 +338,6 @@ function AdminInstitutions() {
                               </span>
                               <div className="text-xs text-ui mt-1">
                                 {moment(institution.subscription_expiry).format('MMM DD, YYYY')}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center">
-                                <button
-                                  onClick={() => toggleDockerAccess(institution.id, !institution.docker_access)}
-                                  className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                                    institution.docker_access ? 'bg-success' : 'bg-ui-light'
-                                  }`}
-                                >
-                                  <span
-                                    className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full ${
-                                      institution.docker_access ? 'translate-x-6' : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                                <span className="ml-2 text-sm">
-                                  {institution.docker_access ? 'Enabled' : 'Disabled'}
-                                </span>
                               </div>
                             </td>
                             <td className="px-4 py-3">

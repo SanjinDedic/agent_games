@@ -921,7 +921,6 @@ def test_get_subscription_no_subscription_row(client, db_session):
         contact_person="P",
         contact_email="p@uni.edu",
         created_date=utc_now(),
-        docker_access=False,
         password_hash="hash",
     )
     db_session.add(inst)

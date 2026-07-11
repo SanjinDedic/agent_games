@@ -57,13 +57,12 @@ async def test_status_exception(client, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_status_no_docker_access(client):
-    """Test status retrieval without docker access."""
-    # Create a token for institution without docker access
+async def test_status_institution_allowed(client):
+    """Any institution can read service status; the per-institution docker
+    access gate no longer exists."""
     from backend.routes.auth.auth_core import create_access_token
     from datetime import timedelta
 
-    # Mock an institution user without docker access
     institution_token = create_access_token(
         data={"sub": "test_institution", "role": "institution", "institution_id": 999},
         expires_delta=timedelta(minutes=30),
@@ -71,13 +70,7 @@ async def test_status_no_docker_access(client):
 
     headers = {"Authorization": f"Bearer {institution_token}"}
 
-    # Mock the institution to not have docker access
-    with patch(
-        "backend.routes.diagnostics.diagnostics_router.check_docker_access"
-    ) as mock_check:
-        mock_check.return_value = False
+    response = client.get("/diagnostics/status", headers=headers)
 
-        response = client.get("/diagnostics/status", headers=headers)
-
-        assert response.status_code == 403
-        assert "access" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    assert "statuses" in response.json()
