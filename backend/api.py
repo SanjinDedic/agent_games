@@ -41,6 +41,8 @@ from backend.routes.payments.payments_db import (
 )
 from backend.routes.tutorial.tutorial_db import (
     ExerciseNotFoundError,
+    ExerciseReorderError,
+    TutorialExistsError,
     TutorialNotFoundError,
 )
 from backend.routes.user.user_db import (
@@ -287,6 +289,16 @@ async def tutorial_not_found_handler(request: Request, exc: TutorialNotFoundErro
 @app.exception_handler(ExerciseNotFoundError)
 async def exercise_not_found_handler(request: Request, exc: ExerciseNotFoundError):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(TutorialExistsError)
+async def tutorial_exists_handler(request: Request, exc: TutorialExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ExerciseReorderError)
+async def exercise_reorder_handler(request: Request, exc: ExerciseReorderError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 # Payments-domain exceptions: signup validation -> 400; the duplicate-name

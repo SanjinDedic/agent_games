@@ -7,21 +7,36 @@ from sqlmodel import Session
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import (
     get_current_user,
+    verify_admin_role,
     verify_ai_agent_service_or_student,
     verify_any_role,
 )
 from backend.routes.tutorial.tutorial_db import (
     allow_exercise_submission,
+    create_exercise,
+    create_tutorial,
+    delete_exercise,
+    delete_tutorial,
     get_exercise_by_id,
     get_exercise_submission_history,
     get_latest_exercise_submission,
+    get_tutorial_admin_detail,
     get_tutorial_progress,
     get_tutorial_with_exercises,
     get_tutorials,
     record_failed_exercise_submission,
+    reorder_exercises,
     save_exercise_submission,
+    update_exercise,
+    update_tutorial,
 )
-from backend.routes.tutorial.tutorial_models import ExerciseSubmissionRequest
+from backend.routes.tutorial.tutorial_models import (
+    ExerciseRequest,
+    ExerciseReorderRequest,
+    ExerciseSubmissionRequest,
+    TutorialCreateRequest,
+    TutorialUpdateRequest,
+)
 from backend.routes.user.code_validation import validate_code
 from backend.tasks.exercise_task import (
     await_exercise_result,
@@ -153,6 +168,125 @@ async def get_tutorial_progress_endpoint(
     """Current team's attempted/passed status for each exercise, in order."""
     team_id = _require_team_id(current_user)
     return get_tutorial_progress(session, team_id, tutorial_id)
+
+
+# ---------------------------------------------------------------------------
+# Admin content management. The admin detail endpoint is the only read path
+# exposing entry_function/test_cases — the student endpoints above keep them
+# server-side.
+# ---------------------------------------------------------------------------
+
+
+@tutorial_router.get("/admin/tutorial/{tutorial_id}")
+@verify_admin_role
+async def get_tutorial_admin_endpoint(
+    tutorial_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """One tutorial with full exercise definitions, including test cases."""
+    return get_tutorial_admin_detail(session, tutorial_id)
+
+
+@tutorial_router.post("/tutorials")
+@verify_admin_role
+async def create_tutorial_endpoint(
+    tutorial: TutorialCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Create an empty tutorial."""
+    return create_tutorial(session, tutorial.title, tutorial.description)
+
+
+@tutorial_router.put("/tutorial/{tutorial_id}")
+@verify_admin_role
+async def update_tutorial_endpoint(
+    tutorial_id: int,
+    tutorial: TutorialUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Update a tutorial's title and description."""
+    return update_tutorial(
+        session, tutorial_id, tutorial.title, tutorial.description
+    )
+
+
+@tutorial_router.delete("/tutorial/{tutorial_id}")
+@verify_admin_role
+async def delete_tutorial_endpoint(
+    tutorial_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Delete a tutorial, its exercises, and their submission history."""
+    delete_tutorial(session, tutorial_id)
+    return {"detail": "Tutorial deleted"}
+
+
+@tutorial_router.post("/tutorial/{tutorial_id}/exercises")
+@verify_admin_role
+async def create_exercise_endpoint(
+    tutorial_id: int,
+    exercise: ExerciseRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Append a new exercise at the end of the tutorial."""
+    return create_exercise(
+        session,
+        tutorial_id,
+        title=exercise.title,
+        problem_markdown=exercise.problem_markdown,
+        starter_code=exercise.starter_code,
+        entry_function=exercise.entry_function,
+        test_cases=[case.model_dump() for case in exercise.test_cases],
+    )
+
+
+@tutorial_router.put("/exercise/{exercise_id}")
+@verify_admin_role
+async def update_exercise_endpoint(
+    exercise_id: int,
+    exercise: ExerciseRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Replace an exercise's definition (all fields)."""
+    return update_exercise(
+        session,
+        exercise_id,
+        title=exercise.title,
+        problem_markdown=exercise.problem_markdown,
+        starter_code=exercise.starter_code,
+        entry_function=exercise.entry_function,
+        test_cases=[case.model_dump() for case in exercise.test_cases],
+    )
+
+
+@tutorial_router.delete("/exercise/{exercise_id}")
+@verify_admin_role
+async def delete_exercise_endpoint(
+    exercise_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Delete one exercise and its submission history."""
+    delete_exercise(session, exercise_id)
+    return {"detail": "Exercise deleted"}
+
+
+@tutorial_router.post("/tutorial/{tutorial_id}/exercises/reorder")
+@verify_admin_role
+async def reorder_exercises_endpoint(
+    tutorial_id: int,
+    reorder: ExerciseReorderRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Apply a complete new exercise ordering for a tutorial."""
+    return reorder_exercises(session, tutorial_id, reorder.exercise_ids)
 
 
 @tutorial_router.get("/exercise/{exercise_id}/latest-submission")

@@ -21,6 +21,7 @@ import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
 import AdminBackup from "./AgentGames/Admin/AdminBackup";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
+import AdminTutorials from "./AgentGames/Admin/AdminTutorials";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
@@ -142,6 +143,14 @@ function App() {
             element={
               <AuthProtection requiredRole="admin" redirectTo="/Admin">
                 <AdminUserSupport />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="AdminTutorials"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminTutorials />
               </AuthProtection>
             }
           />
