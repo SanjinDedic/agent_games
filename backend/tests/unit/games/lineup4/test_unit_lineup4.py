@@ -49,7 +49,10 @@ def test_game(test_league):
 def test_game_initialization(test_league):
     """Test that the game initializes properly"""
     game = Lineup4Game(test_league)
-    
+
+    # Validation players are loaded by default
+    assert len(game.players) > 0
+
     # Check initial state
     assert isinstance(game.board, dict)
     assert isinstance(game.move_history, list)
@@ -138,6 +141,10 @@ def test_make_move(test_game):
     assert result is False
     assert test_game.board['1A'] == 'X'  # Remains unchanged
     assert test_game.move_history == ['1A', '2A']  # Remains unchanged
+
+    # Positions off the board are rejected
+    assert test_game.make_move('8A', 'X') is False  # No column 8
+    assert test_game.make_move('1G', 'X') is False  # No row G
 
 
 def test_check_winner_horizontal(test_game):
@@ -351,6 +358,38 @@ def test_run_simulations(test_game):
         assert player.name in results["table"]["wins"]
         assert player.name in results["table"]["draws"]
         assert player.name in results["table"]["games_played"]
+
+    # Reported count is total matches: sims × n(n−1) round-robin pairings
+    n = len(test_game.players)
+    assert results["num_simulations"] == 2 * n * (n - 1)
+
+
+def test_player_decision_exception(test_game):
+    """A player whose make_decision raises aborts the match with ValueError"""
+    player1, player2 = test_game.players[:2]
+
+    def mock_decision(game_state):
+        raise Exception("Test exception")
+
+    player1.make_decision = mock_decision
+
+    with pytest.raises(ValueError, match=f"Invalid move by {player1.name}"):
+        test_game.play_match(player1, player2)
+
+
+def test_starter_code():
+    """Test starter code content"""
+    assert "class CustomPlayer(Player):" in Lineup4Game.starter_code
+    assert "def make_decision(self, game_state):" in Lineup4Game.starter_code
+    assert 'game_state["possible_moves"]' in Lineup4Game.starter_code
+
+
+def test_game_instructions():
+    """Test game instructions content"""
+    assert "Lineup 4 Game Instructions" in Lineup4Game.game_instructions
+    assert "Board Layout" in Lineup4Game.game_instructions
+    assert "Game Rules" in Lineup4Game.game_instructions
+    assert "Implementation Notes" in Lineup4Game.game_instructions
 
 
 def test_run_single_game_with_feedback(test_game):

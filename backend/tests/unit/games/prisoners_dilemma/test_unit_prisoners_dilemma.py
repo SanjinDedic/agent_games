@@ -52,7 +52,10 @@ def test_game(test_league):
 def test_game_initialization(test_league):
     """Test that the game initializes properly"""
     game = PrisonersDilemmaGame(test_league)
-    
+
+    # Validation players are loaded by default
+    assert len(game.players) > 0
+
     # Check initial state
     assert isinstance(game.reward_matrix, dict)
     assert game.rounds_per_pairing == 5
@@ -103,6 +106,7 @@ def test_get_game_state(test_game):
     assert state["opponent_name"] == p2_name
     assert state["opponent_history"] == ["defect", "defect"]
     assert state["my_history"] == ["collude", "defect"]
+    assert "all_history" in state
     assert state["scores"][p1_name] == 4
     assert state["scores"][p2_name] == 12
 
@@ -271,3 +275,65 @@ def test_add_player_feedback(test_game):
 
     # Player's feedback list should be emptied
     assert player1.feedback == []
+
+
+def test_add_feedback(test_game):
+    """Verbose games append feedback messages to the pairings list"""
+    test_game.add_feedback("Test message")
+    assert "Test message" in test_game.game_feedback["pairings"]
+
+
+def test_run_simulations_with_custom_rewards(test_game):
+    """Custom rewards passed to run_simulations reach the reward matrix"""
+    results = test_game.run_simulations(
+        num_simulations=3, league=None, custom_rewards=[4, 0, 6, 2]
+    )
+
+    assert results["num_simulations"] == 3
+    assert "total_points" in results
+
+    # The matrix used for every simulated game reflects the custom rewards
+    assert test_game.reward_matrix["collude,collude"] == (4, 4)
+    assert test_game.reward_matrix["collude,defect"] == (0, 6)
+    assert test_game.reward_matrix["defect,collude"] == (6, 0)
+    assert test_game.reward_matrix["defect,defect"] == (2, 2)
+
+
+def test_invalid_player_decision(test_game):
+    """A decision outside collude/defect aborts the pairing with ValueError"""
+    player1, player2 = test_game.players[:2]
+
+    def mock_decision(game_state):
+        return "invalid_decision"
+
+    player1.make_decision = mock_decision
+
+    with pytest.raises(ValueError, match=f"Invalid decision by {player1.name}"):
+        test_game.play_pairing(player1, player2)
+
+
+def test_player_decision_exception(test_game):
+    """A player whose make_decision raises aborts the pairing with ValueError"""
+    player1, player2 = test_game.players[:2]
+
+    def mock_decision(game_state):
+        raise Exception("Test exception")
+
+    player1.make_decision = mock_decision
+
+    with pytest.raises(ValueError, match=f"Invalid decision by {player1.name}"):
+        test_game.play_pairing(player1, player2)
+
+
+def test_starter_code():
+    assert "class CustomPlayer(Player):" in PrisonersDilemmaGame.starter_code
+    assert "def make_decision(self, game_state):" in PrisonersDilemmaGame.starter_code
+
+
+def test_game_instructions():
+    assert (
+        "Prisoner's Dilemma Game Instructions" in PrisonersDilemmaGame.game_instructions
+    )
+    assert "Game Objective" in PrisonersDilemmaGame.game_instructions
+    assert "Scoring" in PrisonersDilemmaGame.game_instructions
+    assert "Strategy Tips" in PrisonersDilemmaGame.game_instructions
