@@ -28,17 +28,29 @@ from backend.tasks.celery_utils import poll_task_result
 from backend.tasks.validation_task import (
     VALIDATION_RESULT_TIMEOUT,
     VALIDATION_TASK_EXPIRES,
-    VALIDATION_TIME_LIMIT,
-    VALIDATION_TIMEOUT_SECONDS,
 )
+
+# An exercise run is a handful of pure-function calls — far lighter than a
+# validation (no game, no simulations) — so it gets a much tighter budget.
+# Plain constants, not env-overridable like VALIDATION_TIMEOUT_SECONDS: nothing
+# needs to shorten 1s further for tests, and a constant cannot drift between
+# the enqueuing process (which stamps limits into each task message, overriding
+# worker-side defaults) and the workers.
+EXERCISE_TIMEOUT_SECONDS = 1
+
+# Hard SIGKILL backstop, 1s past the soft limit — same rationale as
+# VALIDATION_TIME_LIMIT: student code with a bare `except Exception` swallows
+# SoftTimeLimitExceeded, and only the hard kill reliably reaps a spinner.
+EXERCISE_TIME_LIMIT = EXERCISE_TIMEOUT_SECONDS + 1
 
 # Students print-debug; keep captured output bounded so a print inside a loop
 # can't bloat the result payload through the broker.
 MAX_STDOUT_CHARS = 10_000
 
+_plural = "" if EXERCISE_TIMEOUT_SECONDS == 1 else "s"
 EXERCISE_TIMEOUT_MESSAGE = (
     f"Your code consumes too much time - the tests did not finish within "
-    f"{VALIDATION_TIMEOUT_SECONDS} seconds. It may be stuck in a loop."
+    f"{EXERCISE_TIMEOUT_SECONDS} second{_plural}. It may be stuck in a loop."
 )
 
 
@@ -106,6 +118,8 @@ def _execute_tests(
     namespace: Dict[str, Any] = {"__name__": "exercise_submission"}
     try:
         exec(code, namespace)  # noqa: S102 - AST-checked, isolated worker
+    except SoftTimeLimitExceeded:
+        raise
     except Exception:
         return {
             "status": "error",
@@ -138,6 +152,11 @@ def _execute_tests(
             actual = func(*args)
             entry["actual"] = repr(actual)
             entry["passed"] = bool(actual == expected)
+        except SoftTimeLimitExceeded:
+            # The budget covers the whole run — swallowing this as a per-test
+            # error would call the (likely still spinning) function again and
+            # defer the kill to the hard limit's SIGKILL.
+            raise
         except Exception as e:  # noqa: BLE001 - a crash fails this test only
             entry["error"] = f"{type(e).__name__}: {e}"
         test_results.append(entry)
@@ -152,8 +171,8 @@ def _execute_tests(
 
 @celery_app.task(
     name="validation.run_exercise",
-    soft_time_limit=VALIDATION_TIMEOUT_SECONDS,
-    time_limit=VALIDATION_TIME_LIMIT,
+    soft_time_limit=EXERCISE_TIMEOUT_SECONDS,
+    time_limit=EXERCISE_TIME_LIMIT,
 )
 def run_exercise(
     code: str, entry_function: str, test_cases: List[dict]
