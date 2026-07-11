@@ -1,12 +1,7 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../../slices/authSlice';
 
 function CombinedFooter({
-    team,
-    game,
-    league,
-    isDemo,
+    statusItems = [],
     onSubmit,
     onGetHint,
     onLoadLast,
@@ -18,11 +13,6 @@ function CombinedFooter({
     hasLastSubmission,
     hasStarterCode
 }) {
-    const currentUser = useSelector(selectCurrentUser);
-    const demoTimeRemaining = currentUser?.exp
-        ? Math.max(0, Math.floor((new Date(currentUser.exp * 1000) - new Date()) / 1000 / 60))
-        : null;
-
     return (
       <div className="fixed bottom-0 left-0 right-0 z-10 w-full bg-ui shadow-md">
         {/* Main status bar */}
@@ -70,34 +60,17 @@ function CombinedFooter({
             >
               My Submissions
             </button>
-
-            {/* Demo mode indicator as a button-like element (temporarily hidden)
-                    {isDemo && (
-                        <div className="py-2 px-4 text-base font-medium text-ui-dark bg-notice-yellowBg rounded flex items-center">
-                            <span className="mr-2">🕒</span>
-                            Demo Mode, Time Remaining: {demoTimeRemaining} min
-                        </div>
-                    )}
-                    */}
           </div>
 
           {/* Right side - Status info */}
           <div className="flex space-x-8">
-            {team && (
-              <div className="text-lg font-medium">
-                <span className="text-ui-light">TEAM:</span> {team}
-              </div>
-            )}
-            {game && (
-              <div className="text-lg font-medium">
-                <span className="text-ui-light">GAME:</span> {game}
-              </div>
-            )}
-            {league && (
-              <div className="text-lg font-medium">
-                <span className="text-ui-light">LEAGUE:</span> {league}
-              </div>
-            )}
+            {statusItems
+              .filter((item) => item.value)
+              .map((item) => (
+                <div key={item.label} className="text-lg font-medium">
+                  <span className="text-ui-light">{item.label}:</span> {item.value}
+                </div>
+              ))}
           </div>
         </div>
       </div>

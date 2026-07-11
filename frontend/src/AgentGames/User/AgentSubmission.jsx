@@ -1,36 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { toast } from "react-toastify";
 import { selectCurrentUser } from "../../slices/authSlice";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
-import CodeEditor from "./CodeEditor";
-import CombinedFooter from "./CombinedFooter";
-import FeedbackDisplay from "./FeedbackDisplay";
-import MySubmissionsModal from "./MySubmissionsModal";
-import HintModal from "./HintModal";
+import CodeEditor from "../Shared/Submission/CodeEditor";
+import CombinedFooter from "../Shared/Submission/CombinedFooter";
+import FeedbackDisplay from "../Shared/Submission/FeedbackDisplay";
+import MySubmissionsModal from "../Shared/Submission/MySubmissionsModal";
+import HintModal from "../Shared/Submission/HintModal";
+import SubmissionLayout from "../Shared/Submission/SubmissionLayout";
+import FeedbackSelector from "../Feedback/FeedbackSelector";
+import GameResultsWrapper from "../Feedback/GameResultsWrapper";
+import useSubmissionWorkspace from "../Shared/hooks/useSubmissionWorkspace";
 import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 
 function AgentSubmission() {
-  // State management
-  const [code, setCode] = useState("");
-  const [starterCode, setStarterCode] = useState("");
-  const [lastSubmission, setLastSubmission] = useState("");
-  const [output, setOutput] = useState("");
-  const [feedback, setFeedback] = useState("");
+  // Agent-specific state: game instructions and league resolution
   const [instructionData, setInstructionData] = useState("");
-  const [hasLastSubmission, setHasLastSubmission] = useState(false);
-  const [shouldCollapseInstructions, setShouldCollapseInstructions] =
-    useState(false);
   const [isLoadingLeagueInfo, setIsLoadingLeagueInfo] = useState(false);
-  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
-  const [submissionHistory, setSubmissionHistory] = useState([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [hintModalOpen, setHintModalOpen] = useState(false);
-  const [hint, setHint] = useState(null);
-  const [isGeneratingHint, setIsGeneratingHint] = useState(false);
-  const [allowHint, setAllowHint] = useState(false);
-  const editorRef = useRef(null);
 
   // Redux hooks
   const dispatch = useDispatch();
@@ -48,24 +35,21 @@ function AgentSubmission() {
 
   const { fetchUserLeagues, isLoading: isLeagueLoading } = useLeagueAPI();
 
+  // Shared editor/submission state and handlers
+  const ws = useSubmissionWorkspace({
+    getLatestSubmission,
+    getSubmissionHistory: getTeamSubmissions,
+    submitCode,
+    onResetUnavailable: () => loadInstructions(),
+  });
+
   // Combined loading state
   const isLoading = isSubmitting || isLeagueLoading || isLoadingLeagueInfo;
 
   useEffect(() => {
     const loadInitialData = async () => {
-      // Load the latest submission
-      let hadSubmission = false;
-      const submissionResult = await getLatestSubmission();
-      if (submissionResult.success) {
-        if (submissionResult.hasSubmission) {
-          setLastSubmission(submissionResult.code);
-          setCode(submissionResult.code);
-          setHasLastSubmission(true);
-          hadSubmission = true;
-        } else {
-          setHasLastSubmission(false);
-        }
-      }
+      // Load the latest submission into the editor
+      const hadSubmission = await ws.loadLatestSubmission({ intoEditor: true });
 
       // If currentLeague exists but is missing the game property, fetch league details
       if (currentLeague && !currentLeague.game) {
@@ -96,7 +80,7 @@ function AgentSubmission() {
   }, []);
 
   // Load game instructions and starter code
-  const loadInstructions = async (gameOverride = null, hasSubmissionOverride = null) => {
+  async function loadInstructions(gameOverride = null, hasSubmissionOverride = null) {
     const gameToUse = gameOverride || (currentLeague && currentLeague.game);
     if (!gameToUse) return;
 
@@ -106,204 +90,44 @@ function AgentSubmission() {
       setInstructionData(result.instructions || "");
 
       if (result.starterCode) {
-        setStarterCode(result.starterCode);
-        const hasSub = hasSubmissionOverride !== null ? hasSubmissionOverride : hasLastSubmission;
-        if (!hasSub) {
-          setCode(result.starterCode);
-        }
+        const hasSub =
+          hasSubmissionOverride !== null
+            ? hasSubmissionOverride
+            : ws.hasLastSubmission;
+        ws.applyStarterCode(result.starterCode, { intoEditor: !hasSub });
       }
     }
-  };
-
-  // Submit code to the API
-  const handleSubmit = async () => {
-    if (!code || code.trim() === "") {
-      toast.error("Please enter some code before submitting");
-      return;
-    }
-
-    setOutput("");
-    setFeedback("");
-    setShouldCollapseInstructions(true);
-
-    const result = await submitCode(code);
-    if (result.hint_available && !allowHint) toast.success("A hint is now available");
-    setAllowHint(result.hint_available);
-
-    if (result.success) {
-      setOutput(result.output);
-      setFeedback(result.feedback);
-
-      // Refresh the latest submission info
-      const refreshResult = await getLatestSubmission();
-      if (refreshResult.success && refreshResult.hasSubmission) {
-        setLastSubmission(refreshResult.code);
-        setHasLastSubmission(true);
-      }
-    }
-  };
-
-  // Request a hint for the current code (hits the same endpoint with generate_hint=true)
-  const handleGetHint = async () => {
-    if (!code || code.trim() === "") {
-      toast.error("Please enter some code before requesting a hint");
-      return;
-    }
-
-    setIsGeneratingHint(true);
-    setHint(null);
-    setHintModalOpen(true);
-
-    const result = await submitCode(code, { generateHint: true });
-
-    setIsGeneratingHint(false);
-
-    if (result.hint_available && !allowHint) toast.success("A hint is now available");
-    setAllowHint(result.hint_available);
-
-    // A hint only comes back when validation fails — hints exist to help
-    // students reach valid code, not to improve a valid agent.
-    if (result.hint) {
-      setHint(result.hint);
-    } else {
-      if (result.hint_cancelled) {
-        // The edited code passed validation, so no hint was generated or consumed
-        toast.success("Submission valid — hint cancelled");
-      }
-      // otherwise submitCode already surfaced the error via toast
-      setHintModalOpen(false);
-    }
-
-    if (result.success) {
-      // The hint request is a real submission, so refresh the feedback panel too
-      setOutput(result.output);
-      setFeedback(result.feedback);
-      setShouldCollapseInstructions(true);
-
-      const refreshResult = await getLatestSubmission();
-      if (refreshResult.success && refreshResult.hasSubmission) {
-        setLastSubmission(refreshResult.code);
-        setHasLastSubmission(true);
-      }
-    }
-  };
-
-  // Load last submitted code
-  const handleLoadLastSubmission = () => {
-    if (hasLastSubmission && editorRef.current) {
-      editorRef.current.setValue(lastSubmission);
-      setCode(lastSubmission);
-      toast.success("Loaded last submission");
-    } else {
-      toast.error("No previous submission found");
-    }
-  };
-
-  // Open submissions modal and load history
-  const handleShowSubmissions = async () => {
-    setSubmissionsModalOpen(true);
-    setIsLoadingHistory(true);
-    const result = await getTeamSubmissions();
-    setIsLoadingHistory(false);
-    if (result.success) {
-      setSubmissionHistory(result.submissions);
-    } else {
-      toast.error(result.error || "Failed to load submissions");
-      setSubmissionHistory([]);
-    }
-  };
-
-  // Load a specific past submission into the editor
-  const handleSelectSubmission = (sub) => {
-    if (editorRef.current && sub?.code != null) {
-      editorRef.current.setValue(sub.code);
-      setCode(sub.code);
-      setSubmissionsModalOpen(false);
-      toast.success("Submission loaded into editor");
-    }
-  };
-
-  // Reset code to starter template
-  const handleReset = () => {
-    if (starterCode && editorRef.current) {
-      editorRef.current.setValue(starterCode);
-      setCode(starterCode);
-      toast.success("Code reset to starter template");
-    } else {
-      toast.error("Starter code template not available");
-      // Try to load instructions again
-      const gameToUse = currentLeague && currentLeague.game;
-      if (gameToUse) {
-        loadInstructions(gameToUse);
-      }
-    }
-  };
-
-  // Update editor reference when mounted
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-  };
+  }
 
   return (
-    <div className="min-h-screen pt-12 flex flex-col bg-white">
-      <div className="flex flex-1 overflow-hidden pb-14">
-        {/* Left side - Code Editor */}
-        <div className="w-1/2 h-[calc(100vh-112px)] border-r border-[#1e1e1e] border-t-0 bg-[#1e1e1e]">
-          <CodeEditor
-            code={code}
-            onCodeChange={setCode}
-            onMount={handleEditorDidMount}
-          />
-        </div>
-
-        {/* Right side - Feedback */}
-        <div className="w-1/2 flex flex-col h-[calc(100vh-112px)]">
-          {/* Feedback Display */}
-          <div className="flex-1 overflow-auto">
-            <FeedbackDisplay
-              instructions={instructionData}
-              output={output}
-              feedback={feedback}
-              isLoading={isLoading}
-              collapseInstructions={shouldCollapseInstructions}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Combined Footer */}
-      <CombinedFooter
-        team={currentUser.name}
-        game={currentLeague?.game}
-        league={currentLeague?.name}
-        isDemo={currentUser.is_demo}
-        onSubmit={handleSubmit}
-        onGetHint={handleGetHint}
-        onLoadLast={handleLoadLastSubmission}
-        onReset={handleReset}
-        onShowSubmissions={handleShowSubmissions}
-        isLoading={isLoading}
-        allowHint={allowHint}
-        isGeneratingHint={isGeneratingHint}
-        hasLastSubmission={hasLastSubmission}
-        hasStarterCode={!!starterCode}
-      />
-
-      <MySubmissionsModal
-        isOpen={submissionsModalOpen}
-        onClose={() => setSubmissionsModalOpen(false)}
-        submissions={submissionHistory}
-        isLoading={isLoadingHistory}
-        onSelect={handleSelectSubmission}
-      />
-
-      <HintModal
-        isOpen={hintModalOpen}
-        isLoading={isGeneratingHint}
-        hint={hint}
-        onClose={() => setHintModalOpen(false)}
-      />
-    </div>
+    <SubmissionLayout
+      editor={<CodeEditor {...ws.editorProps} />}
+      panel={
+        <FeedbackDisplay
+          instructions={instructionData}
+          hasResults={!!ws.output}
+          isLoading={isLoading}
+          collapseInstructions={ws.shouldCollapseInstructions}
+        >
+          <GameResultsWrapper data={ws.output} tablevisible={true} />
+          {ws.feedback && <FeedbackSelector feedback={ws.feedback} />}
+        </FeedbackDisplay>
+      }
+      footer={
+        <CombinedFooter
+          {...ws.footerProps}
+          isLoading={isLoading}
+          statusItems={[
+            { label: "TEAM", value: currentUser.name },
+            { label: "GAME", value: currentLeague?.game },
+            { label: "LEAGUE", value: currentLeague?.name },
+          ]}
+        />
+      }
+    >
+      <MySubmissionsModal {...ws.submissionsModalProps} />
+      <HintModal {...ws.hintModalProps} />
+    </SubmissionLayout>
   );
 }
 

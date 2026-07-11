@@ -1,11 +1,24 @@
 // FeedbackDisplay.jsx
 import React, { useState, useEffect } from 'react';
-import FeedbackSelector from '../Feedback/FeedbackSelector';
-import GameResultsWrapper from '../Feedback/GameResultsWrapper';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 
-function FeedbackDisplay({ instructions, output, feedback, isLoading, collapseInstructions }) {
+/**
+ * Shared submission-page panel: a collapsible markdown instructions section on
+ * top of a results area. The results content itself is supplied as children so
+ * each page decides how to render its results (game outcomes, exercise test
+ * cases, ...) — this component only handles the loading/empty/results states.
+ */
+function FeedbackDisplay({
+    instructions,
+    instructionsTitle = "Game Instructions",
+    hasResults,
+    isLoading,
+    collapseInstructions,
+    emptyTitle = "Submit your code to see results here",
+    emptySubtitle = "Results will show how your agent performs against others",
+    children,
+}) {
     // Start with instructions open by default
     const [showInstructions, setShowInstructions] = useState(true);
 
@@ -44,14 +57,14 @@ function FeedbackDisplay({ instructions, output, feedback, isLoading, collapseIn
         .markdown-content code {
             padding: 0.2em 0.4em;
             margin: 0;
-            font-size: 100%; 
+            font-size: 100%;
             background-color: rgba(27,31,35,0.05);
             border-radius: 3px;
         }
         .markdown-content pre {
             padding: 16px;
             overflow: auto;
-            font-size: 100%; 
+            font-size: 100%;
             line-height: 1.45;
             background-color: #f6f8fa;
             border-radius: 3px;
@@ -67,7 +80,7 @@ function FeedbackDisplay({ instructions, output, feedback, isLoading, collapseIn
             line-height: inherit;
             word-wrap: normal;
             background-color: transparent;
-            border: 0; 
+            border: 0;
         }
     `;
 
@@ -90,7 +103,7 @@ function FeedbackDisplay({ instructions, output, feedback, isLoading, collapseIn
                         onClick={() => setShowInstructions(!showInstructions)}
                         className="w-full flex items-center justify-between p-3 bg-primary text-white hover:bg-primary-hover transition-colors rounded-t-lg"
                     >
-                        <span className="font-medium">Game Instructions</span>
+                        <span className="font-medium">{instructionsTitle}</span>
                         <span>{showInstructions ? '▲' : '▼'}</span>
                     </button>
 
@@ -117,17 +130,12 @@ function FeedbackDisplay({ instructions, output, feedback, isLoading, collapseIn
                         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
                         <span className="ml-3 text-ui-dark">Processing submission...</span>
                     </div>
-                ) : output ? (
-                    <div>
-                        <GameResultsWrapper data={output} tablevisible={true} />
-                        {feedback && <FeedbackSelector feedback={feedback} />}
-                    </div>
+                ) : hasResults ? (
+                    <div>{children}</div>
                 ) : (
                     <div className="text-center p-8 text-ui">
-                        <p>Submit your code to see results here</p>
-                        <p className="text-sm mt-2">
-                            Results will show how your agent performs against others
-                        </p>
+                        <p>{emptyTitle}</p>
+                        <p className="text-sm mt-2">{emptySubtitle}</p>
                     </div>
                 )}
             </div>
