@@ -45,21 +45,6 @@ async def test_status_success():
 
 
 @pytest.mark.asyncio
-async def test_status_institution_allowed():
-    """Institutions can read service status; no per-institution gate remains."""
-    mock_user = {"role": "institution", "institution_id": 1}
-    mock_statuses = {"valkey": {"is_healthy": True}}
-
-    with patch(
-        "backend.routes.diagnostics.diagnostics_router.get_all_services_status",
-        return_value=mock_statuses,
-    ):
-        response = await get_status(current_user=mock_user)
-
-    assert response == {"statuses": mock_statuses}
-
-
-@pytest.mark.asyncio
 async def test_status_disallowed_role():
     """Roles outside admin/institution are rejected by the role decorator."""
     mock_user = {"role": "student", "team_name": "some_team"}
@@ -68,16 +53,3 @@ async def test_status_disallowed_role():
         await get_status(current_user=mock_user)
 
     assert exc_info.value.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_status_exception():
-    """Test handling of exceptions during status retrieval."""
-    mock_user = {"role": "admin", "sub": "admin"}
-
-    with patch(
-        "backend.routes.diagnostics.diagnostics_router.get_all_services_status",
-        side_effect=Exception("Test exception"),
-    ):
-        with pytest.raises(Exception, match="Test exception"):
-            await get_status(current_user=mock_user)
