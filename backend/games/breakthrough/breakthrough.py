@@ -99,8 +99,9 @@ Each turn, return a move:
   over the middle cell — including over the other player!
 - **Mine**: `{"direction": "N", "mine": True}` lays your mine on the cell you
   are standing on *before* you move. You only have one per match.
-- Invalid moves (off the grid, boosting with none left, errors in your code)
-  count as `"STAY"`.
+- Moves that step off the grid, or boost with no boosts left, count as
+  `"STAY"`. A return value that isn't a valid move, or an error in your code,
+  fails your agent — the match is aborted.
 
 **Getting caught** — after both moves resolve, the attacker is caught if both
 players end on the **same cell**, or the players **swap cells** (moved through
@@ -219,19 +220,18 @@ Defaults: `[100, 100, 100, 100, 50]`.
             boost = False
         return direction, boost, mine
 
-    def _safe_decision(self, player, game_state):
-        """Get a player's move; anything invalid resolves to STAY."""
+    def _get_decision(self, player, game_state):
+        """Get a player's move; exceptions and unparseable moves abort the match."""
         try:
             raw = player.make_decision(game_state)
         except Exception as e:
-            if self.verbose:
-                player.add_feedback(f"Error in make_decision ({e}) — treated as STAY")
-            return "STAY", False, False
+            raise ValueError(f"Invalid move by {player.name}: {e}")
         move = self._normalize_move(raw)
         if move is None:
-            if self.verbose:
-                player.add_feedback(f"Invalid move {raw!r} — treated as STAY")
-            return "STAY", False, False
+            raise ValueError(
+                f"Invalid move by {player.name}: {raw!r} (must be a direction "
+                'string or a {"direction": ...} dict)'
+            )
         return move
 
     def _resolve_move(self, pos, direction, boost, boosts_left):
@@ -328,7 +328,7 @@ Defaults: `[100, 100, 100, 100, 50]`.
                     "attacker", turn, a_pos, d_pos, a_boosts, d_boosts, a_trace, d_trace,
                     a_mines, d_mines, a_mine_pos, d_frozen,
                 )
-                a_dir, a_boost, a_mine = self._safe_decision(attacker, a_state)
+                a_dir, a_boost, a_mine = self._get_decision(attacker, a_state)
             if d_frozen:
                 d_dir, d_boost, d_mine = "STAY", False, False
             else:
@@ -336,7 +336,7 @@ Defaults: `[100, 100, 100, 100, 50]`.
                     "defender", turn, d_pos, a_pos, d_boosts, a_boosts, d_trace, a_trace,
                     d_mines, a_mines, d_mine_pos, a_frozen,
                 )
-                d_dir, d_boost, d_mine = self._safe_decision(defender, d_state)
+                d_dir, d_boost, d_mine = self._get_decision(defender, d_state)
 
             # Mines are laid on the cell the player stands on, before moving
             a_laid = d_laid = None

@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 import pytest
-from celery.exceptions import TimeLimitExceeded
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
@@ -107,12 +106,14 @@ def test_simulation_workflow(celery_workers, test_league: League):
 
 
 def test_validation_timeout(celery_workers):
-    """An agent stuck in a loop is hard-killed by the task time_limit.
+    """An agent stuck in a loop is stopped by the soft time limit.
 
-    The soft limit's SoftTimeLimitExceeded is swallowed by the game engine's
-    `except Exception` around agent calls, so the hard SIGKILL backstop fires
-    and .get() raises TimeLimitExceeded. Routers map that to the canonical
-    timeout message (see test below).
+    SoftTimeLimitExceeded fires inside make_decision; the game engine
+    re-raises it as ValueError (abort-on-error, no default action) and the
+    task boundary spots the soft limit in the exception chain, reporting the
+    canonical timeout message instead of an agent bug. An agent that swallows
+    the soft limit itself still spins until the hard SIGKILL — that path is
+    covered by test_worker_resilience.py.
     """
     timeout_code = """
 from games.prisoners_dilemma.player import Player
@@ -122,13 +123,14 @@ class CustomPlayer(Player):
         while True:
             pass
 """
-    with pytest.raises(TimeLimitExceeded):
-        run_validation.delay(
-            code=timeout_code,
-            game_name="prisoners_dilemma",
-            team_name="timeout_team",
-            num_simulations=10,
-        ).get(timeout=15)
+    result = run_validation.delay(
+        code=timeout_code,
+        game_name="prisoners_dilemma",
+        team_name="timeout_team",
+        num_simulations=10,
+    ).get(timeout=15)
+    assert result["status"] == "error"
+    assert result["message"].startswith("Your agent consumes too much time")
 
 
 def test_validation_timeout_result_shape():

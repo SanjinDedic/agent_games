@@ -66,7 +66,6 @@ def game():
     g.scores = {}
     g.game_feedback = {"game": "arena_champions", "battles": []}
     g.player_feedback = {}
-    g.error_traces = []
     g.battle_history = {}
     return g
 
@@ -188,19 +187,19 @@ def test_execute_combat(game, two_players):
 
 
 def test_get_player_action_invalid_action(game, two_players):
-    """Player returning wrong action for role gets default."""
+    """Player returning wrong action for role aborts the battle."""
     p1, p2 = two_players
     p1.make_combat_decision = lambda *args, **kwargs: "defend"  # Wrong for attacker
-    action = game.get_player_action_with_role(p1, p2, 1, "attacker")
-    assert action == "attack"  # Defaults to attack
+    with pytest.raises(ValueError, match="Invalid action by Fighter1"):
+        game.get_player_action_with_role(p1, p2, 1, "attacker")
 
 
 def test_get_player_action_exception(game, two_players):
-    """Player raising exception gets default action."""
+    """Player raising an exception aborts the battle."""
     p1, p2 = two_players
     p1.make_combat_decision = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("crash"))
-    action = game.get_player_action_with_role(p1, p2, 1, "defender")
-    assert action == "defend"  # Defaults to defend
+    with pytest.raises(ValueError, match="Invalid action by Fighter1"):
+        game.get_player_action_with_role(p1, p2, 1, "defender")
 
 
 def test_resolve_combat_round(game, two_players):

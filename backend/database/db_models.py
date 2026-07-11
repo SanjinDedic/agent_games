@@ -351,3 +351,84 @@ class SupportTicketAttachment(SQLModel, table=True):
     )
 
     ticket: SupportTicket = Relationship(back_populates="attachments")
+
+
+class Tutorial(SQLModel, table=True):
+    """An ordered collection of exercises preparing students for agent games."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(unique=True, index=True)
+    description: str = Field(default="", sa_column=Column(Text(), nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+    exercises: List["Exercise"] = Relationship(
+        back_populates="tutorial",
+        sa_relationship_kwargs={
+            "order_by": "Exercise.order_index",
+            "cascade": "all, delete-orphan",
+        },
+    )
+
+
+class Exercise(SQLModel, table=True):
+    """One coding problem inside a tutorial.
+
+    Test cases are function I/O pairs: the student's code must define
+    `entry_function`, and each test case in `test_cases` is
+    {"name": str, "args": [...], "expected": ...}. The exercise worker calls
+    the function with `args` and compares the return value to `expected`.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tutorial_id: int = Field(foreign_key="tutorial.id", index=True)
+    order_index: int = Field(default=0)
+    title: str
+    problem_markdown: str = Field(sa_column=Column(Text(), nullable=False))
+    starter_code: str = Field(default="", sa_column=Column(Text(), nullable=False))
+    entry_function: str
+    test_cases: list = Field(sa_column=Column(JSON, nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+    tutorial: Tutorial = Relationship(back_populates="exercises")
+
+
+class ExerciseSubmissionMetadata(SQLModel, table=True):
+    """One row per exercise submission attempt, pass or fail. Drives rate
+    limiting. A linked ExerciseSubmission row == the code was safe and ran."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    team_id: Optional[int] = Field(
+        default=None, foreign_key="team.id", nullable=True, index=True
+    )
+    exercise_id: int = Field(foreign_key="exercise.id", index=True)
+    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    duration_ms: Optional[float] = Field(default=None)
+
+    team: Optional[Team] = Relationship()
+    exercise: Exercise = Relationship()
+    submission: Optional["ExerciseSubmission"] = Relationship(
+        back_populates="meta",
+        sa_relationship_kwargs={"uselist": False},
+    )
+
+
+class ExerciseSubmission(SQLModel, table=True):
+    """Code that was safe and executed (its tests may still fail). 1:1 with
+    ExerciseSubmissionMetadata via unique FK. `passed` == every test passed;
+    `test_results` holds the per-test outcomes shown to the student."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    code: str = Field(sa_column=Column(Text()))
+    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    passed: bool = Field(default=False)
+    test_results: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    metadata_id: int = Field(
+        foreign_key="exercisesubmissionmetadata.id", unique=True, index=True
+    )
+    # `metadata` is reserved on SQLAlchemy declarative classes
+    meta: ExerciseSubmissionMetadata = Relationship(back_populates="submission")

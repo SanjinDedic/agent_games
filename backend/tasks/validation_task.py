@@ -34,10 +34,10 @@ from backend.time_utils import utc_now
 # (docker-compose.test.yml sets 2 on worker-validation); default unchanged.
 VALIDATION_TIMEOUT_SECONDS = int(os.environ.get("VALIDATION_TIMEOUT_SECONDS", "5"))
 
-# Hard SIGKILL backstop, always 1s past the soft limit: the game engine and
-# agents with a bare `except Exception` swallow SoftTimeLimitExceeded, so only
-# this hard kill reliably reaps a spinner — a wide gap just lets a runaway
-# agent hold a worker core longer (CPU is the binding constraint).
+# Hard SIGKILL backstop, always 1s past the soft limit: agents with a bare
+# `except Exception` swallow SoftTimeLimitExceeded, so only this hard kill
+# reliably reaps a spinner — a wide gap just lets a runaway agent hold a
+# worker core longer (CPU is the binding constraint).
 VALIDATION_TIME_LIMIT = VALIDATION_TIMEOUT_SECONDS + 1
 
 # How long the API waits for a validation result before giving up (and killing
@@ -57,6 +57,23 @@ TIMEOUT_MESSAGE = (
     f"finish within {VALIDATION_TIMEOUT_SECONDS} seconds. "
     f"The agent may be too slow or stuck in a loop."
 )
+
+
+def _soft_limit_in_chain(exc: Optional[BaseException]) -> bool:
+    """True when the soft time limit is anywhere in the exception chain.
+
+    Game engines re-raise agent exceptions as ValueError; when the agent was
+    interrupted by SoftTimeLimitExceeded, the original exception survives as
+    ``__cause__``/``__context__`` and the run must be reported as a timeout,
+    not as a bug in the agent.
+    """
+    seen: set = set()
+    while exc is not None and id(exc) not in seen:
+        if isinstance(exc, SoftTimeLimitExceeded):
+            return True
+        seen.add(id(exc))
+        exc = exc.__cause__ or exc.__context__
+    return False
 
 
 def _normalize(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -138,7 +155,6 @@ def run_validation(
     """Run the full validation load and return the ValidationResponse dict."""
     buf = io.StringIO()
     result: Dict[str, Any]
-    game_instance = None
     try:
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
             test_league = League(
@@ -170,10 +186,6 @@ def run_validation(
                 "simulation_results": simulation_results,
                 "duration_ms": (time.perf_counter() - t0) * 1000,
             }
-            # Agent exceptions the game swallowed to keep playing (see
-            # BaseGame.record_error_trace) still surface to the hint context.
-            if game_instance.error_traces:
-                result["traceback"] = "\n\n".join(game_instance.error_traces)
     except PlayerConstructionError as e:
         result = {
             "status": "error",
@@ -181,25 +193,28 @@ def run_validation(
             "traceback": e.traceback_str,
         }
     except SoftTimeLimitExceeded:
-        # Only reached when nothing swallowed the exception. Game engines wrap
-        # agent calls in `except Exception`, which eats this too — those runs
-        # spin on until the hard time_limit SIGKILL, and the routers map the
-        # resulting TimeLimitExceeded to the same message.
+        # Only reached when nothing swallowed the exception. An agent with a
+        # bare `except Exception` eats this too — those runs spin on until the
+        # hard time_limit SIGKILL, and the routers map the resulting
+        # TimeLimitExceeded to the same message.
         result = {
             "status": "error",
             "message": TIMEOUT_MESSAGE,
         }
     except Exception as e:  # noqa: BLE001 - the task boundary is the catch-all
-        # The escaping exception's traceback is chained (games re-raise inside
-        # `except` blocks, so the agent's own frames are included). Prepend any
-        # traces the game swallowed earlier in the run.
-        traces = list(game_instance.error_traces) if game_instance else []
-        traces.append(tb.format_exc())
-        result = {
-            "status": "error",
-            "message": f"Error during simulation: {str(e)}",
-            "traceback": "\n\n".join(traces),
-        }
+        if _soft_limit_in_chain(e):
+            # The soft limit fired inside an agent call and the engine
+            # re-raised it as ValueError — a slow agent, not a buggy one.
+            result = {"status": "error", "message": TIMEOUT_MESSAGE}
+        else:
+            # The escaping exception's traceback is chained (games re-raise
+            # agent exceptions as ValueError inside `except` blocks, so the
+            # agent's own frames are included).
+            result = {
+                "status": "error",
+                "message": f"Error during simulation: {str(e)}",
+                "traceback": tb.format_exc(),
+            }
     captured = buf.getvalue()
     if captured.strip():
         result["stdout"] = captured

@@ -246,19 +246,23 @@ Punishment > Sucker).
 
             try:
                 decision1 = player1.make_decision(game_state1)
-                if decision1 not in ["defect", "collude"]:
-                    decision1 = "collude"
-            except Exception:
-                self.record_error_trace(f"{player1.name}.make_decision")
-                decision1 = "collude"
+            except Exception as e:
+                raise ValueError(f"Invalid decision by {player1.name}: {e}")
+            if decision1 not in ["defect", "collude"]:
+                raise ValueError(
+                    f"Invalid decision by {player1.name}: {decision1!r} "
+                    "(must be 'defect' or 'collude')"
+                )
 
             try:
                 decision2 = player2.make_decision(game_state2)
-                if decision2 not in ["defect", "collude"]:
-                    decision2 = "collude"
-            except Exception:
-                self.record_error_trace(f"{player2.name}.make_decision")
-                decision2 = "collude"
+            except Exception as e:
+                raise ValueError(f"Invalid decision by {player2.name}: {e}")
+            if decision2 not in ["defect", "collude"]:
+                raise ValueError(
+                    f"Invalid decision by {player2.name}: {decision2!r} "
+                    "(must be 'defect' or 'collude')"
+                )
 
             # Update histories
             self.histories[p1_name][p2_name].append(decision1)

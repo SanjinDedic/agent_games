@@ -39,6 +39,10 @@ from backend.routes.payments.payments_db import (
     InstitutionExistsError as PaidInstitutionExistsError,
     PaidSignupError,
 )
+from backend.routes.tutorial.tutorial_db import (
+    ExerciseNotFoundError,
+    TutorialNotFoundError,
+)
 from backend.routes.user.user_db import (
     DemoLeagueError,
     LeagueExpiredError,
@@ -57,6 +61,7 @@ from backend.routes.diagnostics.diagnostics_router import diagnostics_router
 from backend.routes.institution.institution_router import institution_router
 from backend.routes.payments.payments_router import payments_router
 from backend.routes.support.support_router import support_router
+from backend.routes.tutorial.tutorial_router import tutorial_router
 from backend.routes.user.user_router import user_router
 from sqlmodel import Session, text
 
@@ -272,6 +277,18 @@ async def submission_limit_handler(request: Request, exc: SubmissionLimitExceede
     return JSONResponse(status_code=429, content={"detail": str(exc)})
 
 
+# Tutorial-domain exceptions (exercise rate limiting reuses
+# SubmissionLimitExceededError above).
+@app.exception_handler(TutorialNotFoundError)
+async def tutorial_not_found_handler(request: Request, exc: TutorialNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ExerciseNotFoundError)
+async def exercise_not_found_handler(request: Request, exc: ExerciseNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
 # Payments-domain exceptions: signup validation -> 400; the duplicate-name
 # subclass -> 409 (matches the other "exists" mappings). Starlette resolves
 # handlers by MRO, so the subclass handler wins over the base.
@@ -306,6 +323,7 @@ app.include_router(ai_router, prefix="/ai", tags=["AI Configuration"])
 app.include_router(diagnostics_router, prefix="/diagnostics", tags=["Diagnostics"])
 app.include_router(support_router, prefix="/support", tags=["Support"])
 app.include_router(payments_router, prefix="/payments", tags=["Payments"])
+app.include_router(tutorial_router, prefix="/tutorial", tags=["Tutorial"])
 
 
 @app.get("/", response_model=ResponseModel)
