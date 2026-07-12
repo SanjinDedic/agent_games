@@ -372,6 +372,21 @@ class Tutorial(SQLModel, table=True):
     )
 
 
+class LeagueTutorial(SQLModel, table=True):
+    """Attaches a tutorial to a league (many-to-many).
+
+    A league has 0..many tutorials; teams only see the tutorials attached to
+    their league. Tutorials are a global content library, so the same tutorial
+    can be attached to any number of leagues without duplicating content.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    league_id: int = Field(foreign_key="league.id", index=True)
+    tutorial_id: int = Field(foreign_key="tutorial.id", index=True)
+
+    __table_args__ = (UniqueConstraint("league_id", "tutorial_id"),)
+
+
 class Exercise(SQLModel, table=True):
     """One coding problem inside a tutorial.
 

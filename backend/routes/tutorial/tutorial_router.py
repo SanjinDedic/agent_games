@@ -13,6 +13,8 @@ from backend.routes.auth.auth_core import (
 )
 from backend.routes.tutorial.tutorial_db import (
     allow_exercise_submission,
+    assert_exercise_in_team_league,
+    assert_tutorial_in_team_league,
     create_exercise,
     create_tutorial,
     delete_exercise,
@@ -20,6 +22,7 @@ from backend.routes.tutorial.tutorial_db import (
     get_exercise_by_id,
     get_exercise_submission_history,
     get_latest_exercise_submission,
+    get_team_league_id,
     get_tutorial_admin_detail,
     get_tutorial_progress,
     get_tutorial_with_exercises,
@@ -79,6 +82,7 @@ async def submit_exercise(
     """
     team_id = _require_team_id(current_user)
     exercise = get_exercise_by_id(session, submission.exercise_id)
+    assert_exercise_in_team_league(session, exercise, team_id)
     allow_exercise_submission(session, team_id)
 
     # AST safety check runs here, before enqueue: cheap, and unsafe code
@@ -137,14 +141,33 @@ async def submit_exercise(
     }
 
 
+def _is_content_manager(current_user: dict) -> bool:
+    """Admins and institutions browse the full tutorial library (they attach
+    tutorials to leagues); every other role sees only its league's tutorials."""
+    return current_user.get("role") in ("admin", "institution")
+
+
 @tutorial_router.get("/tutorials")
 @verify_any_role
 async def get_tutorials_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """List all tutorials with their exercise counts."""
-    return get_tutorials(session)
+    """List tutorials with their exercise counts.
+
+    Admin/institution tokens see the full library; team tokens see only the
+    tutorials attached to their league.
+    """
+    if _is_content_manager(current_user):
+        return get_tutorials(session)
+
+    team_id = current_user.get("team_id")
+    league_id = (
+        get_team_league_id(session, team_id) if team_id is not None else None
+    )
+    if league_id is None:
+        return {"tutorials": []}
+    return get_tutorials(session, league_id=league_id)
 
 
 @tutorial_router.get("/tutorial/{tutorial_id}")
@@ -154,7 +177,14 @@ async def get_tutorial_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Get one tutorial with its exercises in order."""
+    """Get one tutorial with its exercises in order.
+
+    Team tokens can only open tutorials attached to their league; anything
+    else 404s exactly like a nonexistent id.
+    """
+    if not _is_content_manager(current_user):
+        team_id = _require_team_id(current_user)
+        assert_tutorial_in_team_league(session, tutorial_id, team_id)
     return get_tutorial_with_exercises(session, tutorial_id)
 
 
@@ -167,6 +197,7 @@ async def get_tutorial_progress_endpoint(
 ):
     """Current team's attempted/passed status for each exercise, in order."""
     team_id = _require_team_id(current_user)
+    assert_tutorial_in_team_league(session, tutorial_id, team_id)
     return get_tutorial_progress(session, team_id, tutorial_id)
 
 
@@ -298,7 +329,8 @@ async def get_latest_exercise_submission_endpoint(
 ):
     """Latest stored submission by the current team for one exercise."""
     team_id = _require_team_id(current_user)
-    get_exercise_by_id(session, exercise_id)
+    exercise = get_exercise_by_id(session, exercise_id)
+    assert_exercise_in_team_league(session, exercise, team_id)
     return get_latest_exercise_submission(session, team_id, exercise_id)
 
 
@@ -311,7 +343,8 @@ async def get_exercise_submissions_endpoint(
 ):
     """Full submission history by the current team for one exercise."""
     team_id = _require_team_id(current_user)
-    get_exercise_by_id(session, exercise_id)
+    exercise = get_exercise_by_id(session, exercise_id)
+    assert_exercise_in_team_league(session, exercise, team_id)
     return {
         "submissions": get_exercise_submission_history(
             session, team_id, exercise_id

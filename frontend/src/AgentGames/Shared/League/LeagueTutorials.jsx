@@ -1,0 +1,80 @@
+import React, { useEffect, useState } from "react";
+import LeagueTutorialSelector from "./LeagueTutorialSelector";
+import useLeagueAPI from "../hooks/useLeagueAPI";
+
+/**
+ * "Tutorials" section for an existing league: shows which tutorials are
+ * attached (i.e. visible to the league's teams) and lets admins/institutions
+ * change the set. Saving replaces the league's whole attachment list.
+ */
+function LeagueTutorials({ leagueId, userRole }) {
+  const { getLeagueTutorials, updateLeagueTutorials } = useLeagueAPI(userRole);
+
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [savedIds, setSavedIds] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoadError("");
+      const result = await getLeagueTutorials(leagueId);
+      if (cancelled) return;
+      if (result.success) {
+        setSelectedIds(result.tutorialIds);
+        setSavedIds(result.tutorialIds);
+      } else {
+        setLoadError(result.error || "Failed to load league tutorials");
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId]);
+
+  const hasChanges =
+    [...selectedIds].sort().join(",") !== [...savedIds].sort().join(",");
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const result = await updateLeagueTutorials(leagueId, selectedIds);
+    if (result.success) {
+      setSavedIds(result.tutorialIds);
+      setSelectedIds(result.tutorialIds);
+    }
+    setIsSaving(false);
+  };
+
+  return (
+    <div className="mb-6">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-lg font-medium text-ui-dark">Tutorials</h3>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!hasChanges || isSaving}
+          className="px-3 py-1 text-sm bg-primary hover:bg-primary-hover text-white rounded disabled:bg-ui-light disabled:cursor-not-allowed"
+        >
+          {isSaving ? "Saving..." : "Save Tutorials"}
+        </button>
+      </div>
+      <p className="text-sm text-ui mb-2">
+        Teams in this league only see the tutorials selected here.
+      </p>
+      {loadError ? (
+        <p className="text-sm text-danger">{loadError}</p>
+      ) : (
+        <LeagueTutorialSelector
+          selectedIds={selectedIds}
+          onChange={setSelectedIds}
+          disabled={isSaving}
+        />
+      )}
+    </div>
+  );
+}
+
+export default LeagueTutorials;

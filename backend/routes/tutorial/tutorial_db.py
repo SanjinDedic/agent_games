@@ -8,6 +8,8 @@ from backend.database.db_models import (
     Exercise,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
+    LeagueTutorial,
+    Team,
     Tutorial,
 )
 # Reused so the existing 429 handler in api.py covers exercise rate limiting.
@@ -70,9 +72,59 @@ def get_exercise_by_id(session: Session, exercise_id: int) -> Exercise:
     return exercise
 
 
-def get_tutorials(session: Session) -> dict:
-    """List all tutorials with their exercise counts."""
-    tutorials = session.exec(select(Tutorial).order_by(Tutorial.id)).all()
+def get_team_league_id(session: Session, team_id: int) -> Optional[int]:
+    """The league a team currently belongs to, resolved from the DB (not the
+    token) so a mid-session league move takes effect immediately."""
+    team = session.get(Team, team_id)
+    return team.league_id if team else None
+
+
+def is_tutorial_in_league(
+    session: Session, tutorial_id: int, league_id: Optional[int]
+) -> bool:
+    if league_id is None:
+        return False
+    return (
+        session.exec(
+            select(LeagueTutorial)
+            .where(LeagueTutorial.tutorial_id == tutorial_id)
+            .where(LeagueTutorial.league_id == league_id)
+        ).first()
+        is not None
+    )
+
+
+def assert_tutorial_in_team_league(
+    session: Session, tutorial_id: int, team_id: int
+) -> None:
+    """404 when the tutorial isn't attached to the team's league — the same
+    response as a nonexistent id, so students can't probe other leagues'
+    content."""
+    league_id = get_team_league_id(session, team_id)
+    if not is_tutorial_in_league(session, tutorial_id, league_id):
+        raise TutorialNotFoundError(f"Tutorial with ID {tutorial_id} not found")
+
+
+def assert_exercise_in_team_league(
+    session: Session, exercise: Exercise, team_id: int
+) -> None:
+    """Exercise-flavoured twin of assert_tutorial_in_team_league."""
+    league_id = get_team_league_id(session, team_id)
+    if not is_tutorial_in_league(session, exercise.tutorial_id, league_id):
+        raise ExerciseNotFoundError(f"Exercise with ID {exercise.id} not found")
+
+
+def get_tutorials(session: Session, league_id: Optional[int] = None) -> dict:
+    """List tutorials with their exercise counts.
+
+    With a league_id, only tutorials attached to that league (the team view);
+    without one, the full library (admin/institution view)."""
+    query = select(Tutorial).order_by(Tutorial.id)
+    if league_id is not None:
+        query = query.join(
+            LeagueTutorial, LeagueTutorial.tutorial_id == Tutorial.id
+        ).where(LeagueTutorial.league_id == league_id)
+    tutorials = session.exec(query).all()
     counts = dict(
         session.exec(
             select(Exercise.tutorial_id, func.count(Exercise.id)).group_by(
@@ -353,14 +405,75 @@ def update_tutorial(
 
 
 def delete_tutorial(session: Session, tutorial_id: int) -> None:
-    """Delete a tutorial, its exercises, and all their submission history."""
+    """Delete a tutorial, its exercises, all their submission history, and
+    its league attachments."""
     tutorial = _get_tutorial_or_raise(session, tutorial_id)
     _delete_submission_history(
         session, [exercise.id for exercise in tutorial.exercises]
     )
+    for link in session.exec(
+        select(LeagueTutorial).where(LeagueTutorial.tutorial_id == tutorial_id)
+    ).all():
+        session.delete(link)
     # The exercises relationship cascades with delete-orphan.
     session.delete(tutorial)
     session.commit()
+
+
+def get_league_tutorial_ids(session: Session, league_id: int) -> list:
+    """Ids of the tutorials attached to a league, in tutorial-id order."""
+    return list(
+        session.exec(
+            select(LeagueTutorial.tutorial_id)
+            .where(LeagueTutorial.league_id == league_id)
+            .order_by(LeagueTutorial.tutorial_id)
+        ).all()
+    )
+
+
+def validate_tutorial_ids(session: Session, tutorial_ids: list) -> None:
+    """Raise TutorialNotFoundError (404) unless every id exists."""
+    wanted = set(tutorial_ids)
+    if not wanted:
+        return
+    found = set(
+        session.exec(select(Tutorial.id).where(Tutorial.id.in_(wanted))).all()
+    )
+    missing = wanted - found
+    if missing:
+        raise TutorialNotFoundError(
+            f"Tutorial with ID {sorted(missing)[0]} not found"
+        )
+
+
+def set_league_tutorials(
+    session: Session, league_id: int, tutorial_ids: list, commit: bool = True
+) -> list:
+    """Replace a league's attached tutorials with exactly `tutorial_ids`.
+
+    Replace-all semantics (like reorder_exercises) so the caller never has to
+    reason about attach/detach deltas. Unknown tutorial ids 404 before
+    anything is changed. Returns the new id list.
+    """
+    validate_tutorial_ids(session, tutorial_ids)
+    wanted = set(tutorial_ids)
+
+    existing = {
+        link.tutorial_id: link
+        for link in session.exec(
+            select(LeagueTutorial).where(LeagueTutorial.league_id == league_id)
+        ).all()
+    }
+    for tutorial_id, link in existing.items():
+        if tutorial_id not in wanted:
+            session.delete(link)
+    for tutorial_id in wanted - set(existing):
+        session.add(
+            LeagueTutorial(league_id=league_id, tutorial_id=tutorial_id)
+        )
+    if commit:
+        session.commit()
+    return sorted(wanted)
 
 
 def create_exercise(

@@ -31,6 +31,8 @@ sys.path.append(
 from backend.database.db_models import (
     Exercise,
     ExerciseSubmissionMetadata,
+    League,
+    LeagueTutorial,
     Tutorial,
 )
 from backend.database.db_session import get_db_engine
@@ -909,6 +911,12 @@ def seed_tutorial() -> bool:
             logger.info(f"Deleting extra tutorial '{extra.title}'")
             for exercise in list(extra.exercises):
                 _delete_exercise(session, exercise)
+            for link in session.exec(
+                select(LeagueTutorial).where(
+                    LeagueTutorial.tutorial_id == extra.id
+                )
+            ).all():
+                session.delete(link)
             session.delete(extra)
 
         if tutorial:
@@ -953,6 +961,22 @@ def seed_tutorial() -> bool:
         for leftover in existing[len(EXERCISES):]:
             logger.info(f"Deleting leftover exercise '{leftover.title}'")
             _delete_exercise(session, leftover)
+
+        # Attach the tutorial to every league that doesn't already have it,
+        # so a seeded dev/demo environment shows the tutorial everywhere.
+        # (Teams only see tutorials attached to their league.)
+        linked_league_ids = set(
+            session.exec(
+                select(LeagueTutorial.league_id).where(
+                    LeagueTutorial.tutorial_id == tutorial.id
+                )
+            ).all()
+        )
+        for league_id in session.exec(select(League.id)).all():
+            if league_id not in linked_league_ids:
+                session.add(
+                    LeagueTutorial(league_id=league_id, tutorial_id=tutorial.id)
+                )
 
         session.commit()
         logger.info(

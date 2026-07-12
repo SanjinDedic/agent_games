@@ -16,6 +16,7 @@ import { authFetch } from '../../../utils/authFetch';
 // Import shared components
 import LeagueTeams from './LeagueTeams';
 import LeagueCreation from './LeagueCreation';
+import LeagueTutorials from './LeagueTutorials';
 import LeagueCardList from "./LeagueCardList";
 import PureMarkdown from '../Utilities/PureMarkdown';
 import useLeagueAPI from '../hooks/useLeagueAPI';
@@ -405,6 +406,12 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                     )}
                   </div>
                 </div>
+
+                {/* League Tutorials */}
+                <LeagueTutorials
+                  leagueId={currentLeague.id}
+                  userRole={userRole}
+                />
 
                 {/* Teams Grid */}
                 <LeagueTeams

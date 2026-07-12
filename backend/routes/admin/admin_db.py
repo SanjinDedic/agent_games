@@ -14,6 +14,7 @@ from backend.database.db_models import (
     InstitutionSubscription,
     League,
     LeagueType,
+    LeagueTutorial,
     SimulationResult,
     SimulationResultItem,
     Submission,
@@ -254,6 +255,11 @@ def _purge_institution_data(
 
     leagues_to_delete = [lid for lid in league_ids if lid not in leagues_to_keep]
     if leagues_to_delete:
+        session.exec(
+            delete(LeagueTutorial).where(
+                LeagueTutorial.league_id.in_(leagues_to_delete)
+            )
+        )
         session.exec(delete(League).where(League.id.in_(leagues_to_delete)))
 
     return {

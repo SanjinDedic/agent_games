@@ -16,6 +16,12 @@ class LeagueSignUp(BaseModel):
     school_league: bool = False
     schools: List[str] = []
     sheet_url: Optional[str] = None
+    # Tutorials to attach at creation; empty means the league has none.
+    tutorial_ids: List[int] = []
+
+    @field_validator("tutorial_ids")
+    def dedupe_tutorial_ids(cls, v):
+        return list(dict.fromkeys(v))
 
     @field_validator("name")
     def validate_name(cls, v):
@@ -166,3 +172,14 @@ class LeagueInfoUpdate(BaseModel):
 
     league_id: int
     info_markdown: str = ""
+
+
+class LeagueTutorialsUpdate(BaseModel):
+    """Model for replacing the set of tutorials attached to a league."""
+
+    league_id: int
+    tutorial_ids: List[int] = []
+
+    @field_validator("tutorial_ids")
+    def dedupe_tutorial_ids(cls, v):
+        return list(dict.fromkeys(v))

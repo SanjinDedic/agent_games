@@ -8,13 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select
 
 from backend.database.db_models import (Institution, League, LeagueType,
-                                        SimulationResult, SimulationResultItem,
-                                        Team, TeamType)
+                                        LeagueTutorial, SimulationResult,
+                                        SimulationResultItem, Team, TeamType)
 from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.games.game_factory import GameFactory
 from backend.routes.institution.institution_models import LeagueSignUp
 from backend.schools.config import (GoogleSheetsSchoolsConfig,
                                     StaticSchoolsConfig)
+from backend.routes.tutorial.tutorial_db import (set_league_tutorials,
+                                                 validate_tutorial_ids)
 from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
 from backend.utils import process_simulation_results
@@ -113,6 +115,9 @@ def create_league(
     # Validate game name
     GameFactory.get_game_class(league_data.game)
 
+    # Validate tutorial ids up front (404) so nothing is created on failure.
+    validate_tutorial_ids(session, league_data.tutorial_ids)
+
     schools_config_model = _build_schools_config(league_data)
     schools_config = (
         schools_config_model.model_dump() if schools_config_model else None
@@ -138,12 +143,18 @@ def create_league(
 
     session.add(league)
     session.flush()
+    # Attach the selected tutorials in the same transaction: an unknown
+    # tutorial id raises (404) and rolls the league creation back with it.
+    set_league_tutorials(
+        session, league.id, league_data.tutorial_ids, commit=False
+    )
     session.commit()
     return {
         "league_id": league.id,
         "name": league.name,
         "signup_token": signup_token,
         "school_league": league_data.school_league,
+        "tutorial_ids": league_data.tutorial_ids,
     }
 
 
@@ -551,7 +562,10 @@ def delete_league(session: Session, league_id: int, institution_id: int, is_admi
         session.add(team)
 
     session.commit()
-    # Delete the league
+    # Delete the league (tutorial attachments first — they FK the league)
+    session.exec(
+        delete(LeagueTutorial).where(LeagueTutorial.league_id == league.id)
+    )
     session.delete(league)
     session.commit()
 
