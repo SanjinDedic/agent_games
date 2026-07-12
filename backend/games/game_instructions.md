@@ -64,9 +64,9 @@ import string
 from backend.games.base_game import BaseGame
 
 class AlphaGuessGame(BaseGame):
-    # Simulation passes per submission validation. Benchmark the full
-    # validation load (feedback game + simulations) in the worker image and
-    # pick a value that keeps it under one second.
+    # Simulation passes per submission validation. Run
+    # backend/bench_validation.py (see its docstring) and copy the
+    # recommended value that keeps the whole validation load under one second.
     validation_simulations = 20
 
     game_instructions = """

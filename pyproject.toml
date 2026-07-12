@@ -47,6 +47,7 @@ addopts = "-v"
 omit = [
     "backend/scripts/*",
     "backend/rank_sim_tmp.py",
+    "backend/bench_validation.py",
     "backend/games/greedy_pig/test_threshold_calibration.py",
 ]
 

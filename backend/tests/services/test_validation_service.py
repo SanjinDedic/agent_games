@@ -118,7 +118,6 @@ class CustomPlayer(Player):
         code=error_code,
         game_name="prisoners_dilemma",
         team_name="test_team",
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "error"
     assert result["message"].startswith("Error during simulation:")
@@ -140,7 +139,6 @@ class CustomPlayer(Player):
         code=feedback_code,
         game_name="prisoners_dilemma",
         team_name="test_team",
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "success"
     assert "feedback" in result

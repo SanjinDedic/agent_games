@@ -12,7 +12,7 @@ class GreedyPigGame(BaseGame):
     FAILSAFE_BANK_AT = 150
 
     # Benchmarked: ~0.8ms per simulation keeps validation <1s.
-    validation_simulations = 900
+    validation_simulations = 300
 
     starter_code = """
 from games.greedy_pig.player import Player
