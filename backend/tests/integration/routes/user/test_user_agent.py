@@ -109,6 +109,10 @@ class CustomPlayer(Player):
     ).first()
     assert latest_submission is not None
     assert latest_submission.code == valid_code
+    # Rank vs the validation bots, computed from the validation run's
+    # total_points; exact value is stochastic but always a valid rank.
+    assert latest_submission.ranking is not None
+    assert latest_submission.ranking >= 1
 
     # Test case 2: Submission with complex strategy
     complex_code = """

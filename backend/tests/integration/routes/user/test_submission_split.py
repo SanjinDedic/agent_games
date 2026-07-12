@@ -67,12 +67,18 @@ def team(db_session: Session) -> Team:
 
 def test_save_submission_creates_linked_pair(db_session: Session, team: Team):
     submission_id = save_submission(
-        db_session, "# code", team.id, league_id=team.league_id, duration_ms=12.5
+        db_session,
+        "# code",
+        team.id,
+        league_id=team.league_id,
+        duration_ms=12.5,
+        ranking=2,
     )
 
     sub = db_session.get(Submission, submission_id)
     assert sub is not None
     assert sub.code == "# code"
+    assert sub.ranking == 2
 
     meta = db_session.get(SubmissionMetadata, sub.metadata_id)
     assert meta is not None

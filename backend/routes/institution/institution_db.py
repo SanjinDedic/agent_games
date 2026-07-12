@@ -301,6 +301,25 @@ def get_teams_progress(session: Session, institution_id: int) -> list:
             ).all()
         )
 
+    # One newest-first scan of ranked submissions gives both the last-3
+    # placements and the ever-hit-first flag (which must see full history,
+    # not just the window). Pre-ranking submissions have NULL and are skipped.
+    recent_rankings: dict = {}
+    achieved_first: set = set()
+    if team_ids:
+        ranked_rows = session.exec(
+            select(SubmissionMetadata.team_id, Submission.ranking)
+            .join(Submission, Submission.metadata_id == SubmissionMetadata.id)
+            .where(SubmissionMetadata.team_id.in_(team_ids))
+            .where(Submission.ranking.is_not(None))
+            .order_by(Submission.timestamp.desc(), Submission.id.desc())
+        ).all()
+        for team_id, ranking in ranked_rows:
+            if len(recent_rankings.setdefault(team_id, [])) < 3:
+                recent_rankings[team_id].append(ranking)
+            if ranking == 1:
+                achieved_first.add(team_id)
+
     progress = []
     for team in teams:
         attempts, hints, latest = attempt_stats.get(team.id, (0, 0, None))
@@ -314,6 +333,9 @@ def get_teams_progress(session: Session, institution_id: int) -> list:
                 "validated_submissions": validated_counts.get(team.id, 0),
                 "hints_used": hints,
                 "latest_submission": latest.isoformat() if latest else None,
+                # oldest -> newest so the row reads as a trend
+                "recent_rankings": list(reversed(recent_rankings.get(team.id, []))),
+                "achieved_first": team.id in achieved_first,
             }
         )
     return progress
