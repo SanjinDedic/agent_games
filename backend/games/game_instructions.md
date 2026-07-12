@@ -64,6 +64,11 @@ import string
 from backend.games.base_game import BaseGame
 
 class AlphaGuessGame(BaseGame):
+    # Simulation passes per submission validation. Benchmark the full
+    # validation load (feedback game + simulations) in the worker image and
+    # pick a value that keeps it under one second.
+    validation_simulations = 20
+
     game_instructions = """
     <h1>Alpha Guess Game Instructions</h1>
     <p>Try to guess the randomly chosen letter! Each correct guess scores a point.</p>

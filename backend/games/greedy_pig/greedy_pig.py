@@ -11,6 +11,9 @@ class GreedyPigGame(BaseGame):
     # Safety net: a player holding this much unbanked money is forced to bank.
     FAILSAFE_BANK_AT = 150
 
+    # Benchmarked: ~0.8ms per simulation keeps validation <1s.
+    validation_simulations = 900
+
     starter_code = """
 from games.greedy_pig.player import Player
 import random

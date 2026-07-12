@@ -37,6 +37,9 @@ class BattleResult:
 
 
 class ArenaChampionsGame(BaseGame):
+    # Benchmarked: ~3.6ms per simulation + feedback game keeps validation <1s.
+    validation_simulations = 200
+
     starter_code = """
 from games.arena_champions.player import Player
 import random

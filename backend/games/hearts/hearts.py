@@ -117,6 +117,10 @@ class HeartsGame(BaseGame):
     SCHEDULER_ROUNDS_PER_CALL = 5
     MAX_TOTAL_GAMES = 6000
 
+    # Benchmarked: one pass plays every table of 4 exhaustively (~374ms with
+    # the 8 validation bots + submission), so 2 passes keep validation <1s.
+    validation_simulations = 2
+
     starter_code = """
 from games.hearts.player import Player
 import random

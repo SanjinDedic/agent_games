@@ -21,7 +21,6 @@ from typing import Any, Dict, Optional
 from billiard.exceptions import WorkerLostError
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
-from backend.config import VALIDATION_SIMULATIONS
 from backend.database.db_models import League
 from backend.games.base_game import PlayerConstructionError
 from backend.games.game_factory import GameFactory
@@ -98,7 +97,6 @@ def enqueue_validation(
     code: str,
     game_name: str,
     team_name: str,
-    num_simulations: int = 20,
     custom_rewards: Optional[list] = None,
 ):
     """Enqueue a validation task that self-drops if it waits out its usefulness.
@@ -112,7 +110,6 @@ def enqueue_validation(
             "code": code,
             "game_name": game_name,
             "team_name": team_name,
-            "num_simulations": num_simulations,
             "custom_rewards": custom_rewards,
         },
         expires=VALIDATION_TASK_EXPIRES,
@@ -149,7 +146,6 @@ def run_validation(
     code: str,
     game_name: str,
     team_name: str,
-    num_simulations: int = 100,
     custom_rewards: Optional[list] = None,
 ) -> Dict[str, Any]:
     """Run the full validation load and return the ValidationResponse dict."""
@@ -171,11 +167,10 @@ def run_validation(
                 custom_rewards
             )
             game_instance.reset()
-            # Per-game override: games that fan out into many sub-games per
-            # simulation (e.g. Hearts) validate in far fewer passes.
-            sim_count = VALIDATION_SIMULATIONS.get(game_name, num_simulations)
+            # Each game declares its own validation pass count, benchmarked
+            # so the whole load stays under one second.
             simulation_results = game_instance.run_simulations(
-                sim_count, test_league, custom_rewards
+                game_class.validation_simulations, test_league, custom_rewards
             )
             simulation_results["strategies"] = (
                 game_instance.get_player_strategies()

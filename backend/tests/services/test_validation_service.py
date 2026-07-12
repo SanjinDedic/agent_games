@@ -22,7 +22,6 @@ def test_validation_task_custom_rewards(celery_workers):
         code=VALID_CODE,
         game_name="prisoners_dilemma",
         team_name="test_team",
-        num_simulations=20,
         custom_rewards=[4, 0, 6, 2],
     ).get(timeout=20)
     assert result["status"] == "success"
@@ -41,7 +40,6 @@ def test_validation_task_invalid_game(celery_workers):
         code=VALID_CODE,
         game_name="invalid_game",
         team_name="test_team",
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "error"
     assert "Unknown game" in result["message"]

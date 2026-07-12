@@ -52,9 +52,7 @@ class CustomPlayer(Player):
 
 
 def _validate(code: str, game: str) -> dict:
-    return run_validation(
-        code=code, game_name=game, team_name="CrashTeam", num_simulations=2
-    )
+    return run_validation(code=code, game_name=game, team_name="CrashTeam")
 
 
 # --- Crashing agents abort every game: chained traceback at the task boundary

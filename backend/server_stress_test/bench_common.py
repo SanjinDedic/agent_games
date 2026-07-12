@@ -11,9 +11,6 @@ import random
 
 BENCHMARK_TOKEN = os.environ.get("BENCHMARK_TOKEN", "")
 
-# Simulations per submission. 20 matches what /user/submit-agent sends in prod.
-NUM_SIMULATIONS = int(os.environ.get("NUM_SIMULATIONS", "20"))
-
 
 # --- Agent code generators --------------------------------------------------
 # Each returns a distinct payload per call (random tweak) so no layer can cache
@@ -155,7 +152,6 @@ def submit(user, code: str, name: str, expect_success: bool):
     payload = {
         "code": code,
         "game_name": "greedy_pig",
-        "num_simulations": NUM_SIMULATIONS,
     }
     with user.client.post(
         "/diagnostics/benchmark-submit",

@@ -6,6 +6,10 @@ from backend.games.base_game import BaseGame
 
 
 class Lineup4Game(BaseGame):
+    # Benchmarked: ~11ms per simulation (a full round-robin of boards) keeps
+    # validation <1s; 30 also stays below run_simulations' 1000-match cap.
+    validation_simulations = 30
+
     starter_code = """
 from games.lineup4.player import Player
 import random
