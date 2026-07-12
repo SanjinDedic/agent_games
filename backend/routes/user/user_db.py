@@ -120,6 +120,7 @@ def save_submission(
     league_id: Optional[int] = None,
     duration_ms: Optional[float] = None,
     hint_included: bool = False,
+    ranking: Optional[int] = None,
 ) -> int:
     """Record a validated attempt: metadata row plus linked code row."""
     now = utc_now()
@@ -132,7 +133,9 @@ def save_submission(
     )
     session.add(meta)
     session.flush()
-    db_submission = Submission(code=code, timestamp=now, metadata_id=meta.id)
+    db_submission = Submission(
+        code=code, timestamp=now, ranking=ranking, metadata_id=meta.id
+    )
     session.add(db_submission)
     session.commit()
     return db_submission.id

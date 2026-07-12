@@ -87,6 +87,18 @@ def _require_team_id(current_user: dict) -> int:
     return team_id
 
 
+def _validation_ranking(validation_result: dict, team_name: str) -> int | None:
+    """The team's competition rank (1 = best, ties share a rank) against the
+    validation bots, from the validation run's total_points."""
+    total_points = (validation_result.get("simulation_results") or {}).get(
+        "total_points"
+    )
+    if not total_points or team_name not in total_points:
+        return None
+    team_points = total_points[team_name]
+    return 1 + sum(1 for points in total_points.values() if points > team_points)
+
+
 @user_router.post("/submit-agent")
 @verify_ai_agent_service_or_student
 async def submit_agent(
@@ -212,6 +224,7 @@ async def submit_agent(
         league_id=team.league_id,
         duration_ms=duration_ms,
         hint_included=False,
+        ranking=_validation_ranking(validation_result, team_name),
     )
     return {
         "submission_id": submission_id,

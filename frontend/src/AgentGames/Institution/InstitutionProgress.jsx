@@ -15,6 +15,23 @@ const formatTimestamp = (ts) => {
   });
 };
 
+/** Placement chip: gold / silver / bronze for validation ranks 1-3. */
+const RANK_STYLES = {
+  1: 'bg-amber-400 text-amber-950',
+  2: 'bg-gray-300 text-gray-700',
+  3: 'bg-amber-700 text-amber-50',
+};
+
+const PlacementBadge = ({ ranking }) => (
+  <span
+    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
+      RANK_STYLES[ranking] || 'bg-ui-lighter text-ui border border-ui-light'
+    }`}
+  >
+    {ranking}
+  </span>
+);
+
 /** Completion bar: passed / total teams, colored by rate. */
 const CompletionBar = ({ passed, total }) => {
   const pct = total > 0 ? Math.round((passed / total) * 100) : 0;
@@ -99,6 +116,8 @@ function InstitutionProgress() {
                         <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Attempts</th>
                         <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Validated</th>
                         <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Hints Used</th>
+                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">Recent Placements</th>
+                        <th className="px-4 py-3 text-center text-base font-semibold text-ui-dark">1st Place</th>
                         <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">Last Submission</th>
                       </tr>
                     </thead>
@@ -111,6 +130,30 @@ function InstitutionProgress() {
                           <td className="px-4 py-3 text-base text-right font-mono text-ui-dark">{team.total_attempts}</td>
                           <td className="px-4 py-3 text-base text-right font-mono text-ui-dark">{team.validated_submissions}</td>
                           <td className="px-4 py-3 text-base text-right font-mono text-ui-dark">{team.hints_used}</td>
+                          <td className="px-4 py-3">
+                            {(team.recent_rankings || []).length === 0 ? (
+                              <span className="text-base text-ui">—</span>
+                            ) : (
+                              <div
+                                className="flex items-center gap-1.5"
+                                title="Placements of the last 3 validated submissions, oldest to newest"
+                              >
+                                {team.recent_rankings.map((ranking, i) => (
+                                  <PlacementBadge key={i} ranking={ranking} />
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {team.achieved_first && (
+                              <span
+                                className="text-success text-xl font-bold"
+                                title="This team has reached 1st place"
+                              >
+                                ✓
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-base text-ui">{formatTimestamp(team.latest_submission)}</td>
                         </tr>
                       ))}

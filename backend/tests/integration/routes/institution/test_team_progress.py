@@ -151,6 +151,30 @@ def progress_setup(db_session: Session) -> SimpleNamespace:
         league_id=league_a.id,
     )
 
+    # Ranked submissions for alpha. The rank-1 run is alpha's oldest ranked
+    # submission, so it falls outside the last-3 window but must still set
+    # achieved_first; the unranked v1/v2 above (pre-ranking rows) are newer
+    # than some of these yet never appear in recent_rankings.
+    for minutes_ago, ranking in ((4, 1), (3, 4), (1.5, 3), (0.5, 2)):
+        add_submission(
+            db_session,
+            code=f"ranked agent ({ranking})",
+            timestamp=now - timedelta(minutes=minutes_ago),
+            team_id=alpha.id,
+            league_id=league_a.id,
+            ranking=ranking,
+        )
+
+    # Beta: a single ranked submission, never first
+    add_submission(
+        db_session,
+        code="beta agent",
+        timestamp=now - timedelta(minutes=1),
+        team_id=beta.id,
+        league_id=league_a.id,
+        ranking=2,
+    )
+
     # Exercise one: alpha fails then passes; beta's attempt never ran; gamma
     # passes but is in a league without the tutorial, so it must not count.
     add_exercise_attempt(db_session, alpha.id, exercise_one.id, passed=False)
@@ -190,16 +214,28 @@ def test_team_progress_success(client, progress_setup):
     alpha = teams["progress_alpha"]
     assert alpha["league"] == "progress_league_a"
     assert alpha["school"] == "School A"
-    assert alpha["total_attempts"] == 3
-    assert alpha["validated_submissions"] == 2
+    assert alpha["total_attempts"] == 7
+    assert alpha["validated_submissions"] == 6
     assert alpha["hints_used"] == 1
     assert alpha["latest_submission"] is not None
+    # Last 3 ranked submissions oldest -> newest; unranked rows are skipped
+    # and the older rank-1 run is outside the window but still sets the flag.
+    assert alpha["recent_rankings"] == [4, 3, 2]
+    assert alpha["achieved_first"] is True
 
-    for name in ("progress_beta", "progress_gamma"):
-        assert teams[name]["total_attempts"] == 0
-        assert teams[name]["validated_submissions"] == 0
-        assert teams[name]["hints_used"] == 0
-        assert teams[name]["latest_submission"] is None
+    beta = teams["progress_beta"]
+    assert beta["total_attempts"] == 1
+    assert beta["validated_submissions"] == 1
+    assert beta["recent_rankings"] == [2]
+    assert beta["achieved_first"] is False
+
+    gamma = teams["progress_gamma"]
+    assert gamma["total_attempts"] == 0
+    assert gamma["validated_submissions"] == 0
+    assert gamma["hints_used"] == 0
+    assert gamma["latest_submission"] is None
+    assert gamma["recent_rankings"] == []
+    assert gamma["achieved_first"] is False
 
     # One tutorial, scoped to league_a's two teams
     assert len(data["tutorials"]) == 1

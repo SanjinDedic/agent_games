@@ -388,6 +388,7 @@ def add_submission(
     league_id: int = None,
     duration_ms: float = None,
     hint_included: bool = False,
+    ranking: int = None,
 ) -> Submission:
     """Create the metadata + code-row pair for a VALIDATED submission.
 
@@ -400,7 +401,7 @@ def add_submission(
         duration_ms=duration_ms,
         hint_included=hint_included,
     )
-    sub = Submission(code=code, timestamp=timestamp, meta=meta)
+    sub = Submission(code=code, timestamp=timestamp, ranking=ranking, meta=meta)
     session.add(sub)
     return sub
 

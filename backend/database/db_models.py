@@ -217,6 +217,9 @@ class Submission(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(sa_column=Column(Text()))  # Use Text for potentially long code
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    # Rank against the game's validation bots (1 = best, competition ranking),
+    # from the validation run's total_points. Not a league standing.
+    ranking: Optional[int] = Field(default=None)
     metadata_id: int = Field(foreign_key="submissionmetadata.id", unique=True, index=True)
     # `metadata` is reserved on SQLAlchemy declarative classes
     meta: SubmissionMetadata = Relationship(back_populates="submission")
