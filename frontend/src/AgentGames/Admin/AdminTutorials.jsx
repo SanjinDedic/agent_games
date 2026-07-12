@@ -115,131 +115,159 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
   };
 
   return (
-    <div className="border-2 border-blue-300 rounded-lg p-5 bg-blue-50/50 space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800">
-        {isNew ? 'New Exercise' : `Edit Exercise: ${initialForm.title}`}
-      </h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title
-          </label>
-          <input
-            type="text"
-            value={form.title}
-            onChange={(e) => setField('title', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Entry function (the function name the tests call)
-          </label>
-          <input
-            type="text"
-            value={form.entry_function}
-            onChange={(e) => setField('entry_function', e.target.value)}
-            placeholder="e.g. get_banked"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Problem (Markdown shown to the student)
-        </label>
-        <textarea
-          value={form.problem_markdown}
-          onChange={(e) => setField('problem_markdown', e.target.value)}
-          rows={10}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Starter code
-        </label>
-        <div className="h-56 border border-gray-300 rounded-md overflow-hidden">
-          <CodeEditor
-            code={form.starter_code}
-            onCodeChange={(value) => setField('starter_code', value ?? '')}
-          />
-        </div>
-      </div>
-
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Test cases — args is a JSON list of arguments, expected is the
-            JSON return value
-          </label>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-[90vw] h-[98vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800">
+            {isNew ? 'New Exercise' : `Edit Exercise: ${initialForm.title}`}
+          </h3>
           <button
-            onClick={addTestCase}
-            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200"
+            type="button"
+            onClick={onCancel}
+            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            aria-label="Close"
           >
-            + Add test case
+            ×
           </button>
         </div>
-        <div className="space-y-2">
-          {form.testCases.map((testCase, index) => (
-            <div
-              key={index}
-              className="flex flex-col md:flex-row gap-2 items-stretch md:items-center bg-white border border-gray-200 rounded-md p-2"
-            >
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title
+              </label>
               <input
                 type="text"
-                value={testCase.name}
-                onChange={(e) => setTestCaseField(index, 'name', e.target.value)}
-                placeholder="Test name"
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={form.title}
+                onChange={(e) => setField('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Entry function (the function name the tests call)
+              </label>
               <input
                 type="text"
-                value={testCase.argsText}
-                onChange={(e) => setTestCaseField(index, 'argsText', e.target.value)}
-                placeholder='args, e.g. [{"Alice": 30}, "Alice"]'
-                className="flex-1 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={form.entry_function}
+                onChange={(e) => setField('entry_function', e.target.value)}
+                placeholder="e.g. get_banked"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <input
-                type="text"
-                value={testCase.expectedText}
-                onChange={(e) =>
-                  setTestCaseField(index, 'expectedText', e.target.value)
-                }
-                placeholder="expected, e.g. 30"
-                className="flex-1 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Problem (Markdown shown to the student)
+            </label>
+            <textarea
+              value={form.problem_markdown}
+              onChange={(e) => setField('problem_markdown', e.target.value)}
+              rows={10}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Starter code
+            </label>
+            <div className="h-56 border border-gray-300 rounded-md overflow-hidden">
+              <CodeEditor
+                code={form.starter_code}
+                onCodeChange={(value) => setField('starter_code', value ?? '')}
               />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Test cases — params is a JSON list of arguments, return is the
+                expected JSON return value
+              </label>
               <button
-                onClick={() => removeTestCase(index)}
-                className="px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
-                title="Remove test case"
+                onClick={addTestCase}
+                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200"
               >
-                Remove
+                + Add test case
               </button>
             </div>
-          ))}
+            <div className="hidden md:flex gap-2 mb-1 text-xs font-medium text-gray-500">
+              <span className="flex-[3]">Exercise name</span>
+              <span className="flex-[5]">Function params</span>
+              <span className="flex-[2]">Function return</span>
+              <span className="w-20 flex-shrink-0" />
+            </div>
+            <div className="space-y-2">
+              {form.testCases.map((testCase, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col md:flex-row gap-2 items-stretch md:items-center"
+                >
+                  <input
+                    type="text"
+                    value={testCase.name}
+                    onChange={(e) => setTestCaseField(index, 'name', e.target.value)}
+                    placeholder="Test name"
+                    className="flex-[3] min-w-0 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input
+                    type="text"
+                    value={testCase.argsText}
+                    onChange={(e) => setTestCaseField(index, 'argsText', e.target.value)}
+                    placeholder='e.g. [{"Alice": 30}, "Alice"]'
+                    className="flex-[5] min-w-0 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input
+                    type="text"
+                    value={testCase.expectedText}
+                    onChange={(e) =>
+                      setTestCaseField(index, 'expectedText', e.target.value)
+                    }
+                    placeholder="e.g. 30"
+                    className="flex-[2] min-w-0 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => removeTestCase(index)}
+                    className="w-20 flex-shrink-0 px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+                    title="Remove test case"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 ${
-            saving ? 'opacity-70 cursor-not-allowed' : ''
-          }`}
-        >
-          {saving ? 'Saving...' : isNew ? 'Create Exercise' : 'Save Exercise'}
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors duration-200"
-        >
-          Cancel
-        </button>
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 ${
+              saving ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {saving ? 'Saving...' : isNew ? 'Create Exercise' : 'Save Exercise'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors duration-200"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

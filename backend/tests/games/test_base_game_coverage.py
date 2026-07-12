@@ -22,6 +22,13 @@ def game():
     return BaseGame(MockLeague())
 
 
+def test_base_game_initialization(game):
+    assert game.verbose is False
+    assert isinstance(game.league, MockLeague)
+    assert isinstance(game.players, list)
+    assert isinstance(game.scores, dict)
+
+
 def test_add_feedback_list(game):
     game.verbose = True
     game.game_feedback = []

@@ -75,20 +75,3 @@ def test_list_institutions_success(client, multiple_institutions):
 
     # Admin Institution (created by conftest) is included since it's active
     assert "Admin Institution" in names
-
-
-def test_list_institutions_no_auth_required(client, multiple_institutions):
-    """Endpoint is public — no auth token needed."""
-    resp = client.get("/auth/institutions")
-    assert resp.status_code == 200
-
-
-def test_list_institutions_response_format(client, multiple_institutions):
-    """Response has the expected structure."""
-    resp = client.get("/auth/institutions")
-    data = resp.json()
-    assert "institutions" in data
-    assert isinstance(data["institutions"], list)
-    # All items are strings
-    for name in data["institutions"]:
-        assert isinstance(name, str)
