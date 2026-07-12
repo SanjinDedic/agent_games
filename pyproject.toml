@@ -42,5 +42,13 @@ pythonpath = ["."]
 testpaths = ["backend/tests"]
 addopts = "-v"
 
+[tool.coverage.run]
+# One-off/operational scripts that never run under the app or the test suite.
+omit = [
+    "backend/scripts/*",
+    "backend/rank_sim_tmp.py",
+    "backend/games/greedy_pig/test_threshold_calibration.py",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["backend"]
