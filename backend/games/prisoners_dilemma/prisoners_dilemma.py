@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class PrisonersDilemmaGame(BaseGame):
+    # Benchmarked: ~2ms per simulation keeps validation <1s.
+    validation_simulations = 300
+
     starter_code = """
 from games.prisoners_dilemma.player import Player
 import random

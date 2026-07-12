@@ -178,6 +178,10 @@ class ThirteenGame(BaseGame):
     SCHEDULER_ROUNDS_PER_CALL = 5
     MAX_TOTAL_GAMES = 6000
 
+    # Benchmarked: ~31ms per pass (each pass fans out into many sub-games)
+    # keeps validation <1s.
+    validation_simulations = 25
+
     starter_code = """
 from games.thirteen.player import Player
 import random

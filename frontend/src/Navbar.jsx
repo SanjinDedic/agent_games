@@ -21,6 +21,7 @@ const NAV_LINKS_BY_ROLE = {
   ],
   institution: [
     { to: "/InstitutionTeam", label: "Team Section" },
+    { to: "/InstitutionProgress", label: "Team Progress" },
     { to: "/InstitutionLeague", label: "League Management" },
     { to: "/InstitutionLeagueSimulation", label: "League Simulation" },
     { to: "/InstitutionSubscription", label: "Subscription" },

@@ -22,6 +22,8 @@ from backend.routes.institution.institution_db import (
     get_all_league_results,
     get_all_teams,
     get_league_by_id,
+    get_teams_progress,
+    get_tutorials_progress,
     publish_sim_results,
     save_simulation_results,
     unassign_team,
@@ -35,11 +37,16 @@ from backend.routes.institution.institution_models import (
     LeagueInfoUpdate,
     LeagueResults,
     LeagueSignUp,
+    LeagueTutorialsUpdate,
     SimulationConfig,
     TeamDelete,
     TeamIdRef,
     TeamLeagueAssignment,
     TeamSignup,
+)
+from backend.routes.tutorial.tutorial_db import (
+    get_league_tutorial_ids,
+    set_league_tutorials,
 )
 from backend.tasks.celery_utils import poll_task_result
 from backend.tasks.simulation_task import run_simulation
@@ -130,6 +137,22 @@ async def get_teams_endpoint(
     """Get all teams for the institution."""
     institution_id, _ = _require_institution(current_user)
     return get_all_teams(session, institution_id)
+
+
+@institution_router.get("/team-progress")
+@verify_admin_or_institution
+async def team_progress_endpoint(
+    session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Data backing the Team Progress tab: per-team agent submission stats
+    plus per-exercise completion counts for each tutorial attached to the
+    institution's leagues."""
+    institution_id, _ = _require_institution(current_user)
+    return {
+        "teams": get_teams_progress(session, institution_id),
+        "tutorials": get_tutorials_progress(session, institution_id),
+    }
 
 
 @institution_router.get("/subscription")
@@ -307,6 +330,40 @@ async def update_league_info_endpoint(
             institution_id,
             is_admin=is_admin,
         )
+    }
+
+
+@institution_router.post("/get-league-tutorials")
+@verify_admin_or_institution
+async def get_league_tutorials_endpoint(
+    payload: LeagueIdRef,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Ids of the tutorials attached to one of the caller's leagues."""
+    institution_id, is_admin = _require_institution(current_user)
+    league = get_league_by_id(
+        session, payload.league_id, institution_id, is_admin=is_admin
+    )
+    return {"tutorial_ids": get_league_tutorial_ids(session, league.id)}
+
+
+@institution_router.post("/update-league-tutorials")
+@verify_admin_or_institution
+async def update_league_tutorials_endpoint(
+    payload: LeagueTutorialsUpdate,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Replace the set of tutorials attached to one of the caller's leagues."""
+    institution_id, is_admin = _require_institution(current_user)
+    league = get_league_by_id(
+        session, payload.league_id, institution_id, is_admin=is_admin
+    )
+    tutorial_ids = set_league_tutorials(session, league.id, payload.tutorial_ids)
+    return {
+        "message": f"Tutorials updated for league '{league.name}'",
+        "tutorial_ids": tutorial_ids,
     }
 
 

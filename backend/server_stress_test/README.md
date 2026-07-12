@@ -124,7 +124,6 @@ the finding. Run `monitor_cpu.sh` alongside the illegal test.
 | Var | Default | Meaning |
 |-----|---------|---------|
 | `WAIT_MIN` / `WAIT_MAX` | `0` / `0` | per-user pause (s) between submissions; 0 = max throughput |
-| `NUM_SIMULATIONS` | `20` | sims per submission (20 = prod parity) |
 | `W_VALID` | `80` | weight of valid agents in the mix |
 | `W_SPIN` | `3` | weight of infinite-loop (timeout) agents; `0` = pure valid run |
 | `W_SLOW` | `7` | weight of heavy-but-legal agents (finish under the 5s cap) |

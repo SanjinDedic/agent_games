@@ -88,7 +88,6 @@ def _validate(code: str, team: str):
         code=code,
         game_name="greedy_pig",
         team_name=team,
-        num_simulations=10,
     ).get(timeout=30)
 
 

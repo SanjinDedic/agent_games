@@ -4,17 +4,24 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple, Union
 
+from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, delete, func, select
 
-from backend.database.db_models import (Institution, League, LeagueType,
-                                        SimulationResult, SimulationResultItem,
-                                        Team, TeamType)
+from backend.database.db_models import (Exercise, ExerciseSubmission,
+                                        ExerciseSubmissionMetadata,
+                                        Institution, League, LeagueType,
+                                        LeagueTutorial, SimulationResult,
+                                        SimulationResultItem, Submission,
+                                        SubmissionMetadata, Team, TeamType,
+                                        Tutorial)
 from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.games.game_factory import GameFactory
 from backend.routes.institution.institution_models import LeagueSignUp
 from backend.schools.config import (GoogleSheetsSchoolsConfig,
                                     StaticSchoolsConfig)
+from backend.routes.tutorial.tutorial_db import (set_league_tutorials,
+                                                 validate_tutorial_ids)
 from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
 from backend.utils import process_simulation_results
@@ -113,6 +120,9 @@ def create_league(
     # Validate game name
     GameFactory.get_game_class(league_data.game)
 
+    # Validate tutorial ids up front (404) so nothing is created on failure.
+    validate_tutorial_ids(session, league_data.tutorial_ids)
+
     schools_config_model = _build_schools_config(league_data)
     schools_config = (
         schools_config_model.model_dump() if schools_config_model else None
@@ -138,12 +148,18 @@ def create_league(
 
     session.add(league)
     session.flush()
+    # Attach the selected tutorials in the same transaction: an unknown
+    # tutorial id raises (404) and rolls the league creation back with it.
+    set_league_tutorials(
+        session, league.id, league_data.tutorial_ids, commit=False
+    )
     session.commit()
     return {
         "league_id": league.id,
         "name": league.name,
         "signup_token": signup_token,
         "school_league": league_data.school_league,
+        "tutorial_ids": league_data.tutorial_ids,
     }
 
 
@@ -248,6 +264,174 @@ def get_all_teams(session: Session, institution_id: int) -> Dict:
             for team in teams
         ]
     }
+
+
+def get_teams_progress(session: Session, institution_id: int) -> list:
+    """Per-team agent submission stats: attempt/validated counts, hints used,
+    and the latest attempt timestamp."""
+    teams = session.exec(
+        select(Team).where(Team.institution_id == institution_id)
+    ).all()
+    team_ids = [team.id for team in teams]
+
+    attempt_stats = {}
+    validated_counts = {}
+    if team_ids:
+        attempt_stats = {
+            team_id: (attempts, hints, latest)
+            for team_id, attempts, hints, latest in session.exec(
+                select(
+                    SubmissionMetadata.team_id,
+                    func.count(SubmissionMetadata.id),
+                    func.sum(
+                        case((SubmissionMetadata.hint_included == True, 1), else_=0)  # noqa: E712
+                    ),
+                    func.max(SubmissionMetadata.timestamp),
+                )
+                .where(SubmissionMetadata.team_id.in_(team_ids))
+                .group_by(SubmissionMetadata.team_id)
+            ).all()
+        }
+        validated_counts = dict(
+            session.exec(
+                select(SubmissionMetadata.team_id, func.count(Submission.id))
+                .join(Submission, Submission.metadata_id == SubmissionMetadata.id)
+                .where(SubmissionMetadata.team_id.in_(team_ids))
+                .group_by(SubmissionMetadata.team_id)
+            ).all()
+        )
+
+    progress = []
+    for team in teams:
+        attempts, hints, latest = attempt_stats.get(team.id, (0, 0, None))
+        progress.append(
+            {
+                "id": team.id,
+                "name": team.name,
+                "school": team.school_name,
+                "league": team.league.name if team.league else None,
+                "total_attempts": attempts,
+                "validated_submissions": validated_counts.get(team.id, 0),
+                "hints_used": hints,
+                "latest_submission": latest.isoformat() if latest else None,
+            }
+        )
+    return progress
+
+
+def get_tutorials_progress(session: Session, institution_id: int) -> list:
+    """Per-exercise attempted/passed team counts for every tutorial attached
+    to one of the institution's leagues.
+
+    A tutorial's eligible teams are the teams currently in the leagues it is
+    attached to; attempted/passed counts only include those teams, so a team
+    that submitted and then moved to a league without the tutorial drops out
+    of both sides of the rate.
+    """
+    league_names = dict(
+        session.exec(
+            select(League.id, League.name).where(
+                League.institution_id == institution_id
+            )
+        ).all()
+    )
+    if not league_names:
+        return []
+
+    leagues_by_tutorial: dict = {}
+    for link in session.exec(
+        select(LeagueTutorial).where(
+            LeagueTutorial.league_id.in_(league_names)
+        )
+    ).all():
+        leagues_by_tutorial.setdefault(link.tutorial_id, set()).add(link.league_id)
+    if not leagues_by_tutorial:
+        return []
+
+    tutorials = session.exec(
+        select(Tutorial)
+        .where(Tutorial.id.in_(leagues_by_tutorial))
+        .order_by(Tutorial.id)
+    ).all()
+
+    progress = []
+    for tutorial in tutorials:
+        tutorial_league_ids = leagues_by_tutorial[tutorial.id]
+        eligible_team_ids = set(
+            session.exec(
+                select(Team.id).where(Team.league_id.in_(tutorial_league_ids))
+            ).all()
+        )
+
+        attempted_counts = {}
+        passed_counts = {}
+        if eligible_team_ids:
+            attempted_counts = dict(
+                session.exec(
+                    select(
+                        ExerciseSubmissionMetadata.exercise_id,
+                        func.count(
+                            func.distinct(ExerciseSubmissionMetadata.team_id)
+                        ),
+                    )
+                    .join(
+                        Exercise,
+                        Exercise.id == ExerciseSubmissionMetadata.exercise_id,
+                    )
+                    .where(Exercise.tutorial_id == tutorial.id)
+                    .where(
+                        ExerciseSubmissionMetadata.team_id.in_(eligible_team_ids)
+                    )
+                    .group_by(ExerciseSubmissionMetadata.exercise_id)
+                ).all()
+            )
+            passed_counts = dict(
+                session.exec(
+                    select(
+                        ExerciseSubmissionMetadata.exercise_id,
+                        func.count(
+                            func.distinct(ExerciseSubmissionMetadata.team_id)
+                        ),
+                    )
+                    .join(
+                        ExerciseSubmission,
+                        ExerciseSubmission.metadata_id
+                        == ExerciseSubmissionMetadata.id,
+                    )
+                    .join(
+                        Exercise,
+                        Exercise.id == ExerciseSubmissionMetadata.exercise_id,
+                    )
+                    .where(Exercise.tutorial_id == tutorial.id)
+                    .where(
+                        ExerciseSubmissionMetadata.team_id.in_(eligible_team_ids)
+                    )
+                    .where(ExerciseSubmission.passed == True)  # noqa: E712
+                    .group_by(ExerciseSubmissionMetadata.exercise_id)
+                ).all()
+            )
+
+        progress.append(
+            {
+                "id": tutorial.id,
+                "title": tutorial.title,
+                "team_count": len(eligible_team_ids),
+                "league_names": sorted(
+                    league_names[league_id] for league_id in tutorial_league_ids
+                ),
+                "exercises": [
+                    {
+                        "id": exercise.id,
+                        "title": exercise.title,
+                        "order_index": exercise.order_index,
+                        "attempted_count": attempted_counts.get(exercise.id, 0),
+                        "passed_count": passed_counts.get(exercise.id, 0),
+                    }
+                    for exercise in tutorial.exercises
+                ],
+            }
+        )
+    return progress
 
 
 def get_league_by_id(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> League:
@@ -551,7 +735,10 @@ def delete_league(session: Session, league_id: int, institution_id: int, is_admi
         session.add(team)
 
     session.commit()
-    # Delete the league
+    # Delete the league (tutorial attachments first — they FK the league)
+    session.exec(
+        delete(LeagueTutorial).where(LeagueTutorial.league_id == league.id)
+    )
     session.delete(league)
     session.commit()
 

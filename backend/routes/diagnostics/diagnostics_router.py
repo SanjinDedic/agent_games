@@ -63,7 +63,6 @@ async def benchmark_submit(
             code=submission.code,
             game_name=submission.game_name,
             team_name="benchmark",
-            num_simulations=submission.num_simulations,
         )
         result = await await_validation_result(async_result)
     round_trip_ms = (time.perf_counter() - t0) * 1000

@@ -1,7 +1,16 @@
 import ast
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
 from backend.routes.user.code_validation import CodeValidator, validate_code
-from backend.tasks.validation_task import run_validation
+from backend.tasks.validation_task import (
+    TIMEOUT_MESSAGE,
+    await_validation_result,
+    run_validation,
+)
 
 # Test constants
 VALID_CODE = """
@@ -22,10 +31,104 @@ def test_validation_task_custom_rewards(celery_workers):
         code=VALID_CODE,
         game_name="prisoners_dilemma",
         team_name="test_team",
-        num_simulations=20,
         custom_rewards=[4, 0, 6, 2],
     ).get(timeout=20)
     assert result["status"] == "success"
+
+
+# Direct (in-process) calls: the .delay() tests run the task body inside a
+# worker container, so only direct calls exercise these branches in-process.
+
+
+def test_run_validation_direct_success_captures_stdout():
+    printing_code = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        print("thinking...")
+        return 'collude'
+"""
+    result = run_validation(
+        code=printing_code,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+    )
+    assert result["status"] == "success"
+    assert result["duration_ms"] > 0
+    assert "strategies" in result["simulation_results"]
+    assert "thinking..." in result["stdout"]
+
+
+def test_run_validation_direct_soft_limit_chained():
+    """The soft limit interrupting an agent call is re-raised by the engine as
+    ValueError; the chain walk must still classify the run as a timeout."""
+    slow_code = """
+from games.prisoners_dilemma.player import Player
+from celery.exceptions import SoftTimeLimitExceeded
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        raise SoftTimeLimitExceeded()
+"""
+    result = run_validation(
+        code=slow_code,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+    )
+    assert result["status"] == "error"
+    assert result["message"] == TIMEOUT_MESSAGE
+
+
+def test_run_validation_direct_soft_limit_unwrapped(monkeypatch):
+    """A SoftTimeLimitExceeded that escapes unwrapped hits its own handler."""
+
+    class TimeoutGame:
+        validation_simulations = 5
+
+        def __init__(self, league):
+            pass
+
+        def add_player(self, code, name):
+            pass
+
+        def run_single_game_with_feedback(self, custom_rewards=None):
+            raise SoftTimeLimitExceeded()
+
+    monkeypatch.setattr(
+        "backend.tasks.validation_task.GameFactory",
+        SimpleNamespace(get_game_class=lambda name: TimeoutGame),
+    )
+    result = run_validation(
+        code=VALID_CODE,
+        game_name="prisoners_dilemma",
+        team_name="test_team",
+    )
+    assert result["status"] == "error"
+    assert result["message"] == TIMEOUT_MESSAGE
+    assert result["traceback"] is None
+
+
+@pytest.mark.asyncio
+async def test_await_validation_result_timeout_maps_to_timeout_response(monkeypatch):
+    async def boom(async_result, timeout):
+        raise TimeLimitExceeded()
+
+    monkeypatch.setattr("backend.tasks.validation_task.poll_task_result", boom)
+    result = await await_validation_result(MagicMock(), timeout=0.1)
+    assert result["status"] == "error"
+    assert result["message"] == TIMEOUT_MESSAGE
+
+
+@pytest.mark.asyncio
+async def test_await_validation_result_generic_error(monkeypatch):
+    async def boom(async_result, timeout):
+        raise RuntimeError("backend blew up")
+
+    monkeypatch.setattr("backend.tasks.validation_task.poll_task_result", boom)
+    result = await await_validation_result(MagicMock(), timeout=0.1)
+    assert result["status"] == "error"
+    assert result["message"] == "Error during validation: backend blew up"
 
 
 def test_validate_code_syntax_error():
@@ -41,7 +144,6 @@ def test_validation_task_invalid_game(celery_workers):
         code=VALID_CODE,
         game_name="invalid_game",
         team_name="test_team",
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "error"
     assert "Unknown game" in result["message"]
@@ -120,7 +222,6 @@ class CustomPlayer(Player):
         code=error_code,
         game_name="prisoners_dilemma",
         team_name="test_team",
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "error"
     assert result["message"].startswith("Error during simulation:")
@@ -142,7 +243,6 @@ class CustomPlayer(Player):
         code=feedback_code,
         game_name="prisoners_dilemma",
         team_name="test_team",
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "success"
     assert "feedback" in result

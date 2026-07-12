@@ -55,7 +55,6 @@ class CustomPlayer(Player):
         code=valid_code,
         game_name="prisoners_dilemma",
         team_name=test_team.name,
-        num_simulations=10,
     ).get(timeout=20)
     assert result["status"] == "success"
     assert "simulation_results" in result
@@ -110,7 +109,6 @@ class CustomPlayer(Player):
         code=timeout_code,
         game_name="prisoners_dilemma",
         team_name="timeout_team",
-        num_simulations=10,
     ).get(timeout=15)
     assert result["status"] == "error"
     assert result["message"].startswith("Your agent consumes too much time")
@@ -157,7 +155,6 @@ class CustomPlayer(Player):
         code=contaminating_code,
         game_name="prisoners_dilemma",
         team_name="dirty_team",
-        num_simulations=5,
     ).get(timeout=20)
     assert result["status"] == "success"
 
@@ -165,7 +162,6 @@ class CustomPlayer(Player):
         code=probe_code,
         game_name="prisoners_dilemma",
         team_name="clean_team",
-        num_simulations=5,
     ).get(timeout=20)
     assert result["status"] == "success"
     assert "CLEAN" in (result.get("stdout") or "")

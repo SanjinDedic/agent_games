@@ -45,6 +45,13 @@ class BaseGame(ABC):
     # Markdown shown next to the custom rewards input.
     reward_instructions = ""
 
+    # How many simulation passes a submission validation runs for this game.
+    # Each game overrides this with a value benchmarked (in the worker image)
+    # so the whole validation load — feedback game + simulations — stays under
+    # one second. Games whose run_simulations fans out into many sub-games per
+    # pass (hearts, ohhell, thirteen) need only a handful of passes.
+    validation_simulations = 20
+
     def __init__(self, league, verbose=False):
         self.verbose = verbose
         self.league = league

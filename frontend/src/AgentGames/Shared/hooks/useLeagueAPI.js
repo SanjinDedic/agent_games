@@ -348,6 +348,64 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken, dispatch]);
 
   /**
+   * Get the ids of the tutorials attached to a league
+   */
+  const getLeagueTutorials = useCallback(async (leagueId) => {
+    try {
+      const response = await authFetch(`${apiUrl}/institution/get-league-tutorials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ league_id: leagueId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && Array.isArray(data.tutorial_ids)) {
+        return { success: true, tutorialIds: data.tutorial_ids };
+      }
+      return { success: false, error: data.detail || 'Failed to load league tutorials' };
+    } catch (error) {
+      console.error('Error loading league tutorials:', error);
+      return { success: false, error: 'Network error' };
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
+   * Replace the set of tutorials attached to a league
+   */
+  const updateLeagueTutorials = useCallback(async (leagueId, tutorialIds) => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/institution/update-league-tutorials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ league_id: leagueId, tutorial_ids: tutorialIds }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message);
+        return { success: true, tutorialIds: data.tutorial_ids };
+      }
+      toast.error(data.detail || 'Failed to update league tutorials');
+      return { success: false, error: data.detail };
+    } catch (error) {
+      console.error('Error updating league tutorials:', error);
+      toast.error('Network error while updating league tutorials');
+      return { success: false, error: 'Network error' };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
    * Assign team to league
    */
   const assignTeamToLeague = useCallback(async (teamId, leagueId) => {
@@ -496,6 +554,8 @@ export const useLeagueAPI = (userRole) => {
     publishResults,
     updateExpiryDate,
     updateLeagueInfo,
+    getLeagueTutorials,
+    updateLeagueTutorials,
     assignTeamToLeague,
     unassignTeam,
     deleteLeague,

@@ -156,7 +156,6 @@ async def submit_agent(
             code=submission.code,
             game_name=team.league.game,
             team_name=team_name,
-            num_simulations=20,
         )
         # Polls the backend (no thread, no shared pubsub consumer) and maps
         # every kill/timeout/worker-loss to a clean validation failure.

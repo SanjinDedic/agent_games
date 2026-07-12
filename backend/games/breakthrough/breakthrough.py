@@ -23,6 +23,10 @@ DEFAULT_REWARDS = [100, 100, 100, 100, 50]
 
 
 class BreakthroughGame(BaseGame):
+    # Benchmarked: ~104ms per simulation (a full round-robin of board games)
+    # + ~100ms feedback game keeps validation <1s.
+    validation_simulations = 5
+
     starter_code = """
 from games.breakthrough.player import Player
 import random

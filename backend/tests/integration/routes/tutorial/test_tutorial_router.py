@@ -7,6 +7,8 @@ from backend.database.db_models import (
     Exercise,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
+    League,
+    LeagueTutorial,
     Team,
     Tutorial,
 )
@@ -51,13 +53,19 @@ def count_words(sentence):
 
 @pytest.fixture
 def tutorial_with_exercise(db_session: Session) -> Tutorial:
-    """One tutorial holding two exercises (to check ordering)."""
+    """One tutorial holding two exercises (to check ordering), attached to
+    TeamA's league — teams only see tutorials attached to their league."""
     tutorial = Tutorial(
         title="Test Tutorial",
         description="Tutorial used by the router tests",
     )
     db_session.add(tutorial)
     db_session.flush()
+
+    team_a = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
+    db_session.add(
+        LeagueTutorial(league_id=team_a.league_id, tutorial_id=tutorial.id)
+    )
 
     # Inserted out of order on purpose: order_index must drive the ordering.
     later = Exercise(
@@ -452,3 +460,132 @@ def test_exercise_submission_history(
         "/tutorial/exercise/99999/submissions", headers=team_headers
     )
     assert response.status_code == 404
+
+
+# -- league scoping ---------------------------------------------------------
+
+
+@pytest.fixture
+def unattached_tutorial(db_session: Session) -> Tutorial:
+    """A tutorial (with one exercise) not attached to any league."""
+    tutorial = Tutorial(
+        title="Other League Tutorial",
+        description="Not attached to TeamA's league",
+    )
+    db_session.add(tutorial)
+    db_session.flush()
+    db_session.add(
+        Exercise(
+            tutorial_id=tutorial.id,
+            order_index=0,
+            title="Hidden Exercise",
+            problem_markdown="Hidden problem",
+            starter_code="def hidden():\n    pass\n",
+            entry_function="hidden",
+            test_cases=[{"name": "runs", "args": [], "expected": None}],
+        )
+    )
+    db_session.commit()
+    db_session.refresh(tutorial)
+    return tutorial
+
+
+def test_team_list_scoped_to_league(
+    client, team_headers, auth_headers, tutorial_with_exercise, unattached_tutorial
+):
+    """Teams only see their league's tutorials; admins see the full library."""
+    response = client.get("/tutorial/tutorials", headers=team_headers)
+    assert response.status_code == 200
+    titles = [t["title"] for t in response.json()["tutorials"]]
+    assert titles == ["Test Tutorial"]
+
+    response = client.get("/tutorial/tutorials", headers=auth_headers)
+    assert response.status_code == 200
+    titles = {t["title"] for t in response.json()["tutorials"]}
+    assert titles == {"Test Tutorial", "Other League Tutorial"}
+
+
+def test_team_in_league_without_tutorials_sees_none(
+    client, db_session, tutorial_with_exercise
+):
+    """A team whose league has no attached tutorials gets an empty list and
+    404s on tutorials attached to other leagues."""
+    from backend.tests.conftest import make_student_token
+
+    league = League(
+        name="tutorial_free_league",
+        created_date=utc_now(),
+        expiry_date=utc_now() + timedelta(days=7),
+        game="greedy_pig",
+    )
+    db_session.add(league)
+    db_session.flush()
+    team = Team(
+        name="tutorial_free_team",
+        school_name="Test School",
+        league_id=league.id,
+    )
+    db_session.add(team)
+    db_session.commit()
+    db_session.refresh(team)
+    headers = {"Authorization": f"Bearer {make_student_token(team)}"}
+
+    response = client.get("/tutorial/tutorials", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["tutorials"] == []
+
+    response = client.get(
+        f"/tutorial/tutorial/{tutorial_with_exercise.id}", headers=headers
+    )
+    assert response.status_code == 404
+
+
+def test_unattached_tutorial_hidden_from_team(
+    client, db_session, team_headers, unattached_tutorial
+):
+    """Detail, progress, submit, and submission-history endpoints all 404
+    for a tutorial that isn't attached to the team's league."""
+    exercise = db_session.exec(
+        select(Exercise).where(Exercise.tutorial_id == unattached_tutorial.id)
+    ).one()
+
+    response = client.get(
+        f"/tutorial/tutorial/{unattached_tutorial.id}", headers=team_headers
+    )
+    assert response.status_code == 404
+
+    response = client.get(
+        f"/tutorial/tutorial/{unattached_tutorial.id}/progress",
+        headers=team_headers,
+    )
+    assert response.status_code == 404
+
+    response = client.post(
+        "/tutorial/submit-exercise",
+        json={"exercise_id": exercise.id, "code": PASSING_CODE},
+        headers=team_headers,
+    )
+    assert response.status_code == 404
+    # The blocked attempt is not recorded
+    assert db_session.exec(select(ExerciseSubmissionMetadata)).all() == []
+
+    response = client.get(
+        f"/tutorial/exercise/{exercise.id}/latest-submission",
+        headers=team_headers,
+    )
+    assert response.status_code == 404
+
+    response = client.get(
+        f"/tutorial/exercise/{exercise.id}/submissions", headers=team_headers
+    )
+    assert response.status_code == 404
+
+
+def test_admin_can_open_unattached_tutorial(
+    client, auth_headers, unattached_tutorial
+):
+    response = client.get(
+        f"/tutorial/tutorial/{unattached_tutorial.id}", headers=auth_headers
+    )
+    assert response.status_code == 200
+    assert response.json()["title"] == "Other League Tutorial"

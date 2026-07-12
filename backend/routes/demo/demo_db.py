@@ -13,10 +13,12 @@ from backend.database.db_models import (
     InstitutionSubscription,
     League,
     LeagueType,
+    LeagueTutorial,
     Submission,
     SubmissionMetadata,
     Team,
     TeamType,
+    Tutorial,
     get_password_hash,
 )
 from backend.database.submission_helpers import delete_submissions_for_teams
@@ -169,6 +171,13 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
     )
 
     session.add(demo_league)
+    session.flush()
+
+    # Demo leagues showcase the platform, so they get every tutorial.
+    for tutorial_id in session.exec(select(Tutorial.id)).all():
+        session.add(
+            LeagueTutorial(league_id=demo_league.id, tutorial_id=tutorial_id)
+        )
     session.commit()
     session.refresh(demo_league)
 

@@ -115,6 +115,10 @@ class OhHellGame(BaseGame):
     SCHEDULER_ROUNDS_PER_CALL = 5
     MAX_TOTAL_GAMES = 6000
 
+    # Benchmarked: ~16ms per pass (each pass fans out into many sub-games)
+    # keeps validation <1s.
+    validation_simulations = 40
+
     starter_code = """
 from games.ohhell.player import Player
 import random

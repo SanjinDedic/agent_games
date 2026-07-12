@@ -19,8 +19,7 @@ Run with -u equal to USERS (default 30):
         --host https://your-prod-host \
         --csv bench_legal
 
-Env knobs: TARGET_RPS (default 10), USERS (default 30, keep -u equal),
-NUM_SIMULATIONS (default 20).
+Env knobs: TARGET_RPS (default 10), USERS (default 30, keep -u equal).
 """
 
 import logging

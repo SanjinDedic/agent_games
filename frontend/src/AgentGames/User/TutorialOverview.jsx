@@ -4,9 +4,15 @@ import React from "react";
  * Landing view for the tutorial: title, description, overall progress, and
  * the exercises as an ordered list in teaching order. Each row shows the
  * team's status (completed / in progress / not started) and opens the
- * exercise workspace via onSelectExercise.
+ * exercise workspace via onSelectExercise. When the league has more than one
+ * tutorial, onBackToList renders a link back to the tutorial picker.
  */
-function TutorialOverview({ tutorial, progressByExerciseId, onSelectExercise }) {
+function TutorialOverview({
+  tutorial,
+  progressByExerciseId,
+  onSelectExercise,
+  onBackToList = null,
+}) {
   const exercises = tutorial.exercises;
   const passedCount = exercises.filter(
     (exercise) => progressByExerciseId[exercise.id]?.passed
@@ -18,6 +24,14 @@ function TutorialOverview({ tutorial, progressByExerciseId, onSelectExercise }) 
     <div className="min-h-screen pt-16 pb-12 bg-ui-lighter">
       <div className="max-w-3xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow border border-ui-light/30 p-6">
+          {onBackToList && (
+            <button
+              onClick={onBackToList}
+              className="mb-3 py-1 px-3 text-sm rounded bg-ui-lighter text-ui-dark hover:bg-ui-light/50 transition-colors"
+            >
+              ← All tutorials
+            </button>
+          )}
           <h1 className="text-2xl font-bold text-ui-dark">{tutorial.title}</h1>
           {tutorial.description && (
             <p className="mt-2 text-ui-dark/70">{tutorial.description}</p>
