@@ -17,6 +17,7 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/AdminBackup", label: "Backups" },
     { to: "/AdminAPIKeys", label: "API Keys" },
     { to: "/AdminUserSupport", label: "User Support" },
+    { to: "/AdminTutorials", label: "Tutorials" },
   ],
   institution: [
     { to: "/InstitutionTeam", label: "Team Section" },

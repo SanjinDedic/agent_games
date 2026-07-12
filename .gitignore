@@ -175,7 +175,6 @@ code_documentation.md
 backend/.env
 backend/routes/payments/.env
 .aws.env
-backend/games/arena_champions/validation_players.py
 .kamal/secrets
 
 docs/

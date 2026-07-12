@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 from backend.database.db_models import League
 from backend.games.greedy_pig.greedy_pig import GreedyPigGame
 from backend.games.greedy_pig.player import Player
+from backend.games.greedy_pig.validation_players import players as validation_players
 
 class TestPlayer(Player):
     """Test implementation of Player class for testing"""
@@ -43,7 +44,10 @@ def test_game(test_league):
 def test_game_initialization(test_league):
     """Test that the game initializes properly"""
     game = GreedyPigGame(test_league)
-    
+
+    # All validation players are loaded by default
+    assert len(game.players) == len(validation_players)
+
     # Check initial state
     assert game.round_no == 0
     assert game.roll_no == 0
@@ -174,6 +178,30 @@ def test_assign_points_tie_splits_the_pot(test_game):
     assert results["points"]["ThirdPlayer"] == 7
 
 
+def test_assign_points_unbanked_money_is_lost(test_game):
+    """Only banked money counts toward placement — unbanked money is lost"""
+    game_state = {
+        "banked_money": {"Player1": 50, "Player2": 80, "Player3": 30, "Player4": 70},
+        "unbanked_money": {"Player1": 10, "Player2": 20, "Player3": 5, "Player4": 15},
+    }
+
+    # Player4's 70 + 15 unbanked would beat Player2's 80 if unbanked money
+    # counted, but it doesn't.
+    results = test_game.assign_points(game_state)
+    assert results["points"]["Player2"] == 10
+    assert results["points"]["Player4"] == 0
+    assert results["points"]["Player1"] == 0
+    assert results["points"]["Player3"] == 0
+    assert results["score_aggregate"]["Player4"] == 70
+
+    # Placement payouts also rank by banked money only
+    results = test_game.assign_points(game_state, [10, 8, 6, 4])
+    assert results["points"]["Player2"] == 10
+    assert results["points"]["Player4"] == 8
+    assert results["points"]["Player1"] == 6
+    assert results["points"]["Player3"] == 4
+
+
 @patch('random.randint')
 def test_play_round_roll_one(mock_randint, test_game):
     """Test what happens when player rolls a 1"""
@@ -203,6 +231,8 @@ def test_play_round_bank_decision(mock_randint, test_game):
     assert test_game.players[0].name in test_game.players_banked_this_round
     # TestPlayer's banked money should include the roll
     assert test_game.players[0].banked_money == 6
+    # The per-turn banking flag is cleared again at the end of the round
+    assert all(not p.has_banked_this_turn for p in test_game.players)
 
 
 @patch('random.randint')
@@ -264,16 +294,18 @@ def test_reset(test_game):
     test_game.roll_no = 3
     test_game.game_over = True
     test_game.players[0].banked_money = 50
+    test_game.players[0].has_banked_this_turn = True
     test_game.players[1].unbanked_money = 20
-    
+
     # Reset game
     test_game.reset()
-    
+
     # Check that state was reset
     assert test_game.round_no == 0
     assert test_game.roll_no == 0
     assert test_game.game_over is False
     assert test_game.players[0].banked_money == 0
+    assert test_game.players[0].has_banked_this_turn is False
     assert test_game.players[1].unbanked_money == 0
     assert test_game.game_feedback == {"game": "greedy_pig", "rounds": []}
     assert test_game.player_feedback == {}

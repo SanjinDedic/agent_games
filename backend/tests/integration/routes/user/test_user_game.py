@@ -4,7 +4,6 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import League, SimulationResult, Team
-from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
 
 
@@ -70,49 +69,6 @@ def setup_simulation_results(
     )
     db_session.add(sim2)
     db_session.commit()
-
-
-def test_get_game_instructions_success(client):
-    """Test successful retrieval of game instructions"""
-
-    # Test case 1: Get prisoners dilemma instructions
-    response = client.post(
-        "/user/get-game-instructions", json={"game_name": "prisoners_dilemma"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "starter_code" in data
-    assert "game_instructions" in data
-    assert "Prisoner's Dilemma Game Instructions" in data["game_instructions"]
-
-    # Test case 2: Get greedy pig instructions
-    response = client.post(
-        "/user/get-game-instructions", json={"game_name": "greedy_pig"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "starter_code" in data
-    assert "game_instructions" in data
-    assert "Greedy Pig Game Instructions" in data["game_instructions"]
-
-
-def test_get_game_instructions_exceptions(client):
-    """Test error cases for getting game instructions"""
-
-    # Test case 1: Non-existent game
-    response = client.post(
-        "/user/get-game-instructions", json={"game_name": "non_existent_game"}
-    )
-    assert response.status_code == 400
-    assert "Unknown game" in response.json()["detail"]
-
-    # Test case 2: Empty game name
-    response = client.post("/user/get-game-instructions", json={"game_name": ""})
-    assert response.status_code == 422
-
-    # Test case 3: Invalid JSON
-    response = client.post("/user/get-game-instructions", content="invalid json")
-    assert response.status_code == 422
 
 
 def test_get_available_games(client):

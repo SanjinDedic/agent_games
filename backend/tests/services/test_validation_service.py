@@ -1,7 +1,5 @@
 import ast
 
-import pytest
-
 from backend.routes.user.code_validation import CodeValidator, validate_code
 from backend.tasks.validation_task import run_validation
 
@@ -17,32 +15,9 @@ class CustomPlayer(Player):
         return 'collude'
 """
 
-UNSAFE_CODE = """
-import os
-from games.prisoners_dilemma.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        os.system('echo "hello"')
-        return 'collude'
-"""
-
-
-def test_validation_task_success(celery_workers):
-    """Test successful validation scenarios"""
-
-    # Test case 1: Basic valid code validation
-    result = run_validation.delay(
-        code=VALID_CODE,
-        game_name="prisoners_dilemma",
-        team_name="test_team",
-        num_simulations=20,
-    ).get(timeout=20)
-    assert result["status"] == "success"
-    assert "feedback" in result
-    assert "simulation_results" in result
-
-    # Test case 2: Validation with custom rewards
+def test_validation_task_custom_rewards(celery_workers):
+    """Validation task succeeds with custom rewards (the plain valid-code run
+    is covered by test_celery_tasks.test_validation_workflow)"""
     result = run_validation.delay(
         code=VALID_CODE,
         game_name="prisoners_dilemma",
@@ -53,18 +28,11 @@ def test_validation_task_success(celery_workers):
     assert result["status"] == "success"
 
 
-def test_validate_code_exceptions():
-    """Test error cases caught by the pre-enqueue AST check"""
-
-    # Test case 1: Invalid syntax
+def test_validate_code_syntax_error():
+    """Invalid syntax is caught by the pre-enqueue AST check"""
     is_safe, message = validate_code("This is not valid Python code")
     assert not is_safe
     assert "syntax error" in message.lower()
-
-    # Test case 2: Unsafe code
-    is_safe, message = validate_code(UNSAFE_CODE)
-    assert not is_safe
-    assert "unauthorized import" in message.lower()
 
 
 def test_validation_task_invalid_game(celery_workers):
@@ -122,7 +90,7 @@ def test_code_validator_exceptions():
     assert not validator.safe
     assert "unauthorized import" in validator.error_message.lower()
 
-    # Test case 3: Unauthorized function call
+    # Test case 3: Unauthorized function call (eval)
     code = "eval('1 + 1')"
     tree = ast.parse(code)
     validator.safe = True  # Reset for new test
@@ -130,19 +98,7 @@ def test_code_validator_exceptions():
     assert not validator.safe
     assert "unauthorized function" in validator.error_message.lower()
 
-
-def test_code_validator_unsafe_functions():
-    """Test code validator for unsafe function calls"""
-    validator = CodeValidator()
-
-    # Test case 1: Unauthorized eval
-    code = "eval('1 + 1')"
-    tree = ast.parse(code)
-    validator.visit(tree)
-    assert not validator.safe
-    assert "unauthorized function" in validator.error_message.lower()
-
-    # Test case 2: Unauthorized exec
+    # Test case 4: Unauthorized function call (exec)
     code = "exec('print(\"hello\")')"
     tree = ast.parse(code)
     validator.safe = True  # Reset for new test

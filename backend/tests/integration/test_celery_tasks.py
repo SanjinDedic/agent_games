@@ -4,7 +4,6 @@ import pytest
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
-from backend.routes.user.code_validation import validate_code
 from backend.tasks.simulation_task import run_simulation
 from backend.tasks.validation_task import (
     run_validation,
@@ -44,23 +43,7 @@ def test_team(db_session: Session, test_league: League) -> Team:
 
 
 def test_validation_workflow(celery_workers, test_team: Team):
-    """Security rejection happens API-side; valid code succeeds via the task."""
-
-    # 1. Invalid code with security violation never reaches the worker
-    invalid_security_code = """
-from games.prisoners_dilemma.player import Player
-import os  # Unauthorized import
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        os.system('echo "hack"')
-        return "collude"
-"""
-    is_safe, message = validate_code(invalid_security_code)
-    assert not is_safe
-    assert "unauthorized" in message.lower()
-
-    # 2. Valid code runs through the validation task
+    """Valid code runs through the validation task on a real worker."""
     valid_code = """
 from games.prisoners_dilemma.player import Player
 

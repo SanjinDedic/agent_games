@@ -220,6 +220,93 @@ export const useTutorialAPI = () => {
     }
   }, [apiUrl, accessToken]);
 
+  // ------------------------------------------------------------------
+  // Admin content management (admin token required by the backend)
+  // ------------------------------------------------------------------
+
+  /**
+   * Shared plumbing for the admin CRUD calls: JSON request, and a
+   * { success, data | error } result.
+   */
+  const adminRequest = useCallback(async (path, method = 'GET', body = null) => {
+    try {
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      };
+      if (body !== null) {
+        options.body = JSON.stringify(body);
+      }
+      const response = await authFetch(`${apiUrl}/tutorial${path}`, options);
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true, data };
+      }
+      // 422 validation errors arrive as a list of pydantic error objects.
+      const detail = Array.isArray(data.detail)
+        ? data.detail.map((err) => err.msg).join('; ')
+        : data.detail;
+      return { success: false, error: detail || 'Request failed' };
+    } catch (error) {
+      console.error(`Error calling ${method} ${path}:`, error);
+      return { success: false, error: 'Network error' };
+    }
+  }, [apiUrl, accessToken]);
+
+  /** Get one tutorial with full exercise definitions (incl. test cases). */
+  const getTutorialAdmin = useCallback(
+    (tutorialId) => adminRequest(`/admin/tutorial/${tutorialId}`),
+    [adminRequest]
+  );
+
+  const createTutorial = useCallback(
+    (title, description) =>
+      adminRequest('/tutorials', 'POST', { title, description }),
+    [adminRequest]
+  );
+
+  const updateTutorial = useCallback(
+    (tutorialId, title, description) =>
+      adminRequest(`/tutorial/${tutorialId}`, 'PUT', { title, description }),
+    [adminRequest]
+  );
+
+  const deleteTutorial = useCallback(
+    (tutorialId) => adminRequest(`/tutorial/${tutorialId}`, 'DELETE'),
+    [adminRequest]
+  );
+
+  /** exercise = { title, problem_markdown, starter_code, entry_function, test_cases } */
+  const createExercise = useCallback(
+    (tutorialId, exercise) =>
+      adminRequest(`/tutorial/${tutorialId}/exercises`, 'POST', exercise),
+    [adminRequest]
+  );
+
+  const updateExercise = useCallback(
+    (exerciseId, exercise) =>
+      adminRequest(`/exercise/${exerciseId}`, 'PUT', exercise),
+    [adminRequest]
+  );
+
+  const deleteExercise = useCallback(
+    (exerciseId) => adminRequest(`/exercise/${exerciseId}`, 'DELETE'),
+    [adminRequest]
+  );
+
+  /** exerciseIds: the tutorial's complete id list in the desired order. */
+  const reorderExercises = useCallback(
+    (tutorialId, exerciseIds) =>
+      adminRequest(`/tutorial/${tutorialId}/exercises/reorder`, 'POST', {
+        exercise_ids: exerciseIds,
+      }),
+    [adminRequest]
+  );
+
   return {
     isLoading,
     getTutorials,
@@ -228,6 +315,14 @@ export const useTutorialAPI = () => {
     getLatestExerciseSubmission,
     getExerciseSubmissions,
     submitExercise,
+    getTutorialAdmin,
+    createTutorial,
+    updateTutorial,
+    deleteTutorial,
+    createExercise,
+    updateExercise,
+    deleteExercise,
+    reorderExercises,
   };
 };
 

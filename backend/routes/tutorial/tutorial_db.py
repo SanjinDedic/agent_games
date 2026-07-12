@@ -29,6 +29,19 @@ class ExerciseNotFoundError(Exception):
     pass
 
 
+class TutorialExistsError(Exception):
+    """Raised when a tutorial title is already taken (maps to HTTP 409)."""
+
+    pass
+
+
+class ExerciseReorderError(Exception):
+    """Raised when a reorder request doesn't match the tutorial's exercises
+    (maps to HTTP 400)."""
+
+    pass
+
+
 def allow_exercise_submission(session: Session, team_id: int) -> bool:
     """Check if team is allowed to submit an exercise (rate limiting).
 
@@ -234,6 +247,210 @@ def get_latest_exercise_submission(
         "passed": submission.passed,
         "test_results": submission.test_results,
     }
+
+
+# ---------------------------------------------------------------------------
+# Admin CRUD. Students never see entry_function/test_cases; the admin detail
+# view below is the only read path that returns them.
+# ---------------------------------------------------------------------------
+
+
+def _get_tutorial_or_raise(session: Session, tutorial_id: int) -> Tutorial:
+    tutorial = session.get(Tutorial, tutorial_id)
+    if not tutorial:
+        raise TutorialNotFoundError(f"Tutorial with ID {tutorial_id} not found")
+    return tutorial
+
+
+def _exercise_admin_dict(exercise: Exercise) -> dict:
+    return {
+        "id": exercise.id,
+        "tutorial_id": exercise.tutorial_id,
+        "order_index": exercise.order_index,
+        "title": exercise.title,
+        "problem_markdown": exercise.problem_markdown,
+        "starter_code": exercise.starter_code,
+        "entry_function": exercise.entry_function,
+        "test_cases": exercise.test_cases,
+    }
+
+
+def _raise_if_title_taken(
+    session: Session, title: str, exclude_id: Optional[int] = None
+) -> None:
+    query = select(Tutorial).where(Tutorial.title == title)
+    if exclude_id is not None:
+        query = query.where(Tutorial.id != exclude_id)
+    if session.exec(query).first():
+        raise TutorialExistsError(f"A tutorial titled '{title}' already exists")
+
+
+def _delete_submission_history(session: Session, exercise_ids: list) -> None:
+    """Delete all submission rows for the given exercises (metadata has an FK
+    to exercise, so it must go before the exercises themselves)."""
+    if not exercise_ids:
+        return
+    metadata_ids = session.exec(
+        select(ExerciseSubmissionMetadata.id).where(
+            ExerciseSubmissionMetadata.exercise_id.in_(exercise_ids)
+        )
+    ).all()
+    if not metadata_ids:
+        return
+    for submission in session.exec(
+        select(ExerciseSubmission).where(
+            ExerciseSubmission.metadata_id.in_(metadata_ids)
+        )
+    ).all():
+        session.delete(submission)
+    for meta in session.exec(
+        select(ExerciseSubmissionMetadata).where(
+            ExerciseSubmissionMetadata.id.in_(metadata_ids)
+        )
+    ).all():
+        session.delete(meta)
+
+
+def get_tutorial_admin_detail(session: Session, tutorial_id: int) -> dict:
+    """One tutorial with full exercise definitions (admin only)."""
+    tutorial = _get_tutorial_or_raise(session, tutorial_id)
+    return {
+        "id": tutorial.id,
+        "title": tutorial.title,
+        "description": tutorial.description,
+        "exercises": [
+            _exercise_admin_dict(exercise) for exercise in tutorial.exercises
+        ],
+    }
+
+
+def create_tutorial(session: Session, title: str, description: str) -> dict:
+    _raise_if_title_taken(session, title)
+    tutorial = Tutorial(title=title, description=description)
+    session.add(tutorial)
+    session.commit()
+    session.refresh(tutorial)
+    return {
+        "id": tutorial.id,
+        "title": tutorial.title,
+        "description": tutorial.description,
+    }
+
+
+def update_tutorial(
+    session: Session, tutorial_id: int, title: str, description: str
+) -> dict:
+    tutorial = _get_tutorial_or_raise(session, tutorial_id)
+    _raise_if_title_taken(session, title, exclude_id=tutorial_id)
+    tutorial.title = title
+    tutorial.description = description
+    session.commit()
+    return {
+        "id": tutorial.id,
+        "title": tutorial.title,
+        "description": tutorial.description,
+    }
+
+
+def delete_tutorial(session: Session, tutorial_id: int) -> None:
+    """Delete a tutorial, its exercises, and all their submission history."""
+    tutorial = _get_tutorial_or_raise(session, tutorial_id)
+    _delete_submission_history(
+        session, [exercise.id for exercise in tutorial.exercises]
+    )
+    # The exercises relationship cascades with delete-orphan.
+    session.delete(tutorial)
+    session.commit()
+
+
+def create_exercise(
+    session: Session,
+    tutorial_id: int,
+    title: str,
+    problem_markdown: str,
+    starter_code: str,
+    entry_function: str,
+    test_cases: list,
+) -> dict:
+    """Append a new exercise at the end of the tutorial."""
+    tutorial = _get_tutorial_or_raise(session, tutorial_id)
+    next_index = max(
+        (exercise.order_index for exercise in tutorial.exercises), default=-1
+    ) + 1
+    exercise = Exercise(
+        tutorial_id=tutorial_id,
+        order_index=next_index,
+        title=title,
+        problem_markdown=problem_markdown,
+        starter_code=starter_code,
+        entry_function=entry_function,
+        test_cases=test_cases,
+    )
+    session.add(exercise)
+    session.commit()
+    session.refresh(exercise)
+    return _exercise_admin_dict(exercise)
+
+
+def update_exercise(
+    session: Session,
+    exercise_id: int,
+    title: str,
+    problem_markdown: str,
+    starter_code: str,
+    entry_function: str,
+    test_cases: list,
+) -> dict:
+    exercise = get_exercise_by_id(session, exercise_id)
+    exercise.title = title
+    exercise.problem_markdown = problem_markdown
+    exercise.starter_code = starter_code
+    exercise.entry_function = entry_function
+    exercise.test_cases = test_cases
+    session.commit()
+    session.refresh(exercise)
+    return _exercise_admin_dict(exercise)
+
+
+def delete_exercise(session: Session, exercise_id: int) -> None:
+    """Delete one exercise and its submission history, then close the gap in
+    the remaining exercises' order_index values."""
+    exercise = get_exercise_by_id(session, exercise_id)
+    tutorial_id = exercise.tutorial_id
+    _delete_submission_history(session, [exercise.id])
+    session.delete(exercise)
+    session.flush()
+
+    remaining = session.exec(
+        select(Exercise)
+        .where(Exercise.tutorial_id == tutorial_id)
+        .order_by(Exercise.order_index)
+    ).all()
+    for index, sibling in enumerate(remaining):
+        sibling.order_index = index
+    session.commit()
+
+
+def reorder_exercises(
+    session: Session, tutorial_id: int, exercise_ids: list
+) -> dict:
+    """Apply a complete new ordering. `exercise_ids` must be exactly the
+    tutorial's exercise ids, each appearing once."""
+    tutorial = _get_tutorial_or_raise(session, tutorial_id)
+    current_ids = {exercise.id for exercise in tutorial.exercises}
+    if len(exercise_ids) != len(set(exercise_ids)) or set(
+        exercise_ids
+    ) != current_ids:
+        raise ExerciseReorderError(
+            "Reorder list must contain each of the tutorial's exercise ids "
+            "exactly once"
+        )
+    by_id = {exercise.id: exercise for exercise in tutorial.exercises}
+    for index, exercise_id in enumerate(exercise_ids):
+        by_id[exercise_id].order_index = index
+    session.commit()
+    session.refresh(tutorial)
+    return get_tutorial_admin_detail(session, tutorial_id)
 
 
 def get_exercise_submission_history(
