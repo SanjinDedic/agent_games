@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import List, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -8,22 +8,6 @@ class ExerciseSubmissionRequest(BaseModel):
 
     exercise_id: int
     code: str
-
-
-class TestCase(BaseModel):
-    """One function I/O pair: the worker calls the entry function with `args`
-    and compares the return value to `expected` with ==."""
-
-    name: str
-    args: List[Any]
-    expected: Any
-
-    @field_validator("name")
-    @classmethod
-    def name_not_blank(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("Test case name cannot be empty")
-        return value
 
 
 class TutorialCreateRequest(BaseModel):
@@ -51,13 +35,28 @@ class TutorialUpdateRequest(BaseModel):
 
 
 class ExerciseRequest(BaseModel):
-    """Full exercise definition, used for both create and update (PUT)."""
+    """Full exercise definition, used for both create and update (PUT).
+
+    `test_code` is the exercise's Python test script
+    (backend/tasks/exercise_test_code.py); `solution` is an optional
+    reference solution for the admin editor. Both are stored as NULL when
+    blank — for test_code so submitting hits the worker's loud "defines no
+    tests" error instead of passing vacuously.
+    """
 
     title: str
     problem_markdown: str
     starter_code: str = ""
     entry_function: str
-    test_cases: List[TestCase]
+    test_code: Optional[str] = None
+    solution: Optional[str] = None
+
+    @field_validator("test_code", "solution")
+    @classmethod
+    def blank_is_none(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None and not value.strip():
+            return None
+        return value
 
     @field_validator("title")
     @classmethod
@@ -76,12 +75,15 @@ class ExerciseRequest(BaseModel):
             )
         return value
 
-    @field_validator("test_cases")
-    @classmethod
-    def at_least_one_test_case(cls, value: List[TestCase]) -> List[TestCase]:
-        if not value:
-            raise ValueError("An exercise needs at least one test case")
-        return value
+
+class ExerciseRunRequest(BaseModel):
+    """Admin dry run: execute a test script against code without touching the
+    DB. Stateless (no exercise id) so an exercise can be tested before it is
+    ever saved."""
+
+    code: str
+    entry_function: str
+    test_code: Optional[str] = None
 
 
 class ExerciseReorderRequest(BaseModel):

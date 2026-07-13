@@ -1,27 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-toastify';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
 import CodeEditor from '../Shared/Submission/CodeEditor';
+import ExerciseResults from '../User/ExerciseResults';
 
 const BLANK_EXERCISE_FORM = {
   title: '',
   entry_function: '',
   problem_markdown: '',
   starter_code: '',
-  testCases: [{ name: '', argsText: '[]', expectedText: 'null' }],
+  test_code: '',
+  solution: '',
 };
 
-// Test cases are edited as JSON text fields; convert to/from the API shape.
 const exerciseToForm = (exercise) => ({
   title: exercise.title,
   entry_function: exercise.entry_function,
   problem_markdown: exercise.problem_markdown,
   starter_code: exercise.starter_code,
-  testCases: exercise.test_cases.map((testCase) => ({
-    name: testCase.name,
-    argsText: JSON.stringify(testCase.args),
-    expectedText: JSON.stringify(testCase.expected),
-  })),
+  test_code: exercise.test_code ?? '',
+  solution: exercise.solution ?? '',
 });
 
 /**
@@ -36,72 +34,87 @@ const formToPayload = (form) => {
   if (!form.problem_markdown.trim()) {
     return { error: 'Problem markdown is required' };
   }
-  const test_cases = [];
-  for (let i = 0; i < form.testCases.length; i++) {
-    const testCase = form.testCases[i];
-    if (!testCase.name.trim()) {
-      return { error: `Test case ${i + 1} needs a name` };
-    }
-    let args;
-    try {
-      args = JSON.parse(testCase.argsText);
-    } catch {
-      return { error: `Test case ${i + 1}: args is not valid JSON` };
-    }
-    if (!Array.isArray(args)) {
-      return { error: `Test case ${i + 1}: args must be a JSON list, e.g. [1, 2]` };
-    }
-    let expected;
-    try {
-      expected = JSON.parse(testCase.expectedText);
-    } catch {
-      return { error: `Test case ${i + 1}: expected is not valid JSON` };
-    }
-    test_cases.push({ name: testCase.name.trim(), args, expected });
-  }
-  if (test_cases.length === 0) {
-    return { error: 'An exercise needs at least one test case' };
-  }
   return {
     payload: {
       title: form.title.trim(),
       entry_function: form.entry_function.trim(),
       problem_markdown: form.problem_markdown,
       starter_code: form.starter_code,
-      test_cases,
+      test_code: form.test_code,
+      solution: form.solution,
     },
   };
 };
 
-function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
+const LEFT_TABS = [
+  { key: 'starter_code', label: 'Starter code' },
+  { key: 'solution', label: 'Solution (optional)' },
+];
+
+/**
+ * Dry-run outcome panel. A normal run (even with failing tests) reuses the
+ * student-facing ExerciseResults; status "error" means the run never produced
+ * test results (unsafe code, crash, broken test script, timeout), and unlike
+ * the student view it shows the traceback — the admin is debugging their own
+ * test script.
+ */
+function RunOutcome({ result }) {
+  if (result.status !== 'error') {
+    return <ExerciseResults data={result} />;
+  }
+  return (
+    <div className="space-y-2">
+      <div className="rounded-lg p-4 font-medium text-white bg-danger">
+        {result.message}
+      </div>
+      {result.traceback && (
+        <pre className="bg-[#1e1e1e] text-gray-100 rounded-lg p-3 text-sm overflow-x-auto">
+          {result.traceback}
+        </pre>
+      )}
+      {result.stdout && (
+        <div>
+          <h3 className="font-medium text-gray-800 mb-1">Print output</h3>
+          <pre className="bg-[#1e1e1e] text-gray-100 rounded-lg p-3 text-sm overflow-x-auto">
+            {result.stdout}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState(null);
+  // Which code the left pane shows and Run executes: starter_code | solution
+  const [leftTab, setLeftTab] = useState('starter_code');
+  const resultsRef = useRef(null);
 
   const setField = (name, value) =>
     setForm((prev) => ({ ...prev, [name]: value }));
 
-  const setTestCaseField = (index, name, value) =>
-    setForm((prev) => ({
-      ...prev,
-      testCases: prev.testCases.map((testCase, i) =>
-        i === index ? { ...testCase, [name]: value } : testCase
-      ),
-    }));
+  const isDirty = Object.keys(initialForm).some(
+    (key) => form[key] !== initialForm[key]
+  );
 
-  const addTestCase = () =>
-    setForm((prev) => ({
-      ...prev,
-      testCases: [
-        ...prev.testCases,
-        { name: '', argsText: '[]', expectedText: 'null' },
-      ],
-    }));
+  const handleClose = () => {
+    if (
+      isDirty &&
+      !window.confirm('You have unsaved changes. Discard them?')
+    ) {
+      return;
+    }
+    onCancel();
+  };
 
-  const removeTestCase = (index) =>
-    setForm((prev) => ({
-      ...prev,
-      testCases: prev.testCases.filter((_, i) => i !== index),
-    }));
+  useEffect(() => {
+    if (runResult) {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [runResult]);
 
   const handleSave = async () => {
     const { payload, error } = formToPayload(form);
@@ -114,33 +127,48 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
     setSaving(false);
   };
 
+  const handleRun = async () => {
+    if (!form.entry_function.trim()) {
+      toast.error('Entry function name is required to run tests');
+      return;
+    }
+    setRunning(true);
+    setRunResult(null);
+    const result = await onRun(
+      form[leftTab],
+      form.entry_function.trim(),
+      form.test_code
+    );
+    setRunning(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setRunResult(result.data);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       role="dialog"
       aria-modal="true"
-      onClick={onCancel}
+      onClick={handleClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-[90vw] h-[98vh] flex flex-col"
+        className="relative bg-white rounded-lg shadow-xl w-[90vw] h-[98vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">
-            {isNew ? 'New Exercise' : `Edit Exercise: ${initialForm.title}`}
-          </h3>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute top-2 right-3 z-10 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+          aria-label="Close"
+        >
+          ×
+        </button>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto px-6 pt-4 pb-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Title
@@ -154,7 +182,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Entry function (the function name the tests call)
+                Entry function (the function name every submission must define)
               </label>
               <input
                 type="text"
@@ -166,92 +194,85 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <details open={isNew}>
+            <summary className="text-sm font-medium text-gray-700 cursor-pointer select-none">
               Problem (Markdown shown to the student)
-            </label>
+            </summary>
             <textarea
               value={form.problem_markdown}
               onChange={(e) => setField('problem_markdown', e.target.value)}
-              rows={10}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={8}
+              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </div>
+          </details>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Starter code
-            </label>
-            <div className="h-56 border border-gray-300 rounded-md overflow-hidden">
-              <CodeEditor
-                code={form.starter_code}
-                onCodeChange={(value) => setField('starter_code', value ?? '')}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Test cases — params is a JSON list of arguments, return is the
-                expected JSON return value
-              </label>
-              <button
-                onClick={addTestCase}
-                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200"
-              >
-                + Add test case
-              </button>
-            </div>
-            <div className="hidden md:flex gap-2 mb-1 text-xs font-medium text-gray-500">
-              <span className="flex-[3]">Exercise name</span>
-              <span className="flex-[5]">Function params</span>
-              <span className="flex-[2]">Function return</span>
-              <span className="w-20 flex-shrink-0" />
-            </div>
-            <div className="space-y-2">
-              {form.testCases.map((testCase, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col md:flex-row gap-2 items-stretch md:items-center"
-                >
-                  <input
-                    type="text"
-                    value={testCase.name}
-                    onChange={(e) => setTestCaseField(index, 'name', e.target.value)}
-                    placeholder="Test name"
-                    className="flex-[3] min-w-0 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    value={testCase.argsText}
-                    onChange={(e) => setTestCaseField(index, 'argsText', e.target.value)}
-                    placeholder='e.g. [{"Alice": 30}, "Alice"]'
-                    className="flex-[5] min-w-0 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    value={testCase.expectedText}
-                    onChange={(e) =>
-                      setTestCaseField(index, 'expectedText', e.target.value)
-                    }
-                    placeholder="e.g. 30"
-                    className="flex-[2] min-w-0 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => removeTestCase(index)}
-                    className="w-20 flex-shrink-0 px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
-                    title="Remove test case"
-                  >
-                    Remove
-                  </button>
+          <div className="flex-1 min-h-[18rem] grid grid-cols-2 gap-4">
+            <div className="flex flex-col min-h-0">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex gap-1">
+                  {LEFT_TABS.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setLeftTab(tab.key)}
+                      className={`px-3 py-1 text-sm rounded-md transition-colors duration-150 ${
+                        leftTab === tab.key
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-              ))}
+                <span className="text-xs text-gray-500">
+                  Run executes tests against the visible tab
+                </span>
+              </div>
+              <div className="flex-1 border border-gray-300 rounded-md overflow-hidden">
+                <CodeEditor
+                  code={form[leftTab]}
+                  onCodeChange={(value) => setField(leftTab, value ?? '')}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col min-h-0">
+              <label className="block text-sm font-medium text-gray-700 mb-1 py-1">
+                Test script — test_* functions using check / check_output /
+                capture
+              </label>
+              <div className="flex-1 border border-gray-300 rounded-md overflow-hidden">
+                <CodeEditor
+                  code={form.test_code}
+                  onCodeChange={(value) => setField('test_code', value ?? '')}
+                />
+              </div>
             </div>
           </div>
+
+          <p className="text-xs text-gray-500">
+            Students only ever see the starter code — the solution and test
+            script stay server-side. Re-running seed_tutorial.py overwrites
+            all exercise content, including tests and solutions edited here.
+          </p>
+
+          {runResult && (
+            <div ref={resultsRef}>
+              <RunOutcome result={runResult} />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className={`px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 ${
+              running ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {running ? 'Running...' : 'Run Tests'}
+          </button>
           <button
             onClick={handleSave}
             disabled={saving}
@@ -262,7 +283,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
             {saving ? 'Saving...' : isNew ? 'Create Exercise' : 'Save Exercise'}
           </button>
           <button
-            onClick={onCancel}
+            onClick={handleClose}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors duration-200"
           >
             Cancel
@@ -277,6 +298,7 @@ function AdminTutorials() {
   const {
     getTutorials,
     getTutorialAdmin,
+    runExerciseTests,
     createTutorial,
     updateTutorial,
     deleteTutorial,
@@ -642,9 +664,7 @@ function AdminTutorials() {
                             {exercise.title}
                           </p>
                           <p className="text-xs text-gray-500 font-mono truncate">
-                            {exercise.entry_function}() ·{' '}
-                            {exercise.test_cases.length} test case
-                            {exercise.test_cases.length === 1 ? '' : 's'}
+                            {exercise.entry_function}()
                           </p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -692,6 +712,7 @@ function AdminTutorials() {
                       initialForm={editing.form}
                       isNew={editing.id === null}
                       onSave={handleSaveExercise}
+                      onRun={runExerciseTests}
                       onCancel={() => setEditing(null)}
                     />
                   )}

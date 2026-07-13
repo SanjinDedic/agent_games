@@ -1,8 +1,14 @@
-"""Seed THE tutorial: 10 exercises building up to a Greedy Pig agent.
+"""Seed THE tutorial: 5 exercises building up to a Greedy Pig agent.
 
-The progression starts at basic dictionary lookups and rounding, and ends
-with parsing the real nested `game_state` dictionary that Greedy Pig passes
-to `make_decision`.
+The progression starts at basic dictionary lookups and rounding, then covers
+printing output and splitting logic across helper functions — the shape of a
+real agent's decision code.
+
+Every exercise's tests are a Python test script (`Exercise.test_code`) run by
+backend/tasks/exercise_test_code.py: `test_*` functions calling the student's
+functions by name, recording results with the injected `check`,
+`check_output`, and `capture` helpers. The scripts are admin-trusted and
+seed-managed — students never see or touch them.
 
 Idempotent overwrite: the platform has exactly one tutorial, so this script
 reuses the oldest Tutorial row (deleting any others), overwrites its title
@@ -42,19 +48,19 @@ logger = logging.getLogger(__name__)
 
 TUTORIAL_TITLE = "Python Foundations for Greedy Pig"
 TUTORIAL_DESCRIPTION = (
-    "Ten short exercises that build every Python skill you need to write a "
+    "Five short exercises that build every Python skill you need to write a "
     "winning Greedy Pig agent. You start with simple dictionary lookups and "
-    "rounding, and finish by parsing the real nested game_state dictionary "
-    "and making a banking decision from it. Each exercise gives you a "
-    "problem, starter code, and test cases — submit your code to see which "
-    "tests pass."
+    "rounding, then learn to print a scoreboard and to split a decision "
+    "across helper functions — exactly how a real agent is built. Each "
+    "exercise gives you a problem, starter code, and tests — submit your "
+    "code to see which tests pass."
 )
 
 
 # ---------------------------------------------------------------------------
-# Exercise definitions, in teaching order. Each test case is
-# {"name": str, "args": [...], "expected": ...}; the exercise worker calls
-# the entry function with `args` and compares the return value with ==.
+# Exercise definitions, in teaching order. Each spec's `test_code` is a
+# trusted Python test script exec'd into the same namespace as the student's
+# code; see backend/tasks/exercise_test_code.py for the helper API.
 # ---------------------------------------------------------------------------
 
 EXERCISES = [
@@ -103,28 +109,26 @@ def get_banked(banked_money, name):
     # If `name` is not in the dictionary, return 0.
     pass  # Replace this line with your code
 """,
-        "test_cases": [
-            {
-                "name": "reads Alice's money",
-                "args": [{"Alice": 30, "Bob": 55}, "Alice"],
-                "expected": 30,
-            },
-            {
-                "name": "reads Bob's money",
-                "args": [{"Alice": 30, "Bob": 55}, "Bob"],
-                "expected": 55,
-            },
-            {
-                "name": "missing player returns 0",
-                "args": [{"Alice": 30}, "Zoe"],
-                "expected": 0,
-            },
-            {
-                "name": "empty scoreboard returns 0",
-                "args": [{}, "Alice"],
-                "expected": 0,
-            },
-        ],
+        "test_code": """\
+def test_reads_alice():
+    \"\"\"reads Alice's money\"\"\"
+    check(get_banked({"Alice": 30, "Bob": 55}, "Alice"), 30)
+
+
+def test_reads_bob():
+    \"\"\"reads Bob's money\"\"\"
+    check(get_banked({"Alice": 30, "Bob": 55}, "Bob"), 55)
+
+
+def test_missing_player():
+    \"\"\"missing player returns 0\"\"\"
+    check(get_banked({"Alice": 30}, "Zoe"), 0)
+
+
+def test_empty_scoreboard():
+    \"\"\"empty scoreboard returns 0\"\"\"
+    check(get_banked({}, "Alice"), 0)
+""",
     },
     # 2 ------------------------------------------------------------------
     {
@@ -167,33 +171,31 @@ def split_reward(pool, num_players):
     # then round one share to 2 decimal places.
     pass  # Replace this line with your code
 """,
-        "test_cases": [
-            {
-                "name": "two players split 10",
-                "args": [10, 2],
-                "expected": 5.0,
-            },
-            {
-                "name": "three players split 10",
-                "args": [10, 3],
-                "expected": 3.33,
-            },
-            {
-                "name": "one player keeps it all",
-                "args": [10, 1],
-                "expected": 10.0,
-            },
-            {
-                "name": "two players split 7",
-                "args": [7, 2],
-                "expected": 3.5,
-            },
-            {
-                "name": "three players split 20",
-                "args": [20, 3],
-                "expected": 6.67,
-            },
-        ],
+        "test_code": """\
+def test_two_players_split_10():
+    \"\"\"two players split 10\"\"\"
+    check(split_reward(10, 2), 5.0)
+
+
+def test_three_players_split_10():
+    \"\"\"three players split 10\"\"\"
+    check(split_reward(10, 3), 3.33)
+
+
+def test_one_player_keeps_it_all():
+    \"\"\"one player keeps it all\"\"\"
+    check(split_reward(10, 1), 10.0)
+
+
+def test_two_players_split_7():
+    \"\"\"two players split 7\"\"\"
+    check(split_reward(7, 2), 3.5)
+
+
+def test_three_players_split_20():
+    \"\"\"three players split 20\"\"\"
+    check(split_reward(20, 3), 6.67)
+""",
     },
     # 3 ------------------------------------------------------------------
     {
@@ -242,645 +244,204 @@ def should_bank(unbanked, threshold):
     # otherwise return "continue".
     pass  # Replace this line with your code
 """,
-        "test_cases": [
-            {
-                "name": "well over the threshold banks",
-                "args": [25, 20],
-                "expected": "bank",
-            },
-            {
-                "name": "under the threshold continues",
-                "args": [12, 20],
-                "expected": "continue",
-            },
-            {
-                "name": "exactly on the threshold banks",
-                "args": [20, 20],
-                "expected": "bank",
-            },
-            {
-                "name": "nothing unbanked continues",
-                "args": [0, 15],
-                "expected": "continue",
-            },
-        ],
+        "test_code": """\
+def test_over_threshold():
+    \"\"\"well over the threshold banks\"\"\"
+    check(should_bank(25, 20), "bank")
+
+
+def test_under_threshold():
+    \"\"\"under the threshold continues\"\"\"
+    check(should_bank(12, 20), "continue")
+
+
+def test_exactly_on_threshold():
+    \"\"\"exactly on the threshold banks\"\"\"
+    check(should_bank(20, 20), "bank")
+
+
+def test_nothing_unbanked():
+    \"\"\"nothing unbanked continues\"\"\"
+    check(should_bank(0, 15), "continue")
+""",
     },
     # 4 ------------------------------------------------------------------
     {
-        "title": "My Total Money",
-        "entry_function": "total_money",
+        "title": "Announce the Scores",
+        "entry_function": "print_scoreboard",
         "problem_markdown": """\
-# My Total Money
+# Announce the Scores
 
-Greedy Pig keeps your money in **two** dictionaries: `banked_money`
-(safe, counts toward winning) and `unbanked_money` (at risk — one bad
-roll and it's gone). To know how rich a player really is right now, you
-add their entry from each dictionary together.
+So far your functions have **returned** values. This one is different: it
+**prints**. After every round, Greedy Pig announces the scoreboard — and
+printing is also how you'll debug your own agent, so it's worth getting
+right.
 
 ## The Task
 
-Write a function `total_money(banked_money, unbanked_money, name)` that
-returns the player's banked money plus their unbanked money.
+Write a function `print_scoreboard(banked_money)` that prints one line
+per player, in the dictionary's order, in exactly this format:
 
-Both dictionaries always contain `name`.
+```
+name: amount
+```
+
+The function should print — not return — the lines. It should return
+nothing.
 
 ## Examples
 
 ```python
-total_money({"Alice": 40, "Bob": 10}, {"Alice": 7, "Bob": 0}, "Alice")
-# 47
+print_scoreboard({"Alice": 30, "Bob": 55})
+# prints:
+# Alice: 30
+# Bob: 55
 
-total_money({"Alice": 40, "Bob": 10}, {"Alice": 7, "Bob": 0}, "Bob")
-# 10
+print_scoreboard({"Cara": 12})
+# prints:
+# Cara: 12
 ```
 
 ## Hints
 
-- Look `name` up in each dictionary separately, then add the two numbers.
+- Loop over the players: `for name in banked_money:` — or over
+  `banked_money.items()` to get name and amount together.
+- An f-string builds the line: `f"{name}: {amount}"`.
+- `print(...)` each line — don't collect them into a string and return it.
 """,
         "starter_code": """\
-def total_money(banked_money, unbanked_money, name):
-    # Add the player's banked money and unbanked money together.
+def print_scoreboard(banked_money):
+    # Print one line per player, like
+    #   Alice: 30
+    # in the dictionary's order. Print, don't return!
     pass  # Replace this line with your code
 """,
-        "test_cases": [
-            {
-                "name": "banked plus unbanked",
-                "args": [{"Alice": 40, "Bob": 10}, {"Alice": 7, "Bob": 0}, "Alice"],
-                "expected": 47,
-            },
-            {
-                "name": "zero unbanked adds nothing",
-                "args": [{"Alice": 40, "Bob": 10}, {"Alice": 7, "Bob": 0}, "Bob"],
-                "expected": 10,
-            },
-            {
-                "name": "all money still unbanked",
-                "args": [{"Cara": 0}, {"Cara": 22}, "Cara"],
-                "expected": 22,
-            },
-            {
-                "name": "flat broke",
-                "args": [{"Dana": 0}, {"Dana": 0}, "Dana"],
-                "expected": 0,
-            },
-        ],
+        "test_code": """\
+def test_two_players():
+    \"\"\"prints one line per player, in order\"\"\"
+    with capture() as out:
+        print_scoreboard({"Alice": 30, "Bob": 55})
+    check_output(out.text, "Alice: 30\\nBob: 55")
+
+
+def test_single_player():
+    \"\"\"a single player prints a single line\"\"\"
+    with capture() as out:
+        print_scoreboard({"Cara": 12})
+    check_output(out.text, "Cara: 12")
+
+
+def test_empty_scoreboard():
+    \"\"\"an empty scoreboard prints nothing\"\"\"
+    with capture() as out:
+        print_scoreboard({})
+    check_output(out.text, "")
+
+
+def test_prints_not_returns():
+    \"\"\"the function prints instead of returning\"\"\"
+    with capture() as out:
+        result = print_scoreboard({"Alice": 30})
+    check(result, None, name="returns None (print, don't return)")
+""",
     },
     # 5 ------------------------------------------------------------------
     {
-        "title": "Money on the Table",
-        "entry_function": "pot_size",
+        "title": "Safe to Roll?",
+        "entry_function": "decide",
         "problem_markdown": """\
-# Money on the Table
+# Safe to Roll?
 
-Sometimes an agent cares about the whole table, not just itself. How much
-unbanked money is at risk right now across **all** players? If the next
-roll is a 1, all of it vanishes.
+Real agents don't cram everything into one function — they split their
+thinking into **helpers**. Here you write two functions, and the second
+one calls the first.
 
 ## The Task
 
-Write a function `pot_size(unbanked_money)` that returns the sum of every
-value in the dictionary. An empty dictionary means nothing is at risk, so
-return `0`.
+Write **both** of these functions:
+
+1. `is_safe(unbanked)` — returns `True` if `unbanked` is less than `20`,
+   otherwise `False`. (At 20 or more, one bad roll loses too much.)
+
+2. `decide(unbanked, banked)` — applies these rules **in order** and
+   returns the first one that fires:
+   1. If banking now would reach 100 or more in total
+      (`banked + unbanked >= 100`) → return `"bank"` — that wins the game!
+   2. If `is_safe(unbanked)` says it's safe → return `"continue"`.
+   3. Otherwise → return `"bank"`.
+
+`decide` must **call** `is_safe` — the tests check both functions, and
+they check that `decide` agrees with your `is_safe`.
 
 ## Examples
 
 ```python
-pot_size({"Alice": 5, "Bob": 12, "Cara": 0})
-# 17
+is_safe(5)
+# True
 
-pot_size({})
-# 0
+is_safe(20)
+# False
+
+decide(5, 10)
+# "continue"   (safe pile, nowhere near 100)
+
+decide(25, 10)
+# "bank"       (25 unbanked is not safe)
+
+decide(10, 95)
+# "bank"       (95 + 10 = 105 — banking now wins)
 ```
 
 ## Hints
 
-- `unbanked_money.values()` gives you just the amounts, without the names.
-- You can loop over them and add to a running total —
-  or look up what Python's built-in `sum()` does.
+- `unbanked < 20` is already a True/False value — you can return it
+  directly.
+- In `decide`, check the winning rule first, then use
+  `if is_safe(unbanked):` for the second rule.
 """,
         "starter_code": """\
-def pot_size(unbanked_money):
-    # Add up every amount in the dictionary and return the total.
+def is_safe(unbanked):
+    # True if the unbanked pile is still small enough to risk (< 20).
+    pass  # Replace this line with your code
+
+
+def decide(unbanked, banked):
+    # Rule 1: banking now wins (banked + unbanked >= 100) -> "bank"
+    # Rule 2: still safe to roll (use is_safe!)          -> "continue"
+    # Rule 3: otherwise                                   -> "bank"
     pass  # Replace this line with your code
 """,
-        "test_cases": [
-            {
-                "name": "adds three players' piles",
-                "args": [{"Alice": 5, "Bob": 12, "Cara": 0}],
-                "expected": 17,
-            },
-            {
-                "name": "single player",
-                "args": [{"Alice": 31}],
-                "expected": 31,
-            },
-            {
-                "name": "empty table is 0",
-                "args": [{}],
-                "expected": 0,
-            },
-            {
-                "name": "everyone just banked",
-                "args": [{"Alice": 0, "Bob": 0}],
-                "expected": 0,
-            },
-        ],
-    },
-    # 6 ------------------------------------------------------------------
-    {
-        "title": "Find the Leader",
-        "entry_function": "find_leader",
-        "problem_markdown": """\
-# Find the Leader
+        "test_code": """\
+def test_is_safe_small_piles():
+    \"\"\"is_safe: a small pile is safe\"\"\"
+    check(is_safe(5), True, name="is_safe(5) is True")
+    check(is_safe(19), True, name="is_safe(19) is True")
 
-Good agents play differently when they are winning than when they are
-chasing. Step one of that: work out **who** is in front. Here you find the
-name of the player with the most banked money.
 
-## The Task
+def test_is_safe_big_piles():
+    \"\"\"is_safe: 20 or more is not safe\"\"\"
+    check(is_safe(20), False, name="is_safe(20) is False")
+    check(is_safe(35), False, name="is_safe(35) is False")
 
-Write a function `find_leader(banked_money)` that returns the **name**
-(the key, not the amount) of the player with the highest banked money.
 
-The dictionary is never empty, and in every test exactly one player is in
-the lead — you don't need to handle ties.
+def test_decide_rules():
+    \"\"\"decide applies the three rules in order\"\"\"
+    check(decide(5, 10), "continue", name='decide(5, 10) is "continue"')
+    check(decide(25, 10), "bank", name='decide(25, 10) is "bank"')
+    check(decide(10, 95), "bank", name='decide(10, 95) wins the game')
+    check(decide(19, 50), "continue", name='decide(19, 50) is "continue"')
 
-## Examples
 
-```python
-find_leader({"Alice": 30, "Bob": 55, "Cara": 41})
-# "Bob"
-
-find_leader({"Alice": 90})
-# "Alice"
-```
-
-## Hints
-
-- `for name in banked_money:` loops over the names;
-  `banked_money[name]` gives each one's amount.
-- Keep two variables while you loop: the best name so far and the best
-  amount so far. Update both whenever you see a bigger amount.
+def test_decide_agrees_with_is_safe():
+    \"\"\"decide follows is_safe when the game can't be won yet\"\"\"
+    for unbanked in (3, 12, 19, 20, 28):
+        expected = "continue" if is_safe(unbanked) else "bank"
+        check(
+            decide(unbanked, 10),
+            expected,
+            name=f"decide({unbanked}, 10) agrees with is_safe({unbanked})",
+        )
 """,
-        "starter_code": """\
-def find_leader(banked_money):
-    # Return the NAME of the player with the most banked money.
-    # Loop over the dictionary and track the best name you have
-    # seen so far, and how much money that player had.
-    pass  # Replace this line with your code
-""",
-        "test_cases": [
-            {
-                "name": "leader in the middle",
-                "args": [{"Alice": 30, "Bob": 55, "Cara": 41}],
-                "expected": "Bob",
-            },
-            {
-                "name": "leader listed first",
-                "args": [{"Dana": 72, "Eli": 4, "Flo": 40}],
-                "expected": "Dana",
-            },
-            {
-                "name": "leader listed last",
-                "args": [{"Alice": 12, "Bob": 15, "Cara": 60}],
-                "expected": "Cara",
-            },
-            {
-                "name": "only one player",
-                "args": [{"Alice": 90}],
-                "expected": "Alice",
-            },
-        ],
-    },
-    # 7 ------------------------------------------------------------------
-    {
-        "title": "Still Rolling",
-        "entry_function": "still_rolling",
-        "problem_markdown": """\
-# Still Rolling
-
-Greedy Pig's `game_state` includes `players_banked_this_round` — a
-**list** of the players who have already banked and are safely out of the
-round. Everyone else is still rolling and still at risk. Knowing how many
-rivals are still in the round is a key strategic signal.
-
-## The Task
-
-Write a function `still_rolling(players, players_banked_this_round)` that
-returns a **list** of the names in `players` that are *not* in
-`players_banked_this_round`, keeping the same order as `players`.
-
-## Examples
-
-```python
-still_rolling(["Alice", "Bob", "Cara"], ["Bob"])
-# ["Alice", "Cara"]
-
-still_rolling(["Alice", "Bob"], [])
-# ["Alice", "Bob"]
-
-still_rolling(["Alice", "Bob"], ["Alice", "Bob"])
-# []
-```
-
-## Hints
-
-- `in` and `not in` work on lists too: `"Bob" not in banked` is `True`
-  when Bob hasn't banked.
-- Start with an empty list and `append` the names that should keep
-  rolling.
-""",
-        "starter_code": """\
-def still_rolling(players, players_banked_this_round):
-    # Build and return a list of the players who have NOT banked yet,
-    # in the same order they appear in `players`.
-    pass  # Replace this line with your code
-""",
-        "test_cases": [
-            {
-                "name": "one player has banked",
-                "args": [["Alice", "Bob", "Cara"], ["Bob"]],
-                "expected": ["Alice", "Cara"],
-            },
-            {
-                "name": "nobody has banked yet",
-                "args": [["Alice", "Bob"], []],
-                "expected": ["Alice", "Bob"],
-            },
-            {
-                "name": "everyone has banked",
-                "args": [["Alice", "Bob"], ["Alice", "Bob"]],
-                "expected": [],
-            },
-            {
-                "name": "keeps the original order",
-                "args": [["Dana", "Eli", "Flo", "Gus"], ["Eli", "Dana"]],
-                "expected": ["Flo", "Gus"],
-            },
-        ],
-    },
-    # 8 ------------------------------------------------------------------
-    {
-        "title": "Everyone's Total",
-        "entry_function": "all_totals",
-        "problem_markdown": """\
-# Everyone's Total
-
-You already added banked + unbanked for **one** player. A serious agent
-sizes up the *whole table* at once: it builds a **new dictionary** with
-every player's true total. This "combine two dictionaries into one" move
-is the heart of ranking players, which comes next.
-
-## The Task
-
-Write a function `all_totals(banked_money, unbanked_money)` that returns
-a **new dictionary** mapping every player's name to their banked money
-plus their unbanked money.
-
-Both dictionaries always contain exactly the same names.
-
-## Examples
-
-```python
-all_totals({"Alice": 40, "Bob": 10}, {"Alice": 7, "Bob": 5})
-# {"Alice": 47, "Bob": 15}
-```
-
-## Hints
-
-- Start with an empty dictionary: `totals = {}`.
-- Loop over the names in `banked_money`, and for each name store
-  `totals[name] = ...`.
-""",
-        "starter_code": """\
-def all_totals(banked_money, unbanked_money):
-    # Return a NEW dictionary: every player's name mapped to
-    # their banked money plus their unbanked money.
-    pass  # Replace this line with your code
-""",
-        "test_cases": [
-            {
-                "name": "combines two players",
-                "args": [{"Alice": 40, "Bob": 10}, {"Alice": 7, "Bob": 5}],
-                "expected": {"Alice": 47, "Bob": 15},
-            },
-            {
-                "name": "three players, some zeros",
-                "args": [
-                    {"Alice": 0, "Bob": 20, "Cara": 55},
-                    {"Alice": 13, "Bob": 0, "Cara": 6},
-                ],
-                "expected": {"Alice": 13, "Bob": 20, "Cara": 61},
-            },
-            {
-                "name": "single player",
-                "args": [{"Dana": 33}, {"Dana": 9}],
-                "expected": {"Dana": 42},
-            },
-        ],
-    },
-    # 9 ------------------------------------------------------------------
-    {
-        "title": "What's My Rank?",
-        "entry_function": "my_rank",
-        "problem_markdown": """\
-# What's My Rank?
-
-Now for the real thing. Greedy Pig passes your agent one **nested**
-dictionary called `game_state`. The money dictionaries you've been
-working with live *inside* it:
-
-```python
-game_state = {
-    "round_no": 3,
-    "roll_no": 2,
-    "players_banked_this_round": [],
-    "banked_money": {"Alice": 40, "Bob": 55, "Cara": 10},
-    "unbanked_money": {"Alice": 20, "Bob": 0, "Cara": 12},
-}
-```
-
-So `game_state["banked_money"]["Bob"]` digs two levels down to get 55.
-
-The built-in `Player` class in Greedy Pig has a `my_rank` helper — here
-you build it yourself so you understand exactly what it does.
-
-## The Task
-
-Write a function `my_rank(game_state, name)` that returns the player's
-rank by **total** money (banked + unbanked): `1` means the richest player
-at the table, `2` the second richest, and so on.
-
-In every test exactly one player holds each rank — no ties.
-
-In the example above the totals are Alice 60, Bob 55, Cara 22, so
-`my_rank(game_state, "Alice")` is `1` even though Bob has more *banked* —
-unbanked money still counts toward rank.
-
-## Hints
-
-- Pull out the inner dictionaries first:
-  `banked = game_state["banked_money"]`.
-- Build each player's total, exactly like *Everyone's Total*.
-- Count how many players have a total **bigger** than yours — your rank
-  is that count plus 1. (Sorting the totals works too.)
-""",
-        "starter_code": """\
-def my_rank(game_state, name):
-    # Step 1: get the "banked_money" and "unbanked_money"
-    #         dictionaries out of game_state.
-    # Step 2: work out every player's total money.
-    # Step 3: return this player's rank: 1 = richest at the table.
-    pass  # Replace this line with your code
-""",
-        "test_cases": [
-            {
-                "name": "highest total is rank 1",
-                "args": [
-                    {
-                        "round_no": 3,
-                        "roll_no": 2,
-                        "players_banked_this_round": [],
-                        "banked_money": {"Alice": 40, "Bob": 55, "Cara": 10},
-                        "unbanked_money": {"Alice": 20, "Bob": 0, "Cara": 12},
-                    },
-                    "Alice",
-                ],
-                "expected": 1,
-            },
-            {
-                "name": "most banked is not always rank 1",
-                "args": [
-                    {
-                        "round_no": 3,
-                        "roll_no": 2,
-                        "players_banked_this_round": [],
-                        "banked_money": {"Alice": 40, "Bob": 55, "Cara": 10},
-                        "unbanked_money": {"Alice": 20, "Bob": 0, "Cara": 12},
-                    },
-                    "Bob",
-                ],
-                "expected": 2,
-            },
-            {
-                "name": "poorest player is last",
-                "args": [
-                    {
-                        "round_no": 3,
-                        "roll_no": 2,
-                        "players_banked_this_round": [],
-                        "banked_money": {"Alice": 40, "Bob": 55, "Cara": 10},
-                        "unbanked_money": {"Alice": 20, "Bob": 0, "Cara": 12},
-                    },
-                    "Cara",
-                ],
-                "expected": 3,
-            },
-            {
-                "name": "unbanked money can put you in front",
-                "args": [
-                    {
-                        "round_no": 7,
-                        "roll_no": 5,
-                        "players_banked_this_round": ["Dana"],
-                        "banked_money": {"Dana": 70, "Eli": 45},
-                        "unbanked_money": {"Dana": 0, "Eli": 30},
-                    },
-                    "Eli",
-                ],
-                "expected": 1,
-            },
-            {
-                "name": "banking early can cost the lead",
-                "args": [
-                    {
-                        "round_no": 7,
-                        "roll_no": 5,
-                        "players_banked_this_round": ["Dana"],
-                        "banked_money": {"Dana": 70, "Eli": 45},
-                        "unbanked_money": {"Dana": 0, "Eli": 30},
-                    },
-                    "Dana",
-                ],
-                "expected": 2,
-            },
-        ],
-    },
-    # 10 -----------------------------------------------------------------
-    {
-        "title": "Make the Decision",
-        "entry_function": "make_decision",
-        "problem_markdown": """\
-# Make the Decision
-
-The capstone. This is (almost) exactly the method a real Greedy Pig agent
-implements: read the nested `game_state`, do some arithmetic, and answer
-`"bank"` or `"continue"`. The only difference is that in the real game
-your name arrives as `self.name` — here it is passed in as an argument.
-
-## The Task
-
-Write a function `make_decision(game_state, name)` that applies these
-rules **in order** and returns the first one that fires:
-
-1. If banking now would give you 100 or more banked in total
-   (your banked + your unbanked ≥ 100) → return `"bank"` — that wins the
-   game!
-2. If your unbanked money is 30 or more → return `"bank"` — too much to
-   risk on one roll.
-3. If **2 or more** players have already banked this round *and* your
-   unbanked money is 15 or more → return `"bank"` — the odds no longer
-   favour the greedy.
-4. Otherwise → return `"continue"`.
-
-`game_state` has the full shape you saw in *What's My Rank?*:
-`round_no`, `roll_no`, `players_banked_this_round` (a list),
-`banked_money` and `unbanked_money` (nested dictionaries).
-
-## Examples
-
-```python
-game_state = {
-    "round_no": 9,
-    "roll_no": 4,
-    "players_banked_this_round": [],
-    "banked_money": {"Alice": 80, "Bob": 60},
-    "unbanked_money": {"Alice": 25, "Bob": 10},
-}
-
-make_decision(game_state, "Alice")
-# "bank"      (80 + 25 = 105 — banking now wins)
-
-make_decision(game_state, "Bob")
-# "continue"  (70 total, only 10 at risk, nobody has banked)
-```
-
-## Hints
-
-- Dig your two numbers out first:
-  `my_banked = game_state["banked_money"][name]` and the same for
-  unbanked. The rules become one short `if`/`elif`/`else` chain.
-- `len(game_state["players_banked_this_round"])` counts how many players
-  have banked this round.
-- Check the rules in the order given — rule 1 beats rule 4 even on
-  roll 1.
-""",
-        "starter_code": """\
-def make_decision(game_state, name):
-    # Step 1: get YOUR banked and unbanked money out of the
-    #         nested dictionaries in game_state.
-    # Step 2: count how many players have banked this round.
-    # Step 3: apply the four rules from the problem, in order,
-    #         and return "bank" or "continue".
-    pass  # Replace this line with your code
-""",
-        "test_cases": [
-            {
-                "name": "banking now wins the game",
-                "args": [
-                    {
-                        "round_no": 9,
-                        "roll_no": 4,
-                        "players_banked_this_round": [],
-                        "banked_money": {"Alice": 80, "Bob": 60},
-                        "unbanked_money": {"Alice": 25, "Bob": 10},
-                    },
-                    "Alice",
-                ],
-                "expected": "bank",
-            },
-            {
-                "name": "safe position keeps rolling",
-                "args": [
-                    {
-                        "round_no": 9,
-                        "roll_no": 4,
-                        "players_banked_this_round": [],
-                        "banked_money": {"Alice": 80, "Bob": 60},
-                        "unbanked_money": {"Alice": 25, "Bob": 10},
-                    },
-                    "Bob",
-                ],
-                "expected": "continue",
-            },
-            {
-                "name": "30 unbanked is too much to risk",
-                "args": [
-                    {
-                        "round_no": 2,
-                        "roll_no": 6,
-                        "players_banked_this_round": ["Cara"],
-                        "banked_money": {"Alice": 10, "Bob": 20, "Cara": 30},
-                        "unbanked_money": {"Alice": 30, "Bob": 14, "Cara": 0},
-                    },
-                    "Alice",
-                ],
-                "expected": "bank",
-            },
-            {
-                "name": "one banker is not enough pressure",
-                "args": [
-                    {
-                        "round_no": 2,
-                        "roll_no": 6,
-                        "players_banked_this_round": ["Cara"],
-                        "banked_money": {"Alice": 10, "Bob": 20, "Cara": 30},
-                        "unbanked_money": {"Alice": 30, "Bob": 14, "Cara": 0},
-                    },
-                    "Bob",
-                ],
-                "expected": "continue",
-            },
-            {
-                "name": "two bankers plus 15 unbanked banks",
-                "args": [
-                    {
-                        "round_no": 5,
-                        "roll_no": 3,
-                        "players_banked_this_round": ["Bob", "Cara"],
-                        "banked_money": {
-                            "Alice": 50,
-                            "Bob": 40,
-                            "Cara": 35,
-                            "Dan": 20,
-                        },
-                        "unbanked_money": {
-                            "Alice": 15,
-                            "Bob": 0,
-                            "Cara": 0,
-                            "Dan": 8,
-                        },
-                    },
-                    "Alice",
-                ],
-                "expected": "bank",
-            },
-            {
-                "name": "two bankers but a small pile rolls on",
-                "args": [
-                    {
-                        "round_no": 5,
-                        "roll_no": 3,
-                        "players_banked_this_round": ["Bob", "Cara"],
-                        "banked_money": {
-                            "Alice": 50,
-                            "Bob": 40,
-                            "Cara": 35,
-                            "Dan": 20,
-                        },
-                        "unbanked_money": {
-                            "Alice": 15,
-                            "Bob": 0,
-                            "Cara": 0,
-                            "Dan": 8,
-                        },
-                    },
-                    "Dan",
-                ],
-                "expected": "continue",
-            },
-        ],
     },
 ]
 
@@ -948,14 +509,16 @@ def seed_tutorial() -> bool:
                     title="",
                     problem_markdown="",
                     entry_function="",
-                    test_cases=[],
                 )
             exercise.order_index = index
             exercise.title = spec["title"]
             exercise.problem_markdown = spec["problem_markdown"]
             exercise.starter_code = spec["starter_code"]
             exercise.entry_function = spec["entry_function"]
-            exercise.test_cases = spec["test_cases"]
+            exercise.test_code = spec["test_code"]
+            # The seed is a full overwrite: a spec without a solution resets
+            # any solution saved through the admin editor.
+            exercise.solution = spec.get("solution")
             session.add(exercise)
 
         for leftover in existing[len(EXERCISES):]:

@@ -6,25 +6,25 @@ never reaches a worker. The task executes the student's code inside a worker
 child process; worker_max_tasks_per_child=1 gives every task a fresh process,
 so submitted code cannot contaminate later runs.
 
-Exercises are function I/O tests: the student's code must define the exercise's
-entry function, and each test case calls it with `args` and compares the return
-value to `expected` with ==. A failing test is a normal outcome ("status":
-"success", test not passed) — "status": "error" means the code never got as far
-as producing test results (syntax error, missing function, timeout).
+An exercise's tests are an admin-trusted Python test script
+(backend/tasks/exercise_test_code.py) exec'd into the same namespace as the
+student's code. A failing check is a normal outcome ("status": "success",
+test not passed) — "status": "error" means the code never got as far as
+producing test results (syntax error, missing function, timeout).
 """
 
 import contextlib
-import copy
 import io
 import time
 import traceback as tb
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional
 
 from billiard.exceptions import WorkerLostError
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
 
 from backend.tasks.celery_app import celery_app
 from backend.tasks.celery_utils import poll_task_result
+from backend.tasks.exercise_test_code import MAX_STDOUT_CHARS, run_test_code
 from backend.tasks.validation_task import (
     VALIDATION_RESULT_TIMEOUT,
     VALIDATION_TASK_EXPIRES,
@@ -42,10 +42,6 @@ EXERCISE_TIMEOUT_SECONDS = 1
 # VALIDATION_TIME_LIMIT: student code with a bare `except Exception` swallows
 # SoftTimeLimitExceeded, and only the hard kill reliably reaps a spinner.
 EXERCISE_TIME_LIMIT = EXERCISE_TIMEOUT_SECONDS + 1
-
-# Students print-debug; keep captured output bounded so a print inside a loop
-# can't bloat the result payload through the broker.
-MAX_STDOUT_CHARS = 10_000
 
 _plural = "" if EXERCISE_TIMEOUT_SECONDS == 1 else "s"
 EXERCISE_TIMEOUT_MESSAGE = (
@@ -72,7 +68,9 @@ def timeout_exercise_result() -> Dict[str, Any]:
     return _normalize({"status": "error", "message": EXERCISE_TIMEOUT_MESSAGE})
 
 
-def enqueue_exercise_run(code: str, entry_function: str, test_cases: List[dict]):
+def enqueue_exercise_run(
+    code: str, entry_function: str, test_code: Optional[str]
+):
     """Enqueue an exercise run that self-drops if it waits out its usefulness.
 
     Same expiry rationale as enqueue_validation: a task still queued after the
@@ -82,7 +80,7 @@ def enqueue_exercise_run(code: str, entry_function: str, test_cases: List[dict])
         kwargs={
             "code": code,
             "entry_function": entry_function,
-            "test_cases": test_cases,
+            "test_code": test_code,
         },
         expires=VALIDATION_TASK_EXPIRES,
     )
@@ -106,14 +104,10 @@ async def await_exercise_result(
         )
 
 
-def _format_call(entry_function: str, args: List[Any]) -> str:
-    return f"{entry_function}({', '.join(repr(a) for a in args)})"
-
-
 def _execute_tests(
-    code: str, entry_function: str, test_cases: List[dict]
+    code: str, entry_function: str, test_code: Optional[str]
 ) -> Dict[str, Any]:
-    """Exec the student's code, run every test case, return the raw result."""
+    """Exec the student's code, run the test script, return the raw result."""
     t0 = time.perf_counter()
     namespace: Dict[str, Any] = {"__name__": "exercise_submission"}
     try:
@@ -134,32 +128,19 @@ def _execute_tests(
             "message": f"Your code must define a function named '{entry_function}'.",
         }
 
-    test_results = []
-    for case in test_cases:
-        # deepcopy so a function that mutates its arguments can't leak state
-        # into (or corrupt) later test cases
-        args = copy.deepcopy(case.get("args", []))
-        expected = case.get("expected")
-        entry = {
-            "name": case.get("name") or _format_call(entry_function, args),
-            "call": _format_call(entry_function, case.get("args", [])),
-            "expected": expected,
-            "actual": None,
-            "passed": False,
-            "error": None,
+    test_results: list = []
+    if test_code:
+        error = run_test_code(test_code, namespace, test_results)
+        if error:
+            return error
+
+    if not test_results:
+        # A missing/row-less test script would otherwise pass vacuously; this
+        # is an authoring bug, not a student failure — surface it loudly.
+        return {
+            "status": "error",
+            "message": "This exercise defines no tests.",
         }
-        try:
-            actual = func(*args)
-            entry["actual"] = repr(actual)
-            entry["passed"] = bool(actual == expected)
-        except SoftTimeLimitExceeded:
-            # The budget covers the whole run — swallowing this as a per-test
-            # error would call the (likely still spinning) function again and
-            # defer the kill to the hard limit's SIGKILL.
-            raise
-        except Exception as e:  # noqa: BLE001 - a crash fails this test only
-            entry["error"] = f"{type(e).__name__}: {e}"
-        test_results.append(entry)
 
     return {
         "status": "success",
@@ -175,14 +156,14 @@ def _execute_tests(
     time_limit=EXERCISE_TIME_LIMIT,
 )
 def run_exercise(
-    code: str, entry_function: str, test_cases: List[dict]
+    code: str, entry_function: str, test_code: Optional[str]
 ) -> Dict[str, Any]:
-    """Execute the student's code and run every test case against it."""
+    """Execute the student's code and run the exercise's test script on it."""
     buf = io.StringIO()
     result: Dict[str, Any]
     try:
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
-            result = _execute_tests(code, entry_function, test_cases)
+            result = _execute_tests(code, entry_function, test_code)
     except SoftTimeLimitExceeded:
         # Only reached when the student's code didn't swallow it; a bare
         # `except Exception` in their code spins on until the hard time_limit

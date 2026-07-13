@@ -15,23 +15,25 @@ from backend.database.db_models import (
 from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
 
-TEST_CASES = [
-    {
-        "name": "counts each word once",
-        "args": ["the cat sat"],
-        "expected": {"the": 1, "cat": 1, "sat": 1},
-    },
-    {
-        "name": "counts repeated words",
-        "args": ["the cat and the dog"],
-        "expected": {"the": 2, "cat": 1, "and": 1, "dog": 1},
-    },
-    {
-        "name": "empty string has no words",
-        "args": [""],
-        "expected": {},
-    },
-]
+WORD_COUNTER_TEST_CODE = '''\
+def test_counts_each_word_once():
+    """counts each word once"""
+    check(count_words("the cat sat"), {"the": 1, "cat": 1, "sat": 1})
+
+
+def test_counts_repeated_words():
+    """counts repeated words"""
+    check(
+        count_words("the cat and the dog"),
+        {"the": 2, "cat": 1, "and": 1, "dog": 1},
+    )
+
+
+def test_empty_string():
+    """empty string has no words"""
+    check(count_words(""), {})
+'''
+WORD_COUNTER_TEST_COUNT = 3
 
 PASSING_CODE = """
 def count_words(sentence):
@@ -75,7 +77,7 @@ def tutorial_with_exercise(db_session: Session) -> Tutorial:
         problem_markdown="Second problem",
         starter_code="def second():\n    pass\n",
         entry_function="second",
-        test_cases=[{"name": "returns none", "args": [], "expected": None}],
+        test_code="def test_returns_none():\n    check(second(), None)\n",
     )
     first = Exercise(
         tutorial_id=tutorial.id,
@@ -84,7 +86,7 @@ def tutorial_with_exercise(db_session: Session) -> Tutorial:
         problem_markdown="Count the words",
         starter_code="def count_words(sentence):\n    pass\n",
         entry_function="count_words",
-        test_cases=TEST_CASES,
+        test_code=WORD_COUNTER_TEST_CODE,
     )
     db_session.add(later)
     db_session.add(first)
@@ -131,8 +133,9 @@ def test_get_tutorial_detail(client, team_headers, tutorial_with_exercise):
     exercise = data["exercises"][0]
     assert exercise["problem_markdown"] == "Count the words"
     assert exercise["starter_code"].startswith("def count_words")
-    assert "test_cases" not in exercise
+    assert "test_code" not in exercise
     assert "entry_function" not in exercise
+    assert "solution" not in exercise
 
     response = client.get("/tutorial/tutorial/99999", headers=team_headers)
     assert response.status_code == 404
@@ -149,10 +152,11 @@ def test_submit_exercise_all_tests_pass(
     assert response.status_code == 200
     data = response.json()
     assert data["passed"] is True
-    assert len(data["test_results"]) == len(TEST_CASES)
+    assert len(data["test_results"]) == WORD_COUNTER_TEST_COUNT
     assert all(t["passed"] for t in data["test_results"])
 
-    # The code row is stored and linked to a metadata row
+    # The code row is stored and linked to a metadata row, with the per-test
+    # rows persisted as returned
     submission = db_session.exec(
         select(ExerciseSubmission).where(
             ExerciseSubmission.id == data["submission_id"]
@@ -160,6 +164,7 @@ def test_submit_exercise_all_tests_pass(
     ).one()
     assert submission.code == PASSING_CODE
     assert submission.passed is True
+    assert submission.test_results == data["test_results"]
     assert submission.meta.exercise_id == word_counter_exercise.id
 
 
@@ -177,6 +182,7 @@ def test_submit_exercise_failing_tests_still_stored(
     data = response.json()
     assert data["passed"] is False
 
+    # Row names come from the test functions' docstrings
     by_name = {t["name"]: t for t in data["test_results"]}
     assert by_name["counts each word once"]["passed"] is True
     assert by_name["empty string has no words"]["passed"] is True
@@ -194,6 +200,99 @@ def test_submit_exercise_failing_tests_still_stored(
     data = response.json()
     assert data["code"] == PARTIAL_CODE
     assert data["passed"] is False
+
+
+PRINT_TEST_CODE = '''\
+def test_prints_the_board():
+    """prints one line per player, in order"""
+    with capture() as out:
+        print_scores({"Alice": 30, "Bob": 55})
+    check_output(out.text, "Alice: 30\\nBob: 55")
+
+
+def test_returns_nothing():
+    """prints instead of returning"""
+    with capture() as out:
+        result = print_scores({"Alice": 30})
+    check(result, None)
+'''
+
+
+@pytest.fixture
+def print_exercise(
+    db_session: Session, tutorial_with_exercise: Tutorial
+) -> Exercise:
+    """A print-checking exercise (capture/check_output) in TeamA's tutorial."""
+    exercise = Exercise(
+        tutorial_id=tutorial_with_exercise.id,
+        order_index=2,
+        title="Print Exercise",
+        problem_markdown="Print the scoreboard",
+        starter_code="def print_scores(banked):\n    pass\n",
+        entry_function="print_scores",
+        test_code=PRINT_TEST_CODE,
+    )
+    db_session.add(exercise)
+    db_session.commit()
+    db_session.refresh(exercise)
+    return exercise
+
+
+def test_submit_print_exercise(
+    client, db_session, team_headers, print_exercise, celery_workers
+):
+    """check_output failures carry raw multiline text, prints outside the
+    tests land in the stdout panel, and the rows are stored."""
+    response = client.post(
+        "/tutorial/submit-exercise",
+        json={
+            "exercise_id": print_exercise.id,
+            "code": (
+                "print('debugging outside the tests')\n"
+                "def print_scores(banked):\n"
+                "    for name in banked:\n"
+                "        print(f'{name} has {banked[name]}')\n"
+            ),
+        },
+        headers=team_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["passed"] is False
+
+    by_name = {t["name"]: t for t in data["test_results"]}
+    failed = by_name["prints one line per player, in order"]
+    assert failed["passed"] is False
+    assert failed["expected"] == "Alice: 30\nBob: 55"
+    assert failed["actual"] == "Alice has 30\nBob has 55\n"
+    assert by_name["prints instead of returning"]["passed"] is True
+
+    # Module-level prints reach the stdout panel; captured test output doesn't
+    assert "debugging outside the tests" in data["stdout"]
+    assert "Alice has 30" not in data["stdout"]
+
+    submission = db_session.exec(
+        select(ExerciseSubmission).where(
+            ExerciseSubmission.id == data["submission_id"]
+        )
+    ).one()
+    assert submission.test_results == data["test_results"]
+
+    # And the fixed version passes
+    response = client.post(
+        "/tutorial/submit-exercise",
+        json={
+            "exercise_id": print_exercise.id,
+            "code": (
+                "def print_scores(banked):\n"
+                "    for name in banked:\n"
+                "        print(f'{name}: {banked[name]}')\n"
+            ),
+        },
+        headers=team_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["passed"] is True
 
 
 def test_submit_exercise_unsafe_code(
@@ -482,7 +581,7 @@ def unattached_tutorial(db_session: Session) -> Tutorial:
             problem_markdown="Hidden problem",
             starter_code="def hidden():\n    pass\n",
             entry_function="hidden",
-            test_cases=[{"name": "runs", "args": [], "expected": None}],
+            test_code="def test_runs():\n    check(hidden(), None)\n",
         )
     )
     db_session.commit()

@@ -257,9 +257,25 @@ export const useTutorialAPI = () => {
     }
   }, [apiUrl, accessToken]);
 
-  /** Get one tutorial with full exercise definitions (incl. test cases). */
+  /** Get one tutorial with full exercise definitions (incl. test scripts). */
   const getTutorialAdmin = useCallback(
     (tutorialId) => adminRequest(`/admin/tutorial/${tutorialId}`),
+    [adminRequest]
+  );
+
+  /**
+   * Dry-run a test script against code without saving anything (backs the
+   * exercise editor's Run button). Always resolves with the full run result
+   * — { status, message, passed, test_results, traceback, stdout, ... } —
+   * so failing tests and broken test scripts both render, never toast.
+   */
+  const runExerciseTests = useCallback(
+    (code, entryFunction, testCode) =>
+      adminRequest('/admin/run-exercise', 'POST', {
+        code,
+        entry_function: entryFunction,
+        test_code: testCode,
+      }),
     [adminRequest]
   );
 
@@ -280,7 +296,8 @@ export const useTutorialAPI = () => {
     [adminRequest]
   );
 
-  /** exercise = { title, problem_markdown, starter_code, entry_function, test_cases } */
+  /** exercise = { title, problem_markdown, starter_code, entry_function,
+   *  test_code } */
   const createExercise = useCallback(
     (tutorialId, exercise) =>
       adminRequest(`/tutorial/${tutorialId}/exercises`, 'POST', exercise),
@@ -316,6 +333,7 @@ export const useTutorialAPI = () => {
     getExerciseSubmissions,
     submitExercise,
     getTutorialAdmin,
+    runExerciseTests,
     createTutorial,
     updateTutorial,
     deleteTutorial,

@@ -17,11 +17,11 @@ EXERCISE_PAYLOAD = {
     "problem_markdown": "# Sum\n\nAdd the two numbers.",
     "starter_code": "def add(a, b):\n    pass\n",
     "entry_function": "add",
-    "test_cases": [
-        {"name": "adds small numbers", "args": [1, 2], "expected": 3},
-        {"name": "adds negatives", "args": [-1, -2], "expected": -3},
-    ],
+    "test_code": "def test_adds():\n    check(add(1, 2), 3)\n",
+    "solution": "def add(a, b):\n    return a + b\n",
 }
+
+SEEDED_TEST_CODE = "def test_runs():\n    check(f(), None)\n"
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def tutorial_with_exercises(db_session: Session, tutorial: Tutorial) -> Tutorial
                 problem_markdown=f"{name} problem",
                 starter_code="def f():\n    pass\n",
                 entry_function="f",
-                test_cases=[{"name": "runs", "args": [], "expected": None}],
+                test_code=SEEDED_TEST_CODE,
             )
         )
     db_session.commit()
@@ -181,9 +181,8 @@ def test_admin_detail_includes_full_exercise_definition(
     ]
     first = detail["exercises"][0]
     assert first["entry_function"] == "f"
-    assert first["test_cases"] == [
-        {"name": "runs", "args": [], "expected": None}
-    ]
+    # The admin editor needs the test script to show and run it
+    assert first["test_code"] == SEEDED_TEST_CODE
 
 
 def test_admin_detail_denied_for_team(client, team_headers, tutorial):
@@ -207,20 +206,32 @@ def test_create_exercise_appends_at_end(
     assert response.status_code == 200
     created = response.json()
     assert created["order_index"] == 3
-    assert created["test_cases"] == EXERCISE_PAYLOAD["test_cases"]
     assert exercise_ids_in_order(db_session, tutorial_with_exercises.id)[-1] == (
         created["id"]
     )
+    db_session.expire_all()
+    exercise = db_session.get(Exercise, created["id"])
+    assert exercise.test_code == EXERCISE_PAYLOAD["test_code"]
+    assert exercise.solution == EXERCISE_PAYLOAD["solution"]
 
 
-def test_create_exercise_requires_test_cases(client, auth_headers, tutorial):
-    payload = {**EXERCISE_PAYLOAD, "test_cases": []}
+def test_create_exercise_blank_test_code_stored_as_null(
+    client, auth_headers, db_session, tutorial
+):
+    """A whitespace-only script must not shadow the worker's loud
+    'defines no tests' error with a vacuous pass; a blank solution is
+    normalized the same way."""
+    payload = {**EXERCISE_PAYLOAD, "test_code": "   \n", "solution": ""}
     response = client.post(
         f"/tutorial/tutorial/{tutorial.id}/exercises",
         json=payload,
         headers=auth_headers,
     )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    db_session.expire_all()
+    exercise = db_session.get(Exercise, response.json()["id"])
+    assert exercise.test_code is None
+    assert exercise.solution is None
 
 
 def test_create_exercise_rejects_bad_entry_function(client, auth_headers, tutorial):
@@ -248,8 +259,10 @@ def test_update_exercise_replaces_all_fields(
     exercise = db_session.get(Exercise, exercise_id)
     assert exercise.title == "Sum Two Numbers"
     assert exercise.entry_function == "add"
-    assert exercise.test_cases == EXERCISE_PAYLOAD["test_cases"]
     assert exercise.order_index == 1  # editing never moves the exercise
+    # PUT is a full replacement, test script and solution included
+    assert exercise.test_code == EXERCISE_PAYLOAD["test_code"]
+    assert exercise.solution == EXERCISE_PAYLOAD["solution"]
 
 
 def test_delete_exercise_compacts_order(
@@ -311,6 +324,90 @@ def test_reorder_rejects_incomplete_id_list(
     assert response.status_code == 400
 
 
+# -- dry run ----------------------------------------------------------------
+
+
+RUN_PAYLOAD = {
+    "code": "def add(a, b):\n    return a + b\n",
+    "entry_function": "add",
+    "test_code": (
+        "def test_adds():\n"
+        '    """adds two numbers"""\n'
+        "    check(add(1, 2), 3)\n"
+        "def test_adds_negatives():\n"
+        '    """adds negatives"""\n'
+        "    check(add(-1, -2), -3)\n"
+    ),
+}
+
+
+def test_run_exercise_passes(client, auth_headers, celery_workers):
+    response = client.post(
+        "/tutorial/admin/run-exercise", json=RUN_PAYLOAD, headers=auth_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["passed"] is True
+    assert [t["name"] for t in data["test_results"]] == [
+        "adds two numbers",
+        "adds negatives",
+    ]
+
+
+def test_run_exercise_failing_test(client, auth_headers, celery_workers):
+    payload = {**RUN_PAYLOAD, "code": "def add(a, b):\n    return a - b\n"}
+    response = client.post(
+        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["passed"] is False
+
+
+def test_run_exercise_broken_test_script_returns_traceback(
+    client, auth_headers, celery_workers
+):
+    """An admin debugging their own test script gets the traceback — unlike
+    the student route, which hides it."""
+    payload = {**RUN_PAYLOAD, "test_code": "not_a_defined_helper()\n"}
+    response = client.post(
+        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "error"
+    assert "test script failed to run" in data["message"]
+    assert "NameError" in data["traceback"]
+
+
+def test_run_exercise_without_tests_is_an_error(
+    client, auth_headers, celery_workers
+):
+    payload = {**RUN_PAYLOAD, "test_code": None}
+    response = client.post(
+        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["message"] == "This exercise defines no tests."
+
+
+def test_run_exercise_rejects_unsafe_code(client, auth_headers):
+    """Unsafe code fails the AST check in the API process — no worker
+    needed — so admins see exactly what a student submission would hit."""
+    payload = {**RUN_PAYLOAD, "code": "import os\ndef add(a, b):\n    return 0\n"}
+    response = client.post(
+        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["message"].startswith("Code is not safe")
+
+
 def test_admin_endpoints_denied_for_team(
     client, team_headers, db_session, tutorial_with_exercises
 ):
@@ -323,6 +420,7 @@ def test_admin_endpoints_denied_for_team(
         ("post", f"/tutorial/tutorial/{tutorial_id}/exercises", EXERCISE_PAYLOAD),
         ("put", f"/tutorial/exercise/{exercise_id}", EXERCISE_PAYLOAD),
         ("delete", f"/tutorial/exercise/{exercise_id}", None),
+        ("post", "/tutorial/admin/run-exercise", RUN_PAYLOAD),
         (
             "post",
             f"/tutorial/tutorial/{tutorial_id}/exercises/reorder",

@@ -2,7 +2,10 @@
 
 run_exercise is called directly (not via .delay) so the test-runner process
 executes — and coverage measures — the task body; the enqueue-to-worker path
-is exercised end-to-end by the tutorial router integration tests.
+is exercised end-to-end by the tutorial router integration tests. The test
+script helper semantics (check/check_output/capture) live in
+test_exercise_test_code.py; this file covers the task-level plumbing around
+them.
 """
 
 from unittest.mock import MagicMock
@@ -17,25 +20,31 @@ from backend.tasks.exercise_task import (
     timeout_exercise_result,
 )
 
-ADD_CASES = [{"args": [1, 2], "expected": 3}]
+ADD_CODE = "def add(a, b):\n    return a + b"
+
+ADD_TEST_CODE = (
+    "def test_add():\n"
+    '    """adds two numbers"""\n'
+    "    check(add(1, 2), 3)\n"
+)
 
 
 def test_passing_submission():
-    result = run_exercise("def add(a, b):\n    return a + b", "add", ADD_CASES)
+    result = run_exercise(ADD_CODE, "add", ADD_TEST_CODE)
     assert result["status"] == "success"
     assert result["passed"] is True
     assert result["duration_ms"] is not None
     (case,) = result["test_results"]
-    assert case["call"] == "add(1, 2)"
+    assert case["name"] == "adds two numbers"
     assert case["actual"] == "3"
 
 
 def test_failing_expectation_is_success_not_error():
-    result = run_exercise(
-        "def add(a, b):\n    return a + b",
-        "add",
-        [{"args": [1, 2], "expected": 4, "name": "custom name"}],
+    test_code = (
+        "def test_add():\n"
+        "    check(add(1, 2), 4, name='custom name')\n"
     )
+    result = run_exercise(ADD_CODE, "add", test_code)
     assert result["status"] == "success"
     assert result["passed"] is False
     assert result["test_results"][0]["name"] == "custom name"
@@ -43,31 +52,21 @@ def test_failing_expectation_is_success_not_error():
 
 def test_exception_inside_function_fails_that_test_only():
     result = run_exercise(
-        "def add(a, b):\n    raise RuntimeError('boom')", "add", ADD_CASES
+        "def add(a, b):\n    raise RuntimeError('boom')", "add", ADD_TEST_CODE
     )
     assert result["status"] == "success"
     assert result["passed"] is False
     assert result["test_results"][0]["error"] == "RuntimeError: boom"
 
 
-def test_mutating_function_cannot_corrupt_the_reported_call():
-    result = run_exercise(
-        "def total(xs):\n    xs.append(1)\n    return sum(xs)",
-        "total",
-        [{"args": [[1, 2]], "expected": 4}],
-    )
-    assert result["passed"] is True
-    assert result["test_results"][0]["call"] == "total([1, 2])"
-
-
 def test_missing_entry_function():
-    result = run_exercise("def other():\n    return 1", "add", ADD_CASES)
+    result = run_exercise("def other():\n    return 1", "add", ADD_TEST_CODE)
     assert result["status"] == "error"
     assert "must define a function named 'add'" in result["message"]
 
 
 def test_code_that_crashes_before_tests():
-    result = run_exercise("raise ValueError('bad module')", "add", ADD_CASES)
+    result = run_exercise("raise ValueError('bad module')", "add", ADD_TEST_CODE)
     assert result["status"] == "error"
     assert "failed to run before any tests started" in result["message"]
     assert "bad module" in result["traceback"]
@@ -75,9 +74,9 @@ def test_code_that_crashes_before_tests():
 
 def test_stdout_is_captured_and_bounded():
     result = run_exercise(
-        f"print('x' * {MAX_STDOUT_CHARS * 2})\ndef add(a, b):\n    return a + b",
+        f"print('x' * {MAX_STDOUT_CHARS * 2})\n{ADD_CODE}",
         "add",
-        ADD_CASES,
+        ADD_TEST_CODE,
     )
     assert result["status"] == "success"
     assert len(result["stdout"]) == MAX_STDOUT_CHARS
@@ -89,7 +88,7 @@ def test_soft_time_limit_inside_function_maps_to_timeout_message():
         "def add(a, b):\n"
         "    raise SoftTimeLimitExceeded()"
     )
-    result = run_exercise(code, "add", ADD_CASES)
+    result = run_exercise(code, "add", ADD_TEST_CODE)
     assert result["status"] == "error"
     assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
 
@@ -99,16 +98,15 @@ def test_soft_time_limit_during_exec_maps_to_timeout_message():
         "from celery.exceptions import SoftTimeLimitExceeded\n"
         "raise SoftTimeLimitExceeded()"
     )
-    result = run_exercise(code, "add", ADD_CASES)
+    result = run_exercise(code, "add", ADD_TEST_CODE)
     assert result["status"] == "error"
     assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
 
 
-def test_malformed_test_cases_hit_the_task_boundary_catch_all():
-    result = run_exercise("def add(a, b):\n    return a + b", "add", None)
+def test_exercise_without_test_code_is_an_authoring_error():
+    result = run_exercise(ADD_CODE, "add", None)
     assert result["status"] == "error"
-    assert "Error while running tests" in result["message"]
-    assert result["traceback"] is not None
+    assert "defines no tests" in result["message"]
 
 
 def test_timeout_exercise_result_shape():

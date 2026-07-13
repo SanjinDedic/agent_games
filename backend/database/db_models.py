@@ -393,10 +393,15 @@ class LeagueTutorial(SQLModel, table=True):
 class Exercise(SQLModel, table=True):
     """One coding problem inside a tutorial.
 
-    Test cases are function I/O pairs: the student's code must define
-    `entry_function`, and each test case in `test_cases` is
-    {"name": str, "args": [...], "expected": ...}. The exercise worker calls
-    the function with `args` and compares the return value to `expected`.
+    Tests live in `test_code`: an admin-trusted Python test script
+    (backend/tasks/exercise_test_code.py) exec'd into the same namespace as
+    the student's code. It can test multiple functions and check print
+    output. Authored by the seed script or through the admin exercise
+    editor; students never see it. `entry_function` still names the one
+    function every submission must define, so a wrong-name submission fails
+    fast with a clear message. `solution` is an optional reference solution
+    for the admin editor's Run workflow — like test_code, it never reaches
+    students.
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -406,7 +411,12 @@ class Exercise(SQLModel, table=True):
     problem_markdown: str = Field(sa_column=Column(Text(), nullable=False))
     starter_code: str = Field(default="", sa_column=Column(Text(), nullable=False))
     entry_function: str
-    test_cases: list = Field(sa_column=Column(JSON, nullable=False))
+    test_code: Optional[str] = Field(
+        default=None, sa_column=Column(Text(), nullable=True)
+    )
+    solution: Optional[str] = Field(
+        default=None, sa_column=Column(Text(), nullable=True)
+    )
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )

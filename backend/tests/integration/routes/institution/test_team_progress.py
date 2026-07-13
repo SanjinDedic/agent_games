@@ -83,7 +83,6 @@ def progress_setup(db_session: Session) -> SimpleNamespace:
         title="Exercise One",
         problem_markdown="p",
         entry_function="solve",
-        test_cases=[],
     )
     exercise_two = Exercise(
         tutorial_id=tutorial.id,
@@ -91,7 +90,6 @@ def progress_setup(db_session: Session) -> SimpleNamespace:
         title="Exercise Two",
         problem_markdown="p",
         entry_function="solve",
-        test_cases=[],
     )
     db_session.add(exercise_one)
     db_session.add(exercise_two)

@@ -302,7 +302,7 @@ def get_latest_exercise_submission(
 
 
 # ---------------------------------------------------------------------------
-# Admin CRUD. Students never see entry_function/test_cases; the admin detail
+# Admin CRUD. Students never see entry_function/test_code; the admin detail
 # view below is the only read path that returns them.
 # ---------------------------------------------------------------------------
 
@@ -323,7 +323,8 @@ def _exercise_admin_dict(exercise: Exercise) -> dict:
         "problem_markdown": exercise.problem_markdown,
         "starter_code": exercise.starter_code,
         "entry_function": exercise.entry_function,
-        "test_cases": exercise.test_cases,
+        "test_code": exercise.test_code,
+        "solution": exercise.solution,
     }
 
 
@@ -483,9 +484,14 @@ def create_exercise(
     problem_markdown: str,
     starter_code: str,
     entry_function: str,
-    test_cases: list,
+    test_code: Optional[str],
+    solution: Optional[str],
 ) -> dict:
-    """Append a new exercise at the end of the tutorial."""
+    """Append a new exercise at the end of the tutorial.
+
+    An exercise created without a test script (test_code=None) errors with
+    "This exercise defines no tests" on submission until one is saved.
+    """
     tutorial = _get_tutorial_or_raise(session, tutorial_id)
     next_index = max(
         (exercise.order_index for exercise in tutorial.exercises), default=-1
@@ -497,7 +503,8 @@ def create_exercise(
         problem_markdown=problem_markdown,
         starter_code=starter_code,
         entry_function=entry_function,
-        test_cases=test_cases,
+        test_code=test_code,
+        solution=solution,
     )
     session.add(exercise)
     session.commit()
@@ -512,14 +519,16 @@ def update_exercise(
     problem_markdown: str,
     starter_code: str,
     entry_function: str,
-    test_cases: list,
+    test_code: Optional[str],
+    solution: Optional[str],
 ) -> dict:
     exercise = get_exercise_by_id(session, exercise_id)
     exercise.title = title
     exercise.problem_markdown = problem_markdown
     exercise.starter_code = starter_code
     exercise.entry_function = entry_function
-    exercise.test_cases = test_cases
+    exercise.test_code = test_code
+    exercise.solution = solution
     session.commit()
     session.refresh(exercise)
     return _exercise_admin_dict(exercise)
