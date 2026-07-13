@@ -280,7 +280,8 @@ export const useTutorialAPI = () => {
     [adminRequest]
   );
 
-  /** exercise = { title, problem_markdown, starter_code, entry_function, test_cases } */
+  /** exercise = { title, problem_markdown, starter_code, entry_function }
+   *  (tests are a seed-managed test script, never sent from the admin UI) */
   const createExercise = useCallback(
     (tutorialId, exercise) =>
       adminRequest(`/tutorial/${tutorialId}/exercises`, 'POST', exercise),

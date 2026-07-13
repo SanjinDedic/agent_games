@@ -1,9 +1,13 @@
 import React from 'react';
 
+const isMultiline = (value) =>
+    typeof value === 'string' && value.includes('\n');
+
 /**
- * Per-test-case results panel for tutorial exercises: a pass/fail summary
- * banner, one row per test case (call, expected vs actual, error), and any
- * captured print output.
+ * Per-test results panel for tutorial exercises: a pass/fail summary banner,
+ * one row per test (name, expected vs actual, error), and any captured print
+ * output. Multiline expected/got values (print-checking exercises) render in
+ * a <pre> block so real newlines show instead of "\n" escapes.
  */
 function ExerciseResults({ data }) {
     if (!data) return null;
@@ -41,7 +45,7 @@ function ExerciseResults({ data }) {
                             <span>{test.name}</span>
                         </div>
                         <div className="mt-1 ml-7 font-mono text-sm text-ui-dark/80">
-                            <div>{test.call}</div>
+                            {test.call && <div>{test.call}</div>}
                             {!test.passed && (
                                 <div className="mt-1">
                                     {test.error ? (
@@ -50,15 +54,29 @@ function ExerciseResults({ data }) {
                                         <>
                                             <div>
                                                 expected:{" "}
-                                                <span className="text-success">
-                                                    {JSON.stringify(test.expected)}
-                                                </span>
+                                                {isMultiline(test.expected) ? (
+                                                    <pre className="mt-1 whitespace-pre-wrap rounded bg-success/10 p-2 text-success">
+                                                        {test.expected}
+                                                    </pre>
+                                                ) : (
+                                                    <span className="text-success">
+                                                        {JSON.stringify(test.expected)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div>
                                                 got:{" "}
-                                                <span className="text-danger">
-                                                    {test.actual ?? "nothing"}
-                                                </span>
+                                                {isMultiline(test.actual) ? (
+                                                    <pre className="mt-1 whitespace-pre-wrap rounded bg-danger/10 p-2 text-danger">
+                                                        {test.actual}
+                                                    </pre>
+                                                ) : (
+                                                    <span className="text-danger">
+                                                        {test.actual === ""
+                                                            ? "(no output)"
+                                                            : test.actual ?? "nothing"}
+                                                    </span>
+                                                )}
                                             </div>
                                         </>
                                     )}

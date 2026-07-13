@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import List
 
 from pydantic import BaseModel, field_validator
 
@@ -8,22 +8,6 @@ class ExerciseSubmissionRequest(BaseModel):
 
     exercise_id: int
     code: str
-
-
-class TestCase(BaseModel):
-    """One function I/O pair: the worker calls the entry function with `args`
-    and compares the return value to `expected` with ==."""
-
-    name: str
-    args: List[Any]
-    expected: Any
-
-    @field_validator("name")
-    @classmethod
-    def name_not_blank(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("Test case name cannot be empty")
-        return value
 
 
 class TutorialCreateRequest(BaseModel):
@@ -51,13 +35,17 @@ class TutorialUpdateRequest(BaseModel):
 
 
 class ExerciseRequest(BaseModel):
-    """Full exercise definition, used for both create and update (PUT)."""
+    """Exercise definition, used for both create and update (PUT).
+
+    Deliberately excludes `test_code`: the test script is seed-managed, so an
+    admin editing title/markdown through this model can neither see nor
+    clobber it.
+    """
 
     title: str
     problem_markdown: str
     starter_code: str = ""
     entry_function: str
-    test_cases: List[TestCase]
 
     @field_validator("title")
     @classmethod
@@ -74,13 +62,6 @@ class ExerciseRequest(BaseModel):
             raise ValueError(
                 "Entry function must be a valid Python function name"
             )
-        return value
-
-    @field_validator("test_cases")
-    @classmethod
-    def at_least_one_test_case(cls, value: List[TestCase]) -> List[TestCase]:
-        if not value:
-            raise ValueError("An exercise needs at least one test case")
         return value
 
 

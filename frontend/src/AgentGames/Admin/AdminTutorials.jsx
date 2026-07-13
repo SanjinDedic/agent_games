@@ -8,20 +8,15 @@ const BLANK_EXERCISE_FORM = {
   entry_function: '',
   problem_markdown: '',
   starter_code: '',
-  testCases: [{ name: '', argsText: '[]', expectedText: 'null' }],
 };
 
-// Test cases are edited as JSON text fields; convert to/from the API shape.
+// Tests (test_code) are seed-managed and not editable here: saving an
+// exercise through this editor never touches its test script.
 const exerciseToForm = (exercise) => ({
   title: exercise.title,
   entry_function: exercise.entry_function,
   problem_markdown: exercise.problem_markdown,
   starter_code: exercise.starter_code,
-  testCases: exercise.test_cases.map((testCase) => ({
-    name: testCase.name,
-    argsText: JSON.stringify(testCase.args),
-    expectedText: JSON.stringify(testCase.expected),
-  })),
 });
 
 /**
@@ -36,39 +31,12 @@ const formToPayload = (form) => {
   if (!form.problem_markdown.trim()) {
     return { error: 'Problem markdown is required' };
   }
-  const test_cases = [];
-  for (let i = 0; i < form.testCases.length; i++) {
-    const testCase = form.testCases[i];
-    if (!testCase.name.trim()) {
-      return { error: `Test case ${i + 1} needs a name` };
-    }
-    let args;
-    try {
-      args = JSON.parse(testCase.argsText);
-    } catch {
-      return { error: `Test case ${i + 1}: args is not valid JSON` };
-    }
-    if (!Array.isArray(args)) {
-      return { error: `Test case ${i + 1}: args must be a JSON list, e.g. [1, 2]` };
-    }
-    let expected;
-    try {
-      expected = JSON.parse(testCase.expectedText);
-    } catch {
-      return { error: `Test case ${i + 1}: expected is not valid JSON` };
-    }
-    test_cases.push({ name: testCase.name.trim(), args, expected });
-  }
-  if (test_cases.length === 0) {
-    return { error: 'An exercise needs at least one test case' };
-  }
   return {
     payload: {
       title: form.title.trim(),
       entry_function: form.entry_function.trim(),
       problem_markdown: form.problem_markdown,
       starter_code: form.starter_code,
-      test_cases,
     },
   };
 };
@@ -79,29 +47,6 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
 
   const setField = (name, value) =>
     setForm((prev) => ({ ...prev, [name]: value }));
-
-  const setTestCaseField = (index, name, value) =>
-    setForm((prev) => ({
-      ...prev,
-      testCases: prev.testCases.map((testCase, i) =>
-        i === index ? { ...testCase, [name]: value } : testCase
-      ),
-    }));
-
-  const addTestCase = () =>
-    setForm((prev) => ({
-      ...prev,
-      testCases: [
-        ...prev.testCases,
-        { name: '', argsText: '[]', expectedText: 'null' },
-      ],
-    }));
-
-  const removeTestCase = (index) =>
-    setForm((prev) => ({
-      ...prev,
-      testCases: prev.testCases.filter((_, i) => i !== index),
-    }));
 
   const handleSave = async () => {
     const { payload, error } = formToPayload(form);
@@ -190,65 +135,10 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
             </div>
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Test cases — params is a JSON list of arguments, return is the
-                expected JSON return value
-              </label>
-              <button
-                onClick={addTestCase}
-                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200"
-              >
-                + Add test case
-              </button>
-            </div>
-            <div className="hidden md:flex gap-2 mb-1 text-xs font-medium text-gray-500">
-              <span className="flex-[3]">Exercise name</span>
-              <span className="flex-[5]">Function params</span>
-              <span className="flex-[2]">Function return</span>
-              <span className="w-20 flex-shrink-0" />
-            </div>
-            <div className="space-y-2">
-              {form.testCases.map((testCase, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col md:flex-row gap-2 items-stretch md:items-center"
-                >
-                  <input
-                    type="text"
-                    value={testCase.name}
-                    onChange={(e) => setTestCaseField(index, 'name', e.target.value)}
-                    placeholder="Test name"
-                    className="flex-[3] min-w-0 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    value={testCase.argsText}
-                    onChange={(e) => setTestCaseField(index, 'argsText', e.target.value)}
-                    placeholder='e.g. [{"Alice": 30}, "Alice"]'
-                    className="flex-[5] min-w-0 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    value={testCase.expectedText}
-                    onChange={(e) =>
-                      setTestCaseField(index, 'expectedText', e.target.value)
-                    }
-                    placeholder="e.g. 30"
-                    className="flex-[2] min-w-0 px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => removeTestCase(index)}
-                    className="w-20 flex-shrink-0 px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
-                    title="Remove test case"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="text-xs text-gray-500">
+            Tests are a seed-managed Python test script and are not editable
+            here — saving this form never changes the exercise's tests.
+          </p>
         </div>
 
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
@@ -642,9 +532,7 @@ function AdminTutorials() {
                             {exercise.title}
                           </p>
                           <p className="text-xs text-gray-500 font-mono truncate">
-                            {exercise.entry_function}() ·{' '}
-                            {exercise.test_cases.length} test case
-                            {exercise.test_cases.length === 1 ? '' : 's'}
+                            {exercise.entry_function}()
                           </p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">

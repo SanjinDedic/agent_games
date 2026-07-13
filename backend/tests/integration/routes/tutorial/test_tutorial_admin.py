@@ -17,11 +17,9 @@ EXERCISE_PAYLOAD = {
     "problem_markdown": "# Sum\n\nAdd the two numbers.",
     "starter_code": "def add(a, b):\n    pass\n",
     "entry_function": "add",
-    "test_cases": [
-        {"name": "adds small numbers", "args": [1, 2], "expected": 3},
-        {"name": "adds negatives", "args": [-1, -2], "expected": -3},
-    ],
 }
+
+SEEDED_TEST_CODE = "def test_runs():\n    check(f(), None)\n"
 
 
 @pytest.fixture
@@ -50,7 +48,7 @@ def tutorial_with_exercises(db_session: Session, tutorial: Tutorial) -> Tutorial
                 problem_markdown=f"{name} problem",
                 starter_code="def f():\n    pass\n",
                 entry_function="f",
-                test_cases=[{"name": "runs", "args": [], "expected": None}],
+                test_code=SEEDED_TEST_CODE,
             )
         )
     db_session.commit()
@@ -181,9 +179,8 @@ def test_admin_detail_includes_full_exercise_definition(
     ]
     first = detail["exercises"][0]
     assert first["entry_function"] == "f"
-    assert first["test_cases"] == [
-        {"name": "runs", "args": [], "expected": None}
-    ]
+    # The seed-managed test script stays out of the admin surface
+    assert "test_code" not in first
 
 
 def test_admin_detail_denied_for_team(client, team_headers, tutorial):
@@ -207,20 +204,12 @@ def test_create_exercise_appends_at_end(
     assert response.status_code == 200
     created = response.json()
     assert created["order_index"] == 3
-    assert created["test_cases"] == EXERCISE_PAYLOAD["test_cases"]
     assert exercise_ids_in_order(db_session, tutorial_with_exercises.id)[-1] == (
         created["id"]
     )
-
-
-def test_create_exercise_requires_test_cases(client, auth_headers, tutorial):
-    payload = {**EXERCISE_PAYLOAD, "test_cases": []}
-    response = client.post(
-        f"/tutorial/tutorial/{tutorial.id}/exercises",
-        json=payload,
-        headers=auth_headers,
-    )
-    assert response.status_code == 422
+    # Admin-created exercises start without a test script (seed-managed)
+    db_session.expire_all()
+    assert db_session.get(Exercise, created["id"]).test_code is None
 
 
 def test_create_exercise_rejects_bad_entry_function(client, auth_headers, tutorial):
@@ -248,8 +237,9 @@ def test_update_exercise_replaces_all_fields(
     exercise = db_session.get(Exercise, exercise_id)
     assert exercise.title == "Sum Two Numbers"
     assert exercise.entry_function == "add"
-    assert exercise.test_cases == EXERCISE_PAYLOAD["test_cases"]
     assert exercise.order_index == 1  # editing never moves the exercise
+    # An admin edit must never clobber the seed-managed test script
+    assert exercise.test_code == SEEDED_TEST_CODE
 
 
 def test_delete_exercise_compacts_order(

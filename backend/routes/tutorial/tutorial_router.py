@@ -102,7 +102,7 @@ async def submit_exercise(
         async_result = enqueue_exercise_run(
             code=submission.code,
             entry_function=exercise.entry_function,
-            test_cases=exercise.test_cases,
+            test_code=exercise.test_code,
         )
         run_result = await await_exercise_result(async_result)
 
@@ -203,8 +203,8 @@ async def get_tutorial_progress_endpoint(
 
 # ---------------------------------------------------------------------------
 # Admin content management. The admin detail endpoint is the only read path
-# exposing entry_function/test_cases — the student endpoints above keep them
-# server-side.
+# exposing entry_function — the student endpoints above keep it server-side.
+# test_code is seed-managed and not exposed here at all.
 # ---------------------------------------------------------------------------
 
 
@@ -272,7 +272,6 @@ async def create_exercise_endpoint(
         problem_markdown=exercise.problem_markdown,
         starter_code=exercise.starter_code,
         entry_function=exercise.entry_function,
-        test_cases=[case.model_dump() for case in exercise.test_cases],
     )
 
 
@@ -284,7 +283,7 @@ async def update_exercise_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Replace an exercise's definition (all fields)."""
+    """Replace an exercise's definition (test_code stays seed-managed)."""
     return update_exercise(
         session,
         exercise_id,
@@ -292,7 +291,6 @@ async def update_exercise_endpoint(
         problem_markdown=exercise.problem_markdown,
         starter_code=exercise.starter_code,
         entry_function=exercise.entry_function,
-        test_cases=[case.model_dump() for case in exercise.test_cases],
     )
 
 
