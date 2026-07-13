@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -35,17 +35,26 @@ class TutorialUpdateRequest(BaseModel):
 
 
 class ExerciseRequest(BaseModel):
-    """Exercise definition, used for both create and update (PUT).
+    """Full exercise definition, used for both create and update (PUT).
 
-    Deliberately excludes `test_code`: the test script is seed-managed, so an
-    admin editing title/markdown through this model can neither see nor
-    clobber it.
+    `test_code` is the exercise's Python test script
+    (backend/tasks/exercise_test_code.py). A blank script is stored as NULL
+    so submitting against it hits the worker's loud "defines no tests" error
+    instead of passing vacuously.
     """
 
     title: str
     problem_markdown: str
     starter_code: str = ""
     entry_function: str
+    test_code: Optional[str] = None
+
+    @field_validator("test_code")
+    @classmethod
+    def blank_test_code_is_none(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None and not value.strip():
+            return None
+        return value
 
     @field_validator("title")
     @classmethod
@@ -63,6 +72,16 @@ class ExerciseRequest(BaseModel):
                 "Entry function must be a valid Python function name"
             )
         return value
+
+
+class ExerciseRunRequest(BaseModel):
+    """Admin dry run: execute a test script against code without touching the
+    DB. Stateless (no exercise id) so an exercise can be tested before it is
+    ever saved."""
+
+    code: str
+    entry_function: str
+    test_code: Optional[str] = None
 
 
 class ExerciseReorderRequest(BaseModel):

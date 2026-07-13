@@ -34,8 +34,9 @@ from backend.routes.tutorial.tutorial_db import (
     update_tutorial,
 )
 from backend.routes.tutorial.tutorial_models import (
-    ExerciseRequest,
     ExerciseReorderRequest,
+    ExerciseRequest,
+    ExerciseRunRequest,
     ExerciseSubmissionRequest,
     TutorialCreateRequest,
     TutorialUpdateRequest,
@@ -203,8 +204,8 @@ async def get_tutorial_progress_endpoint(
 
 # ---------------------------------------------------------------------------
 # Admin content management. The admin detail endpoint is the only read path
-# exposing entry_function — the student endpoints above keep it server-side.
-# test_code is seed-managed and not exposed here at all.
+# exposing entry_function/test_code — the student endpoints above keep them
+# server-side.
 # ---------------------------------------------------------------------------
 
 
@@ -217,6 +218,40 @@ async def get_tutorial_admin_endpoint(
 ):
     """One tutorial with full exercise definitions, including test cases."""
     return get_tutorial_admin_detail(session, tutorial_id)
+
+
+@tutorial_router.post("/admin/run-exercise")
+@verify_admin_role
+async def run_exercise_endpoint(
+    run: ExerciseRunRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Dry-run a test script against code without saving anything.
+
+    Backs the admin exercise editor's Run button. Unlike /submit-exercise,
+    every outcome is a 200 with the full run result — including `traceback`
+    when the test script itself fails to exec, since the caller is the person
+    debugging that script. The code goes through the same AST safety check as
+    student submissions so an admin learns here, not from students, that
+    their starter/solution code trips the allowlist.
+    """
+    is_safe, error_message = validate_code(run.code)
+    if not is_safe:
+        return {
+            "status": "error",
+            "message": f"Code is not safe: {error_message}",
+            "passed": False,
+            "test_results": [],
+            "duration_ms": None,
+            "traceback": None,
+            "stdout": None,
+        }
+    async_result = enqueue_exercise_run(
+        code=run.code,
+        entry_function=run.entry_function,
+        test_code=run.test_code,
+    )
+    return await await_exercise_result(async_result)
 
 
 @tutorial_router.post("/tutorials")
@@ -272,6 +307,7 @@ async def create_exercise_endpoint(
         problem_markdown=exercise.problem_markdown,
         starter_code=exercise.starter_code,
         entry_function=exercise.entry_function,
+        test_code=exercise.test_code,
     )
 
 
@@ -283,7 +319,7 @@ async def update_exercise_endpoint(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Replace an exercise's definition (test_code stays seed-managed)."""
+    """Replace an exercise's definition (all fields, tests included)."""
     return update_exercise(
         session,
         exercise_id,
@@ -291,6 +327,7 @@ async def update_exercise_endpoint(
         problem_markdown=exercise.problem_markdown,
         starter_code=exercise.starter_code,
         entry_function=exercise.entry_function,
+        test_code=exercise.test_code,
     )
 
 

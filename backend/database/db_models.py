@@ -396,10 +396,10 @@ class Exercise(SQLModel, table=True):
     Tests live in `test_code`: an admin-trusted Python test script
     (backend/tasks/exercise_test_code.py) exec'd into the same namespace as
     the student's code. It can test multiple functions and check print
-    output. Seed-managed only: the admin CRUD endpoints neither expose nor
-    overwrite it. `entry_function` still names the one function every
-    submission must define, so a wrong-name submission fails fast with a
-    clear message.
+    output. Authored by the seed script or through the admin exercise
+    editor; students never see it. `entry_function` still names the one
+    function every submission must define, so a wrong-name submission fails
+    fast with a clear message.
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)

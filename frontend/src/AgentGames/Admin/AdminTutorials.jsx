@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-toastify';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
 import CodeEditor from '../Shared/Submission/CodeEditor';
+import ExerciseResults from '../User/ExerciseResults';
 
 const BLANK_EXERCISE_FORM = {
   title: '',
   entry_function: '',
   problem_markdown: '',
   starter_code: '',
+  test_code: '',
 };
 
-// Tests (test_code) are seed-managed and not editable here: saving an
-// exercise through this editor never touches its test script.
 const exerciseToForm = (exercise) => ({
   title: exercise.title,
   entry_function: exercise.entry_function,
   problem_markdown: exercise.problem_markdown,
   starter_code: exercise.starter_code,
+  test_code: exercise.test_code ?? '',
 });
 
 /**
@@ -37,16 +38,59 @@ const formToPayload = (form) => {
       entry_function: form.entry_function.trim(),
       problem_markdown: form.problem_markdown,
       starter_code: form.starter_code,
+      test_code: form.test_code,
     },
   };
 };
 
-function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
+/**
+ * Dry-run outcome panel. A normal run (even with failing tests) reuses the
+ * student-facing ExerciseResults; status "error" means the run never produced
+ * test results (unsafe code, crash, broken test script, timeout), and unlike
+ * the student view it shows the traceback — the admin is debugging their own
+ * test script.
+ */
+function RunOutcome({ result }) {
+  if (result.status !== 'error') {
+    return <ExerciseResults data={result} />;
+  }
+  return (
+    <div className="space-y-2">
+      <div className="rounded-lg p-4 font-medium text-white bg-danger">
+        {result.message}
+      </div>
+      {result.traceback && (
+        <pre className="bg-[#1e1e1e] text-gray-100 rounded-lg p-3 text-sm overflow-x-auto">
+          {result.traceback}
+        </pre>
+      )}
+      {result.stdout && (
+        <div>
+          <h3 className="font-medium text-gray-800 mb-1">Print output</h3>
+          <pre className="bg-[#1e1e1e] text-gray-100 rounded-lg p-3 text-sm overflow-x-auto">
+            {result.stdout}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState(null);
+  const resultsRef = useRef(null);
 
   const setField = (name, value) =>
     setForm((prev) => ({ ...prev, [name]: value }));
+
+  useEffect(() => {
+    if (runResult) {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [runResult]);
 
   const handleSave = async () => {
     const { payload, error } = formToPayload(form);
@@ -57,6 +101,26 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
     setSaving(true);
     await onSave(payload);
     setSaving(false);
+  };
+
+  const handleRun = async () => {
+    if (!form.entry_function.trim()) {
+      toast.error('Entry function name is required to run tests');
+      return;
+    }
+    setRunning(true);
+    setRunResult(null);
+    const result = await onRun(
+      form.starter_code,
+      form.entry_function.trim(),
+      form.test_code
+    );
+    setRunning(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setRunResult(result.data);
   };
 
   return (
@@ -99,7 +163,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Entry function (the function name the tests call)
+                Entry function (the function name every submission must define)
               </label>
               <input
                 type="text"
@@ -111,37 +175,68 @@ function ExerciseEditor({ initialForm, isNew, onSave, onCancel }) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <details open={isNew}>
+            <summary className="text-sm font-medium text-gray-700 cursor-pointer select-none">
               Problem (Markdown shown to the student)
-            </label>
+            </summary>
             <textarea
               value={form.problem_markdown}
               onChange={(e) => setField('problem_markdown', e.target.value)}
-              rows={10}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={8}
+              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </div>
+          </details>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Starter code
-            </label>
-            <div className="h-56 border border-gray-300 rounded-md overflow-hidden">
-              <CodeEditor
-                code={form.starter_code}
-                onCodeChange={(value) => setField('starter_code', value ?? '')}
-              />
+          <div className="grid grid-cols-2 gap-4 h-[50vh]">
+            <div className="flex flex-col min-h-0">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Starter code — Run executes the tests against this pane
+              </label>
+              <div className="flex-1 border border-gray-300 rounded-md overflow-hidden">
+                <CodeEditor
+                  code={form.starter_code}
+                  onCodeChange={(value) => setField('starter_code', value ?? '')}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col min-h-0">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Test script — test_* functions using check / check_output /
+                capture
+              </label>
+              <div className="flex-1 border border-gray-300 rounded-md overflow-hidden">
+                <CodeEditor
+                  code={form.test_code}
+                  onCodeChange={(value) => setField('test_code', value ?? '')}
+                />
+              </div>
             </div>
           </div>
 
           <p className="text-xs text-gray-500">
-            Tests are a seed-managed Python test script and are not editable
-            here — saving this form never changes the exercise's tests.
+            Save stores the left pane as the student's starter code — if you
+            pasted a solution to verify the tests, undo it before saving.
+            Re-running seed_tutorial.py overwrites all exercise content,
+            including tests edited here.
           </p>
+
+          {runResult && (
+            <div ref={resultsRef}>
+              <RunOutcome result={runResult} />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className={`px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 ${
+              running ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {running ? 'Running...' : 'Run Tests'}
+          </button>
           <button
             onClick={handleSave}
             disabled={saving}
@@ -167,6 +262,7 @@ function AdminTutorials() {
   const {
     getTutorials,
     getTutorialAdmin,
+    runExerciseTests,
     createTutorial,
     updateTutorial,
     deleteTutorial,
@@ -580,6 +676,7 @@ function AdminTutorials() {
                       initialForm={editing.form}
                       isNew={editing.id === null}
                       onSave={handleSaveExercise}
+                      onRun={runExerciseTests}
                       onCancel={() => setEditing(null)}
                     />
                   )}
