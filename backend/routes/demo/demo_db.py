@@ -2,7 +2,7 @@ import logging
 import secrets
 import string
 from datetime import timedelta
-from typing import List, Tuple
+from typing import List
 
 from sqlmodel import Session, delete, select
 
@@ -64,9 +64,7 @@ def generate_demo_password(length=12):
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def create_demo_user(
-    session: Session, username: str, email: str = None
-) -> Tuple[Team, str]:
+def create_demo_user(session: Session, username: str, email: str = None) -> Team:
     """Create a temporary demo user"""
     # Save user info to DemoUser table
     save_demo_user_info(session, username, email)

@@ -10,7 +10,7 @@ const Homepage = () => {
       <section className="bg-gradient-to-br from-league-blue to-primary py-20">
         <div className="container mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            Welcome to Agent Games
+           Python Programming Gamified
           </h1>
           <p className="text-xl text-league-text max-w-3xl mx-auto mb-10">
             Open Source platform for programming python agents that compete in strategic games. Great for universities, computing clubs and Computer Science enthusiasts
