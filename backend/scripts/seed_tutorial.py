@@ -516,6 +516,9 @@ def seed_tutorial() -> bool:
             exercise.starter_code = spec["starter_code"]
             exercise.entry_function = spec["entry_function"]
             exercise.test_code = spec["test_code"]
+            # The seed is a full overwrite: a spec without a solution resets
+            # any solution saved through the admin editor.
+            exercise.solution = spec.get("solution")
             session.add(exercise)
 
         for leftover in existing[len(EXERCISES):]:

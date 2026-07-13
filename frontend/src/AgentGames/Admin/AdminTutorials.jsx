@@ -10,6 +10,7 @@ const BLANK_EXERCISE_FORM = {
   problem_markdown: '',
   starter_code: '',
   test_code: '',
+  solution: '',
 };
 
 const exerciseToForm = (exercise) => ({
@@ -18,6 +19,7 @@ const exerciseToForm = (exercise) => ({
   problem_markdown: exercise.problem_markdown,
   starter_code: exercise.starter_code,
   test_code: exercise.test_code ?? '',
+  solution: exercise.solution ?? '',
 });
 
 /**
@@ -39,9 +41,15 @@ const formToPayload = (form) => {
       problem_markdown: form.problem_markdown,
       starter_code: form.starter_code,
       test_code: form.test_code,
+      solution: form.solution,
     },
   };
 };
+
+const LEFT_TABS = [
+  { key: 'starter_code', label: 'Starter code' },
+  { key: 'solution', label: 'Solution (optional)' },
+];
 
 /**
  * Dry-run outcome panel. A normal run (even with failing tests) reuses the
@@ -81,10 +89,26 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState(null);
+  // Which code the left pane shows and Run executes: starter_code | solution
+  const [leftTab, setLeftTab] = useState('starter_code');
   const resultsRef = useRef(null);
 
   const setField = (name, value) =>
     setForm((prev) => ({ ...prev, [name]: value }));
+
+  const isDirty = Object.keys(initialForm).some(
+    (key) => form[key] !== initialForm[key]
+  );
+
+  const handleClose = () => {
+    if (
+      isDirty &&
+      !window.confirm('You have unsaved changes. Discard them?')
+    ) {
+      return;
+    }
+    onCancel();
+  };
 
   useEffect(() => {
     if (runResult) {
@@ -111,7 +135,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
     setRunning(true);
     setRunResult(null);
     const result = await onRun(
-      form.starter_code,
+      form[leftTab],
       form.entry_function.trim(),
       form.test_code
     );
@@ -128,28 +152,23 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       role="dialog"
       aria-modal="true"
-      onClick={onCancel}
+      onClick={handleClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-[90vw] h-[98vh] flex flex-col"
+        className="relative bg-white rounded-lg shadow-xl w-[90vw] h-[98vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">
-            {isNew ? 'New Exercise' : `Edit Exercise: ${initialForm.title}`}
-          </h3>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute top-2 right-3 z-10 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+          aria-label="Close"
+        >
+          ×
+        </button>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto px-6 pt-4 pb-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Title
@@ -187,20 +206,38 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
             />
           </details>
 
-          <div className="grid grid-cols-2 gap-4 h-[50vh]">
+          <div className="flex-1 min-h-[18rem] grid grid-cols-2 gap-4">
             <div className="flex flex-col min-h-0">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Starter code — Run executes the tests against this pane
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex gap-1">
+                  {LEFT_TABS.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setLeftTab(tab.key)}
+                      className={`px-3 py-1 text-sm rounded-md transition-colors duration-150 ${
+                        leftTab === tab.key
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-gray-500">
+                  Run executes tests against the visible tab
+                </span>
+              </div>
               <div className="flex-1 border border-gray-300 rounded-md overflow-hidden">
                 <CodeEditor
-                  code={form.starter_code}
-                  onCodeChange={(value) => setField('starter_code', value ?? '')}
+                  code={form[leftTab]}
+                  onCodeChange={(value) => setField(leftTab, value ?? '')}
                 />
               </div>
             </div>
             <div className="flex flex-col min-h-0">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 py-1">
                 Test script — test_* functions using check / check_output /
                 capture
               </label>
@@ -214,10 +251,9 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
           </div>
 
           <p className="text-xs text-gray-500">
-            Save stores the left pane as the student's starter code — if you
-            pasted a solution to verify the tests, undo it before saving.
-            Re-running seed_tutorial.py overwrites all exercise content,
-            including tests edited here.
+            Students only ever see the starter code — the solution and test
+            script stay server-side. Re-running seed_tutorial.py overwrites
+            all exercise content, including tests and solutions edited here.
           </p>
 
           {runResult && (
@@ -247,7 +283,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
             {saving ? 'Saving...' : isNew ? 'Create Exercise' : 'Save Exercise'}
           </button>
           <button
-            onClick={onCancel}
+            onClick={handleClose}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors duration-200"
           >
             Cancel

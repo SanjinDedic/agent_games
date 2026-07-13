@@ -399,7 +399,9 @@ class Exercise(SQLModel, table=True):
     output. Authored by the seed script or through the admin exercise
     editor; students never see it. `entry_function` still names the one
     function every submission must define, so a wrong-name submission fails
-    fast with a clear message.
+    fast with a clear message. `solution` is an optional reference solution
+    for the admin editor's Run workflow — like test_code, it never reaches
+    students.
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -410,6 +412,9 @@ class Exercise(SQLModel, table=True):
     starter_code: str = Field(default="", sa_column=Column(Text(), nullable=False))
     entry_function: str
     test_code: Optional[str] = Field(
+        default=None, sa_column=Column(Text(), nullable=True)
+    )
+    solution: Optional[str] = Field(
         default=None, sa_column=Column(Text(), nullable=True)
     )
     created_at: datetime = Field(

@@ -38,9 +38,10 @@ class ExerciseRequest(BaseModel):
     """Full exercise definition, used for both create and update (PUT).
 
     `test_code` is the exercise's Python test script
-    (backend/tasks/exercise_test_code.py). A blank script is stored as NULL
-    so submitting against it hits the worker's loud "defines no tests" error
-    instead of passing vacuously.
+    (backend/tasks/exercise_test_code.py); `solution` is an optional
+    reference solution for the admin editor. Both are stored as NULL when
+    blank — for test_code so submitting hits the worker's loud "defines no
+    tests" error instead of passing vacuously.
     """
 
     title: str
@@ -48,10 +49,11 @@ class ExerciseRequest(BaseModel):
     starter_code: str = ""
     entry_function: str
     test_code: Optional[str] = None
+    solution: Optional[str] = None
 
-    @field_validator("test_code")
+    @field_validator("test_code", "solution")
     @classmethod
-    def blank_test_code_is_none(cls, value: Optional[str]) -> Optional[str]:
+    def blank_is_none(cls, value: Optional[str]) -> Optional[str]:
         if value is not None and not value.strip():
             return None
         return value

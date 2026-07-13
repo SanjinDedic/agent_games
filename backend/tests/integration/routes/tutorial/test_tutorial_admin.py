@@ -18,6 +18,7 @@ EXERCISE_PAYLOAD = {
     "starter_code": "def add(a, b):\n    pass\n",
     "entry_function": "add",
     "test_code": "def test_adds():\n    check(add(1, 2), 3)\n",
+    "solution": "def add(a, b):\n    return a + b\n",
 }
 
 SEEDED_TEST_CODE = "def test_runs():\n    check(f(), None)\n"
@@ -211,14 +212,16 @@ def test_create_exercise_appends_at_end(
     db_session.expire_all()
     exercise = db_session.get(Exercise, created["id"])
     assert exercise.test_code == EXERCISE_PAYLOAD["test_code"]
+    assert exercise.solution == EXERCISE_PAYLOAD["solution"]
 
 
 def test_create_exercise_blank_test_code_stored_as_null(
     client, auth_headers, db_session, tutorial
 ):
     """A whitespace-only script must not shadow the worker's loud
-    'defines no tests' error with a vacuous pass."""
-    payload = {**EXERCISE_PAYLOAD, "test_code": "   \n"}
+    'defines no tests' error with a vacuous pass; a blank solution is
+    normalized the same way."""
+    payload = {**EXERCISE_PAYLOAD, "test_code": "   \n", "solution": ""}
     response = client.post(
         f"/tutorial/tutorial/{tutorial.id}/exercises",
         json=payload,
@@ -226,7 +229,9 @@ def test_create_exercise_blank_test_code_stored_as_null(
     )
     assert response.status_code == 200
     db_session.expire_all()
-    assert db_session.get(Exercise, response.json()["id"]).test_code is None
+    exercise = db_session.get(Exercise, response.json()["id"])
+    assert exercise.test_code is None
+    assert exercise.solution is None
 
 
 def test_create_exercise_rejects_bad_entry_function(client, auth_headers, tutorial):
@@ -255,8 +260,9 @@ def test_update_exercise_replaces_all_fields(
     assert exercise.title == "Sum Two Numbers"
     assert exercise.entry_function == "add"
     assert exercise.order_index == 1  # editing never moves the exercise
-    # PUT is a full replacement, test script included
+    # PUT is a full replacement, test script and solution included
     assert exercise.test_code == EXERCISE_PAYLOAD["test_code"]
+    assert exercise.solution == EXERCISE_PAYLOAD["solution"]
 
 
 def test_delete_exercise_compacts_order(

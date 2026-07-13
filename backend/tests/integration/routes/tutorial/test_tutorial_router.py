@@ -135,6 +135,7 @@ def test_get_tutorial_detail(client, team_headers, tutorial_with_exercise):
     assert exercise["starter_code"].startswith("def count_words")
     assert "test_code" not in exercise
     assert "entry_function" not in exercise
+    assert "solution" not in exercise
 
     response = client.get("/tutorial/tutorial/99999", headers=team_headers)
     assert response.status_code == 404
