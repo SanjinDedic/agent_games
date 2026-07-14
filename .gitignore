@@ -189,3 +189,7 @@ seed_arena_champions_teams_prod.py
 seed_greedy_pig_teams_prod.py
 skills-lock.json
 backend/celery_easy/
+.claude/skills/upgrade-stripe
+.gitignore
+.claude/skills/stripe-best-practices
+.claude/skills/stripe-projects
