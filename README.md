@@ -56,15 +56,31 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 
 ## Production
 
-For production, override the `.env` values with real credentials:
+Production is deployed with Kamal (`config/deploy.yml`) and runs against a
+**DigitalOcean managed Postgres** cluster (there is no postgres accessory on the
+droplet). Secrets live in `.kamal/secrets`; the database is reached over TLS:
 
 ```env
-POSTGRES_PASSWORD=<real password>
 SECRET_KEY=<real secret>
-DATABASE_URL=postgresql+psycopg://postgres:<real password>@postgres:5432/agent_games
+DATABASE_URL=postgresql+psycopg://agent_games_user:<password>@<cluster-host>:25060/agent_games?sslmode=require
 ```
 
-Remove the `command:` line from the `api` service in `docker-compose.yml` to switch from dev uvicorn to gunicorn with 3 workers.
+First-time setup against a fresh managed cluster:
+
+1. In the DO control panel create the database (`agent_games`) and the app
+   role (`agent_games_user`).
+2. Grant that role what `init_db` needs (run once, as the `doadmin` role):
+
+   ```bash
+   DOADMIN_DATABASE_URL='postgresql://doadmin:<pw>@<cluster-host>:25060/agent_games?sslmode=require' \
+     uv run python -m backend.scripts.grant_managed_db
+   ```
+
+3. Deploy. `backend/entrypoint.sh` runs `init_db` (builds the schema from the
+   models + seeds) then the migrations — no dump to import.
+
+Allow the droplet's IP under the cluster's *Trusted Sources* so the app and the
+CI/backups (which `pg_dump` through the web container) can connect.
 
 ## Adding a New Game
 

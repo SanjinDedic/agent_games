@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 from datetime import timedelta
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -15,18 +15,72 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_db_url():
-    """Extract host, port, user, password, dbname from the SQLAlchemy DATABASE_URL."""
+    """Extract host, port, user, password, dbname, sslmode from the SQLAlchemy DATABASE_URL."""
     raw = get_database_url()
     # Strip the +psycopg driver so urlparse handles it cleanly
     raw = raw.replace("postgresql+psycopg://", "postgresql://")
     parsed = urlparse(raw)
+    query = parse_qs(parsed.query)
     return {
         "host": parsed.hostname or "localhost",
         "port": str(parsed.port or 5432),
         "user": parsed.username or "postgres",
         "password": parsed.password or "",
         "dbname": parsed.path.lstrip("/"),
+        # Production is a TLS-only managed cluster. pg_dump/pg_restore/psql take
+        # the connection as flags rather than a URL, so the sslmode carried in
+        # DATABASE_URL's query string has to be re-injected via PGSSLMODE.
+        "sslmode": query.get("sslmode", ["prefer"])[0],
     }
+
+
+def _pg_env(db: dict) -> dict:
+    """Environment for the libpq CLIs: password + TLS mode out of the URL."""
+    env = os.environ.copy()
+    env["PGPASSWORD"] = db["password"]
+    env["PGSSLMODE"] = db["sslmode"]
+    return env
+
+
+# Reset `public` to empty so a restore has somewhere clean to land, using only
+# rights the app role actually has on the managed cluster.
+#
+# It cannot DROP SCHEMA public (owned by pg_database_owner, i.e. doadmin), and
+# DROP OWNED BY CURRENT_USER — the obvious shortcut — would also revoke this
+# role's own USAGE/CREATE grants on public, leaving the next create_all locked
+# out. So drop the objects one kind at a time: tables (CASCADE takes their
+# constraints, indexes and identity sequences), then any standalone sequences,
+# then the native enum types SQLModel emits for the str-Enum fields — without
+# that last step pg_restore fails with "type ... already exists".
+_WIPE_PUBLIC_SCHEMA_SQL = """
+DO $$
+DECLARE obj record;
+BEGIN
+    FOR obj IN
+        SELECT c.relname AS name FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+    LOOP
+        EXECUTE format('DROP TABLE IF EXISTS public.%I CASCADE', obj.name);
+    END LOOP;
+
+    FOR obj IN
+        SELECT c.relname AS name FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'S'
+    LOOP
+        EXECUTE format('DROP SEQUENCE IF EXISTS public.%I CASCADE', obj.name);
+    END LOOP;
+
+    FOR obj IN
+        SELECT t.typname AS name FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public' AND t.typtype = 'e'
+    LOOP
+        EXECUTE format('DROP TYPE IF EXISTS public.%I CASCADE', obj.name);
+    END LOOP;
+END $$;
+"""
 
 
 def _get_s3_client():
@@ -60,8 +114,7 @@ def create_backup(label: str = "MANUAL") -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         dump_path = os.path.join(tmp, filename)
 
-        env = os.environ.copy()
-        env["PGPASSWORD"] = db["password"]
+        env = _pg_env(db)
 
         result = subprocess.run(
             [
@@ -171,8 +224,8 @@ def restore_backup(s3_key: str) -> dict:
     """Download a backup from S3 and restore it.
 
     Custom-format archives (.dump) restore via pg_restore; legacy plain-SQL
-    backups (.sql) still restore via psql. Drops and recreates the database
-    before restoring either way.
+    backups (.sql) still restore via psql. Either way the `public` schema is
+    emptied first so the restore lands in a clean database.
     """
     bucket = os.environ.get("AWS_S3_BUCKET", "agent-games-backups")
     db = _parse_db_url()
@@ -188,32 +241,20 @@ def restore_backup(s3_key: str) -> dict:
         except ClientError as e:
             raise RuntimeError(f"Failed to download backup from S3: {e}")
 
-        env = os.environ.copy()
-        env["PGPASSWORD"] = db["password"]
+        env = _pg_env(db)
         psql_base = ["psql", "-h", db["host"], "-p", db["port"], "-U", db["user"]]
 
-        # Terminate existing connections to the target database
+        # Empty the database in place (see _WIPE_PUBLIC_SCHEMA_SQL) instead of
+        # DROP/CREATE DATABASE, which the app role cannot do on the managed
+        # cluster: doadmin owns the database, and there is no `postgres`
+        # maintenance database for the app role to connect to.
         result = subprocess.run(
-            psql_base + ["-d", "postgres", "-c",
-                         f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                         f"WHERE datname = '{db['dbname']}' AND pid <> pg_backend_pid();"],
-            capture_output=True, text=True, env=env, timeout=30,
-        )
-
-        # Drop and recreate the database
-        result = subprocess.run(
-            psql_base + ["-d", "postgres", "-c", f"DROP DATABASE IF EXISTS {db['dbname']};"],
-            capture_output=True, text=True, env=env, timeout=30,
+            psql_base + ["-d", db["dbname"], "-v", "ON_ERROR_STOP=1",
+                         "-c", _WIPE_PUBLIC_SCHEMA_SQL],
+            capture_output=True, text=True, env=env, timeout=60,
         )
         if result.returncode != 0:
-            raise RuntimeError(f"DROP DATABASE failed: {result.stderr}")
-
-        result = subprocess.run(
-            psql_base + ["-d", "postgres", "-c", f"CREATE DATABASE {db['dbname']};"],
-            capture_output=True, text=True, env=env, timeout=30,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"CREATE DATABASE failed: {result.stderr}")
+            raise RuntimeError(f"Wiping the public schema failed: {result.stderr}")
 
         # Restore the dump. Legacy backups are plain SQL; current ones are
         # pg_dump custom-format archives.
