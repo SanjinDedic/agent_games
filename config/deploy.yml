@@ -80,12 +80,21 @@ env:
     PYTHONPATH: /agent_games
     CELERY_BROKER_URL: redis://valkey:6379/0
     DB_ENVIRONMENT: production
+    # SQLAlchemy pool bounds per process. The managed cluster's smallest plan
+    # caps total client connections (~22), shared by both gunicorn web workers
+    # and every forked Celery child, so keep each process's pool small: 3+2=5
+    # max. Unset outside prod (dev/test keep SQLAlchemy's defaults). See
+    # backend/database/db_session.py.
+    DB_POOL_SIZE: "3"
+    DB_MAX_OVERFLOW: "2"
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
     FRONTEND_URL: https://agentgames.io
   secret:
     - SECRET_KEY
+    # Managed Postgres (DigitalOcean), TLS-only:
+    #   postgresql+psycopg://agent_games_user:...@<cluster>:25060/agent_games?sslmode=require
     - DATABASE_URL
     - ADMIN_PASSWORD
     - INSTITUTION_PASSWORD
@@ -114,26 +123,15 @@ accessories:
       hostname: valkey
       memory: 400m
 
-  postgres:
-    image: postgres:18
-    hosts:
-      - api.agentgames.io
-    options:
-      hostname: postgres
-      memory: 700m
-      shm-size: 256m
-    env:
-      clear:
-        POSTGRES_USER: postgres
-        POSTGRES_DB: agent_games
-        PGDATA: /var/lib/postgresql/data/pgdata
-      secret:
-        - POSTGRES_PASSWORD
-    directories:
-      - data:/var/lib/postgresql/data
+  # Postgres is NOT an accessory: production runs on a DigitalOcean managed
+  # cluster, reached over TLS via DATABASE_URL (sslmode=require). Nothing on
+  # this host stores data. Local dev still uses the postgres container in
+  # docker-compose.yml.
 
 aliases:
   shell: app exec --interactive --reuse "sh"
   logs: app logs --tail 100 --follow
   health: app exec --reuse "curl -f http://localhost:8000/health"
-  db: accessory exec --interactive postgres "psql -U postgres -d agent_games"
+  # psql wants a libpq URL; the app's DATABASE_URL carries the SQLAlchemy
+  # "+psycopg" driver suffix (same strip as backend/entrypoint.sh).
+  db: app exec --interactive --reuse "sh -c 'psql \"$(printf %s \"$DATABASE_URL\" | sed s/+psycopg//)\"'"

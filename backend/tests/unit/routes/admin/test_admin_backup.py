@@ -22,6 +22,18 @@ def test_parse_db_url_standard(mock_url):
     assert result["user"] == "myuser"
     assert result["password"] == "mypass"
     assert result["dbname"] == "mydb"
+    assert result["sslmode"] == "prefer"  # no query string -> libpq-ish default
+
+
+@patch("backend.routes.admin.admin_backup.get_database_url")
+def test_parse_db_url_sslmode(mock_url):
+    """Managed-cluster URL carries sslmode through for the libpq CLIs."""
+    mock_url.return_value = (
+        "postgresql+psycopg://u:p@host:25060/agent_games?sslmode=require"
+    )
+    from backend.routes.admin.admin_backup import _parse_db_url
+
+    assert _parse_db_url()["sslmode"] == "require"
 
 
 @patch("backend.routes.admin.admin_backup.get_database_url")
@@ -72,6 +84,7 @@ def test_create_backup_success(mock_parse, mock_run, mock_s3):
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "pass", "dbname": "testdb",
+        "sslmode": "prefer",
     }
     mock_run.return_value = MagicMock(returncode=0, stderr="")
     mock_s3.return_value = MagicMock()
@@ -107,6 +120,7 @@ def test_create_backup_pgdump_fails(mock_run, mock_parse):
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "", "dbname": "testdb",
+        "sslmode": "prefer",
     }
     mock_run.return_value = MagicMock(returncode=1, stderr="connection refused")
 
@@ -124,6 +138,7 @@ def test_create_backup_s3_upload_fails(mock_parse, mock_run, mock_s3):
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "", "dbname": "testdb",
+        "sslmode": "prefer",
     }
     mock_run.return_value = MagicMock(returncode=0)
     mock_s3.return_value.upload_file.side_effect = ClientError(
@@ -145,6 +160,7 @@ def test_create_backup_label_in_filename(mock_parse, mock_run, mock_s3):
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "", "dbname": "testdb",
+        "sslmode": "prefer",
     }
     mock_run.return_value = MagicMock(returncode=0, stderr="")
     mock_s3.return_value = MagicMock()
@@ -259,6 +275,7 @@ def test_restore_backup_success(mock_parse, mock_run, mock_s3):
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "pass", "dbname": "testdb",
+        "sslmode": "prefer",
     }
     # All subprocess calls succeed
     mock_run.return_value = MagicMock(returncode=0, stderr="")
@@ -272,8 +289,14 @@ def test_restore_backup_success(mock_parse, mock_run, mock_s3):
     # S3 download was called
     mock_s3.return_value.download_file.assert_called_once()
 
-    # subprocess.run called 4 times: terminate, drop, create, restore
-    assert mock_run.call_count == 4
+    # subprocess.run called twice: wipe public schema, then restore
+    assert mock_run.call_count == 2
+
+    # The wipe drops tables/sequences/enum types (no DROP DATABASE — the app
+    # role can't do that on the managed cluster)
+    wipe_cmd = mock_run.call_args_list[0][0][0]
+    assert wipe_cmd[0] == "psql"
+    assert any("DROP TABLE" in arg for arg in wipe_cmd)
 
     # The final call restores the archive with pg_restore
     restore_cmd = mock_run.call_args_list[-1][0][0]
@@ -291,6 +314,7 @@ def test_restore_backup_legacy_sql(mock_parse, mock_run, mock_s3):
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "pass", "dbname": "testdb",
+        "sslmode": "prefer",
     }
     mock_run.return_value = MagicMock(returncode=0, stderr="")
     mock_s3.return_value = MagicMock()
@@ -298,7 +322,7 @@ def test_restore_backup_legacy_sql(mock_parse, mock_run, mock_s3):
     result = restore_backup("backups/agent_games_20260101_000000.sql")
 
     assert result["filename"] == "agent_games_20260101_000000.sql"
-    assert mock_run.call_count == 4
+    assert mock_run.call_count == 2  # wipe, then restore
 
     restore_cmd = mock_run.call_args_list[-1][0][0]
     assert restore_cmd[0] == "psql"
@@ -308,21 +332,21 @@ def test_restore_backup_legacy_sql(mock_parse, mock_run, mock_s3):
 @patch("backend.routes.admin.admin_backup._get_s3_client")
 @patch("backend.routes.admin.admin_backup.subprocess.run")
 @patch("backend.routes.admin.admin_backup._parse_db_url")
-def test_restore_backup_drop_fails(mock_parse, mock_run, mock_s3):
-    """RuntimeError when DROP DATABASE fails."""
+def test_restore_backup_wipe_fails(mock_parse, mock_run, mock_s3):
+    """RuntimeError when wiping the public schema fails."""
     from backend.routes.admin.admin_backup import restore_backup
 
     mock_parse.return_value = {
         "host": "localhost", "port": "5432",
         "user": "postgres", "password": "", "dbname": "testdb",
+        "sslmode": "require",
     }
     mock_s3.return_value = MagicMock()
 
-    # First call (terminate) succeeds, second (drop) fails
+    # The wipe (first and only pre-restore call) fails
     mock_run.side_effect = [
-        MagicMock(returncode=0),  # terminate connections
-        MagicMock(returncode=1, stderr="permission denied"),  # drop
+        MagicMock(returncode=1, stderr="permission denied"),  # wipe
     ]
 
-    with pytest.raises(RuntimeError, match="DROP DATABASE failed"):
+    with pytest.raises(RuntimeError, match="Wiping the public schema failed"):
         restore_backup("backups/test.sql")
