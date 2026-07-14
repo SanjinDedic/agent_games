@@ -184,7 +184,6 @@ seed_prod.py
 frontend/public/videos/*.mp4
 frontend/public/about/
 .agents/
-.claude/
 .vscode/
 seed_arena_champions_teams_prod.py
 seed_greedy_pig_teams_prod.py
