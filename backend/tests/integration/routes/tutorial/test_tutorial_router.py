@@ -87,6 +87,7 @@ def tutorial_with_exercise(db_session: Session) -> Tutorial:
         starter_code="def count_words(sentence):\n    pass\n",
         entry_function="count_words",
         test_code=WORD_COUNTER_TEST_CODE,
+        exercise_hints=["Split the sentence.", "Count the pieces."],
     )
     db_session.add(later)
     db_session.add(first)
@@ -129,10 +130,14 @@ def test_get_tutorial_detail(client, team_headers, tutorial_with_exercise):
     titles = [e["title"] for e in data["exercises"]]
     assert titles == ["Word Counter", "Second Exercise"]
 
-    # The student sees the problem, not the test definitions
+    # The student sees the problem and hints, not the test definitions
     exercise = data["exercises"][0]
     assert exercise["problem_markdown"] == "Count the words"
     assert exercise["starter_code"].startswith("def count_words")
+    assert exercise["exercise_hints"] == [
+        "Split the sentence.",
+        "Count the pieces.",
+    ]
     assert "test_code" not in exercise
     assert "entry_function" not in exercise
     assert "solution" not in exercise

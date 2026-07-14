@@ -17,7 +17,9 @@ backend/tasks/exercise_test_code.py: `test_*` functions calling the student's
 functions by name, recording results with the injected `check`,
 `check_output`, and `capture` helpers. The scripts are admin-trusted and
 seed-managed — students never see or touch them. Each spec also carries a
-`solution`, the reference implementation the admin editor's Run button uses.
+`solution`, the reference implementation the admin editor's Run button uses,
+and an `exercise_hints` list of Markdown strings the frontend can show
+separately — the problem text itself stays brief.
 
 Idempotent overwrite: the platform has exactly one tutorial, so this script
 reuses the oldest Tutorial row (deleting any others), overwrites its title
@@ -82,19 +84,14 @@ EXERCISES = [
         "problem_markdown": """\
 # Three Variables, One Report
 
-Everything an agent does starts here: put values in **variables**, do some
-**arithmetic** with them, and **print** the answer. Printing is also how you
-will debug your agent later, so it is worth getting right from the start.
+Put values in **variables**, do some **arithmetic**, **print** the answer.
+Printing is also how you will debug your agent later.
 
 ## The Task
 
-Write a function `show_rounds(round1, round2, round3)` that receives the
-points you scored in three rounds. It must work out:
-
-- the **total** of the three rounds
-- the **average**, rounded to 2 decimal places
-
-and then **print** exactly two lines:
+Write a function `show_rounds(round1, round2, round3)` that receives your
+points from three rounds and **prints** exactly two lines — the **total**,
+then the **average** rounded to 2 decimal places:
 
 ```
 Total: 37
@@ -117,18 +114,14 @@ show_rounds(6, 6, 6)
 # Average: 6.0
 ```
 
-Note the second example: an average of exactly 6 still prints as `6.0`,
-because dividing always produces a decimal number. That is fine — print it
-as it comes.
-
-## Hints
-
-- Store your working in variables:
-  `total = round1 + round2 + round3`
-- `/` divides: `total / 3`.
-- `round(value, 2)` rounds to 2 decimal places.
-- An f-string drops a variable into text: `print(f"Total: {total}")`.
+An average of exactly 6 still prints as `6.0` — dividing always produces a
+decimal number. Print it as it comes.
 """,
+        "exercise_hints": [
+            "Store your working in variables: `total = round1 + round2 + round3`.",
+            "`/` divides: `total / 3`. `round(value, 2)` rounds to 2 decimal places.",
+            'An f-string drops a variable into text: `print(f"Total: {total}")`.',
+        ],
         "starter_code": """\
 def show_rounds(round1, round2, round3):
     # 1. Add the three rounds together -> total
@@ -189,14 +182,9 @@ def test_prints_not_returns():
 # Unpack the Dice Rolls
 
 Greedy Pig hands you groups of values inside a **list**, like the dice you
-rolled during one turn:
-
-```python
-rolls = [3, 5, 2]
-```
-
-**Unpacking** pulls those values out into named variables in one line — much
-easier to read than `rolls[0]`, `rolls[1]`, `rolls[2]` everywhere.
+rolled during one turn: `rolls = [3, 5, 2]`. **Unpacking** pulls those values
+out into named variables in one line — much easier to read than `rolls[0]`,
+`rolls[1]`, `rolls[2]` everywhere.
 
 ## The Task
 
@@ -206,24 +194,16 @@ dice values and **returns** their total.
 ## Examples
 
 ```python
-turn_total([3, 5, 2])
-# 10
-
-turn_total([6, 6, 6])
-# 18
-
-turn_total([2, 3, 4])
-# 9
+turn_total([3, 5, 2])   # 10
+turn_total([6, 6, 6])   # 18
+turn_total([2, 3, 4])   # 9
 ```
-
-## Hints
-
-- Unpack the list into three variables:
-  `first, second, third = rolls`
-- Then add them up and `return` the result.
-- `return` hands the value back to whoever called the function — unlike
-  `print`, which only shows it on screen.
 """,
+        "exercise_hints": [
+            "Unpack the list into three variables: `first, second, third = rolls`.",
+            "Then add them up and `return` the result.",
+            "`return` hands the value back to whoever called the function — unlike `print`, which only shows it on screen.",
+        ],
         "starter_code": """\
 def turn_total(rolls):
     # rolls is a list of exactly three dice values, like [3, 5, 2].
@@ -268,21 +248,16 @@ def test_returns_not_prints():
         "problem_markdown": """\
 # Rolls Plus What You Already Have
 
-Now combine a list with other variables — and add the rule that makes Greedy
-Pig dangerous.
-
-In Greedy Pig, dice values **2 to 6** pile up in your *unbanked* pile. But a
+In Greedy Pig, dice values **2 to 6** pile up in your *unbanked* pile, but a
 roll of **1 wipes that pile out**. Money you had already **banked** is safe:
 a 1 never touches it.
 
 ## The Task
 
-Write a function `money_if_banked(rolls, banked)` where:
-
-- `rolls` is a list of exactly three dice values from this turn
-- `banked` is the money you had safely banked *before* the turn
-
-Return how much money you would have **if you banked at the end of the turn**:
+Write a function `money_if_banked(rolls, banked)` — `rolls` is a list of
+exactly three dice values from this turn, `banked` is the money you had
+safely banked *before* it. Return how much money you would have **if you
+banked at the end of the turn**:
 
 - If **any** of the three rolls is a `1`, this turn's rolls are lost —
   return `banked` unchanged.
@@ -300,15 +275,12 @@ money_if_banked([3, 1, 5], 20)
 money_if_banked([6, 6, 6], 0)
 # 18        (nothing banked yet, 18 rolled)
 ```
-
-## Hints
-
-- Unpack first: `first, second, third = rolls`
-- Check for the bust:
-  `if first == 1 or second == 1 or third == 1:`
-  (or, more neatly, `if 1 in rolls:`)
-- Remember to `return` in **both** cases — the bust case and the safe case.
 """,
+        "exercise_hints": [
+            "Unpack first: `first, second, third = rolls`.",
+            "Check for the bust: `if first == 1 or second == 1 or third == 1:` (or, more neatly, `if 1 in rolls:`).",
+            "Remember to `return` in **both** cases — the bust case and the safe case.",
+        ],
         "starter_code": """\
 def money_if_banked(rolls, banked):
     # rolls: three dice values, like [3, 5, 2]
@@ -370,40 +342,24 @@ Greedy Pig keeps the scoreboard in a **dictionary**: each player's name
 banked_money = {"Alice": 30, "Bob": 55, "Cara": 12}
 ```
 
-Reading values out of a dictionary is the single most common thing an agent
-does, so it starts here.
-
 ## The Task
 
 Write a function `total_banked(banked_money)` that returns the **total money
-banked by everyone** on the scoreboard.
-
-An empty scoreboard totals `0`.
+banked by everyone** on the scoreboard. An empty scoreboard totals `0`.
 
 ## Examples
 
 ```python
-total_banked({"Alice": 30, "Bob": 55, "Cara": 12})
-# 97
-
-total_banked({"Alice": 30, "Bob": 55})
-# 85
-
-total_banked({})
-# 0
+total_banked({"Alice": 30, "Bob": 55, "Cara": 12})   # 97
+total_banked({"Alice": 30, "Bob": 55})               # 85
+total_banked({})                                     # 0
 ```
-
-## Hints
-
-- `banked_money.values()` gives you just the amounts: `30, 55, 12`.
-- Loop over them and add them into a running total:
-  ```python
-  total = 0
-  for amount in banked_money.values():
-      total = total + amount
-  ```
-- Once that works, try the one-line version: `sum(banked_money.values())`.
 """,
+        "exercise_hints": [
+            "`banked_money.values()` gives you just the amounts: `30, 55, 12`.",
+            "Loop over them and add each one into a running total that starts at `0`.",
+            "Once that works, try the one-line version: `sum(banked_money.values())`.",
+        ],
         "starter_code": """\
 def total_banked(banked_money):
     # banked_money is a dictionary like {"Alice": 30, "Bob": 55}.
@@ -461,8 +417,9 @@ def test_eight_players():
         "problem_markdown": """\
 # A Player Profile
 
-A dictionary's values do not all have to be numbers. This one mixes **text**,
-**whole numbers**, a **decimal number**, and a **True/False** value:
+A dictionary's values do not all have to be numbers — this one mixes text,
+numbers, and a `True`/`False` value. You pull each one out the same way
+(`player["name"]`, `player["banked"]`), but you *use* them differently.
 
 ```python
 player = {
@@ -474,9 +431,6 @@ player = {
 }
 ```
 
-You pull each one out the same way — `player["name"]`, `player["banked"]` —
-but you *use* them differently.
-
 ## The Task
 
 Write a function `describe_player(player)` that **returns** a one-line summary
@@ -485,8 +439,6 @@ string in exactly this format:
 ```
 Alice: 38 points, avg roll 3.75, still rolling
 ```
-
-Where:
 
 - `38` is `banked + unbanked` — the player's total points
 - `3.75` is the `average_roll` value, printed as it is
@@ -508,20 +460,12 @@ describe_player({
 })
 # "Bob: 55 points, avg roll 4.0, done for this round"
 ```
-
-## Hints
-
-- A `True`/`False` value goes straight into an `if`:
-  ```python
-  if player["banked_this_round"]:
-      status = "done for this round"
-  else:
-      status = "still rolling"
-  ```
-- Build the sentence with an f-string, then `return` it (do not print it):
-  `return f"{name}: {total} points, avg roll {avg}, {status}"`
-- Watch the commas and spaces — the tests compare the string exactly.
 """,
+        "exercise_hints": [
+            'A `True`/`False` value goes straight into an `if`: `if player["banked_this_round"]:` — set a `status` variable in each branch.',
+            'Build the sentence with an f-string, then `return` it (do not print it): `return f"{name}: {total} points, avg roll {avg}, {status}"`.',
+            "Watch the commas and spaces — the tests compare the string exactly.",
+        ],
         "starter_code": """\
 def describe_player(player):
     # player has keys: "name", "banked", "unbanked",
@@ -644,24 +588,16 @@ Write **both** of these functions:
 Using the `state` above (4 players, 2 of them already banked):
 
 ```python
-has_banked(state, "Bank5")
-# True
-
-has_banked(state, "Bank15")
-# False
-
-still_rolling(state)
-# 2
+has_banked(state, "Bank5")    # True
+has_banked(state, "Bank15")   # False
+still_rolling(state)          # 2
 ```
-
-## Hints
-
-- `name in some_list` is already a `True`/`False` value — you can `return` it
-  directly.
-- `len(some_list)` counts the items in a list; `len(some_dict)` counts the
-  keys in a dictionary.
-- So the number still rolling is one `len` minus the other.
 """,
+        "exercise_hints": [
+            "`name in some_list` is already a `True`/`False` value — you can `return` it directly.",
+            "`len(some_list)` counts the items in a list; `len(some_dict)` counts the keys in a dictionary.",
+            "So the number still rolling is one `len` minus the other.",
+        ],
         "starter_code": """\
 def has_banked(state, name):
     # True if name is in state["players_banked_this_round"], else False.
@@ -752,32 +688,22 @@ def test_still_rolling_everyone_banked():
 # Read the Game State, Make a Decision
 
 This is the real thing. Every roll, Greedy Pig hands your agent a
-`game_state` dictionary that looks exactly like this:
+`game_state` dictionary:
 
 ```python
 game_state = {
     "round_no": 4,
     "roll_no": 2,
     "players_banked_this_round": ["Bank5"],
-    "banked_money": {
-        "Bank15": 16, "Bank5": 18, "BankRoll4": 16, "AdaptiveRankStop": 21,
-        "StopAt21": 23, "MyAgent": 23, "StopAt20Win100": 21, "BankRoll3": 13,
-    },
-    "unbanked_money": {
-        "Bank15": 8, "Bank5": 0, "BankRoll4": 8, "AdaptiveRankStop": 8,
-        "StopAt21": 8, "MyAgent": 8, "StopAt20Win100": 2, "BankRoll3": 2,
-    },
+    "banked_money": {"MyAgent": 23, "Bank5": 18, "BankRoll4": 16},
+    "unbanked_money": {"MyAgent": 8, "Bank5": 0, "BankRoll4": 8},
 }
 ```
 
-Your agent answers one question, over and over: **bank, or keep rolling?**
-The answer is always one of two strings: `"bank"` or `"continue"`.
-
-Remember the rules:
-
-- Money in `unbanked_money` is **at risk** — a roll of 1 wipes it.
-- Money in `banked_money` is **safe**, and only banked money wins.
-- The first player to bank **100** wins the game.
+Money in `unbanked_money` is **at risk** — a roll of 1 wipes it. Money in
+`banked_money` is **safe**, and the first player to bank **100** wins. Your
+agent answers one question, over and over: **bank, or keep rolling?** The
+answer is always one of two strings: `"bank"` or `"continue"`.
 
 ## The Task
 
@@ -793,41 +719,22 @@ the first one that fires:
 
 ## Examples
 
-Using the `game_state` above, with `my_name = "MyAgent"`:
+Using the `game_state` above:
 
 ```python
 make_decision(game_state, "MyAgent")
-# "continue"
-# MyAgent has 23 banked + 8 unbanked = 31 — nowhere near 100,
-# and 8 unbanked is not risky yet.
+# "continue"   (23 banked + 8 unbanked — nowhere near 100, 8 is not risky yet)
 ```
 
 If your unbanked pile were `25` instead, rule 2 would fire and the answer
 would be `"bank"`.
-
-## Hints
-
-- Look up your own money by name:
-  ```python
-  my_unbanked = game_state["unbanked_money"][my_name]
-  my_banked = game_state["banked_money"][my_name]
-  ```
-- Then it is just `if` / `elif` / `else` in the order given above.
-- Return the strings exactly: `"bank"` and `"continue"` — spelling and
-  lowercase matter, the game rejects anything else.
-
-## In the real game
-
-Your agent is a class, and `game_state` arrives the same way — the only
-difference is that your name is `self.name` instead of `my_name`:
-
-```python
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        my_unbanked = game_state["unbanked_money"][self.name]
-        ...
-```
 """,
+        "exercise_hints": [
+            'Look up your own money by name: `game_state["unbanked_money"][my_name]` and `game_state["banked_money"][my_name]`.',
+            "Then it is just `if` / `elif` / `else` in the order given above.",
+            'Return the strings exactly: `"bank"` and `"continue"` — spelling and lowercase matter, the game rejects anything else.',
+            "In the real game your agent is a class and `game_state` arrives the same way — your name is just `self.name` instead of `my_name`.",
+        ],
         "starter_code": """\
 def make_decision(game_state, my_name):
     # Look up your own money in the game state:
@@ -950,15 +857,9 @@ def test_rule_order():
 # What Are the Odds?
 
 The dice decide everything, so a good agent knows the odds. One die has six
-equally likely faces:
-
-| Face | What happens |
-| --- | --- |
-| 1 | **Bust** — your unbanked pile is wiped |
-| 2, 3, 4, 5, 6 | That many points are added to your unbanked pile |
-
-So the chance of busting on any single roll is `1/6`, and the chance of
-surviving it is `5/6`.
+equally likely faces: a **1** busts you (your unbanked pile is wiped), and
+**2 to 6** add that many points to your pile. So the chance of busting on any
+single roll is `1/6`, and the chance of surviving it is `5/6`.
 
 **Probability = (the number of faces that give you what you want) / 6.**
 
@@ -966,9 +867,8 @@ surviving it is `5/6`.
 
 Write a function `chance_to_win_now(game_state, my_name)` that returns the
 probability that the **very next roll** takes your total
-(`my_banked + my_unbanked + the roll`) to **100 or more**.
-
-Only faces `2, 3, 4, 5, 6` can do it — a `1` wipes your pile instead. So:
+(`my_banked + my_unbanked + the roll`) to **100 or more**. Only faces
+`2, 3, 4, 5, 6` can do it — a `1` wipes your pile instead. So:
 
 1. Work out your total so far: `my_banked + my_unbanked`.
 2. Count how many of the faces `2, 3, 4, 5, 6` would push that total to 100
@@ -977,33 +877,20 @@ Only faces `2, 3, 4, 5, 6` can do it — a `1` wipes your pile instead. So:
 
 ## Examples
 
-If you have 90 banked and 6 unbanked, your total is 96. Faces 4, 5 and 6 get
-you to 100 — that is 3 winning faces out of 6:
+If you have 90 banked and 6 unbanked, your total is 96 — faces 4, 5 and 6
+get you to 100, so 3 winning faces out of 6:
 
 ```python
-chance_to_win_now(state, "MyAgent")   # 90 banked, 6 unbanked
-# 0.5        (3 / 6)
-
-chance_to_win_now(state, "MyAgent")   # 95 banked, 4 unbanked -> total 99
-# 0.83       (every face from 2 to 6 wins: 5 / 6)
-
-chance_to_win_now(state, "MyAgent")   # 60 banked, 10 unbanked -> total 70
-# 0.0        (no single roll can get there)
+chance_to_win_now(state, "MyAgent")   # 90 banked, 6 unbanked  -> 0.5  (3/6)
+chance_to_win_now(state, "MyAgent")   # 95 banked, 4 unbanked  -> 0.83 (5/6)
+chance_to_win_now(state, "MyAgent")   # 60 banked, 10 unbanked -> 0.0
 ```
-
-## Hints
-
-- `range(2, 7)` counts through the faces `2, 3, 4, 5, 6` (it stops *before*
-  7).
-- Count with a variable:
-  ```python
-  winning_faces = 0
-  for face in range(2, 7):
-      if my_total + face >= 100:
-          winning_faces = winning_faces + 1
-  ```
-- Then `return round(winning_faces / 6, 2)`.
 """,
+        "exercise_hints": [
+            "`range(2, 7)` counts through the faces `2, 3, 4, 5, 6` (it stops *before* 7).",
+            "Count the winning faces with a variable that starts at `0` and grows by 1 whenever `my_total + face >= 100`.",
+            "Then `return round(winning_faces / 6, 2)`.",
+        ],
         "starter_code": """\
 def chance_to_win_now(game_state, my_name):
     # 1. Look up my banked and unbanked money, add them -> my_total
@@ -1078,25 +965,13 @@ def test_reads_the_right_player():
 # Expected Value of One Roll
 
 Odds tell you what *might* happen. **Expected value** tells you what happens
-*on average* — and it is how a serious agent decides whether one more roll is
-worth it.
+*on average*: work out the outcome for **every** face, add them up, and
+divide by 6 (each face is equally likely).
 
-The recipe: work out the outcome for **every** face, add them up, and divide
-by 6 (because each face is equally likely).
-
-Say your unbanked pile holds `8`:
-
-| Face | Outcome |
-| --- | --- |
-| 1 | you lose the pile: **-8** |
-| 2 | **+2** |
-| 3 | **+3** |
-| 4 | **+4** |
-| 5 | **+5** |
-| 6 | **+6** |
-
-Add them: `-8 + 2 + 3 + 4 + 5 + 6 = 12`. Divide by 6: **+2.0**. On average
-one more roll *gains* you 2 points, so rolling is a good bet.
+Say your unbanked pile holds `8`: a 1 loses the pile (**-8**), and faces 2
+to 6 gain that many points. Add the six outcomes:
+`-8 + 2 + 3 + 4 + 5 + 6 = 12`. Divide by 6: **+2.0**. On average one more
+roll *gains* you 2 points, so rolling is a good bet.
 
 ## The Task
 
@@ -1110,39 +985,20 @@ to your unbanked pile from **one more roll**, rounded to 2 decimal places.
 ## Examples
 
 ```python
-expected_change(0)
-# 3.33     (nothing to lose — rolling is almost free)
-
-expected_change(8)
-# 2.0      (still worth rolling)
-
-expected_change(20)
-# 0.0      (exactly break-even!)
-
-expected_change(30)
-# -1.67    (on average you now LOSE by rolling)
+expected_change(0)    # 3.33   (nothing to lose — rolling is almost free)
+expected_change(8)    # 2.0    (still worth rolling)
+expected_change(20)   # 0.0    (exactly break-even!)
+expected_change(30)   # -1.67  (on average you now LOSE by rolling)
 ```
 
-## The punchline
-
-Look at those numbers. The expected value is positive below **20**, exactly
-zero **at 20**, and negative above it. That is not a coincidence — it is the
-mathematical reason so many strong Greedy Pig agents bank at around 20. You
-just derived it.
-
-## Hints
-
-- Start a running total at `0`, then loop over all six faces:
-  ```python
-  total = 0
-  for face in range(1, 7):
-      if face == 1:
-          total = total - unbanked
-      else:
-          total = total + face
-  ```
-- Then `return round(total / 6, 2)`.
+Positive below **20**, exactly zero **at 20**, negative above it — that is
+the mathematical reason so many strong Greedy Pig agents bank at around 20.
+You just derived it.
 """,
+        "exercise_hints": [
+            "Start a running total at `0` and loop over `range(1, 7)`: subtract `unbanked` when the face is 1, otherwise add the face.",
+            "Then `return round(total / 6, 2)`.",
+        ],
         "starter_code": """\
 def expected_change(unbanked):
     # The average change to your unbanked pile from one more roll.
@@ -1201,10 +1057,9 @@ def test_just_over_the_line():
         "problem_markdown": """\
 # An Agent That Uses Expected Value
 
-Time to put it together. Real agents do not cram everything into one
-function — they split their thinking into **helpers**, and the decision
-function calls them. Here you write the expected-value helper from the last
-exercise, and a decision function that uses it on a real game state.
+Time to put it together. Real agents split their thinking into **helpers** —
+here you write the expected-value helper from the last exercise, and a
+decision function that uses it on a real game state.
 
 ## The Task
 
@@ -1212,16 +1067,14 @@ Write **both** of these functions:
 
 1. `expected_change(unbanked)` — same as the last exercise: the average change
    to your unbanked pile from one more roll, rounded to 2 decimal places.
-   (Face `1` loses the pile, faces `2`–`6` gain that many points, divide by 6.)
 
 2. `make_decision(game_state, my_name)` — looks up your own money in the game
    state, then applies these rules **in order**:
    1. If banking now reaches 100 or more (`my_banked + my_unbanked >= 100`)
       → return `"bank"`. The game is won — the odds do not matter any more.
-   2. Otherwise, ask the helper. If `expected_change(my_unbanked)` is
-      **greater than 0**, one more roll gains money on average → return
-      `"continue"`.
-   3. Otherwise the roll loses money on average → return `"bank"`.
+   2. If `expected_change(my_unbanked)` is **greater than 0**, one more roll
+      gains money on average → return `"continue"`.
+   3. Otherwise → return `"bank"`.
 
 `make_decision` must actually **call** `expected_change` — the tests check
 that the two agree with each other.
@@ -1229,43 +1082,22 @@ that the two agree with each other.
 ## Examples
 
 ```python
-# 23 banked, 8 unbanked -> expected_change(8) is +2.0, a gaining roll
-make_decision(game_state, "MyAgent")
-# "continue"
-
-# 23 banked, 26 unbanked -> expected_change(26) is -1.0, a losing roll
-make_decision(game_state, "MyAgent")
-# "bank"
-
-# 95 banked, 6 unbanked -> banking now reaches 101
-make_decision(game_state, "MyAgent")
-# "bank"
+make_decision(game_state, "MyAgent")  # 23 banked, 8 unbanked  -> "continue"
+make_decision(game_state, "MyAgent")  # 23 banked, 26 unbanked -> "bank"
+make_decision(game_state, "MyAgent")  # 95 banked, 6 unbanked  -> "bank" (101 wins!)
 ```
-
-## Hints
-
-- Look up your money exactly as in exercise 7:
-  `game_state["unbanked_money"][my_name]`
-- Rule 1 comes **first** — check the win before you check the odds.
-- Then: `if expected_change(my_unbanked) > 0:` → `"continue"`, else `"bank"`.
 
 ## Taking it to the game
 
-This *is* an agent. Drop the same two ideas into the game's `CustomPlayer` and
-you have a working, mathematically-grounded strategy:
+This *is* an agent. Drop the same two ideas into the game's `CustomPlayer`
+and you have a working, mathematically-grounded strategy:
 
 ```python
 from games.greedy_pig.player import Player
 
 class CustomPlayer(Player):
     def expected_change(self, unbanked):
-        total = 0
-        for face in range(1, 7):
-            if face == 1:
-                total = total - unbanked
-            else:
-                total = total + face
-        return round(total / 6, 2)
+        ...  # your helper, with self added
 
     def make_decision(self, game_state):
         my_unbanked = game_state["unbanked_money"][self.name]
@@ -1281,6 +1113,11 @@ class CustomPlayer(Player):
 Now go and beat it. What does this agent ignore? The round number, the other
 players' scores, whether someone is one roll from winning...
 """,
+        "exercise_hints": [
+            'Look up your money exactly as in exercise 7: `game_state["unbanked_money"][my_name]`.',
+            "Rule 1 comes **first** — check the win before you check the odds.",
+            'Then: `if expected_change(my_unbanked) > 0:` → `"continue"`, else `"bank"`.',
+        ],
         "starter_code": """\
 def expected_change(unbanked):
     # Face 1     -> lose the whole pile (-unbanked)
@@ -1467,6 +1304,7 @@ def seed_tutorial() -> bool:
             # The seed is a full overwrite: a spec without a solution resets
             # any solution saved through the admin editor.
             exercise.solution = spec.get("solution")
+            exercise.exercise_hints = spec.get("exercise_hints", [])
             session.add(exercise)
 
         for leftover in existing[len(EXERCISES):]:

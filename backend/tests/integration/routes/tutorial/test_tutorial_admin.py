@@ -19,7 +19,10 @@ EXERCISE_PAYLOAD = {
     "entry_function": "add",
     "test_code": "def test_adds():\n    check(add(1, 2), 3)\n",
     "solution": "def add(a, b):\n    return a + b\n",
+    # The blank hint must be dropped by validation
+    "exercise_hints": ["Use `+`.", "   ", "Then `return` the result."],
 }
+EXPECTED_HINTS = ["Use `+`.", "Then `return` the result."]
 
 SEEDED_TEST_CODE = "def test_runs():\n    check(f(), None)\n"
 
@@ -213,6 +216,7 @@ def test_create_exercise_appends_at_end(
     exercise = db_session.get(Exercise, created["id"])
     assert exercise.test_code == EXERCISE_PAYLOAD["test_code"]
     assert exercise.solution == EXERCISE_PAYLOAD["solution"]
+    assert exercise.exercise_hints == EXPECTED_HINTS
 
 
 def test_create_exercise_blank_test_code_stored_as_null(
@@ -260,9 +264,10 @@ def test_update_exercise_replaces_all_fields(
     assert exercise.title == "Sum Two Numbers"
     assert exercise.entry_function == "add"
     assert exercise.order_index == 1  # editing never moves the exercise
-    # PUT is a full replacement, test script and solution included
+    # PUT is a full replacement, test script, solution and hints included
     assert exercise.test_code == EXERCISE_PAYLOAD["test_code"]
     assert exercise.solution == EXERCISE_PAYLOAD["solution"]
+    assert exercise.exercise_hints == EXPECTED_HINTS
 
 
 def test_delete_exercise_compacts_order(

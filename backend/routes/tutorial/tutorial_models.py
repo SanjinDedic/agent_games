@@ -50,6 +50,7 @@ class ExerciseRequest(BaseModel):
     entry_function: str
     test_code: Optional[str] = None
     solution: Optional[str] = None
+    exercise_hints: List[str] = []
 
     @field_validator("test_code", "solution")
     @classmethod
@@ -57,6 +58,11 @@ class ExerciseRequest(BaseModel):
         if value is not None and not value.strip():
             return None
         return value
+
+    @field_validator("exercise_hints")
+    @classmethod
+    def drop_blank_hints(cls, value: List[str]) -> List[str]:
+        return [hint.strip() for hint in value if hint.strip()]
 
     @field_validator("title")
     @classmethod

@@ -309,6 +309,7 @@ async def create_exercise_endpoint(
         entry_function=exercise.entry_function,
         test_code=exercise.test_code,
         solution=exercise.solution,
+        exercise_hints=exercise.exercise_hints,
     )
 
 
@@ -330,6 +331,7 @@ async def update_exercise_endpoint(
         entry_function=exercise.entry_function,
         test_code=exercise.test_code,
         solution=exercise.solution,
+        exercise_hints=exercise.exercise_hints,
     )
 
 

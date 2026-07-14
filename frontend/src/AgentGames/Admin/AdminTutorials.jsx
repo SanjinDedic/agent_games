@@ -11,6 +11,7 @@ const BLANK_EXERCISE_FORM = {
   starter_code: '',
   test_code: '',
   solution: '',
+  exercise_hints: [],
 };
 
 const exerciseToForm = (exercise) => ({
@@ -20,6 +21,9 @@ const exerciseToForm = (exercise) => ({
   starter_code: exercise.starter_code,
   test_code: exercise.test_code ?? '',
   solution: exercise.solution ?? '',
+  // No editing UI yet; round-tripped so saving doesn't wipe seeded hints
+  // (the PUT replaces the full exercise definition).
+  exercise_hints: exercise.exercise_hints ?? [],
 });
 
 /**
@@ -42,6 +46,7 @@ const formToPayload = (form) => {
       starter_code: form.starter_code,
       test_code: form.test_code,
       solution: form.solution,
+      exercise_hints: form.exercise_hints,
     },
   };
 };

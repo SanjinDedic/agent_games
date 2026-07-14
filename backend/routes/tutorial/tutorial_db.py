@@ -167,6 +167,7 @@ def get_tutorial_with_exercises(session: Session, tutorial_id: int) -> dict:
                 "order_index": exercise.order_index,
                 "problem_markdown": exercise.problem_markdown,
                 "starter_code": exercise.starter_code,
+                "exercise_hints": exercise.exercise_hints,
             }
             for exercise in tutorial.exercises
         ],
@@ -325,6 +326,7 @@ def _exercise_admin_dict(exercise: Exercise) -> dict:
         "entry_function": exercise.entry_function,
         "test_code": exercise.test_code,
         "solution": exercise.solution,
+        "exercise_hints": exercise.exercise_hints,
     }
 
 
@@ -486,6 +488,7 @@ def create_exercise(
     entry_function: str,
     test_code: Optional[str],
     solution: Optional[str],
+    exercise_hints: list,
 ) -> dict:
     """Append a new exercise at the end of the tutorial.
 
@@ -505,6 +508,7 @@ def create_exercise(
         entry_function=entry_function,
         test_code=test_code,
         solution=solution,
+        exercise_hints=exercise_hints,
     )
     session.add(exercise)
     session.commit()
@@ -521,6 +525,7 @@ def update_exercise(
     entry_function: str,
     test_code: Optional[str],
     solution: Optional[str],
+    exercise_hints: list,
 ) -> dict:
     exercise = get_exercise_by_id(session, exercise_id)
     exercise.title = title
@@ -529,6 +534,7 @@ def update_exercise(
     exercise.entry_function = entry_function
     exercise.test_code = test_code
     exercise.solution = solution
+    exercise.exercise_hints = exercise_hints
     session.commit()
     session.refresh(exercise)
     return _exercise_admin_dict(exercise)

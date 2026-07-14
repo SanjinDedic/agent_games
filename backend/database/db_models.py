@@ -401,7 +401,8 @@ class Exercise(SQLModel, table=True):
     function every submission must define, so a wrong-name submission fails
     fast with a clear message. `solution` is an optional reference solution
     for the admin editor's Run workflow — like test_code, it never reaches
-    students.
+    students. `exercise_hints` is an ordered list of Markdown strings shown
+    to students separately from the problem text.
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -416,6 +417,9 @@ class Exercise(SQLModel, table=True):
     )
     solution: Optional[str] = Field(
         default=None, sa_column=Column(Text(), nullable=True)
+    )
+    exercise_hints: list = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
     )
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
