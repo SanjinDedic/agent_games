@@ -239,7 +239,7 @@ function Tutorial() {
       exercise={selectedExercise}
       tutorialTitle={tutorial.title}
       panelHeader={
-        <div className="mx-4 mt-4 bg-white rounded-lg shadow border border-ui-light/30 p-3 flex items-center gap-3">
+        <div className="mx-3 mt-3 bg-white rounded-lg shadow p-2 flex items-center gap-3">
           <button onClick={showOverview} className={navButtonClass}>
             ← All exercises
           </button>

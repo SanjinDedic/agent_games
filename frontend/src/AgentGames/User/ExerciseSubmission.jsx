@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../slices/authSlice";
 import CodeEditor from "../Shared/Submission/CodeEditor";
 import CombinedFooter from "../Shared/Submission/CombinedFooter";
+import ExerciseHints from "./ExerciseHints";
 import FeedbackDisplay from "../Shared/Submission/FeedbackDisplay";
 import MySubmissionsModal from "../Shared/Submission/MySubmissionsModal";
 import SubmissionLayout from "../Shared/Submission/SubmissionLayout";
@@ -54,6 +55,7 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
           <FeedbackDisplay
             instructions={exercise.problem_markdown}
             instructionsTitle="Problem Description"
+            hintsPanel={<ExerciseHints hints={exercise.exercise_hints} />}
             hasResults={!!ws.output}
             isLoading={isSubmitting}
             collapseInstructions={ws.shouldCollapseInstructions}

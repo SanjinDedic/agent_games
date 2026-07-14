@@ -21,8 +21,6 @@ const exerciseToForm = (exercise) => ({
   starter_code: exercise.starter_code,
   test_code: exercise.test_code ?? '',
   solution: exercise.solution ?? '',
-  // No editing UI yet; round-tripped so saving doesn't wipe seeded hints
-  // (the PUT replaces the full exercise definition).
   exercise_hints: exercise.exercise_hints ?? [],
 });
 
@@ -54,7 +52,89 @@ const formToPayload = (form) => {
 const LEFT_TABS = [
   { key: 'starter_code', label: 'Starter code' },
   { key: 'solution', label: 'Solution (optional)' },
+  { key: 'exercise_hints', label: 'Hints' },
 ];
+
+/**
+ * List editor for an exercise's hints (one Markdown string per hint).
+ * Students reveal hints one at a time in this order, so it keeps the same
+ * move up/down controls as the exercise list. Blank hints are dropped
+ * server-side on save.
+ */
+function HintsEditor({ hints, onChange }) {
+  const setHint = (index, value) =>
+    onChange(hints.map((hint, i) => (i === index ? value : hint)));
+
+  const removeHint = (index) => onChange(hints.filter((_, i) => i !== index));
+
+  const moveHint = (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= hints.length) return;
+    const next = [...hints];
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
+  return (
+    <div className="h-full overflow-y-auto bg-white p-3 space-y-3">
+      {hints.length === 0 && (
+        <p className="text-sm text-gray-500">
+          No hints yet. Students reveal hints one at a time, in this order.
+        </p>
+      )}
+      {hints.map((hint, index) => (
+        <div key={index} className="border border-gray-200 rounded-md p-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-gray-700">
+              Hint {index + 1}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => moveHint(index, -1)}
+                disabled={index === 0}
+                className="px-2 py-0.5 text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+                title="Move up"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => moveHint(index, 1)}
+                disabled={index === hints.length - 1}
+                className="px-2 py-0.5 text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+                title="Move down"
+              >
+                ▼
+              </button>
+              <button
+                type="button"
+                onClick={() => removeHint(index)}
+                className="px-2 py-0.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+          <textarea
+            value={hint}
+            onChange={(e) => setHint(index, e.target.value)}
+            rows={3}
+            placeholder="Hint text (Markdown)"
+            className="w-full px-2 py-1 border border-gray-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...hints, ''])}
+        className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200"
+      >
+        + Add hint
+      </button>
+    </div>
+  );
+}
 
 /**
  * Dry-run outcome panel. A normal run (even with failing tests) reuses the
@@ -94,8 +174,10 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState(null);
-  // Which code the left pane shows and Run executes: starter_code | solution
+  // What the left pane shows: starter_code | solution | exercise_hints.
+  // Run executes the visible code tab, so it's disabled on the hints tab.
   const [leftTab, setLeftTab] = useState('starter_code');
+  const isHintsTab = leftTab === 'exercise_hints';
   const resultsRef = useRef(null);
 
   const setField = (name, value) =>
@@ -231,14 +313,23 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
                   ))}
                 </div>
                 <span className="text-xs text-gray-500">
-                  Run executes tests against the visible tab
+                  {isHintsTab
+                    ? 'Students reveal hints one at a time, in this order'
+                    : 'Run executes tests against the visible tab'}
                 </span>
               </div>
               <div className="flex-1 border border-gray-300 rounded-md overflow-hidden">
-                <CodeEditor
-                  code={form[leftTab]}
-                  onCodeChange={(value) => setField(leftTab, value ?? '')}
-                />
+                {isHintsTab ? (
+                  <HintsEditor
+                    hints={form.exercise_hints}
+                    onChange={(hints) => setField('exercise_hints', hints)}
+                  />
+                ) : (
+                  <CodeEditor
+                    code={form[leftTab]}
+                    onCodeChange={(value) => setField(leftTab, value ?? '')}
+                  />
+                )}
               </div>
             </div>
             <div className="flex flex-col min-h-0">
@@ -256,9 +347,10 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
           </div>
 
           <p className="text-xs text-gray-500">
-            Students only ever see the starter code — the solution and test
-            script stay server-side. Re-running seed_tutorial.py overwrites
-            all exercise content, including tests and solutions edited here.
+            Students see the starter code and can reveal the hints — the
+            solution and test script stay server-side. Re-running
+            seed_tutorial.py overwrites all exercise content, including tests,
+            solutions and hints edited here.
           </p>
 
           {runResult && (
@@ -271,9 +363,14 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
           <button
             onClick={handleRun}
-            disabled={running}
+            disabled={running || isHintsTab}
+            title={
+              isHintsTab
+                ? 'Switch to Starter code or Solution to run tests'
+                : undefined
+            }
             className={`px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 ${
-              running ? 'opacity-70 cursor-not-allowed' : ''
+              running || isHintsTab ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
             {running ? 'Running...' : 'Run Tests'}

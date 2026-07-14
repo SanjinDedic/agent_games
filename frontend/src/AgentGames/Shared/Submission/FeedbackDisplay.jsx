@@ -8,10 +8,13 @@ import rehypeRaw from 'rehype-raw';
  * top of a results area. The results content itself is supplied as children so
  * each page decides how to render its results (game outcomes, exercise test
  * cases, ...) — this component only handles the loading/empty/results states.
+ * `hintsPanel` (optional) renders between the instructions and the results —
+ * the exercise page uses it for its condensed hints panel.
  */
 function FeedbackDisplay({
     instructions,
     instructionsTitle = "Game Instructions",
+    hintsPanel,
     hasResults,
     isLoading,
     collapseInstructions,
@@ -92,23 +95,23 @@ function FeedbackDisplay({
     }, [collapseInstructions]);
 
     return (
-        <div className="p-4 h-full overflow-y-auto">
+        <div className="p-3 h-full overflow-y-auto">
             {/* Add the markdown styles */}
             <style>{markdownStyles}</style>
 
             {/* Instructions Collapsible Panel */}
             {instructions && (
-                <div className="mb-4 bg-white rounded-lg shadow border border-ui-light/30">
+                <div className="mb-3 bg-white rounded-lg shadow border border-ui-light/30">
                     <button
                         onClick={() => setShowInstructions(!showInstructions)}
-                        className="w-full flex items-center justify-between p-3 bg-primary text-white hover:bg-primary-hover transition-colors rounded-t-lg"
+                        className="w-full flex items-center justify-between py-2 px-3 bg-primary text-white hover:bg-primary-hover transition-colors rounded-t-lg"
                     >
                         <span className="font-medium">{instructionsTitle}</span>
                         <span>{showInstructions ? '▲' : '▼'}</span>
                     </button>
 
                     {showInstructions && (
-                        <div className="p-4 max-h-[550px] overflow-y-auto">
+                        <div className="p-3 max-h-[550px] overflow-y-auto">
                             <div className="markdown-content">
                                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                                     {instructions}
@@ -119,9 +122,12 @@ function FeedbackDisplay({
                 </div>
             )}
 
+            {/* Optional hints panel, between the instructions and results */}
+            {hintsPanel}
+
             {/* Results & Feedback Area */}
-            <div className="bg-white rounded-lg shadow p-4">
-                <h2 className="text-xl font-bold text-ui-dark mb-4">
+            <div className="bg-white rounded-lg shadow p-3">
+                <h2 className="text-xl font-bold text-ui-dark mb-3">
                     Results & Feedback
                 </h2>
 
