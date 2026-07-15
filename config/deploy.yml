@@ -9,6 +9,10 @@ servers:
     options:
       hostname: api
       memory: 400m
+      # Only service allowed real swap: cold gunicorn pages can park on the
+      # host's NVMe swapfile instead of OOM-killing a worker mid-request.
+      # 1g total = 400m RAM + 600m swap; bounded so a leak still dies.
+      memory-swap: 1g
       pids-limit: 50
 
   worker-validation:
@@ -28,8 +32,9 @@ servers:
       hostname: worker-validation
       memory: 800m
       # memory-swap == memory disables swap: a memory-bomb agent must be
-      # OOM-killed at the RAM cap, not thrash in swap past the task time limit
-      # (the droplet currently has no swap, but keep the guarantee explicit).
+      # OOM-killed at the RAM cap, not thrash in swap past the task time limit.
+      # The droplet has a 6G NVMe swapfile, so this guarantee is load-bearing —
+      # without it a bomb pages out and outlives the 6s hard kill window.
       memory-swap: 800m
       pids-limit: 50
 
@@ -40,8 +45,16 @@ servers:
     proxy: false
     options:
       hostname: worker-simulation
-      memory: 3g
-      memory-swap: 3g
+      # Host budget: the droplet has ~1.9GiB RAM. The old 3g cap exceeded it,
+      # so it could never fire — a runaway simulation exhausted the HOST
+      # instead, pushing web/valkey into swap and ending in a global OOM kill
+      # of an arbitrary victim. 1g is a real in-cgroup limit (~500m per sim at
+      # concurrency=2, matching the 500m dev compose container) and leaves
+      # room for web + valkey + worker-validation within physical RAM.
+      memory: 1g
+      # Same no-swap guarantee as worker-validation: untrusted code must hit
+      # the RAM cap and die deterministically, not thrash in NVMe swap.
+      memory-swap: 1g
       pids-limit: 50
 
 deploy_timeout: 120
@@ -122,6 +135,11 @@ accessories:
     options:
       hostname: valkey
       memory: 400m
+      # The broker must never touch swap: a paged-out broker stalls every
+      # task dispatch and result poll on the platform (slow-motion outage).
+      # Valkey is ephemeral by design, so a fast OOM restart is the better
+      # failure. maxmemory 300mb + client/overhead headroom fits in 400m.
+      memory-swap: 400m
 
   # Postgres is NOT an accessory: production runs on a DigitalOcean managed
   # cluster, reached over TLS via DATABASE_URL (sslmode=require). Nothing on
