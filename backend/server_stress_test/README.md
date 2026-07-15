@@ -4,6 +4,9 @@ Measures how many greedy-pig agent submissions the site can absorb per minute,
 and at what latency — so you can re-run it before/after a code change and see
 the effect on capacity.
 
+> For the **tutorial-exercises** counterpart (load on `worker-exercises` via
+> `/tutorial/admin/run-exercise`), see [README_exercises.md](README_exercises.md).
+
 Three locustfiles share the same agent payloads and summary (`bench_common.py`):
 
 | File | Load shape | Use for |

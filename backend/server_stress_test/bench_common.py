@@ -195,11 +195,21 @@ CPU_CHECK_FOOTER = (
 )
 
 
-def install_summary(events, rows, footer: str = ""):
+def install_summary(
+    events,
+    rows,
+    footer: str = "",
+    note: str = "failures on spin/security/runtime are EXPECTED",
+    unit: str = "submissions",
+):
     """Register the quiet-logging and end-of-run summary listeners.
 
     rows: list of (stat_name, label) pairs to print, in order. Call once at
-    module level from a locustfile, passing `locust.events`."""
+    module level from a locustfile, passing `locust.events`.
+
+    note / unit let a different benchmark reuse this printer with its own
+    wording (the exercises benchmark counts "exercise runs", and its expected
+    failures are on different rows) without duplicating the whole listener."""
 
     @events.init.add_listener
     def _quiet_periodic_tables(environment, **kwargs):
@@ -237,9 +247,9 @@ def install_summary(events, rows, footer: str = ""):
             f"\n{line}\n BENCHMARK RESULT\n{line}\n"
             f" total requests : {s.num_requests}\n"
             f" total failures : {s.num_failures}\n"
-            f" throughput     : {rps * 60:,.0f} submissions/min  ({rps:.1f} req/s)\n"
+            f" throughput     : {rps * 60:,.0f} {unit}/min  ({rps:.1f} req/s)\n"
             f" avg latency    : {s.avg_response_time:.0f} ms  (all types blended)\n"
-            f"{'-' * 78}\n by agent type (failures on spin/security/runtime are EXPECTED):\n"
+            f"{'-' * 78}\n by type ({note}):\n"
             f"{body}\n"
         )
         if footer:

@@ -43,3 +43,44 @@ services:
       - ${HOST:-https://api.agentgames.io}
       - --csv
       - bench
+
+  # Tutorial-exercises benchmark. Same image (reuses the locust install); only
+  # the locustfile differs. run-exercise needs an admin login, so this defaults
+  # to the LOCAL stack -- override HOST/ADMIN_PASSWORD for a remote one.
+  #
+  #   cd backend/server_stress_test
+  #   docker compose run --rm benchmark-exercises
+  #   USERS=40 DURATION=2m docker compose run --rm benchmark-exercises
+  benchmark-exercises:
+    build: .
+    entrypoint: ["locust", "-f", "locust_exercises.py"]
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      WAIT_MIN: ${WAIT_MIN:-0}
+      WAIT_MAX: ${WAIT_MAX:-0}
+      SLOW_ITERS_MIN: ${SLOW_ITERS_MIN:-200000}
+      SLOW_ITERS_MAX: ${SLOW_ITERS_MAX:-400000}
+      # Exercise-mix weights (relative). Set any to 0 to drop that type.
+      W_VALID: ${W_VALID:-80}
+      W_WRONG: ${W_WRONG:-8}
+      W_SLOW: ${W_SLOW:-4}
+      W_TIMEOUT: ${W_TIMEOUT:-3}
+      W_ERROR: ${W_ERROR:-5}
+    volumes:
+      # Persist the --csv output back onto the host.
+      - .:/loadtest
+    command:
+      - --headless
+      - -u
+      - ${USERS:-20}
+      - -r
+      - ${SPAWN_RATE:-2}
+      - -t
+      - ${DURATION:-1m}
+      - --loglevel
+      - ${LOGLEVEL:-WARNING}
+      - --host
+      - ${HOST:-http://host.docker.internal:8000}
+      - --csv
+      - bench_exercises
