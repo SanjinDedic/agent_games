@@ -36,6 +36,14 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
         <h2 className="text-2xl font-bold text-ui-dark mb-6">{data_message}</h2>
       )}
 
+      {data?.capped && (
+        <div className="mb-4 text-sm rounded-md border border-notice-orange/40 bg-notice-orange/10 text-ui-dark px-4 py-3">
+          This run hit the 10-minute limit: {(data.num_simulations || 0).toLocaleString()} of
+          the {(data.requested_simulations || 0).toLocaleString()} requested games completed.
+          Runs always stop between games, so these results are still fair.
+        </div>
+      )}
+
       {!isTableVisible && (
         <button
           onClick={() => setIsTableVisible(true)}

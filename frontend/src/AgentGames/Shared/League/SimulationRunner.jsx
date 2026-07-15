@@ -93,6 +93,15 @@ const SimulationRunner = ({ league, userRole }) => {
             )}
           </div>
         )}
+
+        {!isPlaceholder && (
+          <div className="text-xs text-ui bg-ui-light/60 rounded-md px-3 py-2">
+            Simulation runs are capped at 10 minutes. If the requested number of
+            games would take longer, we run as many complete games as fit in the
+            time limit and report the actual count — a run never stops
+            mid-game, so the results stay fair.
+          </div>
+        )}
       </div>
     </div>
   );

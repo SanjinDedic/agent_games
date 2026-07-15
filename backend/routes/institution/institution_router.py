@@ -258,6 +258,12 @@ async def run_simulation_endpoint(
         "id": sim_result.id if sim_result else None,
         "total_points": simulation_results["total_points"],
         "num_simulations": simulation_results["num_simulations"],
+        # Present when the run hit the 10-minute cap: the count actually run
+        # (num_simulations) is below what was requested.
+        "requested_simulations": simulation_results.get(
+            "requested_simulations", simulation_results["num_simulations"]
+        ),
+        "capped": simulation_results.get("capped", False),
         "timestamp": sim_result.timestamp if sim_result else None,
         "rewards": simulation_config.custom_rewards,
         "table": simulation_results.get("table", {}),

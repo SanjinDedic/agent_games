@@ -9,8 +9,12 @@ nothing. Each task still runs in a fresh forked child
 """
 
 import logging
+import os
+import time
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
+
+from celery.exceptions import SoftTimeLimitExceeded
 
 from backend.tasks.celery_app import celery_app
 from backend.database.db_models import League
@@ -18,6 +22,21 @@ from backend.games.game_factory import GameFactory
 from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
+
+# 10-minute hard ceiling. Celery kills the task at the soft limit; the loop
+# below stops launching new games at SIMULATION_TIME_BUDGET_SECONDS, which sits
+# safely under it, so the task returns on a whole-simulation boundary well
+# before Celery would ever interrupt a game mid-play. (Interrupting mid-game
+# would drop a partial result and bias the scores toward whoever was ahead.)
+SIMULATION_SOFT_TIME_LIMIT = int(os.environ.get("SIMULATION_TIMEOUT_SECONDS", "600"))
+SIMULATION_HARD_TIME_LIMIT = SIMULATION_SOFT_TIME_LIMIT + 30
+
+# The loop stops starting new games once the elapsed time plus the running
+# average per-game cost would cross this. The 30s gap below the soft limit
+# leaves room for the game already in flight to finish plus final aggregation.
+SIMULATION_TIME_BUDGET_SECONDS = int(
+    os.environ.get("SIMULATION_BUDGET_SECONDS", str(SIMULATION_SOFT_TIME_LIMIT - 30))
+)
 
 
 def aggregate_simulation_results(simulation_results, num_simulations):
@@ -75,10 +94,12 @@ def _load_submitted_players(game, submissions: Optional[Dict[str, str]]) -> None
 
 @celery_app.task(
     name="simulation.run",
-    # Callers wait at most 300s (result.get does not kill the task); without a
-    # limit a runaway simulation would occupy the worker forever.
-    soft_time_limit=300,
-    time_limit=330,
+    # 10-minute ceiling. The task's own budget (SIMULATION_TIME_BUDGET_SECONDS)
+    # stops it cleanly before this fires; the soft limit is only a backstop for
+    # a single pathologically slow game, and even then SoftTimeLimitExceeded is
+    # caught below so completed simulations are still returned.
+    soft_time_limit=SIMULATION_SOFT_TIME_LIMIT,
+    time_limit=SIMULATION_HARD_TIME_LIMIT,
 )
 def run_simulation(
     league_id: int,
@@ -93,6 +114,10 @@ def run_simulation(
     `submissions` is the {team_name: code} map fetched by the API before enqueue;
     when empty the game's built-in validation players are used instead.
     """
+    # Anchor the 10-minute budget at task entry so the feedback game, player
+    # loading and everything else count against it — not just the loop.
+    task_start = time.perf_counter()
+
     league = League(
         id=league_id,
         name="simulation_league",
@@ -137,13 +162,59 @@ def run_simulation(
                 },
             }
 
+    # --- Time-bounded simulation loop -------------------------------------
+    # A user can ask for up to 10000 runs; for a game whose single play_game
+    # takes seconds that is hours of work. Instead of letting the request run
+    # unbounded (only for Celery to kill it and return nothing), we run games
+    # one at a time and stop launching new ones once the elapsed time plus the
+    # running-average cost of a game would cross SIMULATION_TIME_BUDGET_SECONDS.
+    #
+    # The guard is checked BEFORE each game starts and never interrupts one in
+    # progress, so every result in the batch is a whole game — the aggregate is
+    # never skewed by a partial game that stopped with someone mid-lead. The
+    # budget sits below the Celery soft limit so that limit effectively never
+    # fires; SoftTimeLimitExceeded is still caught as a backstop and returns the
+    # completed games rather than discarding them.
+    requested_simulations = num_simulations
     simulation_results = []
+    runs_attempted = 0
+    budget_reached = False
     try:
+        sim_start = time.perf_counter()
+
         for _ in range(num_simulations):
+            now = time.perf_counter()
+            total_elapsed = now - task_start
+            # After the first game we know its real cost; project whether the
+            # next one fits before starting it (never mid-game). The average is
+            # over simulation games only; total_elapsed is the whole-task clock.
+            if runs_attempted:
+                avg_per_game = (now - sim_start) / runs_attempted
+                if total_elapsed + avg_per_game >= SIMULATION_TIME_BUDGET_SECONDS:
+                    budget_reached = True
+                    logger.warning(
+                        "Simulation budget (%ds) reached for league %s (%s): "
+                        "ran %d of %d requested (avg %.3fs/game)",
+                        SIMULATION_TIME_BUDGET_SECONDS, league_id, game_name,
+                        runs_attempted, requested_simulations, avg_per_game,
+                    )
+                    break
+
             game.reset()
             result = game.play_game(custom_rewards)
+            runs_attempted += 1
             if result is not None:
                 simulation_results.append(result)
+    except SoftTimeLimitExceeded:
+        # Backstop only: the budget above should have stopped us first. A game
+        # in progress when this fires was never appended, so simulation_results
+        # still holds only whole games — return them instead of the whole batch.
+        budget_reached = True
+        logger.warning(
+            "Soft time limit hit for league %s after %d completed simulations; "
+            "returning partial results",
+            league_id, runs_attempted,
+        )
     except Exception as e:
         logger.error(f"Error running simulations: {str(e)}")
         return {
@@ -151,14 +222,16 @@ def run_simulation(
             "message": f"Error running simulations: {str(e)}",
             "simulation_results": {
                 "total_points": {},
-                "num_simulations": num_simulations,
+                "num_simulations": requested_simulations,
                 "table": {},
             },
         }
 
     aggregated_results = aggregate_simulation_results(
-        simulation_results, num_simulations
+        simulation_results, runs_attempted
     )
+    aggregated_results["requested_simulations"] = requested_simulations
+    aggregated_results["capped"] = budget_reached
     # Only validation players declare a strategy, so this is empty whenever
     # real league submissions replaced them.
     aggregated_results["strategies"] = game.get_player_strategies()
