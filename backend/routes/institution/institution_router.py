@@ -48,6 +48,7 @@ from backend.routes.tutorial.tutorial_db import (
     get_league_tutorial_ids,
     set_league_tutorials,
 )
+from backend.routes.user.user_db import get_latest_submissions_for_league
 from backend.tasks.celery_utils import poll_task_result
 from backend.tasks.simulation_task import run_simulation
 
@@ -220,10 +221,18 @@ async def run_simulation_endpoint(
             "Cannot run simulations on the 'unassigned' league"
         )
 
+    # Read the submitted code here (the API holds the DB session) and pass it to
+    # the worker as a task arg, so the worker running untrusted agent code needs
+    # no database credential.
+    submissions = get_latest_submissions_for_league(
+        session, simulation_config.league_id
+    )
+
     # Enqueue the simulation task and wait for the result
     async_result = run_simulation.delay(
         league_id=simulation_config.league_id,
         game_name=league.game,
+        submissions=submissions,
         num_simulations=simulation_config.num_simulations,
         custom_rewards=simulation_config.custom_rewards,
         player_feedback=True,

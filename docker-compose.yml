@@ -74,15 +74,16 @@ services:
       context: .
       dockerfile: ./backend/Dockerfile
     command: celery -A backend.tasks.celery_app worker -Q validation -n validation@%h --loglevel=info --concurrency=4
+    # No env_file / secrets by design: this worker runs untrusted agent code and
+    # must hold NOTHING an attacker could exfiltrate. Validation/exercise tasks
+    # build an in-memory League and never open a DB or S3 connection — a breached
+    # worker leaks no SECRET_KEY, DB password, or AWS key because none is present.
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-    env_file:
-      - path: .env
-        required: true
     depends_on:
       valkey:
         condition: service_healthy
@@ -112,15 +113,16 @@ services:
       context: .
       dockerfile: ./backend/Dockerfile
     command: celery -A backend.tasks.celery_app worker -Q simulation -n simulation@%h --loglevel=info --concurrency=1
+    # No env_file / secrets by design: this worker runs untrusted agent code and
+    # must hold NOTHING an attacker could exfiltrate. Submissions arrive as a task
+    # arg (the API reads them from the DB before enqueue), so the worker opens no
+    # DB connection and needs no DATABASE_URL, SECRET_KEY, or AWS key.
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
       - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-    env_file:
-      - path: .env
-        required: true
     depends_on:
       valkey:
         condition: service_healthy

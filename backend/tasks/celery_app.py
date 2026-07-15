@@ -60,8 +60,6 @@ celery_app.conf.update(
     },
     # Fresh process per task: untrusted agent code can monkeypatch games.* or
     # leak module state — the process boundary is the isolation guarantee.
-    # If this is ever relaxed, the simulation task's per-child DB engine
-    # assumption breaks too (see backend/tasks/simulation_task.py).
     worker_max_tasks_per_child=1,
     worker_prefetch_multiplier=1,
     # No task uses rate limits; skipping the per-task token-bucket bookkeeping

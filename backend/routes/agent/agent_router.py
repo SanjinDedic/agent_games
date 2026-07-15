@@ -6,6 +6,7 @@ from backend.database.db_session import get_db
 from backend.routes.agent.agent_db import allow_simulation, get_league_by_id
 from backend.routes.agent.agent_models import SimulationRequest
 from backend.routes.auth.auth_core import get_current_user, verify_ai_agent_role
+from backend.routes.user.user_db import get_latest_submissions_for_league
 from backend.tasks.celery_utils import poll_task_result
 from backend.tasks.simulation_task import run_simulation as run_simulation_task
 
@@ -42,9 +43,15 @@ async def run_simulation(
 
     allow_simulation(current_user["team_id"])  # SimulationLimitExceededError -> 429
 
+    # Read the submitted code here (the API holds the DB session) and pass it to
+    # the worker as a task arg, so the worker running untrusted agent code needs
+    # no database credential.
+    submissions = get_latest_submissions_for_league(session, request.league_id)
+
     async_result = run_simulation_task.delay(
         league_id=request.league_id,
         game_name=request.game_name,
+        submissions=submissions,
         num_simulations=request.num_simulations,
         custom_rewards=request.custom_rewards,
         player_feedback=request.player_feedback,

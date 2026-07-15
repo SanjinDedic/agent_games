@@ -1,22 +1,19 @@
 """Celery task that runs league simulations in a worker process.
 
-Replaces the old simulation HTTP service. Submissions are read straight from
-the database (the old service round-tripped through the API with a service
-token). Each task runs in a fresh forked child (worker_max_tasks_per_child=1),
-so the lazily-created DB engine is always born inside the child — no inherited
-sockets or stale pools. If max_tasks_per_child is ever removed, dispose the
-engine on worker_process_init or switch to NullPool.
+The worker holds NO secrets and opens NO database connection: the {team_name:
+code} submissions are fetched by the enqueuing API process (which already has a
+DB session) and passed in as a task argument. This keeps the process that
+executes untrusted agent code credential-free — a breached worker can leak
+nothing. Each task still runs in a fresh forked child
+(worker_max_tasks_per_child=1) purely for process isolation of agent code.
 """
 
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
-from sqlmodel import Session
-
 from backend.tasks.celery_app import celery_app
 from backend.database.db_models import League
-from backend.database.db_session import get_db_engine
 from backend.games.game_factory import GameFactory
 from backend.time_utils import utc_now
 
@@ -52,28 +49,18 @@ def aggregate_simulation_results(simulation_results, num_simulations):
     }
 
 
-def _load_league_players(game, league_id: int) -> None:
-    """Load the latest league submissions into the game instance.
+def _load_submitted_players(game, submissions: Optional[Dict[str, str]]) -> None:
+    """Load the league's submitted agents into the game instance.
 
+    `submissions` is a {team_name: code} map fetched by the enqueuing API
+    process and passed in as a task arg — the worker never touches the DB.
     Mirrors the old get_all_player_classes_via_api semantics: submissions
-    replace the validation players only when there are any; on empty or error
-    the validation players loaded by the game constructor stay in place.
+    replace the validation players only when there are any; on an empty/None
+    map the validation players loaded by the game constructor stay in place. A
+    submission whose code fails to construct a player is skipped, not fatal.
     """
-    # Deferred import: keeps user_db out of the worker parent (this module is
-    # in the Celery include list, so both workers import it at boot) — it is
-    # only needed inside the child actually running a simulation.
-    from backend.routes.user.user_db import get_latest_submissions_for_league
-
-    try:
-        with Session(get_db_engine()) as session:
-            submissions = get_latest_submissions_for_league(session, league_id)
-    except Exception as e:
-        logger.error(f"Error fetching player code: {str(e)}")
-        logger.info("Keeping existing validation players due to error")
-        return
-
     if not submissions:
-        logger.info("No league submissions found, keeping validation players")
+        logger.info("No league submissions provided, keeping validation players")
         return
 
     game.players = []
@@ -96,11 +83,16 @@ def _load_league_players(game, league_id: int) -> None:
 def run_simulation(
     league_id: int,
     game_name: str,
+    submissions: Optional[Dict[str, str]] = None,
     num_simulations: int = 100,
     custom_rewards: Optional[List[int]] = None,
     player_feedback: bool = False,
 ) -> Dict[str, Any]:
-    """Run simulations and return {status, feedback, player_feedback, simulation_results}."""
+    """Run simulations and return {status, feedback, player_feedback, simulation_results}.
+
+    `submissions` is the {team_name: code} map fetched by the API before enqueue;
+    when empty the game's built-in validation players are used instead.
+    """
     league = League(
         id=league_id,
         name="simulation_league",
@@ -112,7 +104,7 @@ def run_simulation(
     game_class = GameFactory.get_game_class(game_name)
     game = game_class(league)
 
-    _load_league_players(game, league_id)
+    _load_submitted_players(game, submissions)
 
     if not game.players:
         return {

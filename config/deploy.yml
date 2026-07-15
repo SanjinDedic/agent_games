@@ -6,6 +6,32 @@ servers:
   web:
     hosts:
       - api.agentgames.io
+    # Secrets live on the web role ONLY — never at the top-level env. Kamal
+    # unions a role's secret list with the root's (Env#merge: `secret_keys |
+    # other.secret_keys`), so anything under the top-level env.secret would be
+    # injected into EVERY role, including worker-validation/worker-simulation,
+    # which run untrusted agent code and must hold nothing an attacker can
+    # exfiltrate. Keeping the list here means the web app is the only process
+    # with credentials; the workers receive only the top-level env.clear.
+    env:
+      secret:
+        - SECRET_KEY
+        # Managed Postgres (DigitalOcean), TLS-only:
+        #   postgresql+psycopg://agent_games_user:...@<cluster>:25060/agent_games?sslmode=require
+        - DATABASE_URL
+        - ADMIN_PASSWORD
+        - INSTITUTION_PASSWORD
+        - AWS_ACCESS_KEY_ID
+        - AWS_SECRET_ACCESS_KEY
+        - SECRET_STRIPE_KEY
+        - STRIPE_WEBHOOK_SECRET
+        - STRIPE_PRICE_CLUB_ONCE
+        - STRIPE_PRICE_CLUB_YEAR
+        - STRIPE_PRICE_UNI_ONCE
+        - STRIPE_PRICE_UNI_YEAR
+        # Load-test gate. Set the value in .kamal/secrets only while benchmarking,
+        # then clear it and re-push to disable /diagnostics/benchmark-submit.
+        - BENCHMARK_TOKEN
     options:
       hostname: api
       memory: 400m
@@ -104,24 +130,10 @@ env:
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
     FRONTEND_URL: https://agentgames.io
-  secret:
-    - SECRET_KEY
-    # Managed Postgres (DigitalOcean), TLS-only:
-    #   postgresql+psycopg://agent_games_user:...@<cluster>:25060/agent_games?sslmode=require
-    - DATABASE_URL
-    - ADMIN_PASSWORD
-    - INSTITUTION_PASSWORD
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - SECRET_STRIPE_KEY
-    - STRIPE_WEBHOOK_SECRET
-    - STRIPE_PRICE_CLUB_ONCE
-    - STRIPE_PRICE_CLUB_YEAR
-    - STRIPE_PRICE_UNI_ONCE
-    - STRIPE_PRICE_UNI_YEAR
-    # Load-test gate. Set the value in .kamal/secrets only while benchmarking,
-    # then clear it and re-push to disable /diagnostics/benchmark-submit.
-    - BENCHMARK_TOKEN
+  # NOTE: no top-level `secret:` block by design. Kamal unions each role's
+  # secret list with the root's, so a secret listed here would reach the
+  # worker roles too. All secrets are declared under servers.web.env.secret
+  # instead, keeping the credential-free workers credential-free.
 
 accessories:
   # Celery broker + result backend. Ephemeral: no persistence dirs on purpose.

@@ -4,12 +4,7 @@ from types import SimpleNamespace
 import pytest
 from sqlmodel import Session, select
 
-from backend.database.db_models import (
-    League,
-    Submission,
-    SubmissionMetadata,
-    Team,
-)
+from backend.database.db_models import League
 from backend.tasks.simulation_task import aggregate_simulation_results, run_simulation
 from backend.time_utils import utc_now
 
@@ -139,26 +134,17 @@ def test_run_simulation_direct_with_player_feedback(db_session, test_league):
 
 
 def test_run_simulation_direct_with_submissions(db_session, test_league):
-    """League submissions replace the validation players; a submission whose
-    code cannot construct a player is skipped, not fatal."""
-    now = utc_now()
-    teams = {}
-    for name, code in (("good_team", COLLUDER_CODE), ("broken_team", "not python !")):
-        team = Team(name=name, school_name="Test School", league_id=test_league.id)
-        db_session.add(team)
-        db_session.commit()
-        db_session.refresh(team)
-        meta = SubmissionMetadata(team_id=team.id, league_id=test_league.id, timestamp=now)
-        db_session.add(meta)
-        db_session.commit()
-        db_session.refresh(meta)
-        db_session.add(Submission(code=code, timestamp=now, metadata_id=meta.id))
-        db_session.commit()
-        teams[name] = team
+    """Passed-in submissions replace the validation players; a submission whose
+    code cannot construct a player is skipped, not fatal.
+
+    The worker no longer reads the DB — submissions arrive as a task arg fetched
+    by the enqueuing API — so this passes the {team_name: code} map directly."""
+    submissions = {"good_team": COLLUDER_CODE, "broken_team": "not python !"}
 
     result = run_simulation(
         league_id=test_league.id,
         game_name="prisoners_dilemma",
+        submissions=submissions,
         num_simulations=2,
     )
     assert result["status"] == "success"
@@ -166,22 +152,17 @@ def test_run_simulation_direct_with_submissions(db_session, test_league):
     assert set(points) == {"good_team"}  # broken_team failed construction
 
 
-def test_run_simulation_direct_submission_fetch_error(monkeypatch, db_session, test_league):
-    """A DB error while fetching submissions keeps the validation players."""
-
-    def boom(session, league_id):
-        raise RuntimeError("db unavailable")
-
-    monkeypatch.setattr(
-        "backend.routes.user.user_db.get_latest_submissions_for_league", boom
-    )
-    result = run_simulation(
-        league_id=test_league.id,
-        game_name="prisoners_dilemma",
-        num_simulations=2,
-    )
-    assert result["status"] == "success"
-    assert result["simulation_results"]["total_points"]
+def test_run_simulation_direct_empty_submissions(db_session, test_league):
+    """No submissions (empty or None) keeps the game's validation players."""
+    for submissions in ({}, None):
+        result = run_simulation(
+            league_id=test_league.id,
+            game_name="prisoners_dilemma",
+            submissions=submissions,
+            num_simulations=2,
+        )
+        assert result["status"] == "success"
+        assert result["simulation_results"]["total_points"]  # validation players
 
 
 def test_run_simulation_direct_no_players(monkeypatch, db_session):
