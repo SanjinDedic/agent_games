@@ -38,7 +38,7 @@ class ExerciseRequest(BaseModel):
     """Full exercise definition, used for both create and update (PUT).
 
     `test_code` is the exercise's Python test script
-    (backend/tasks/exercise_test_code.py); `solution` is an optional
+    (backend/exercise_worker/tasks.py); `solution` is an optional
     reference solution for the admin editor. Both are stored as NULL when
     blank — for test_code so submitting hits the worker's loud "defines no
     tests" error instead of passing vacuously.

@@ -41,7 +41,6 @@ from backend.routes.tutorial.tutorial_models import (
     TutorialCreateRequest,
     TutorialUpdateRequest,
 )
-from backend.routes.user.code_validation import validate_code
 from backend.tasks.exercise_task import (
     await_exercise_result,
     enqueue_exercise_run,
@@ -77,35 +76,29 @@ async def submit_exercise(
 
     Failing test cases are a normal outcome — the response is a 200 whose
     test_results say which cases passed. HTTP 400 means the code never
-    produced test results at all (unsafe code, a syntax error, a missing
-    entry function, or a timeout); those attempts are recorded without code,
-    mirroring failed agent validation.
+    produced test results at all (a syntax error, a missing entry function,
+    or a timeout); those attempts are recorded without code, mirroring
+    failed agent validation.
+
+    Unlike agent submission there is no AST safety gate: the code goes
+    straight to the sandboxed slim worker (backend/exercise_worker/tasks.py),
+    which is the enforcement boundary.
     """
     team_id = _require_team_id(current_user)
     exercise = get_exercise_by_id(session, submission.exercise_id)
     assert_exercise_in_team_league(session, exercise, team_id)
     allow_exercise_submission(session, team_id)
 
-    # AST safety check runs here, before enqueue: cheap, and unsafe code
-    # never reaches a worker.
-    is_safe, error_message = validate_code(submission.code)
-    if not is_safe:
-        run_result = {
-            "status": "error",
-            "message": f"Code is not safe: {error_message}",
-            "duration_ms": None,
-        }
-    else:
-        logger.info(
-            f"Enqueueing exercise run for team {team_id}, "
-            f"exercise {exercise.id}"
-        )
-        async_result = enqueue_exercise_run(
-            code=submission.code,
-            entry_function=exercise.entry_function,
-            test_code=exercise.test_code,
-        )
-        run_result = await await_exercise_result(async_result)
+    logger.info(
+        f"Enqueueing exercise run for team {team_id}, "
+        f"exercise {exercise.id}"
+    )
+    async_result = enqueue_exercise_run(
+        code=submission.code,
+        entry_function=exercise.entry_function,
+        test_code=exercise.test_code,
+    )
+    run_result = await await_exercise_result(async_result)
 
     duration_ms = run_result.get("duration_ms")
 
@@ -231,21 +224,9 @@ async def run_exercise_endpoint(
     Backs the admin exercise editor's Run button. Unlike /submit-exercise,
     every outcome is a 200 with the full run result — including `traceback`
     when the test script itself fails to exec, since the caller is the person
-    debugging that script. The code goes through the same AST safety check as
-    student submissions so an admin learns here, not from students, that
-    their starter/solution code trips the allowlist.
+    debugging that script. Like student submissions, there is no AST safety
+    gate — the sandboxed slim worker is the enforcement boundary.
     """
-    is_safe, error_message = validate_code(run.code)
-    if not is_safe:
-        return {
-            "status": "error",
-            "message": f"Code is not safe: {error_message}",
-            "passed": False,
-            "test_results": [],
-            "duration_ms": None,
-            "traceback": None,
-            "stdout": None,
-        }
     async_result = enqueue_exercise_run(
         code=run.code,
         entry_function=run.entry_function,

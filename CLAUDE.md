@@ -53,6 +53,7 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 - **API** (port 8000): Main FastAPI app — auth, league/team management, agent submission, AI hints, payments, support
 - **Valkey** (port 6379): Redis-compatible Celery broker + result backend (ephemeral, no persistence)
 - **worker-validation / worker-simulation**: Celery workers consuming the `validation` and `simulation` queues (separate containers so one queue's OOM can't kill the other's in-flight tasks)
+- **worker-exercises**: Standalone slim Celery app (`backend/exercise_worker/tasks.py`, its own image: python:alpine + celery + that one file) consuming the `exercises` queue at concurrency 2. Tutorial exercises run here with NO AST safety gate — the container is the sandbox (no secrets/DB/S3, ~96MB RAM, 50 pids) — under a 0.5s soft / 1.5s hard time limit (plain constants, not env-tunable). The API enqueues by task name (`exercises.run`) via `send_task`; the module must stay stdlib+celery only since the slim image ships nothing else
 - **PostgreSQL** (port 5432): Single cluster hosting both `agent_games` and `agent_games_test` databases
 - **MinIO** (ports 9000/9001): Local S3-compatible storage for assets and support attachments (real S3 in production)
 - **Frontend** (port 3000): React SPA served by Vite

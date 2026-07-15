@@ -12,11 +12,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.tasks.exercise_task import (
+from backend.exercise_worker.tasks import (
     EXERCISE_TIMEOUT_MESSAGE,
     MAX_STDOUT_CHARS,
-    await_exercise_result,
     run_exercise,
+)
+from backend.tasks.exercise_task import (
+    await_exercise_result,
     timeout_exercise_result,
 )
 

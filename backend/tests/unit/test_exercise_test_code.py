@@ -1,4 +1,5 @@
-"""Unit tests for the exercise test-script runner (exercise_test_code.py).
+"""Unit tests for the exercise test-script runner (run_test_code and its
+injected check/check_output/capture helpers in exercise_worker/tasks.py).
 
 Everything goes through run_exercise so the rows tested here are exactly the
 rows the API returns and the frontend renders.
@@ -6,11 +7,11 @@ rows the API returns and the frontend renders.
 
 import json
 
-from backend.tasks.exercise_task import (
+from backend.exercise_worker.tasks import (
     EXERCISE_TIMEOUT_MESSAGE,
+    MAX_STDOUT_CHARS,
     run_exercise,
 )
-from backend.tasks.exercise_test_code import MAX_STDOUT_CHARS
 
 ADD_CODE = "def add(a, b):\n    return a + b"
 

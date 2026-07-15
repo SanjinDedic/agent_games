@@ -400,17 +400,26 @@ def test_run_exercise_without_tests_is_an_error(
     assert data["message"] == "This exercise defines no tests."
 
 
-def test_run_exercise_rejects_unsafe_code(client, auth_headers):
-    """Unsafe code fails the AST check in the API process — no worker
-    needed — so admins see exactly what a student submission would hit."""
-    payload = {**RUN_PAYLOAD, "code": "import os\ndef add(a, b):\n    return 0\n"}
+def test_run_exercise_has_no_ast_gate(client, auth_headers, celery_workers):
+    """Dry-runs skip the agent-submission AST check like student submissions
+    do: starter/solution code may import freely — the sandboxed exercise
+    worker is the enforcement boundary."""
+    payload = {
+        **RUN_PAYLOAD,
+        "code": (
+            "import os\n"
+            "def add(a, b):\n"
+            "    assert os.getpid() > 0\n"
+            "    return a + b\n"
+        ),
+    }
     response = client.post(
         "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "error"
-    assert data["message"].startswith("Code is not safe")
+    assert data["status"] == "success"
+    assert data["passed"] is True
 
 
 def test_admin_endpoints_denied_for_team(

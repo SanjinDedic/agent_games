@@ -83,6 +83,28 @@ servers:
       memory-swap: 1g
       pids-limit: 50
 
+  worker-exercises:
+    hosts:
+      - api.agentgames.io
+    # The exercises queue is served by the standalone Celery app in
+    # backend/exercise_worker/tasks.py (dev compose runs it from a slim
+    # python+celery image; Kamal roles share the app image, so prod loads the
+    # same module from the fat image — backend/__init__.py is empty and the
+    # module is stdlib+celery only, so the process is equally lean).
+    # Exercises run with ZERO code validation, so like the other workers this
+    # role must hold no secrets; prefork (never solo — solo ignores time
+    # limits) with two slots and a 0.5s soft / 1.5s hard per-task budget.
+    cmd: "celery -A backend.exercise_worker.tasks worker -Q exercises -n exercises@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=2"
+    proxy: false
+    options:
+      hostname: worker-exercises
+      # Same measured budget as the dev compose service (see its comment).
+      memory: 160m
+      # Same no-swap guarantee as the other workers: a memory-bomb submission
+      # must be OOM-killed at the cap, not thrash in swap past the hard kill.
+      memory-swap: 160m
+      pids-limit: 50
+
 deploy_timeout: 120
 
 proxy:

@@ -114,21 +114,22 @@ def create_test_institution(session, **kwargs):
 def celery_workers():
     """Fail fast with a clear message when the Celery workers are not up.
 
-    Task-level tests enqueue to the real broker and need both queue workers
-    running (docker compose starts them; test-runner depends_on their
-    healthchecks).
+    Task-level tests enqueue to the real broker and need all three queue
+    workers running (docker compose starts them; test-runner depends_on their
+    healthchecks). The exercises worker runs a separate Celery app, but ping
+    is a broadcast over the shared broker, so one inspect reaches it too.
     """
     from backend.tasks.celery_app import celery_app
 
-    # limit=2 returns as soon as both workers reply (~10ms) instead of
+    # limit=3 returns as soon as all three workers reply (~10ms) instead of
     # waiting out the full broadcast timeout.
-    replies = celery_app.control.inspect(timeout=5, limit=2).ping() or {}
-    for prefix in ("validation", "simulation"):
+    replies = celery_app.control.inspect(timeout=5, limit=3).ping() or {}
+    for prefix in ("validation", "simulation", "exercises"):
         if not any(node.startswith(f"{prefix}@") for node in replies):
             pytest.fail(
                 f"No {prefix} worker responded to ping — start the compose "
                 f"workers first (docker compose up -d worker-validation "
-                f"worker-simulation)"
+                f"worker-simulation worker-exercises)"
             )
     return replies
 

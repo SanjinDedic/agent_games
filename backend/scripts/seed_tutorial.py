@@ -13,7 +13,7 @@ roll `(20 - unbanked) / 6`, which crosses zero at 20 — so exercise 9 *derives*
 the classic "bank at 20" threshold instead of asserting it.
 
 Every exercise's tests are a Python test script (`Exercise.test_code`) run by
-backend/tasks/exercise_test_code.py: `test_*` functions calling the student's
+backend/exercise_worker/tasks.py: `test_*` functions calling the student's
 functions by name, recording results with the injected `check`,
 `check_output`, and `capture` helpers. The scripts are admin-trusted and
 seed-managed — students never see or touch them. Each spec also carries a
@@ -73,7 +73,7 @@ TUTORIAL_DESCRIPTION = (
 # ---------------------------------------------------------------------------
 # Exercise definitions, in teaching order. Each spec's `test_code` is a
 # trusted Python test script exec'd into the same namespace as the student's
-# code; see backend/tasks/exercise_test_code.py for the helper API.
+# code; see backend/exercise_worker/tasks.py for the helper API.
 # ---------------------------------------------------------------------------
 
 EXERCISES = [

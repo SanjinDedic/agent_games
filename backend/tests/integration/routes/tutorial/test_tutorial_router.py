@@ -300,31 +300,40 @@ def test_submit_print_exercise(
     assert response.json()["passed"] is True
 
 
-def test_submit_exercise_unsafe_code(
-    client, db_session, team_headers, word_counter_exercise
+def test_submit_exercise_has_no_ast_gate(
+    client, db_session, team_headers, word_counter_exercise, celery_workers
 ):
-    """Unsafe code is rejected by the AST check before any worker runs it:
-    a metadata row is recorded but no code is stored."""
+    """Exercises skip the agent-submission AST safety check entirely: code
+    that imports os (forbidden by the agent allowlist) runs on the sandboxed
+    exercise worker like any other submission."""
     response = client.post(
         "/tutorial/submit-exercise",
         json={
             "exercise_id": word_counter_exercise.id,
-            "code": "import os\n\ndef count_words(sentence):\n    return {}\n",
+            "code": (
+                "import os\n"
+                "def count_words(sentence):\n"
+                "    assert os.getpid() > 0\n"
+                "    counts = {}\n"
+                "    for word in sentence.split():\n"
+                "        counts[word] = counts.get(word, 0) + 1\n"
+                "    return counts\n"
+            ),
         },
         headers=team_headers,
     )
-    assert response.status_code == 400
-    assert "Code is not safe" in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["passed"] is True
 
-    metas = db_session.exec(select(ExerciseSubmissionMetadata)).all()
-    assert len(metas) == 1
-    assert metas[0].submission is None
+    (submission,) = db_session.exec(select(ExerciseSubmission)).all()
+    assert submission.passed is True
 
 
 def test_submit_exercise_error_paths(
     client, team_headers, word_counter_exercise, celery_workers
 ):
-    # Syntax error: caught by the AST check in the API before any worker runs
+    # Syntax error: no AST pre-check anymore, so it surfaces from the worker
+    # when the exec of the student module fails
     response = client.post(
         "/tutorial/submit-exercise",
         json={
@@ -334,7 +343,7 @@ def test_submit_exercise_error_paths(
         headers=team_headers,
     )
     assert response.status_code == 400
-    assert "Syntax error" in response.json()["detail"]
+    assert "failed to run" in response.json()["detail"]
 
     # Code that parses but blows up when executed (before any test runs)
     response = client.post(
@@ -372,8 +381,8 @@ def test_submit_exercise_error_paths(
 def test_submit_exercise_timeout(
     client, team_headers, word_counter_exercise, celery_workers
 ):
-    """An infinite loop is killed by the worker time limit and reported as a
-    timeout failure (the test compose shortens the limit to 2s)."""
+    """An infinite loop is killed by the exercise worker's time limit (0.5s
+    soft, 1.5s hard SIGKILL backstop) and reported as a timeout failure."""
     response = client.post(
         "/tutorial/submit-exercise",
         json={

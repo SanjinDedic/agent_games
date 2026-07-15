@@ -144,6 +144,45 @@ services:
     mem_reservation: 200m
     pids_limit: 50
 
+  # Dedicated slim worker for tutorial exercises: its own Celery app and image
+  # (python:alpine + celery + one tasks.py — see backend/exercise_worker/), so
+  # a flood of 0.5s exercise runs can never queue behind agent validations,
+  # and the container that executes UNVALIDATED student code (exercises skip
+  # the AST gate entirely) contains nothing but the interpreter.
+  worker-exercises:
+    build:
+      context: ./backend/exercise_worker
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://valkey:6379/0
+    depends_on:
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A tasks inspect ping -d exercises@$$HOSTNAME -t 10 | grep -q pong"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+    volumes:
+      # Same hot-code convenience as the other workers: edit tasks.py, then
+      # `docker compose restart worker-exercises` — no rebuild.
+      - ./backend/exercise_worker:/app:ro
+    # Measured (cgroup memory.peak): prefork parent + 2 children idle at
+    # ~54MiB; the healthcheck's celery CLI adds ~35MiB while it runs. 160m
+    # covers that ~89MiB floor plus ~35MiB of allocations per concurrent
+    # student run; at 96m a 12-task burst of 15MiB-allocating exercises
+    # OOM-killed 3 of them.
+    mem_limit: ${EXERCISE_MEM:-160m}
+    # memswap_limit == mem_limit disables swap (same guarantee as the other
+    # workers): a memory-bomb submission must be OOM-killed at the cap, not
+    # thrash in swap past the 1.5s hard task time limit.
+    memswap_limit: ${EXERCISE_MEM:-160m}
+    cpus: ${EXERCISE_CPUS:-1.0}
+    pids_limit: 50
+
   frontend:
     build:
       context: .
@@ -237,6 +276,8 @@ services:
       worker-validation:
         condition: service_healthy
       worker-simulation:
+        condition: service_healthy
+      worker-exercises:
         condition: service_healthy
       postgres:
         condition: service_healthy
