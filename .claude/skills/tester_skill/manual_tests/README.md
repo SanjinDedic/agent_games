@@ -46,10 +46,8 @@ Conventions (see `_helpers.js`):
 Known app-side deviations the scripts expect and document (full detail in
 `docs/test_findings/integration-manual-run-2026-07-11.md`):
 
-- Stage 1.4 backup/restore **fails** in local dev (backup S3 client ignores `S3_ENDPOINT_URL`) —
-  recorded as a step failure, the rest of Stage 1 still runs, and the script exits 1.
 - Stage 4.5 first gets a 403 (simulation requires Docker access, manual says leave it unchecked);
   the script enables the toggle via the admin UI and retries.
-- Stage 5: greedy_pig / prisoners_dilemma / arena_champions tolerate the manual's "invalid" return
-  (verified each run), so a syntax error drives the hint flow; the first failed submission never
-  advertises a hint (off-by-one), so the script submits twice where needed.
+- Stage 5: greedy_pig / prisoners_dilemma / arena_champions strictly reject the manual's "invalid"
+  return (asserted each run — acceptance is a failure), then a syntax error drives the hint flow;
+  the failed submission's response must advertise the hint immediately (asserted, no retry).

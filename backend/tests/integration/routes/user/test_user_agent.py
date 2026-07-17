@@ -348,6 +348,63 @@ def _make_hints_available(db_session: Session, team_id: int) -> None:
     db_session.commit()
 
 
+def _seed_old_failed_attempts(db_session: Session, team_id: int, count: int) -> None:
+    """Seed `count` failed attempts old enough to pass the hint cooldown."""
+    base = utc_now() - timedelta(seconds=HINT_COOLDOWN + 60)
+    for i in range(count):
+        add_failed_submission(
+            db_session, timestamp=base + timedelta(seconds=i), team_id=team_id
+        )
+    db_session.commit()
+
+
+def test_failed_submission_response_counts_itself_toward_hint(
+    client,
+    db_session: Session,
+    student_token: str,
+    setup_test_team: Team,
+):
+    """The hint_available flag in a failed-validation response includes the
+    attempt just recorded: the failure that crosses the submissions-between-
+    hints threshold advertises the hint immediately, not one attempt late."""
+    _seed_old_failed_attempts(
+        db_session, setup_test_team.id, SUBMISSIONS_BETWEEN_HINTS - 1
+    )
+
+    response = client.post(
+        "/user/submit-agent",
+        json={"code": "import os\n"},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 400
+    assert response.json()["hint_available"] is True
+
+
+@pytest.mark.skipif(
+    SUBMISSIONS_BETWEEN_HINTS < 2,
+    reason="threshold of 1 is crossed by the first attempt itself",
+)
+def test_failed_submission_response_still_rationed_below_threshold(
+    client,
+    db_session: Session,
+    student_token: str,
+    setup_test_team: Team,
+):
+    """One attempt short of the gap even counting the new failure — the
+    response must not advertise a hint early."""
+    _seed_old_failed_attempts(
+        db_session, setup_test_team.id, SUBMISSIONS_BETWEEN_HINTS - 2
+    )
+
+    response = client.post(
+        "/user/submit-agent",
+        json={"code": "import os\n"},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert response.status_code == 400
+    assert response.json()["hint_available"] is False
+
+
 def test_submit_agent_hint_cancelled_on_valid_code(
     client,
     db_session: Session,

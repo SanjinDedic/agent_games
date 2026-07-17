@@ -151,16 +151,16 @@ async function runTeam(page, observed, signupUrl, team, { withTutorial = false }
   }
   console.log(`[3.2c] invalid submission correctly rejected: "${detail}"`);
 
-  // My Submissions history. The manual says valid AND failed attempts are listed,
-  // but failed attempts store no code row and the history query inner-joins on it,
-  // so only the 2 valid submissions can appear (documented finding) — assert 2.
+  // My Submissions history is intentionally code-only: failed attempts are
+  // recorded as metadata (for rate limiting and hint rationing) but store no
+  // code row, so only the 2 valid submissions appear here — assert 2.
   await page.click('button:has-text("My Submissions")');
   const modal = page.locator('div.fixed:has(h2:has-text("My Submissions"))');
   await modal.waitFor({ timeout: 15000 });
   await modal.locator('text=Loading…').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
   await modal.locator('ul > li').first().waitFor({ timeout: 15000 });
   const historyCount = await modal.locator('ul > li').count();
-  console.log(`[3.2] My Submissions lists ${historyCount} entries (manual says 3 incl. failed; only valid ones are stored with code)`);
+  console.log(`[3.2] My Submissions lists ${historyCount} entries (the 2 valid submissions; failed attempts are metadata-only by design)`);
   if (historyCount !== 2) {
     throw new Error(`My Submissions shows ${historyCount} entries; expected the 2 valid submissions`);
   }

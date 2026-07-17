@@ -138,9 +138,9 @@ async def submit_agent(
     if not generate_hint:
         allow_submission(session, team.id)
 
-    # hint_available is deterministic on recorded attempts, and nothing is
-    # recorded until after validation — so checking before the (expensive)
-    # validation run is equivalent and avoids wasting it on a rejected request.
+    # Computed on the attempts recorded so far — enough to gate hint REQUESTS
+    # cheaply, before the (expensive) validation run. As a RESPONSE value it is
+    # stale by one attempt, so the failed path recomputes it after recording.
     allow_hint = hint_available(session, team)
     if generate_hint and not allow_hint:
         raise HTTPException(
@@ -206,6 +206,12 @@ async def submit_agent(
             duration_ms=duration_ms,
             hint_included=generate_hint,
         )
+        if not generate_hint:
+            # Recompute with this attempt recorded: the pre-validation value
+            # doesn't count the failure just made, so the failure that crosses
+            # the rationing threshold would report hint_available=false. After
+            # a delivered hint allow_hint stays False — the ration was spent.
+            allow_hint = hint_available(session, team)
         return JSONResponse(
             status_code=400,
             content={
