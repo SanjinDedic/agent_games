@@ -1,6 +1,9 @@
 // Stage 2 of docs/integration-test-manual.md — Institution:
 //   2.1 login as the KEPT institution (from Stage 1 state)
 //   2.2 create a greedy_pig league, capture + copy the signup URL
+//   2.3 attach the seeded tutorial to the league (teams only see tutorials
+//       attached to their league; league creation attaches none, and Stage
+//       3.3's Tutorial page is empty without this)
 //
 // Reads institution credentials from the state file written by 01_admin_setup.js;
 // writes leagueName / signupUrl / signupToken back for Stage 3.
@@ -30,11 +33,14 @@ const {
     // 2.2 create the league (expiry left blank = 24h default; school league unchecked)
     await page.click('a:has-text("League Management"), button:has-text("League Management")');
     await page.waitForURL('**/InstitutionLeague', { timeout: 15000 });
-    await page.fill('#leagueName', leagueName);
-    await page.selectOption('#gameName', 'greedy_pig');
+    // The creation form lives in a modal now — open it from the "Create New League" card.
+    await page.click('button:has-text("Create League")');
+    const modal = page.locator('div.fixed.inset-0');
+    await modal.locator('#leagueName').fill(leagueName);
+    await modal.locator('#gameName').selectOption('greedy_pig');
     const [createResp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/institution/league-create'), { timeout: 30000 }),
-      page.click('button:has-text("Create League")'),
+      modal.locator('button:has-text("Create League")').click(),
     ]);
     const createBody = await createResp.json().catch(() => ({}));
     if (!createResp.ok()) throw new Error(`league-create HTTP ${createResp.status()}: ${JSON.stringify(createBody)}`);
@@ -61,6 +67,23 @@ const {
       signupToken: signupUrl.split('/TeamSignup/')[1],
       leagueCreateResponse: createBody,
     });
+
+    // Dismiss the success modal so its overlay doesn't block further clicks.
+    await modal.locator('button:has-text("Done")').click();
+    await modal.waitFor({ state: 'detached', timeout: 10000 });
+
+    // 2.3 attach the seeded tutorial: select the new league's card, tick the
+    // tutorial in the Tutorials section, save. The runner seeds the tutorial
+    // before Stage 1, so it exists in the library but is not yet attached to
+    // this league (the seed only auto-attaches to leagues existing at seed time).
+    await page.click(`h3:has-text("${leagueName}")`);
+    await page.waitForSelector('h3:has-text("Tutorials")', { timeout: 15000 });
+    const tutorialLabel = page.locator('label:has-text("Python Foundations for Greedy Pig")');
+    await tutorialLabel.waitFor({ timeout: 15000 });
+    await tutorialLabel.locator('input[type="checkbox"]').check();
+    await page.click('button:has-text("Save Tutorials")');
+    await waitForToast(page, `Tutorials updated for league '${leagueName}'`);
+    console.log('[2.3] tutorial attached to league');
 
     // Logout to leave a clean session for Stage 3 (manual says either is fine).
     await page.click('button:has-text("Logout")');

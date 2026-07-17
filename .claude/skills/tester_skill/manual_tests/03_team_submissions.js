@@ -3,11 +3,13 @@
 //   3.2 three submissions: starter code (valid), threshold variant (valid),
 //       `import os` prepended (must fail the AST safety check)
 //       + My Submissions history check
-//   3.3 (Team 1 only) one tutorial exercise end-to-end: overview -> "Read the
-//       Scoreboard" -> starter fails 0/4 -> fix passes 4/4 -> unsafe code
-//       rejected -> overview shows Completed / 1 of 5.
-//       PREREQUISITE: the tutorial must be seeded first —
-//         docker compose exec api python -m backend.scripts.seed_tutorial
+//   3.3 (Team 1 only) one tutorial exercise end-to-end: overview -> "Add Up
+//       the Scoreboard" (#4 of 10) -> starter fails 0/5 -> fix passes 5/5 ->
+//       broken code (renamed entry function) 400s -> overview shows
+//       Completed / 1 of 10.
+//       PREREQUISITES: the tutorial must be seeded
+//         (docker compose exec api python -m backend.scripts.seed_tutorial)
+//       AND attached to the league — Stage 2.3 attaches it.
 //   3.4 logout
 //
 // Reads signupUrl from the state file written by 02_institution_league.js;
@@ -25,22 +27,27 @@ const teamDefs = (run) => [
   { name: `charl${run}`, password: 'CharliePass1' },
 ];
 
-// 3.3 (Team 1 only) — tutorial exercise 1 per the manual. Submission outcomes
-// are asserted from the /tutorial/submit-exercise response body (200 with
-// passed/test_results; 400 detail for unsafe code), mirroring how agent
-// submissions are asserted from /user/submit-agent.
+// 3.3 (Team 1 only) — one tutorial exercise per the manual, using seeded
+// exercise #4 "Add Up the Scoreboard" (total_banked over the banked_money
+// dict, 5 tests). Submission outcomes are asserted from the
+// /tutorial/submit-exercise response body (200 with passed/test_results;
+// 400 detail when the code never produces results), mirroring how agent
+// submissions are asserted from /user/submit-agent. There is deliberately
+// NO AST safety gate on exercises any more — the slim exercise-worker
+// container is the sandbox — so the "rejected" case is code whose entry
+// function is missing, not an unauthorized import.
 async function runTutorialExercise(page) {
   console.log('\n=== Tutorial exercise (Team 1 only) ===');
 
   await page.click('nav a:has-text("Tutorial")');
   await page.waitForURL('**/Tutorial', { timeout: 20000 });
   await page.waitForSelector('h1:has-text("Python Foundations for Greedy Pig")', { timeout: 30000 });
-  await page.waitForSelector('text=0 of 5 exercises completed', { timeout: 15000 });
-  console.log('[3.3] overview loaded: 5 exercises, 0 of 5 completed');
+  await page.waitForSelector('text=0 of 10 exercises completed', { timeout: 15000 });
+  console.log('[3.3] overview loaded: 10 exercises, 0 of 10 completed');
 
-  await page.click('li button:has-text("Read the Scoreboard")');
+  await page.click('li button:has-text("Add Up the Scoreboard")');
   await page.waitForSelector('button:has-text("Problem Description")', { timeout: 30000 });
-  await page.waitForSelector('text=1. Read the Scoreboard', { timeout: 15000 });
+  await page.waitForSelector('text=4. Add Up the Scoreboard', { timeout: 15000 });
   await page.waitForSelector('text=EXERCISE:', { timeout: 15000 });
   if (await page.locator('button:has-text("Get Hint")').count()) {
     throw new Error('tutorial workspace unexpectedly shows a Get Hint button (hints are agent-submission only)');
@@ -48,8 +55,8 @@ async function runTutorialExercise(page) {
   console.log('[3.3] exercise workspace open (Problem Description, footer EXERCISE label, no Get Hint)');
 
   const starter = await getMonacoValue(page);
-  if (!starter.includes('def get_banked(banked_money, name):')) {
-    throw new Error('exercise starter code no longer defines get_banked(banked_money, name)');
+  if (!starter.includes('def total_banked(banked_money):')) {
+    throw new Error('exercise starter code no longer defines total_banked(banked_money)');
   }
   const PASS_LINE = 'pass  # Replace this line with your code';
   if (!starter.includes(PASS_LINE)) {
@@ -58,40 +65,43 @@ async function runTutorialExercise(page) {
 
   // Submission 1 — starter as-is: runs fine but every test must fail (returns None)
   const sub1 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (!sub1.ok || sub1.body.passed !== false || (sub1.body.test_results || []).length !== 4) {
-    throw new Error(`starter submission should be 200 with 4 failing tests but got HTTP ${sub1.status}: ${JSON.stringify(sub1.body).slice(0, 300)}`);
+  if (!sub1.ok || sub1.body.passed !== false || (sub1.body.test_results || []).length !== 5) {
+    throw new Error(`starter submission should be 200 with 5 failing tests but got HTTP ${sub1.status}: ${JSON.stringify(sub1.body).slice(0, 300)}`);
   }
-  await page.waitForSelector('text=0 of 4 tests passed', { timeout: 15000 });
-  console.log('[3.3] starter submission: 0 of 4 tests passed (as expected)');
+  await page.waitForSelector('text=0 of 5 tests passed', { timeout: 15000 });
+  console.log('[3.3] starter submission: 0 of 5 tests passed (as expected)');
 
   // Submission 2 — the fix: all tests must pass
-  await setMonacoValue(page, starter.replace(PASS_LINE, 'return banked_money.get(name, 0)'));
+  await setMonacoValue(page, starter.replace(PASS_LINE, 'return sum(banked_money.values())'));
   const sub2 = await submitCode(page, 120000, '/tutorial/submit-exercise');
   if (!sub2.ok || sub2.body.passed !== true) {
     throw new Error(`fixed submission should pass all tests but got HTTP ${sub2.status}: ${JSON.stringify(sub2.body).slice(0, 300)}`);
   }
-  await page.waitForSelector('text=All 4 tests passed', { timeout: 15000 });
-  console.log('[3.3] fixed submission: all 4 tests passed');
+  await page.waitForSelector('text=All 5 tests passed', { timeout: 15000 });
+  console.log('[3.3] fixed submission: all 5 tests passed');
 
-  // Submission 3 — unsafe code must be rejected by the AST safety check (400 + toast)
-  await setMonacoValue(page, 'import os\n' + starter.replace(PASS_LINE, 'return banked_money.get(name, 0)'));
+  // Submission 3 — code that never produces test results must 400 with the
+  // worker's message (recorded without code, like failed agent validation).
+  // Renaming the entry function gives a deterministic message.
+  await setMonacoValue(page, starter.replace('def total_banked(', 'def total_banked_typo('));
   const sub3 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (sub3.ok) throw new Error('unsafe exercise submission (import os) unexpectedly passed');
+  if (sub3.ok) throw new Error('broken exercise submission (renamed entry function) unexpectedly passed');
   const detail = sub3.body.detail || '';
-  if (!detail.includes('Code is not safe: Unauthorized import: os')) {
+  if (!detail.includes("Your code must define a function named 'total_banked'")) {
     throw new Error(`unexpected exercise rejection message: HTTP ${sub3.status} "${detail}"`);
   }
-  console.log(`[3.3] unsafe submission correctly rejected: "${detail}"`);
+  console.log(`[3.3] broken submission correctly rejected: "${detail}"`);
 
-  // Back to the overview: exercise 1 Completed, progress 1 of 5 (a passed run
-  // counts even though a rejected attempt came after it). The rejection toast
-  // overlaps the panel header in a headless browser — dismiss it first.
+  // Back to the overview: the exercise is Completed, progress 1 of 10 (a
+  // passed run counts even though a rejected attempt came after it). The
+  // rejection toast overlaps the panel header in a headless browser —
+  // dismiss it first.
   await dismissToasts(page);
   await page.click('button:has-text("All exercises")');
-  await page.waitForSelector('text=1 of 5 exercises completed', { timeout: 15000 });
-  await page.locator('li button:has-text("Read the Scoreboard")')
+  await page.waitForSelector('text=1 of 10 exercises completed', { timeout: 15000 });
+  await page.locator('li button:has-text("Add Up the Scoreboard")')
     .locator('text=Completed').waitFor({ timeout: 15000 });
-  console.log('[3.3] overview shows Read the Scoreboard as Completed, 1 of 5');
+  console.log('[3.3] overview shows Add Up the Scoreboard as Completed, 1 of 10');
 }
 
 async function runTeam(page, observed, signupUrl, team, { withTutorial = false } = {}) {
@@ -141,16 +151,16 @@ async function runTeam(page, observed, signupUrl, team, { withTutorial = false }
   }
   console.log(`[3.2c] invalid submission correctly rejected: "${detail}"`);
 
-  // My Submissions history. The manual says valid AND failed attempts are listed,
-  // but failed attempts store no code row and the history query inner-joins on it,
-  // so only the 2 valid submissions can appear (documented finding) — assert 2.
+  // My Submissions history is intentionally code-only: failed attempts are
+  // recorded as metadata (for rate limiting and hint rationing) but store no
+  // code row, so only the 2 valid submissions appear here — assert 2.
   await page.click('button:has-text("My Submissions")');
   const modal = page.locator('div.fixed:has(h2:has-text("My Submissions"))');
   await modal.waitFor({ timeout: 15000 });
   await modal.locator('text=Loading…').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
   await modal.locator('ul > li').first().waitFor({ timeout: 15000 });
   const historyCount = await modal.locator('ul > li').count();
-  console.log(`[3.2] My Submissions lists ${historyCount} entries (manual says 3 incl. failed; only valid ones are stored with code)`);
+  console.log(`[3.2] My Submissions lists ${historyCount} entries (the 2 valid submissions; failed attempts are metadata-only by design)`);
   if (historyCount !== 2) {
     throw new Error(`My Submissions shows ${historyCount} entries; expected the 2 valid submissions`);
   }

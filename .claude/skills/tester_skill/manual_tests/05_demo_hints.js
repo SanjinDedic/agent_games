@@ -19,20 +19,18 @@ const SALT = Math.floor(1000 + Math.random() * 9000);
 // Invalid edits from the manual's Stage-5 table, anchored to exact starter-code
 // lines so drift in the starter code fails loudly instead of testing the wrong thing.
 //
-// KNOWN MANUAL/APP MISMATCH: three engines silently tolerate the manual's
-// "invalid" return instead of failing validation —
-//   greedy_pig: anything != "bank" is treated as continue (exceptions -> "bank")
-//   prisoners_dilemma: anything not in [defect, collude] -> "collude"
-//   arena_champions: invalid action -> role default with a feedback line
-// For those, `tolerated` verifies the silent acceptance each run, then the
-// hint flow is driven by `find`/`bad` breaking the def line's colon (a syntax
-// error — the manual's listed alternative failure).
+// Three engines used to silently tolerate the manual's "invalid" return
+// (greedy_pig -> continue, prisoners_dilemma -> collude, arena_champions ->
+// role default). Strict validation is now intentional: `invalidReturn`
+// asserts the engine REJECTS the manual's edit, then the hint flow is driven
+// by `find`/`bad` breaking the def line's colon (a syntax error — the
+// manual's listed alternative failure).
 const GAMES = [
   { game: 'greedy_pig', user: `pig${SALT}`,
-    tolerated: { find: 'return decision', bad: "return 'hoard'" },
+    invalidReturn: { find: 'return decision', bad: "return 'hoard'" },
     find: 'def make_decision(self, game_state):', bad: 'def make_decision(self, game_state)' },
   { game: 'prisoners_dilemma', user: `pd${SALT}`,
-    tolerated: { find: 'return decision', bad: "return 'betray'" },
+    invalidReturn: { find: 'return decision', bad: "return 'betray'" },
     find: 'def make_decision(self, game_state):', bad: 'def make_decision(self, game_state)' },
   { game: 'lineup4', user: `l4${SALT}`,
     find: 'return random.choice(game_state["possible_moves"]) # fallback to random move', bad: "return '99Z'" },
@@ -43,7 +41,7 @@ const GAMES = [
   { game: 'thirteen', user: `t13${SALT}`,
     find: 'return random.choice(legal_moves)  # fallback: a random legal combo (or pass)', bad: "return ['ZZ']" },
   { game: 'arena_champions', user: `arena${SALT}`,
-    tolerated: { find: "return random.choice(['attack', 'big_attack', 'precise_attack'])", bad: "return 'flee'" },
+    invalidReturn: { find: "return random.choice(['attack', 'big_attack', 'precise_attack'])", bad: "return 'flee'" },
     find: 'def make_combat_decision(self, opponent_stats, turn, your_role, last_opponent_action=None):',
     bad: 'def make_combat_decision(self, opponent_stats, turn, your_role, last_opponent_action=None)' },
 ];
@@ -75,46 +73,30 @@ async function runGame(page, observed, spec) {
     throw new Error(`${spec.game}: starter code does not contain the manual's target line: ${spec.find}`);
   }
 
-  let toleratedNote = null;
-  if (spec.tolerated) {
-    // The manual claims this edit fails at runtime; the engine actually
-    // tolerates it. Verify that silent acceptance, then fall through to the
+  if (spec.invalidReturn) {
+    // Strict engine validation is intentional: the manual's invalid-return
+    // edit must be rejected. Verify that, then fall through to the
     // syntax-error variant for the hint flow.
-    if (!starter.includes(spec.tolerated.find)) {
-      throw new Error(`${spec.game}: starter code does not contain the manual's target line: ${spec.tolerated.find}`);
+    if (!starter.includes(spec.invalidReturn.find)) {
+      throw new Error(`${spec.game}: starter code does not contain the manual's target line: ${spec.invalidReturn.find}`);
     }
-    await setMonacoValue(page, starter.replace(spec.tolerated.find, spec.tolerated.bad));
-    const toleratedSub = await submitCode(page);
-    if (toleratedSub.ok) {
-      toleratedNote = `manual's invalid edit "${spec.tolerated.bad}" PASSED validation (engine tolerates it); used a syntax error instead`;
-      observed.notes = observed.notes || [];
-      observed.notes.push(`${spec.game}: ${toleratedNote}`);
-      console.log(`[5.3-pre] FINDING confirmed: ${toleratedNote}`);
-    } else {
-      // Engine behavior changed — the manual's edit now fails after all.
-      observed.notes = observed.notes || [];
-      observed.notes.push(`${spec.game}: manual's edit "${spec.tolerated.bad}" now FAILS validation (engine tolerance changed?)`);
-      console.log(`[5.3-pre] NOTE: manual's edit now fails validation: ${(toleratedSub.body.detail || '').slice(0, 120)}`);
+    await setMonacoValue(page, starter.replace(spec.invalidReturn.find, spec.invalidReturn.bad));
+    const rejectedSub = await submitCode(page);
+    if (rejectedSub.ok) {
+      throw new Error(`${spec.game}: invalid return "${spec.invalidReturn.bad}" was ACCEPTED — strict engine validation regressed`);
     }
+    console.log(`[5.3-pre] invalid return rejected as intended: ${(rejectedSub.body.detail || '').slice(0, 120)}`);
   }
 
   await setMonacoValue(page, starter.replace(spec.find, spec.bad));
-  let badSub = await submitCode(page);
+  const badSub = await submitCode(page);
   if (badSub.ok) throw new Error(`${spec.game}: invalid submission unexpectedly passed validation`);
   if (!badSub.body.hint_available) {
-    // KNOWN OFF-BY-ONE: hint_available is computed before the attempt is
-    // recorded (user_router), and hint_service returns False on an empty
-    // history — so a team's FIRST submission never advertises a hint, despite
-    // the manual's "available after your first submission". The second
-    // identical failure must advertise it.
-    observed.notes = observed.notes || [];
-    observed.notes.push(`${spec.game}: first failed submission returned hint_available=false (off-by-one); retrying`);
-    console.log('[5.3] FINDING: hint_available=false on the team\'s first submission (off-by-one); submitting again');
-    badSub = await submitCode(page);
-    if (badSub.ok) throw new Error(`${spec.game}: invalid submission unexpectedly passed validation on retry`);
-    if (!badSub.body.hint_available) {
-      throw new Error(`${spec.game}: hint_available still false on second failed submission (HTTP ${badSub.status}: ${JSON.stringify(badSub.body).slice(0, 300)})`);
-    }
+    // The response must count the attempt it just recorded (user_router
+    // recomputes hint_available after record_failed_submission) — with the
+    // dev gates (SUBMISSIONS_BETWEEN_HINTS=1, HINT_COOLDOWN_SECONDS=0) the
+    // team's first failed submission already advertises the hint.
+    throw new Error(`${spec.game}: hint_available=false on failed submission (HTTP ${badSub.status}: ${JSON.stringify(badSub.body).slice(0, 300)})`);
   }
   await waitForToast(page, 'A hint is now available');
   const hintButton = page.locator('button:has-text("Get Hint")');
@@ -160,7 +142,6 @@ async function runGame(page, observed, spec) {
     game: spec.game,
     demo_user: spec.user,
     invalid_edit: spec.bad,
-    tolerated_note: toleratedNote,
     rejection_detail: badSub.body.detail,
     hint: {
       priority: hint.priority,

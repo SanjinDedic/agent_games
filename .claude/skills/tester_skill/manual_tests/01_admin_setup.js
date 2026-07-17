@@ -9,9 +9,12 @@
 //
 // Steps run independently where possible: a failing step is recorded (and the
 // script exits 1 at the end) but later steps still run, so one broken feature
-// doesn't hide the state of the others. Known local-dev failure: 1.4 backup —
-// admin_backup._get_s3_client() ignores S3_ENDPOINT_URL, so it talks to real
-// AWS with MinIO credentials and 500s (InvalidAccessKeyId).
+// doesn't hide the state of the others. Note on 1.4 backup/restore:
+// admin_backup._get_s3_client() ignores S3_ENDPOINT_URL, so it always talks to
+// real AWS — with the default MinIO creds it 500s (InvalidAccessKeyId); with
+// real creds (.aws.env) it works, but the MANUAL dump lands in the production
+// backup bucket and the restore replays the newest dump (its own) into the
+// local DB.
 const {
   BASE, saveState, launchPage, acceptDialogs, waitForToast, finish,
 } = require('./_helpers');
@@ -113,7 +116,7 @@ async function createInstitution(page, inst) {
       if (!restoreResp || !restoreResp.ok()) {
         throw new Error(`restore-database failed (HTTP ${restoreResp ? restoreResp.status() : 'blocked/no response'})`);
       }
-      await waitForToast(page, 'restored successfully', 60000);
+      await waitForToast(page, 'Database restored', 60000);
       console.log('  restore completed');
     });
 
