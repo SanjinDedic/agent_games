@@ -16,8 +16,9 @@ Recording Sheet.
 
 ```bash
 # stack must be up (docker compose up -d); a wiped DB gives the cleanest run
-# the tutorial (Stage 3.3) is NOT seeded on boot — seed it once per fresh DB:
-docker compose exec api python -m backend.scripts.seed_tutorial
+# the tutorial (Stage 3.3) is NOT seeded on boot — seed it once per fresh DB
+# from the private tutorial_data/ folder (pull from prod first if it's empty):
+docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues
 export OPENAI_API_KEY=sk-...
 for s in 01_admin_setup 02_institution_league 03_team_submissions \
          04_institution_review_publish 05_demo_hints; do
