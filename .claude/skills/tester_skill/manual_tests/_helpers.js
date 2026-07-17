@@ -23,7 +23,11 @@ function saveState(patch) {
 // Launch a browser page that records every react-toastify toast, browser console
 // error, page error, and native dialog message so the run can be audited afterwards.
 async function launchPage() {
-  const browser = await chromium.launch({ headless: true });
+  // HEADED=1 opens a visible browser window; SLOWMO=<ms> slows each action for watching.
+  const browser = await chromium.launch({
+    headless: !process.env.HEADED,
+    slowMo: Number(process.env.SLOWMO || 0),
+  });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
 

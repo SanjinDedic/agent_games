@@ -9,8 +9,8 @@ Recording Sheet.
 | Script | Manual stage |
 |--------|--------------|
 | `01_admin_setup.js` | 1 — admin login, institutions ×2 + delete ×1, backup/restore, OpenAI key (needs `OPENAI_API_KEY` env var), logout |
-| `02_institution_league.js` | 2 — institution login, create greedy_pig league, capture signup URL |
-| `03_team_submissions.js` | 3 — three teams: signup, 2 valid + 1 invalid submission, history check, logout; Team 1 also runs tutorial exercise 1 end-to-end (3.3: fail 0/4 → pass 4/4 → unsafe rejected → overview Completed) |
+| `02_institution_league.js` | 2 — institution login, create greedy_pig league, capture signup URL, attach the seeded tutorial to the league (2.3 — teams only see attached tutorials) |
+| `03_team_submissions.js` | 3 — three teams: signup, 2 valid + 1 invalid submission, history check, logout; Team 1 also runs tutorial exercise #4 "Add Up the Scoreboard" end-to-end (3.3: fail 0/5 → pass 5/5 → broken code 400s → overview Completed / 1 of 10) |
 | `04_institution_review_publish.js` | 4 — review submissions, plagiarism (OpenAI), 100-round simulation, publish + public page |
 | `05_demo_hints.js` | 5 — per game ×7: demo user, invalid submission, Get Hint, fix, valid submission |
 
@@ -39,7 +39,9 @@ Conventions (see `_helpers.js`):
   are asserted from the `/user/submit-agent` response body (200 + `submission_id` = valid,
   400 + `detail` = failed validation), not from the UI. Tutorial exercise submissions are
   asserted the same way from `/tutorial/submit-exercise` (200 + `passed`/`test_results`;
-  400 + `detail` for unsafe/crashed code).
+  400 + `detail` when the code never produces results — a syntax error, a missing entry
+  function, or a timeout). Exercises have NO AST safety gate by design: the slim
+  exercise-worker container is the sandbox, so `import os` is allowed there.
 
 Known app-side deviations the scripts expect and document (full detail in
 `docs/test_findings/integration-manual-run-2026-07-11.md`):
