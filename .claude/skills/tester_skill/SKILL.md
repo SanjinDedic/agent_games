@@ -1,21 +1,16 @@
 ---
 name: tester_skill
-description: Set up local browser testing for agent_games — permanent Playwright install (outside the repo), clean app start from an empty DB, and a demo-submission smoke test. Use when asked to test the app locally, reset the local environment, or verify the stack works end-to-end before manual testing.
+description: Run the full Playwright browser-test suite for agent_games via ./run_playwright_tests.sh and analyze the failures. Use when asked to test the app locally, run the browser/manual tests, or verify the stack works end-to-end.
 ---
 
-# Local testing setup + smoke test
+# Browser test run + failure analysis
 
-Three phases: ensure Playwright is installed (one-time, permanent, outside the repo),
-start the app from a clean database, run the smoke test. When the smoke test passes,
-tell the user: **"Smoke test passed — I'm ready to test the app."**
+One job: run every test stage through the runner script, then explain what failed and why.
+The script owns ALL setup — Playwright install/check, `.env` + `OPENAI_API_KEY` sourcing,
+stack reset (`docker compose down -v && up -d --wait`), tutorial seeding. Do not install
+Playwright, reset docker, or seed anything yourself.
 
-## 1. Playwright (one-time, lives on the laptop, NOT in the repo)
-
-The install lives in `~/.agent-games-playwright` (npm package) and
-`~/Library/Caches/ms-playwright` (browsers). Nothing goes into the repo —
-never `npm install playwright` inside the project.
-
-Idempotent check + install:
+## 1. Run
 
 ```bash
 if ! NODE_PATH="$HOME/.agent-games-playwright/node_modules" node -e "require('playwright')" 2>/dev/null; then
@@ -97,10 +92,9 @@ Driving notes baked into the script (relevant if you edit it):
   (`waitForResponse`), not the UI; toasts are timing-sensitive.
 - Team names: alphanumeric, max 10 chars.
 
-## 4. Report
+## 3. Report
 
-- Pass → tell the user: **"Smoke test passed — I'm ready to test the app."**
-- Fail → report which step failed, the failure screenshot path, and the
-  relevant api/worker log lines. Do not declare readiness.
-
-For speed/performance benchmarking against production, see the `benchmark_prod` skill.
+Per-stage PASS/FAIL table, then for each failure: which step, what was observed
+(toast / console error / API response), the relevant log lines, and whether it's a
+known deviation or a real regression. Only declare the stack healthy when stages 02–05
+pass and stage 01's sole failure is the known 1.4 backup/restore.
