@@ -348,9 +348,9 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
 
           <p className="text-xs text-gray-500">
             Students see the starter code and can reveal the hints — the
-            solution and test script stay server-side. Re-running
-            seed_tutorial.py overwrites all exercise content, including tests,
-            solutions and hints edited here.
+            solution and test script stay server-side. A tutorial_sync push
+            overwrites all exercise content, including tests, solutions and
+            hints edited here — pull first to keep edits made in this editor.
           </p>
 
           {runResult && (

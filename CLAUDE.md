@@ -42,6 +42,25 @@ npm run dev      # Vite dev server on port 3000
 npm run build    # Production build
 ```
 
+### Tutorial content (private)
+Tutorial/exercise content is NOT in this repo: it lives in the gitignored `tutorial_data/` folder along with its own tooling and tests (one folder per tutorial, one subfolder per exercise — `problem.md`, `starter.py` with the HINTS list, a runnable `solution.py`, `tests.py`; layout documented in `tutorial_data/README.md` and the `tutorial_sync.py` docstring). The database is the runtime source of truth; `tutorial_data/` is the authoring surface, synced with `tutorial_data/tutorial_sync.py`:
+
+```bash
+# Pull everything from prod into tutorial_data/ (REPLACES local tutorial folders)
+docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py pull --target prod
+
+# Push tutorial_data/ to prod — automatically writes a JSON backup to tutorial_data/backups/ first
+docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py push --target prod
+
+# Seed the local dev DB from tutorial_data/ (replaces the removed seed_tutorial script)
+docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues
+
+# Test the tooling (private tests, not part of the public suite/CI)
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --no-deps test-runner pytest tutorial_data/tests/ -v
+```
+
+`--target prod` reads `PROD_DATABASE_URL` (put it in the gitignored `.aws.env` so compose passes it automatically, or use `--db-url`). `--target local` always means the dev DB (`agent_games`), never the test DB, regardless of `DB_ENVIRONMENT`. Matching mirrors the old seed script: tutorials by title, exercises by position, leftover DB exercises deleted with their submission history. `python3 <exercise>/solution.py` (any system python3, stdlib only) checks the reference solution against that exercise's tests via `tutorial_data/exercise_runner.py`, with the same check semantics as the production worker.
+
 ### Database migrations
 `backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production, and keep it in sync with the model if you later refactor those columns (a migration that `ALTER`s a table the model no longer matches becomes schema drift). A forgotten migration is caught in CI, not by tests: the `schema-drift` job (`.github/workflows/tests_coverage_deploy.yml`) dumps the prod schema over SSH, rehearses `create_all` + migrations on a scratch copy (`backend/check_schema_drift.sh`), and diffs normalized catalog snapshots (`backend/database/schema_snapshot.sql`) against a schema built fresh from the models — any difference blocks the deploy job.
 

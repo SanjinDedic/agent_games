@@ -34,6 +34,10 @@ __pycache__/
 #anything in the folder "other" is ignored
 other/*
 
+# Private tutorial/exercise content — authored locally, synced with prod via
+# backend/scripts/tutorial_sync.py; may become its own private repo
+tutorial_data/
+
 gen_prompt_project.py
 gen_prompt_game.py
 project_code.md

@@ -45,9 +45,11 @@ docker compose up -d
 `simulator`/`validator`) or by test-overlay runs.
 
 The tutorial (manual Stage 3.3 / `manual_tests/03_team_submissions.js`) is NOT
-re-created by `init_db` — after a wipe, seed it with
-`docker compose exec api python -m backend.scripts.seed_tutorial` (idempotent;
-the smoke test doesn't need it).
+re-created by `init_db` — after a wipe, seed it from the private, gitignored
+`tutorial_data/` folder (populate it once via
+`... tutorial_sync.py pull --target prod` if empty) with
+`docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues`
+(idempotent; the smoke test doesn't need it).
 
 Wait for readiness — poll, don't sleep (`timeout` doesn't exist on macOS):
 

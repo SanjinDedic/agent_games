@@ -48,6 +48,8 @@ services:
     volumes:
       - ./backend:/agent_games/backend
       - ./frontend/public:/agent_games/frontend/public:ro
+      # Private tutorial content (gitignored), for backend/scripts/tutorial_sync.py
+      - ./tutorial_data:/agent_games/tutorial_data
     mem_limit: 400m
     mem_reservation: 200m
     pids_limit: 50
@@ -283,6 +285,10 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/agent_games/backend
+      # Private tutorial content + its own tests (run on demand via
+      # `... run --rm --no-deps test-runner pytest tutorial_data/tests/`;
+      # not part of the public suite/CI — the folder is gitignored)
+      - ./tutorial_data:/agent_games/tutorial_data
     command: pytest backend/tests/ -v
     scale: 0
 
