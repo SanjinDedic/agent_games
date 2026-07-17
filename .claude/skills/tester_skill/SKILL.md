@@ -5,96 +5,57 @@ description: Run the full Playwright browser-test suite for agent_games via ./ru
 
 # Browser test run + failure analysis
 
-One job: run every test stage through the runner script, then explain what failed and why.
-The script owns ALL setup — Playwright install/check, `.env` + `OPENAI_API_KEY` sourcing,
-stack reset (`docker compose down -v && up -d --wait`), tutorial seeding. Do not install
-Playwright, reset docker, or seed anything yourself.
+One job: run the suite through the runner script, then explain what failed and why.
+
+The script owns ALL setup — Playwright install/check (permanent install in
+`~/.agent-games-playwright`, never inside the repo), `.env` + `OPENAI_API_KEY`
+sourcing, stack reset, tutorial seeding. Do not install Playwright, run
+docker compose commands, or seed anything yourself.
 
 ## 1. Run
 
 ```bash
-if ! NODE_PATH="$HOME/.agent-games-playwright/node_modules" node -e "require('playwright')" 2>/dev/null; then
-  mkdir -p ~/.agent-games-playwright && cd ~/.agent-games-playwright
-  printf '{\n  "name": "agent-games-playwright",\n  "private": true,\n  "version": "1.0.0"\n}\n' > package.json
-  npm install playwright
-  npx playwright install chromium
-fi
+cd /Users/slowturing/PROJECTS/agent_games
+./run_playwright_tests.sh all
 ```
 
-Gotcha: `npm init -y` fails there (directory name starts with a dot — invalid
-package name), which is why the package.json is written by hand.
+`all` = non-interactive: headless, every stage (01–05) in order, per-stage
+summary at the end, exit 1 if anything failed. Without `all` the script is an
+interactive menu (browser mode, per-stage picker) — for humans, not for you.
 
-## 2. Clean app start (wipes the local DB!)
+**Warning before running:** every launch does `docker compose down -v` — wipes
+the local DB and MinIO volumes. Say so first unless the user explicitly asked
+for a reset/clean run. Expect the full run to take several minutes (stack
+reset + healthcheck wait + 5 stages).
 
-`down -v` deletes all volumes — Postgres data, MinIO objects. That is the point
-(fresh DB, schema re-seeded by `init_db` + migrations on api boot), but say so
-before running it if the user didn't explicitly ask for a reset.
+## 2. Analyze failures
 
-```bash
-cd /Users/sanjindedic/PROJECTS/agent_games
-docker compose down -v --remove-orphans
-docker compose up -d
-```
+For each FAIL in the summary:
 
-`--remove-orphans` clears stale containers left by older compose files (e.g.
-`simulator`/`validator`) or by test-overlay runs.
+- **Screenshot**: `/tmp/agent_games_STAGE<N>_failure.png` — read it.
+- **Observed block**: each stage prints an `--- observed ---` JSON block
+  (toasts, native dialogs, browser console errors) at the end of its output.
+- **Backend logs**: `docker logs agent_games-api-1 --since 10m` (workers:
+  `agent_games-worker-validation-1`, `agent_games-worker-simulation-1`,
+  `agent_games-worker-exercises-1`).
+- **Known deviations** (expected, not regressions — full detail in
+  `docs/test_findings/integration-manual-run-2026-07-11.md`):
+  - Stage 1.4 backup/restore fails in local dev (backup S3 client ignores
+    `S3_ENDPOINT_URL`) — stage 01 exits 1 but still records state for later
+    stages; the runner continues.
+  - Stage 1.5 needs `OPENAI_API_KEY` (script pulls it from `.env` or
+    `.kamal/secrets`; it warns at startup if missing).
+  - Stage 3.3 tutorial steps fail if the private `tutorial_data/` folder is
+    missing — the script warns at seed time and tells you the pull command.
+  - Stage 4.5 first gets a 403 (simulation Docker-access toggle); the script
+    enables it via the admin UI and retries — not a failure.
 
-The tutorial (manual Stage 3.3 / `manual_tests/03_team_submissions.js`) is NOT
-re-created by `init_db` — after a wipe, seed it from the private, gitignored
-`tutorial_data/` folder (populate it once via
-`... tutorial_sync.py pull --target prod` if empty) with
-`docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues`
-(idempotent; the smoke test doesn't need it).
-
-Wait for readiness — poll, don't sleep (`timeout` doesn't exist on macOS):
-
-```bash
-# api (runs init_db + migrations first, then serves)
-for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:8000/docs && break; sleep 2; done
-# frontend (Vite)
-for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000 && break; sleep 2; done
-# workers must be healthy or submissions will hang
-docker compose ps --format '{{.Name}} {{.Status}}'
-```
-
-All of api, frontend, postgres, valkey, minio, worker-validation,
-worker-simulation should show `healthy` (frontend has no healthcheck — `Up` is
-fine). If a submission later fails with a DB error like
-`relation "..." does not exist`, the containers are pointing at the test DB:
-check `docker exec agent_games-api-1 env | grep DB_ENVIRONMENT` — it must NOT
-be `test` (dev default is `production`). Fix with
-`docker compose up -d --force-recreate api worker-validation worker-simulation`
-(no test overlay).
-
-## 3. Smoke test (demo signup → valid submission → logout)
-
-```bash
-cd /Users/sanjindedic/PROJECTS/agent_games
-NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/smoke_test.js
-```
-
-The script signs up a uniquely-named demo team, joins `greedy_pig_demo`
-(demo leagues are auto-created by the launch endpoint — an empty league table
-is fine), waits for the Monaco editor to load the starter code, submits it
-unchanged, asserts the API returns `status: "success"`, and logs out.
-It prints `SMOKE TEST PASSED` and exits 0 on success. On failure it exits 1
-and dumps a full-page screenshot to `/tmp/agent_games_smoke_failure.png` —
-read it, then check `docker logs agent_games-api-1 --since 5m`.
-
-Driving notes baked into the script (relevant if you edit it):
-
-- Monaco is a React-controlled editor; set code via
-  `window.monaco.editor.getEditors()[0].setValue(...)` in `page.evaluate` —
-  DOM typing/`el.value` doesn't reliably fire React's onChange.
-- Monaco loads from a CDN (`@monaco-editor/react` loader), so the headless
-  browser needs internet access.
-- Assert submission outcomes from the `/user/submit-agent` response body
-  (`waitForResponse`), not the UI; toasts are timing-sensitive.
-- Team names: alphanumeric, max 10 chars.
+Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 
 ## 3. Report
 
-Per-stage PASS/FAIL table, then for each failure: which step, what was observed
-(toast / console error / API response), the relevant log lines, and whether it's a
-known deviation or a real regression. Only declare the stack healthy when stages 02–05
-pass and stage 01's sole failure is the known 1.4 backup/restore.
+Per-stage PASS/FAIL table, then for each failure: which step, what was
+observed (toast / console error / API response), the relevant log lines, and
+whether it's a known deviation or a real regression. Declare the stack healthy
+when stages 02–05 pass and stage 01's sole failure is the known 1.4
+backup/restore.

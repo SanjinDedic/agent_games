@@ -54,8 +54,13 @@ docker compose up -d --wait || { echo "docker compose up failed"; exit 1; }
 rm -f "${STATE_FILE:-/tmp/agent_games_manual_state.json}"
 
 echo "=== seeding tutorial ==="
-docker compose exec api python -m backend.scripts.seed_tutorial \
-  || { echo "tutorial seed failed"; exit 1; }
+if [[ -f tutorial_data/tutorial_sync.py ]]; then
+  docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues \
+    || { echo "tutorial seed failed"; exit 1; }
+else
+  echo "WARNING: tutorial_data/ missing (private, gitignored) — stage 3.3 tutorial steps will fail."
+  echo "  Populate once with: docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py pull --target prod"
+fi
 
 scripts=()
 for f in "$TESTS_DIR"/[0-9]*.js; do
