@@ -24,6 +24,7 @@ from backend.routes.tutorial.tutorial_db import (set_league_tutorials,
                                                  validate_tutorial_ids)
 from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
+from backend.team_capacity import assert_team_capacity
 from backend.utils import process_simulation_results
 from backend.time_utils import utc_now
 
@@ -165,6 +166,7 @@ def create_league(
 
 def create_team(session: Session, team_data, institution_id: int) -> Dict:
     """Create a new team for an institution"""
+    assert_team_capacity(session, institution_id)
     try:
         # Check for existing team within this institution
         existing_team = session.exec(

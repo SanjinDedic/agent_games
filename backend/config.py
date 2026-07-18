@@ -86,10 +86,13 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 # Two Prices per tier: a one-time 90-day pass (Checkout mode="payment") and a
 # yearly recurring subscription (mode="subscription"). The buyer's auto-renew
 # choice selects which one is used. The annual Price is higher than the 90-day
-# one (e.g. club: $99 once vs $299/yr; university: $199 once vs $599/yr).
+# one (e.g. club: $99 once vs $299/yr; university: $299 once vs $599/yr).
 STRIPE_PRICE_CLUB_ONCE = os.getenv("STRIPE_PRICE_CLUB_ONCE")
 STRIPE_PRICE_CLUB_YEAR = os.getenv("STRIPE_PRICE_CLUB_YEAR")
 STRIPE_PRICE_UNI_ONCE = os.getenv("STRIPE_PRICE_UNI_ONCE")
 STRIPE_PRICE_UNI_YEAR = os.getenv("STRIPE_PRICE_UNI_YEAR")
+# Teacher plan: 90-day pass only, no annual option. The whole-school teacher
+# tier reuses STRIPE_PRICE_UNI_ONCE (same $299 / 500-student product).
+STRIPE_PRICE_TEACHER_ONCE = os.getenv("STRIPE_PRICE_TEACHER_ONCE")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")

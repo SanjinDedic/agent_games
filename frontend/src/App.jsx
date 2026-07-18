@@ -6,6 +6,7 @@ import AgentSubmission from './AgentGames/User/AgentSubmission';
 import Tutorial from './AgentGames/User/Tutorial';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
 import Institutions from './AgentGames/Institutions';
+import Teachers from './AgentGames/Teachers';
 import InstitutionSignup from './AgentGames/InstitutionSignup';
 import InstitutionInvoiceSignup from './AgentGames/InstitutionInvoiceSignup';
 import Institution from "./AgentGames/Institution/Institution";
@@ -75,6 +76,7 @@ function App() {
           <Route path="Rankings" element={<AgentRankings />} />
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />
+          <Route path="Teachers" element={<Teachers />} />
           <Route path="InstitutionSignup" element={<InstitutionSignup />} />
           <Route
             path="InstitutionInvoiceSignup"

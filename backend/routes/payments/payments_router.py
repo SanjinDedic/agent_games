@@ -36,7 +36,16 @@ _TIER_PRICES = {
     ("club", True): config.STRIPE_PRICE_CLUB_YEAR,
     ("university", False): config.STRIPE_PRICE_UNI_ONCE,
     ("university", True): config.STRIPE_PRICE_UNI_YEAR,
+    # Teacher-page plans: 90-day passes only, no annual/invoice option. The
+    # whole-school tier is the same 500-student product as the university pass,
+    # sold with teacher (classroom/student) wording, so it reuses that Price.
+    ("teacher", False): config.STRIPE_PRICE_TEACHER_ONCE,
+    ("school", False): config.STRIPE_PRICE_UNI_ONCE,
 }
+
+# Buying one of these tiers creates a teacher account (is_teacher=True): same
+# permissions as an institution, classroom/student wording in the frontend.
+TEACHER_TIERS = {"teacher", "school"}
 
 # One-time purchases buy a fixed 90-day access window.
 ONE_OFF_DAYS = 90
@@ -213,6 +222,7 @@ async def get_checkout_session(
     return {
         "email": details.get("email"),
         "tier": metadata.get("tier"),
+        "is_teacher": metadata.get("tier") in TEACHER_TIERS,
         "auto_renew": checkout.get("mode") == "subscription",
         "address": _format_address(details),
         "already_registered": already is not None,
@@ -279,6 +289,7 @@ async def institution_signup(
         stripe_subscription_id=subscription_id,
         stripe_checkout_session_id=body.session_id,
         tier=tier,
+        is_teacher=tier in TEACHER_TIERS,
     )
 
     return {

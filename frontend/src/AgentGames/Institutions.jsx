@@ -22,11 +22,11 @@ const TIERS = [
     {
         id: 'university',
         name: 'University & Large Cohort',
-        teams: 'Up to 1000 student teams',
-        oncePrice: 199,
+        teams: 'Up to 500 teams / students',
+        oncePrice: 299,
         yearPrice: 599,
         features: [
-            'Up to 1000 student teams',
+            'Up to 500 teams / students',
             'All games and coding challenges',
             'Leagues and leaderboards',
             'In-browser Python editor',
@@ -93,6 +93,11 @@ function Institutions() {
                         Start with a one-off <span className="font-semibold">90-day pass</span> —
                         no subscription, no auto-renewal. All prices in AUD. Need
                         ongoing access? An annual auto-renewing plan is available too.
+                        Just one class?{' '}
+                        <Link to="/Teachers" className="text-primary font-semibold underline">
+                            See teacher plans
+                        </Link>{' '}
+                        — from $29.
                     </p>
                     <div className="grid gap-6 md:grid-cols-2 items-start">
                         {TIERS.map((tier) => {

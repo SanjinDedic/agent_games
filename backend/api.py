@@ -35,6 +35,7 @@ from backend.routes.institution.institution_db import (
     TeamExistsError,
     TeamNotFoundError,
 )
+from backend.team_capacity import TeamLimitExceededError
 from backend.routes.payments.payments_db import (
     InstitutionExistsError as PaidInstitutionExistsError,
     PaidSignupError,
@@ -299,6 +300,13 @@ async def tutorial_exists_handler(request: Request, exc: TutorialExistsError):
 @app.exception_handler(ExerciseReorderError)
 async def exercise_reorder_handler(request: Request, exc: ExerciseReorderError):
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+# Raised from both team-creation paths (institution team-create and
+# signup-link joins) when the plan's team/student cap is reached.
+@app.exception_handler(TeamLimitExceededError)
+async def team_limit_exceeded_handler(request: Request, exc: TeamLimitExceededError):
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
 # Payments-domain exceptions: signup validation -> 400; the duplicate-name

@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, select
 
+from backend import team_capacity
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, Team
 from backend.routes.auth.auth_core import create_access_token
@@ -215,3 +216,67 @@ def test_team_create_duplicate_within_institution_rejected(client, institution_s
     second = client.post("/institution/team-create", headers=headers, json=payload)
     assert second.status_code == 409
     assert "already exists" in second.json()["detail"].lower()
+
+
+def test_advertised_plan_caps_match_pricing_pages():
+    """These numbers are advertised on /Teachers and /Institutions — keep in sync."""
+    assert team_capacity.TIER_TEAM_CAPS == {
+        "teacher": 26,
+        "club": 100,
+        "school": 500,
+        "university": 500,
+    }
+
+
+def test_team_create_blocked_at_plan_cap(client, db_session, monkeypatch):
+    """Team creation returns 403 once the plan's cap is reached (student wording
+    for teacher accounts). The cap is patched small to keep the test fast; the
+    real per-tier numbers are pinned by the test above."""
+    institution = build_institution(
+        name="capped_teacher",
+        contact_person="Ms Cap",
+        contact_email="cap@test.com",
+        created_date=utc_now(),
+        subscription_active=True,
+        subscription_expiry=utc_now() + timedelta(days=30),
+        password_hash="hash",
+        is_teacher=True,
+    )
+    institution.subscription.tier = "teacher"
+    db_session.add(institution)
+    db_session.commit()
+    db_session.refresh(institution)
+
+    token = create_access_token(
+        data={
+            "sub": institution.name,
+            "role": "institution",
+            "institution_id": institution.id,
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    monkeypatch.setitem(team_capacity.TIER_TEAM_CAPS, "teacher", 2)
+
+    for i in range(2):
+        resp = client.post(
+            "/institution/team-create",
+            headers=headers,
+            json={"name": f"cap_team_{i}", "password": "pw", "school_name": "S"},
+        )
+        assert resp.status_code == 200
+
+    resp = client.post(
+        "/institution/team-create",
+        headers=headers,
+        json={"name": "cap_team_over", "password": "pw", "school_name": "S"},
+    )
+    assert resp.status_code == 403
+    # Teacher accounts get student wording in the error.
+    assert "2 students" in resp.json()["detail"]
+    # The rejected team was never persisted.
+    assert (
+        db_session.exec(select(Team).where(Team.name == "cap_team_over")).first()
+        is None
+    )

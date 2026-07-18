@@ -45,6 +45,7 @@ def create_paid_institution(
     stripe_subscription_id: Optional[str],
     stripe_checkout_session_id: str,
     tier: Optional[str] = None,
+    is_teacher: bool = False,
 ) -> Institution:
     """Create an institution after its Stripe payment has been verified.
 
@@ -81,6 +82,7 @@ def create_paid_institution(
         contact_email=contact_email,
         address=address,
         created_date=now,
+        is_teacher=is_teacher,
     )
     institution.set_password(password)
 

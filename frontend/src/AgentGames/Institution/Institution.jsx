@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setToken,
@@ -124,9 +124,17 @@ function Institution({ variant = "institution" }) {
         
         <div className="mt-6 text-center text-ui">
           <p>
-            {isTeacher
-              ? "Log in to manage your classrooms and students. Contact us if you don't have an account yet."
-              : "Contact your administrator if you don't have login credentials."}
+            {isTeacher ? (
+              <>
+                Don't have an account yet?{' '}
+                <Link to="/Teachers" className="text-primary font-semibold underline">
+                  See teacher plans
+                </Link>{' '}
+                — from $29 for 90 days.
+              </>
+            ) : (
+              "Contact your administrator if you don't have login credentials."
+            )}
           </p>
         </div>
       </div>

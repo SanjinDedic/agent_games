@@ -9,6 +9,8 @@ import { selectToken } from '../../slices/authSlice';
 const TIER_LABELS = {
   club: 'Club & School',
   university: 'University & Large Cohort',
+  teacher: 'Teacher',
+  school: 'Whole School',
 };
 
 const PAYMENT_METHOD_LABELS = {

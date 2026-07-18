@@ -26,6 +26,11 @@ const Homepage = () => {
                 Student Login
               </button>
             </a>
+            <a href="/Teachers" className="inline-block">
+              <button className="bg-primary-light hover:bg-primary text-white shadow-lg text-xl py-3 px-8 rounded">
+                Teacher Signup
+              </button>
+            </a>
             <a href="/Institutions" className="inline-block">
               <button className="bg-primary-light hover:bg-primary text-white shadow-lg text-xl py-3 px-8 rounded">
                 Institution Signup

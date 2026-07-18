@@ -9,6 +9,8 @@ const apiUrl = import.meta.env.VITE_AGENT_API_URL;
 const TIER_LABELS = {
     club: 'Club & School',
     university: 'University & Large Cohort',
+    teacher: 'Teacher',
+    school: 'Whole School',
 };
 
 function InstitutionSignup() {
@@ -94,14 +96,15 @@ function InstitutionSignup() {
             }
             // Auto-login: the backend returns a token for the new institution,
             // so log straight in and land on the Subscription tab.
+            const noun = info?.is_teacher ? 'Teacher account' : 'Institution';
             const token = json?.access_token;
             if (token) {
                 dispatch(setToken(token));
-                toast.success('Institution created — you are now logged in.');
+                toast.success(`${noun} created — you are now logged in.`);
                 navigate('/InstitutionSubscription');
             } else {
-                toast.success('Institution created — you can now log in.');
-                navigate('/Institution');
+                toast.success(`${noun} created — you can now log in.`);
+                navigate(info?.is_teacher ? '/Teacher' : '/Institution');
             }
         } catch (err) {
             toast.error('Could not reach the server. Please try again.');
@@ -112,11 +115,17 @@ function InstitutionSignup() {
 
     const card = 'bg-white rounded-lg shadow-lg p-8 border border-ui-light';
 
+    // Teacher-page purchases (tiers "teacher"/"school") become teacher
+    // accounts; the backend flags the verified session so wording can match.
+    const teacherPlan = !!info?.is_teacher;
+
     return (
         <div className="min-h-screen pt-16 bg-ui-lighter">
             <div className="w-full max-w-xl mx-auto px-4 py-12">
                 <h1 className="text-3xl font-bold text-ui-dark mb-6 text-center">
-                    Complete your institution signup
+                    {info
+                        ? `Complete your ${teacherPlan ? 'teacher' : 'institution'} signup`
+                        : 'Complete your signup'}
                 </h1>
 
                 {loading && (
@@ -135,10 +144,13 @@ function InstitutionSignup() {
                 {!loading && info && info.already_registered && (
                     <div className={`${card} text-center`}>
                         <p className="text-ui mb-4">
-                            An institution has already been created for this payment.
+                            An account has already been created for this payment.
                         </p>
-                        <Link to="/Institution" className="text-primary underline">
-                            Go to institution login
+                        <Link
+                            to={teacherPlan ? '/Teacher' : '/Institution'}
+                            className="text-primary underline"
+                        >
+                            {teacherPlan ? 'Go to teacher login' : 'Go to institution login'}
                         </Link>
                     </div>
                 )}
@@ -169,7 +181,7 @@ function InstitutionSignup() {
 
                         <div>
                             <label className="block text-sm font-medium text-ui-dark mb-1">
-                                Institution name
+                                {teacherPlan ? 'Account name' : 'Institution name'}
                             </label>
                             <input
                                 type="text"
@@ -178,11 +190,17 @@ function InstitutionSignup() {
                                 onChange={(e) => setName(e.target.value)}
                                 className="w-full border border-ui-light rounded px-3 py-2"
                             />
+                            {teacherPlan && (
+                                <p className="text-xs text-ui mt-1">
+                                    Your login name — e.g. "Ms Chen — Northcote High".
+                                    Students will see it on their classrooms.
+                                </p>
+                            )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-ui-dark mb-1">
-                                Contact person
+                                {teacherPlan ? 'Your name' : 'Contact person'}
                             </label>
                             <input
                                 type="text"
@@ -236,7 +254,11 @@ function InstitutionSignup() {
                             disabled={submitting}
                             className="w-full bg-primary hover:bg-primary-hover text-white py-2 px-6 rounded font-semibold disabled:opacity-60"
                         >
-                            {submitting ? 'Creating…' : 'Create institution'}
+                            {submitting
+                                ? 'Creating…'
+                                : teacherPlan
+                                    ? 'Create account'
+                                    : 'Create institution'}
                         </button>
                     </form>
                 )}

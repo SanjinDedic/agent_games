@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import League, Team, TeamType
 from backend.schools.naming import sanitize_school_name
+from backend.team_capacity import assert_team_capacity
 
 __all__ = [
     "MAX_COLLISION_RETRIES",
@@ -64,6 +65,9 @@ def create_school_team(
     league = session.get(League, league_id)
     if not league:
         raise ValueError(f"League {league_id} not found")
+
+    # Signup links stop working once the institution's plan cap is reached.
+    assert_team_capacity(session, league.institution_id)
 
     sanitized = sanitize_school_name(school_name)
     if not sanitized:

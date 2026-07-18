@@ -15,10 +15,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import stripe
+from jose import jwt
 from sqlmodel import select
 
 from backend import config
 from backend.database.db_models import Institution, InstitutionSubscription, League
+from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.payments import payments_router as pr
 from backend.routes.payments.payments_db import (
@@ -76,6 +78,8 @@ def stripe_env(monkeypatch):
             ("club", True): "price_club_year",
             ("university", False): "price_uni_once",
             ("university", True): "price_uni_year",
+            ("teacher", False): "price_teacher_once",
+            ("school", False): "price_uni_once",
         },
     )
 
@@ -161,6 +165,36 @@ def test_create_checkout_subscription(client, mock_stripe):
     assert params["line_items"] == [{"price": "price_uni_year", "quantity": 1}]
 
 
+def test_create_checkout_teacher_tier(client, mock_stripe):
+    resp = client.post(
+        "/payments/create-checkout-session",
+        json={"tier": "teacher", "auto_renew": False},
+    )
+    assert resp.status_code == 200
+    params = mock_stripe.checkout_create.call_args.kwargs
+    assert params["mode"] == "payment"
+    assert params["line_items"] == [{"price": "price_teacher_once", "quantity": 1}]
+
+
+def test_create_checkout_school_shares_university_price(client, mock_stripe):
+    resp = client.post(
+        "/payments/create-checkout-session",
+        json={"tier": "school", "auto_renew": False},
+    )
+    assert resp.status_code == 200
+    params = mock_stripe.checkout_create.call_args.kwargs
+    assert params["line_items"] == [{"price": "price_uni_once", "quantity": 1}]
+
+
+def test_create_checkout_teacher_has_no_annual_plan(client, mock_stripe):
+    for tier in ("teacher", "school"):
+        resp = client.post(
+            "/payments/create-checkout-session",
+            json={"tier": tier, "auto_renew": True},
+        )
+        assert resp.status_code == 400
+
+
 def test_create_checkout_unknown_tier(client, mock_stripe):
     resp = client.post(
         "/payments/create-checkout-session",
@@ -200,9 +234,21 @@ def test_get_checkout_paid(client, mock_stripe):
     data = resp.json()
     assert data["email"] == "buyer@university.edu"
     assert data["tier"] == "club"
+    assert data["is_teacher"] is False
     assert data["auto_renew"] is False
     assert "1 Campus Rd" in data["address"]
     assert data["already_registered"] is False
+
+
+def test_get_checkout_reports_teacher_flag(client, mock_stripe):
+    mock_stripe.checkout_retrieve.return_value = _stripe_obj(
+        _paid_checkout(metadata={"tier": "teacher", "auto_renew": "false"})
+    )
+    resp = client.get("/payments/checkout/cs_teacher")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["tier"] == "teacher"
+    assert data["is_teacher"] is True
 
 
 def test_get_checkout_already_registered(client, db_session, mock_stripe):
@@ -267,6 +313,8 @@ def test_institution_signup_one_time(client, db_session, mock_stripe):
         select(Institution).where(Institution.name == "Signup College")
     ).first()
     assert inst is not None
+    # Institution-page tiers create normal (non-teacher) accounts.
+    assert inst.is_teacher is False
     # Email comes from the verified session, never the request body.
     assert inst.contact_email == "buyer@university.edu"
     # One-time payment => fixed 90-day window, not the subscription period end.
@@ -279,6 +327,39 @@ def test_institution_signup_one_time(client, db_session, mock_stripe):
         select(League).where(League.institution_id == inst.id)
     ).first()
     assert league is not None and league.name == "unassigned"
+
+
+@pytest.mark.parametrize("tier", ["teacher", "school"])
+def test_institution_signup_teacher_tiers_create_teacher_account(
+    client, db_session, mock_stripe, tier
+):
+    """Teacher-page tiers set is_teacher on the institution and its login JWT."""
+    mock_stripe.checkout_retrieve.return_value = _stripe_obj(
+        _paid_checkout(metadata={"tier": tier, "auto_renew": "false"})
+    )
+    name = f"Ms Chen — {tier}"
+    resp = client.post(
+        "/payments/institution-signup",
+        json={
+            "session_id": f"cs_teacher_{tier}",
+            "name": name,
+            "contact_person": "Ms Chen",
+            "password": "longpassword",
+        },
+    )
+    assert resp.status_code == 200
+
+    inst = db_session.exec(
+        select(Institution).where(Institution.name == name)
+    ).first()
+    assert inst.is_teacher is True
+    assert inst.subscription.tier == tier
+
+    # The auto-login token carries the claim that drives classroom wording.
+    decoded = jwt.decode(
+        resp.json()["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+    )
+    assert decoded["is_teacher"] is True
 
 
 def test_institution_signup_subscription_uses_period_end(client, db_session, mock_stripe):

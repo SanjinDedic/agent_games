@@ -51,7 +51,7 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/", label: "Home" },
     { to: "/Demo", label: "Demo" },
     { to: "/Institution", label: "Institutions" },
-    { to: "/Teacher", label: "Teachers" },
+    { to: "/Teachers", label: "Teachers" },
     { to: "/Leaderboards", label: "Leaderboards" },
     { to: "/About", label: "About" },
     { to: "/AgentLogin", label: "Student Login" },

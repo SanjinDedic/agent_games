@@ -12,6 +12,7 @@ from backend.database.db_models import (
     TeamType,
     SimulationResult,
 )
+from backend.team_capacity import assert_team_capacity
 from backend.time_utils import ensure_utc, utc_now
 from backend.utils import process_simulation_results
 
@@ -394,6 +395,9 @@ def create_team_and_assign_to_league(
     league = session.get(League, league_id)
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
+
+    # Signup links stop working once the institution's plan cap is reached.
+    assert_team_capacity(session, league.institution_id)
 
     # Check if team name already exists within scope. Names are unique
     # per-institution (a bare name check would wrongly reject a name already
