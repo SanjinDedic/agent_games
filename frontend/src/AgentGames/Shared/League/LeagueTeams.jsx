@@ -6,6 +6,7 @@ import { setTeams } from '../../../slices/teamsSlice';
 import { selectToken } from '../../../slices/authSlice';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 import { authFetch } from '../../../utils/authFetch';
+import { useTerms } from '../terminology';
 
 /**
  * Shared component for managing teams in a league
@@ -15,6 +16,7 @@ import { authFetch } from '../../../utils/authFetch';
  * @param {string} props.userRole - User role ('admin' or 'institution')
  */
 const LeagueTeams = ({ selected_league_name, userRole }) => {
+    const T = useTerms();
     const dispatch = useDispatch();
     const teams = useSelector((state) => state.teams.list);
     const leagues = useSelector((state) => state.leagues.list);
@@ -85,7 +87,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
         // Update Redux with fresh team data
         dispatch(setTeams(data.teams));
       } else {
-        toast.error(data.detail || 'Failed to load teams');
+        toast.error(data.detail || `Failed to load ${T.teams}`);
       }
     } catch (error) {
       console.error("Error fetching teams:", error);
@@ -96,12 +98,12 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
 
   const handleAssignTeam = async () => {
     if (!assignTeamId || !selected_league_name) {
-      toast.error("Please select a team to assign");
+      toast.error(`Please select a ${T.team} to assign`);
       return;
     }
 
     if (!selectedLeagueId) {
-      toast.error("Couldn't find league ID for selected league");
+      toast.error(`Couldn't find ${T.league} ID for selected ${T.league}`);
       return;
     }
 
@@ -117,7 +119,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
 
   const handleUnassignTeam = async (team) => {
     const confirm = window.confirm(
-      `Move '${team.name}' to the 'unassigned' league?`
+      `Move '${team.name}' to the 'unassigned' ${T.league}?`
     );
     if (!confirm) return;
 
@@ -142,7 +144,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
       <div className="w-full">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-ui-dark">
-            Teams in League
+            {`${T.Teams} in ${T.League}`}
           </h2>
           <div className="flex gap-2">
             <button
@@ -150,13 +152,13 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
               disabled={isLoadingTeams}
               className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded transition-colors"
             >
-              {isLoadingTeams ? "Refreshing..." : "Refresh Teams"}
+              {isLoadingTeams ? "Refreshing..." : `Refresh ${T.Teams}`}
             </button>
             <button
               onClick={() => setShowAssignForm(!showAssignForm)}
               className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded transition-colors"
             >
-              {showAssignForm ? "Cancel" : "Assign Team"}
+              {showAssignForm ? "Cancel" : `Assign ${T.Team}`}
             </button>
           </div>
         </div>
@@ -169,7 +171,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
                 onChange={(e) => setAssignTeamId(e.target.value)}
                 className="flex-grow p-2 border border-ui-light rounded"
               >
-                <option value="">Select a team</option>
+                <option value="">{`Select a ${T.team}`}</option>
                 {unassignedTeams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.name}
@@ -214,7 +216,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
           </div>
         ) : (
           <div className="text-center py-4 bg-ui-lighter rounded-lg">
-            <p className="text-ui">No teams assigned to this league.</p>
+            <p className="text-ui">{`No ${T.teams} assigned to this ${T.league}.`}</p>
           </div>
         )}
       </div>

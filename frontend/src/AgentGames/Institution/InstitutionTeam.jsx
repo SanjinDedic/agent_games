@@ -5,8 +5,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setTeams } from '../../slices/teamsSlice';
 import { authFetch } from '../../utils/authFetch';
 import { selectToken } from '../../slices/authSlice';
+import { useTerms } from '../Shared/terminology';
 
 function InstitutionTeam() {
+  const T = useTerms();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -27,7 +29,7 @@ function InstitutionTeam() {
       if (response.ok && Array.isArray(data.teams)) {
         dispatch(setTeams(data.teams));
       } else {
-        toast.error(data.detail || 'Failed to load teams');
+        toast.error(data.detail || `Failed to load ${T.teams}`);
       }
     } catch (error) {
       console.error('Error fetching teams:', error);
@@ -49,7 +51,7 @@ function InstitutionTeam() {
 
   const handleAddTeam = async () => {
     if (!team.name.trim() || !team.password.trim()) {
-      toast.error('Team name and password are required');
+      toast.error(`${T.Team} name and password are required`);
       return;
     }
 
@@ -70,19 +72,19 @@ function InstitutionTeam() {
       if (response.ok) {
         setTeam({ name: '', password: '', school_name: '' });
         setShowAddTeamForm(false);
-        toast.success('Team created successfully');
+        toast.success(`${T.Team} created successfully`);
         await fetchAllTeams();
       } else {
-        toast.error(data.detail || 'Failed to add team');
+        toast.error(data.detail || `Failed to add ${T.team}`);
       }
     } catch (error) {
       console.error('Error adding team:', error);
-      toast.error('Failed to add team');
+      toast.error(`Failed to add ${T.team}`);
     }
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete team "${name}"?`)) return;
+    if (!window.confirm(`Are you sure you want to delete ${T.team} "${name}"?`)) return;
     try {
       const response = await authFetch(`${apiUrl}/institution/delete-team`, {
         method: 'POST',
@@ -97,11 +99,11 @@ function InstitutionTeam() {
         toast.success(data.message);
         await fetchAllTeams();
       } else {
-        toast.error(data.detail || 'Failed to delete team');
+        toast.error(data.detail || `Failed to delete ${T.team}`);
       }
     } catch (error) {
       console.error('Error deleting team:', error);
-      toast.error('Failed to delete team');
+      toast.error(`Failed to delete ${T.team}`);
     }
   };
 
@@ -117,11 +119,11 @@ function InstitutionTeam() {
     <div className="min-h-screen bg-ui-lighter pt-20 px-6 pb-8">
       <div className="max-w-[1800px] mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold text-ui-dark mb-6">Institution Team Management</h1>
+          <h1 className="text-2xl font-bold text-ui-dark mb-6">{`${T.Team} Management`}</h1>
 
           {isLoading ? (
             <div className="flex justify-center items-center h-32">
-              <div className="text-lg text-ui-dark">Loading teams...</div>
+              <div className="text-lg text-ui-dark">{`Loading ${T.teams}...`}</div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -131,7 +133,7 @@ function InstitutionTeam() {
                     <tr>
                       {Array(4).fill(null).map((_, index) => (
                         <th key={index} className="px-4 py-3 text-left text-lg font-semibold text-ui-dark bg-ui-lighter">
-                          Team Name
+                          {`${T.Team} Name`}
                         </th>
                       ))}
                     </tr>
@@ -150,7 +152,7 @@ function InstitutionTeam() {
                                 <button
                                   onClick={() => handleDelete(team.id, team.name)}
                                   className="p-1.5 text-xs bg-danger hover:bg-danger-hover text-white rounded"
-                                  title="Delete team"
+                                  title={`Delete ${T.team}`}
                                 >
                                   X
                                 </button>
@@ -172,19 +174,19 @@ function InstitutionTeam() {
                   onClick={() => setShowAddTeamForm(!showAddTeamForm)}
                   className="w-full bg-success hover:bg-success-hover text-white py-3 rounded-lg text-lg font-medium transition-colors"
                 >
-                  {showAddTeamForm ? 'Cancel' : 'Add a new team'}
+                  {showAddTeamForm ? 'Cancel' : `Add a new ${T.team}`}
                 </button>
 
                 {showAddTeamForm && (
                   <div className="bg-ui-lighter p-6 rounded-lg space-y-4">
-                    <h2 className="text-xl font-semibold text-ui-dark">Add Team</h2>
+                    <h2 className="text-xl font-semibold text-ui-dark">{`Add ${T.Team}`}</h2>
                     <div className="space-y-4">
                       <input
                         type="text"
                         name="name"
                         value={team.name}
                         onChange={handleChange}
-                        placeholder="Enter team name *"
+                        placeholder={`Enter ${T.team} name *`}
                         className="w-full p-3 border border-ui-light rounded-lg text-base focus:ring-2 focus:ring-primary focus:border-primary"
                       />
                       <input
@@ -192,7 +194,7 @@ function InstitutionTeam() {
                         name="password"
                         value={team.password}
                         onChange={handleChange}
-                        placeholder="Enter team password *"
+                        placeholder={`Enter ${T.team} password *`}
                         className="w-full p-3 border border-ui-light rounded-lg text-base focus:ring-2 focus:ring-primary focus:border-primary"
                       />
                       <input
@@ -207,7 +209,7 @@ function InstitutionTeam() {
                         onClick={handleAddTeam}
                         className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-lg text-base font-medium transition-colors"
                       >
-                        Add Team
+                        {`Add ${T.Team}`}
                       </button>
                     </div>
                   </div>

@@ -5,6 +5,7 @@ import Editor from "@monaco-editor/react";
 import { toast } from "react-toastify";
 import { selectToken } from "../../slices/authSlice";
 import { authFetch } from "../../utils/authFetch";
+import { useTerms } from '../Shared/terminology';
 
 const verdictColor = (verdict) => {
   switch (verdict) {
@@ -96,6 +97,7 @@ const TEMPLATE_ZONES = [
 const TEMPLATE_MAX = 100;
 
 function InstitutionLeagueSubmissions() {
+  const T = useTerms();
   const { leagueId } = useParams();
   const navigate = useNavigate();
 
@@ -178,7 +180,7 @@ function InstitutionLeagueSubmissions() {
     if (!selectedTeam || !leagueId) return;
     const teamId = teamIds[selectedTeam];
     if (!teamId) {
-      toast.error("Team id not found");
+      toast.error(`${T.Team} id not found`);
       return;
     }
     const proceed = window.confirm(
@@ -238,10 +240,10 @@ function InstitutionLeagueSubmissions() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-ui-dark">
-            League Submissions{leagueName ? `: ${leagueName}` : ""}
+            {`${T.League} Submissions`}{leagueName ? `: ${leagueName}` : ""}
           </h1>
           <div className="flex items-center gap-2 text-ui">
-            <span className="text-sm">League ID:</span>
+            <span className="text-sm">{`${T.League} ID:`}</span>
             <span className="text-sm font-mono px-2 py-1 bg-white rounded border border-ui-light">
               {leagueId}
             </span>
@@ -254,7 +256,7 @@ function InstitutionLeagueSubmissions() {
         ) : error ? (
           <div className="p-6 bg-white rounded-lg shadow text-danger">{error}</div>
         ) : teamList.length === 0 ? (
-          <div className="p-6 bg-white rounded-lg shadow">No submissions found for this league.</div>
+          <div className="p-6 bg-white rounded-lg shadow">{`No submissions found for this ${T.league}.`}</div>
         ) : (
           <div className="flex flex-col lg:flex-row gap-4 h-[80vh]">
             {/* Left: Monaco Editor + navigation */}
@@ -319,7 +321,7 @@ function InstitutionLeagueSubmissions() {
             {/* Right: Team list */}
             <div className="w-full lg:w-1/2 bg-white rounded-lg shadow p-4 overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-ui-dark">Teams</h2>
+                <h2 className="text-lg font-semibold text-ui-dark">{T.Teams}</h2>
                 {selectedTeam && (
                   <button
                     onClick={handleAssessPlagiarism}

@@ -26,6 +26,14 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/InstitutionLeagueSimulation", label: "League Simulation" },
     { to: "/InstitutionSubscription", label: "Subscription" },
   ],
+  // Teacher accounts share the institution routes; only the wording changes.
+  teacher: [
+    { to: "/InstitutionTeam", label: "Student Section" },
+    { to: "/InstitutionProgress", label: "Student Progress" },
+    { to: "/InstitutionLeague", label: "Classroom Management" },
+    { to: "/InstitutionLeagueSimulation", label: "Classroom Simulation" },
+    { to: "/InstitutionSubscription", label: "Subscription" },
+  ],
   team: [
     { to: "/", label: "Home" },
     { to: "/AgentSubmission", label: "Submit Agent" },
@@ -43,9 +51,10 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/", label: "Home" },
     { to: "/Demo", label: "Demo" },
     { to: "/Institution", label: "Institutions" },
+    { to: "/Teacher", label: "Teachers" },
     { to: "/Leaderboards", label: "Leaderboards" },
     { to: "/About", label: "About" },
-    { to: "/AgentLogin", label: "Team Login" },
+    { to: "/AgentLogin", label: "Student Login" },
   ],
 };
 
@@ -53,7 +62,7 @@ function resolveNavGroup(currentUser, isAuthenticated) {
   if (!isAuthenticated) return "public";
   const role = currentUser?.role;
   if (role === "admin") return "admin";
-  if (role === "institution") return "institution";
+  if (role === "institution") return currentUser?.is_teacher ? "teacher" : "institution";
   if (role === "student") return currentUser?.is_demo ? "demo" : "team";
   return "public";
 }
@@ -115,7 +124,7 @@ function AgentGamesNavbar() {
     if (userRole === "admin") {
       navigate("/Admin");
     } else if (userRole === "institution") {
-      navigate("/Institution");
+      navigate(currentUser?.is_teacher ? "/Teacher" : "/Institution");
     } else {
       navigate("/AgentLogin");
     }

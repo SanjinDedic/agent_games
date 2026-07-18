@@ -80,6 +80,7 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
         contact_person=institution_data.contact_person,
         contact_email=institution_data.contact_email,
         created_date=now,
+        is_teacher=institution_data.is_teacher,
     )
     institution.set_password(institution_data.password)
 
@@ -118,6 +119,7 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
         "id": institution.id,
         "name": institution.name,
         "contact_person": institution.contact_person,
+        "is_teacher": institution.is_teacher,
     }
 
 
@@ -140,6 +142,8 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
             institution.contact_email = institution_data.contact_email
         if institution_data.password is not None:
             institution.set_password(institution_data.password)
+        if institution_data.is_teacher is not None:
+            institution.is_teacher = institution_data.is_teacher
 
         # Subscription fields live on the 1:1 InstitutionSubscription record.
         if (
@@ -479,6 +483,7 @@ def get_all_institutions(session: Session) -> Dict:
                 "contact_person": inst.contact_person,
                 "contact_email": inst.contact_email,
                 "created_date": inst.created_date,
+                "is_teacher": inst.is_teacher,
                 "subscription_active": (
                     inst.subscription.subscription_active
                     if inst.subscription

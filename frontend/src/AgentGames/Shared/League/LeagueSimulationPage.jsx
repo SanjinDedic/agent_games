@@ -18,8 +18,10 @@ import FeedbackSelector from "../../Feedback/FeedbackSelector";
 
 // Import hooks
 import useLeagueAPI from "../hooks/useLeagueAPI";
+import { useTerms } from "../terminology";
 
 const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
+  const T = useTerms();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -134,7 +136,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
         <div className="mb-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-ui-dark mb-4">
-              League Simulation & Results
+              {`${T.League} Simulation & Results`}
             </h1>
             <div className="flex items-center gap-2">
               {userRole === "institution" && currentLeague?.id && (
@@ -145,16 +147,16 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
                     )
                   }
                   className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors"
-                  title="Open latest code submissions for all teams in this league"
+                  title={`Open latest code submissions for all ${T.teams} in this ${T.league}`}
                 >
-                  View League Submissions
+                  {`View ${T.League} Submissions`}
                 </button>
               )}
               <button
                 onClick={handleGoToManagement}
                 className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors"
               >
-                Go to League Management
+                {`Go to ${T.League} Management`}
               </button>
             </div>
           </div>
@@ -167,7 +169,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
             {/* League Selection */}
             <div className="bg-white rounded-lg shadow-lg p-4">
               <h2 className="text-xl font-semibold text-ui-dark mb-4">
-                Select League
+                {`Select ${T.League}`}
               </h2>
               <LeagueCardList userRole={userRole} />
             </div>
@@ -199,8 +201,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
               {isPlaceholderLeague ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-ui-lighter rounded-lg">
                   <p className="text-ui-dark text-lg">
-                    The "unassigned" league is a placeholder for teams without
-                    a league.
+                    {`The "unassigned" ${T.league} is a placeholder for ${T.teams} without a ${T.league}.`}
                   </p>
                   <p className="text-ui mt-2">
                     It has no game, so simulations cannot be run on it.
@@ -245,7 +246,7 @@ const LeagueSimulationPage = ({ userRole, redirectPath, onUnauthorized }) => {
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 bg-ui-lighter rounded-lg">
                   <p className="text-ui-dark text-lg">
-                    No simulation results found for this league.
+                    {`No simulation results found for this ${T.league}.`}
                   </p>
                   <p className="text-ui mt-2">
                     Run a simulation using the controls on the left.

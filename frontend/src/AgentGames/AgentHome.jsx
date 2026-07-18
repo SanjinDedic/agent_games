@@ -23,7 +23,7 @@ const Homepage = () => {
             </a>
             <a href="/AgentLogin" className="inline-block">
               <button className="bg-white text-primary hover:bg-league-text hover:text-primary-dark shadow-lg text-xl py-3 px-8 rounded">
-                Team Login
+                Student Login
               </button>
             </a>
             <a href="/Institutions" className="inline-block">

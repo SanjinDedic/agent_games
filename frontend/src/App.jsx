@@ -157,6 +157,7 @@ function App() {
           />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
+          <Route path="Teacher" element={<Institution variant="teacher" />} />
           <Route
             path="InstitutionLeague"
             element={

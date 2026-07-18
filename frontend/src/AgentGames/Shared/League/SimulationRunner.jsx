@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addSimulationResult } from '../../../slices/leaguesSlice';
 import useLeagueAPI from '../hooks/useLeagueAPI';
+import { useTerms } from '../terminology';
 
 /**
  * Component for running league simulations
@@ -12,6 +13,7 @@ import useLeagueAPI from '../hooks/useLeagueAPI';
  * @param {string} props.userRole - User role ('admin' or 'institution')
  */
 const SimulationRunner = ({ league, userRole }) => {
+  const T = useTerms();
   const dispatch = useDispatch();
   const rewards = useSelector((state) => state.leagues.currentRewards);
   const [simulationNumber, setSimulationNumber] = useState(1);
@@ -83,12 +85,11 @@ const SimulationRunner = ({ league, userRole }) => {
           <div className="text-sm text-ui">
             {isPlaceholder ? (
               <>
-                The "unassigned" league is a placeholder for teams without a
-                league — simulations cannot be run on it.
+                {`The "unassigned" ${T.league} is a placeholder for ${T.teams} without a ${T.league} — simulations cannot be run on it.`}
               </>
             ) : (
               <>
-                Selected League: {league.name} ({league.game})
+                {`Selected ${T.League}: `}{league.name} ({league.game})
               </>
             )}
           </div>

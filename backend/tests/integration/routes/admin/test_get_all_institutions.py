@@ -51,7 +51,7 @@ def institutions_setup(db_session: Session) -> list:
     db_session.add(team1)
     db_session.commit()
     
-    # Create second institution
+    # Create second institution (a teacher account)
     institution2 = build_institution(
         name="second_institution",
         contact_person="Second Contact",
@@ -60,6 +60,7 @@ def institutions_setup(db_session: Session) -> list:
         subscription_active=False,  # Inactive
         subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
+        is_teacher=True,
     )
     db_session.add(institution2)
     db_session.commit()
@@ -113,7 +114,13 @@ def test_get_all_institutions_success(client, auth_headers, institutions_setup):
         assert "subscription_expiry" in inst
         assert "team_count" in inst
         assert "league_count" in inst
-    
+        assert "is_teacher" in inst
+
+    # is_teacher reflects the stored flag
+    by_name = {inst["name"]: inst for inst in data["institutions"]}
+    assert by_name["first_institution"]["is_teacher"] is False
+    assert by_name["second_institution"]["is_teacher"] is True
+
     # Verify first institution has the expected team and league counts
     first_inst = next(
         inst for inst in data["institutions"]

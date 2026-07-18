@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import LeagueTutorialSelector from "./LeagueTutorialSelector";
 import useLeagueAPI from "../hooks/useLeagueAPI";
+import { useTerms } from "../terminology";
 
 /**
  * "Tutorials" section for an existing league: shows which tutorials are
@@ -8,6 +9,7 @@ import useLeagueAPI from "../hooks/useLeagueAPI";
  * change the set. Saving replaces the league's whole attachment list.
  */
 function LeagueTutorials({ leagueId, userRole }) {
+  const T = useTerms();
   const { getLeagueTutorials, updateLeagueTutorials } = useLeagueAPI(userRole);
 
   const [selectedIds, setSelectedIds] = useState([]);
@@ -25,7 +27,7 @@ function LeagueTutorials({ leagueId, userRole }) {
         setSelectedIds(result.tutorialIds);
         setSavedIds(result.tutorialIds);
       } else {
-        setLoadError(result.error || "Failed to load league tutorials");
+        setLoadError(result.error || `Failed to load ${T.league} tutorials`);
       }
     };
     load();
@@ -62,7 +64,7 @@ function LeagueTutorials({ leagueId, userRole }) {
         </button>
       </div>
       <p className="text-sm text-ui mb-2">
-        Teams in this league only see the tutorials selected here.
+        {`${T.Teams} in this ${T.league} only see the tutorials selected here.`}
       </p>
       {loadError ? (
         <p className="text-sm text-danger">{loadError}</p>

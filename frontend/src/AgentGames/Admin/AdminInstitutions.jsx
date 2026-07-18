@@ -21,6 +21,7 @@ function AdminInstitutions() {
     contact_email: '',
     password: '',
     subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default to 1 year
+    is_teacher: false,
   });
 
   useEffect(() => {
@@ -95,6 +96,7 @@ function AdminInstitutions() {
             contact_email: '',
             password: '',
             subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+            is_teacher: false,
           });
           fetchInstitutions(); // Refresh the list
         } else {
@@ -104,6 +106,35 @@ function AdminInstitutions() {
       })
       .catch(error => {
         console.error('Error creating institution:', error);
+        toast.error('Error connecting to server');
+        setIsLoading(false);
+      });
+  };
+
+  const handleToggleTeacher = (institution) => {
+    setIsLoading(true);
+    authFetch(`${apiUrl}/admin/institution-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ id: institution.id, is_teacher: !institution.is_teacher }),
+    })
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
+          toast.success(
+            `"${institution.name}" is now ${institution.is_teacher ? 'an institution' : 'a teacher'} account`
+          );
+          fetchInstitutions();
+        } else {
+          toast.error(data.detail || 'Failed to update institution');
+        }
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error updating institution:', error);
         toast.error('Error connecting to server');
         setIsLoading(false);
       });
@@ -281,6 +312,19 @@ function AdminInstitutions() {
                       minDate={new Date()}
                     />
                   </div>
+                  <div className="flex items-center gap-2 self-end pb-2">
+                    <input
+                      type="checkbox"
+                      id="is_teacher"
+                      name="is_teacher"
+                      checked={institutionForm.is_teacher}
+                      onChange={handleInputChange}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="is_teacher" className="text-ui-dark">
+                      Teacher account (classroom/student wording)
+                    </label>
+                  </div>
                 </div>
                 <div className="flex justify-end">
                   <button
@@ -313,6 +357,7 @@ function AdminInstitutions() {
                         <th className="px-4 py-2 text-left text-ui-dark">Name</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Contact</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Email</th>
+                        <th className="px-4 py-2 text-left text-ui-dark">Type</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Teams</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Leagues</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Subscription</th>
@@ -327,7 +372,19 @@ function AdminInstitutions() {
                           <tr key={institution.id} className="border-b border-ui-light hover:bg-ui-lighter/50">
                             <td className="px-4 py-3">{institution.name}</td>
                             <td className="px-4 py-3">{institution.contact_person}</td>
-                            <td className="px-4 py-3">{institution.contact_email}</td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => handleToggleTeacher(institution)}
+                                title="Click to switch type (takes effect on the institution's next login)"
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  institution.is_teacher
+                                    ? 'bg-primary-light text-white'
+                                    : 'bg-ui-lighter text-ui-dark'
+                                }`}
+                              >
+                                {institution.is_teacher ? 'Teacher' : 'Institution'}
+                              </button>
+                            </td>
                             <td className="px-4 py-3">{institution.team_count}</td>
                             <td className="px-4 py-3">{institution.league_count}</td>
                             <td className="px-4 py-3">

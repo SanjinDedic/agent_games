@@ -142,7 +142,7 @@ function InstitutionSubscription() {
 
             <div className={card}>
               <h2 className="text-xl font-semibold text-ui-dark mb-4">Contact</h2>
-              <Row label="Institution">{data.institution_name}</Row>
+              <Row label={data.is_teacher ? 'Teacher account' : 'Institution'}>{data.institution_name}</Row>
               <Row label="Contact person">{data.contact_person || '—'}</Row>
               <Row label="Contact email">{data.contact_email || '—'}</Row>
               <Row label="Address">{data.address || '—'}</Row>

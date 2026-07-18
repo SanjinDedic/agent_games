@@ -7,6 +7,7 @@ import { authFetch } from "../../../utils/authFetch";
 import { selectToken } from '../../../slices/authSlice';
 import LeagueTutorialSelector from "./LeagueTutorialSelector";
 import useLeagueAPI from "../hooks/useLeagueAPI";
+import { useTerms } from "../terminology";
 
 const EMPTY_FORM = {
   leagueName: "",
@@ -26,6 +27,7 @@ const EMPTY_FORM = {
  * modal shows the signup link until dismissed.
  */
 const LeagueCreation = ({ userRole }) => {
+  const T = useTerms();
   const token = useSelector(selectToken);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const { fetchUserLeagues } = useLeagueAPI(userRole);
@@ -117,7 +119,7 @@ const LeagueCreation = ({ userRole }) => {
 
   const validateForm = () => {
     if (!leagueInfo.leagueName.trim()) {
-      setError("League name is required");
+      setError(`${T.League} name is required`);
       return false;
     }
 
@@ -185,7 +187,7 @@ const LeagueCreation = ({ userRole }) => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success("League created successfully!");
+        toast.success(`${T.League} created successfully!`);
         fetchUserLeagues();
 
         // Create the signup URL from the signup token
@@ -202,7 +204,7 @@ const LeagueCreation = ({ userRole }) => {
         // Reset form after successful creation
         setLeagueInfo({ ...EMPTY_FORM, gameName: games[0] || "" });
       } else {
-        setError(data.detail || "Failed to create league");
+        setError(data.detail || `Failed to create ${T.league}`);
       }
     } catch (err) {
       console.error("Error creating league:", err);
@@ -214,16 +216,15 @@ const LeagueCreation = ({ userRole }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-bold text-ui-dark mb-4">Create New League</h2>
+      <h2 className="text-xl font-bold text-ui-dark mb-4">{`Create New ${T.League}`}</h2>
       <p className="text-sm text-ui mb-4">
-        Set up the game, signup options, and the tutorials teams in the league
-        will see.
+        {`Set up the game, signup options, and the tutorials ${T.teams} in the ${T.league} will see.`}
       </p>
       <button
         onClick={() => setIsOpen(true)}
         className="w-full py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors"
       >
-        Create League
+        {`Create ${T.League}`}
       </button>
 
       {isOpen && (
@@ -231,7 +232,7 @@ const LeagueCreation = ({ userRole }) => {
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-ui-dark">
-                Create New League
+                {`Create New ${T.League}`}
               </h2>
               <button
                 onClick={closeModal}
@@ -245,10 +246,10 @@ const LeagueCreation = ({ userRole }) => {
             {signupUrl ? (
               <div className="p-4 bg-success-light rounded-lg">
                 <h4 className="font-medium text-success mb-2">
-                  League Created Successfully
+                  {`${T.League} Created Successfully`}
                 </h4>
                 <p className="text-sm text-ui-dark mb-2">
-                  Share this link for teams to sign up directly:
+                  {`Share this link for ${T.teams} to sign up directly:`}
                 </p>
                 <div className="flex items-center">
                   <input
@@ -282,14 +283,11 @@ const LeagueCreation = ({ userRole }) => {
                   </button>
                 </div>
                 <p className="mt-2 text-sm text-ui-dark">
-                  Teams who use this link will be directly assigned to this
-                  league upon signup.
+                  {`${T.Teams} who use this link will be directly assigned to this ${T.league} upon signup.`}
                 </p>
                 {createdSchoolLeague && (
                   <p className="mt-2 text-sm text-danger font-medium">
-                    School league: tell students to save their passwords. There
-                    is no recovery &mdash; if they lose it they will need to
-                    sign up again under a new team number.
+                    {`School ${T.league}: tell students to save their passwords. There is no recovery — if they lose it they will need to sign up again under a new ${T.team} number.`}
                   </p>
                 )}
                 <button
@@ -303,7 +301,7 @@ const LeagueCreation = ({ userRole }) => {
               <>
                 <div className="mb-4">
                   <label htmlFor="leagueName" className="block text-ui-dark mb-1">
-                    League Name
+                    {`${T.League} Name`}
                   </label>
                   <input
                     type="text"
@@ -312,7 +310,7 @@ const LeagueCreation = ({ userRole }) => {
                     value={leagueInfo.leagueName}
                     onChange={handleChange}
                     className="w-full p-2 border border-ui-light rounded"
-                    placeholder="Enter league name"
+                    placeholder={`Enter ${T.league} name`}
                   />
                 </div>
 
@@ -341,8 +339,7 @@ const LeagueCreation = ({ userRole }) => {
                 <div className="mb-4">
                   <label className="block text-ui-dark mb-1">Tutorials</label>
                   <p className="text-sm text-ui mb-2">
-                    Teams in this league will only see the tutorials selected
-                    here. Leave empty for no tutorials.
+                    {`${T.Teams} in this ${T.league} will only see the tutorials selected here. Leave empty for no tutorials.`}
                   </p>
                   <LeagueTutorialSelector
                     selectedIds={leagueInfo.tutorialIds}
@@ -360,8 +357,7 @@ const LeagueCreation = ({ userRole }) => {
                     className="mr-2"
                   />
                   <label htmlFor="schoolLeague" className="text-ui-dark">
-                    School league (students pick their school from a dropdown;
-                    team names auto-generated; no email, no password recovery)
+                    {`School ${T.league} (students pick their school from a dropdown; ${T.team} names auto-generated; no email, no password recovery)`}
                   </label>
                 </div>
 
@@ -463,7 +459,7 @@ const LeagueCreation = ({ userRole }) => {
                     minDate={new Date()}
                   />
                   <p className="text-sm text-ui mt-1">
-                    If not specified, the league will expire in 24 hours.
+                    {`If not specified, the ${T.league} will expire in 24 hours.`}
                   </p>
                 </div>
 
@@ -479,7 +475,7 @@ const LeagueCreation = ({ userRole }) => {
                     disabled={isLoading}
                     className="flex-1 py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors disabled:bg-ui-light"
                   >
-                    {isLoading ? "Creating..." : "Create League"}
+                    {isLoading ? "Creating..." : `Create ${T.League}`}
                   </button>
                   <button
                     onClick={closeModal}

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import StrategyTooltip from './StrategyTooltip';
+import { useTerms } from '../terminology';
 
 const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
+  const T = useTerms();
   const [results, setResults] = useState([]);
   const [tableColumns, setTableColumns] = useState([]);
   const [isTableVisible, setIsTableVisible] = useState(tablevisible);
@@ -59,7 +61,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
             <thead>
               <tr className="bg-league-blue text-white">
                 <th className="p-4 text-left font-semibold border-b border-ui-light">Ranking</th>
-                <th className="p-4 text-left font-semibold border-b border-ui-light">Team</th>
+                <th className="p-4 text-left font-semibold border-b border-ui-light">{T.Team}</th>
                 <th className="p-4 text-left font-semibold border-b border-ui-light">Games Played</th>
                 <th className="p-4 text-left font-semibold border-b border-ui-light">Total Points</th>
                 {tableColumns.map((column, index) => (

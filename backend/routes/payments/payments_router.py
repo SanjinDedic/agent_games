@@ -131,6 +131,7 @@ def _institution_access_token(institution: Institution) -> str:
             "role": "institution",
             "institution_id": institution.id,
             "institution_name": institution.name,
+            "is_teacher": institution.is_teacher,
         },
         expires_delta=timedelta(minutes=INSTITUTION_TOKEN_EXPIRY_MINUTES),
     )

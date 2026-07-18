@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
+import { useTerms } from '../../../Shared/terminology';
 
 // Thirteen simulation rankings. total_points are tournament placement points
 // (higher = better). Avg Finish is the mean placing (1 = best), Games Won counts
 // first-place finishes, Bombs is how many four-of-a-kinds were dropped.
 const ThirteenResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
+    const T = useTerms();
     const [results, setResults] = useState([]);
     const [isTableVisible, setIsTableVisible] = useState(tablevisible);
     const userTeam = useSelector((state) => state.teams.currentTeam);
@@ -49,7 +51,7 @@ const ThirteenResultsDisplay = ({ data, highlight = true, data_message = '', tab
                         <thead>
                             <tr className="bg-league-blue text-white">
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Ranking</th>
-                                <th className="p-4 text-left font-semibold border-b border-ui-light">Team</th>
+                                <th className="p-4 text-left font-semibold border-b border-ui-light">{T.Team}</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Games Won</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Avg Finish ↓</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Bombs</th>

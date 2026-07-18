@@ -98,6 +98,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         user_data = {
             "role": user_role,
             "institution_id": payload.get("institution_id"),
+            "is_teacher": payload.get("is_teacher", False),
         }
 
         if user_role in (ROLE_STUDENT, ROLE_AI_AGENT):

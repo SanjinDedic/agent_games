@@ -14,6 +14,7 @@ class CreateInstitution(BaseModel):
     contact_email: EmailStr
     password: str
     subscription_expiry: datetime
+    is_teacher: bool = False
 
     @field_validator("name")
     def validate_name(cls, v):
@@ -32,6 +33,7 @@ class InstitutionUpdate(BaseModel):
     subscription_active: Optional[bool] = None
     subscription_expiry: Optional[datetime] = None
     password: Optional[str] = None
+    is_teacher: Optional[bool] = None
 
 
 class DeleteInstitution(BaseModel):

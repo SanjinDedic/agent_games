@@ -4,7 +4,7 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 import bcrypt as _bcrypt
-from sqlalchemy import JSON, Column, DateTime, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text, text
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
 from backend.time_utils import utc_now
@@ -52,6 +52,13 @@ class Institution(SQLModel, table=True):
     address: Optional[str] = None
     created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     password_hash: str
+    # Individual-teacher account: same role/permissions as any institution, but
+    # the frontend swaps league->classroom / team->student wording (claim is
+    # stamped into institution and student JWTs at login).
+    is_teacher: bool = Field(
+        default=False,
+        sa_column=Column(Boolean(), nullable=False, server_default=text("false")),
+    )
     teams: List["Team"] = Relationship(back_populates="institution")
     leagues: List["League"] = Relationship(back_populates="institution")
     subscription: Optional["InstitutionSubscription"] = Relationship(

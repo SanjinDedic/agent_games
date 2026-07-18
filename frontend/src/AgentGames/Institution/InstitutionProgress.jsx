@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { authFetch } from '../../utils/authFetch';
 import { selectToken } from '../../slices/authSlice';
+import { useTerms } from '../Shared/terminology';
 
 const formatTimestamp = (ts) => {
   if (!ts) return '—';
@@ -53,6 +54,7 @@ const CompletionBar = ({ passed, total }) => {
 };
 
 function InstitutionProgress() {
+  const T = useTerms();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
 
@@ -75,11 +77,11 @@ function InstitutionProgress() {
           setTeams(data.teams || []);
           setTutorials(data.tutorials || []);
         } else {
-          setError(data.detail || 'Failed to load team progress');
+          setError(data.detail || `Failed to load ${T.team} progress`);
         }
       } catch (e) {
         console.error('Error fetching team progress:', e);
-        setError('Error fetching team progress');
+        setError(`Error fetching ${T.team} progress`);
       } finally {
         setLoading(false);
       }
@@ -93,7 +95,7 @@ function InstitutionProgress() {
         {loading ? (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-center items-center h-32">
-              <div className="text-lg text-ui-dark">Loading team progress...</div>
+              <div className="text-lg text-ui-dark">{`Loading ${T.team} progress...`}</div>
             </div>
           </div>
         ) : error ? (
@@ -102,17 +104,17 @@ function InstitutionProgress() {
           <>
             {/* Section 1: team submissions overview */}
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h1 className="text-2xl font-bold text-ui-dark mb-6">Team Progress</h1>
+              <h1 className="text-2xl font-bold text-ui-dark mb-6">{`${T.Team} Progress`}</h1>
               {teams.length === 0 ? (
-                <p className="text-ui">No teams found for this institution.</p>
+                <p className="text-ui">{`No ${T.teams} found for this account.`}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-ui-lighter">
-                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">Team</th>
+                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">{T.Team}</th>
                         <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">School</th>
-                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">League</th>
+                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">{T.League}</th>
                         <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Attempts</th>
                         <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Validated</th>
                         <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Hints Used</th>
@@ -148,7 +150,7 @@ function InstitutionProgress() {
                             {team.achieved_first && (
                               <span
                                 className="text-success text-xl font-bold"
-                                title="This team has reached 1st place"
+                                title={`This ${T.team} has reached 1st place`}
                               >
                                 ✓
                               </span>
@@ -167,11 +169,11 @@ function InstitutionProgress() {
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-2xl font-bold text-ui-dark mb-2">Tutorial Progress</h2>
               <p className="text-ui mb-6">
-                Completion rate per exercise across the teams in each tutorial's leagues.
+                {`Completion rate per exercise across the ${T.teams} in each tutorial's ${T.leagues}.`}
               </p>
               {tutorials.length === 0 ? (
                 <p className="text-ui">
-                  No tutorials are attached to your leagues yet. Attach tutorials from League Management.
+                  {`No tutorials are attached to your ${T.leagues} yet. Attach tutorials from ${T.League} Management.`}
                 </p>
               ) : (
                 <div className="space-y-8">
@@ -180,9 +182,9 @@ function InstitutionProgress() {
                       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
                         <h3 className="text-xl font-semibold text-ui-dark">{tutorial.title}</h3>
                         <span className="text-sm text-ui">
-                          {tutorial.team_count} team{tutorial.team_count !== 1 ? 's' : ''}
+                          {tutorial.team_count} {tutorial.team_count !== 1 ? T.teams : T.team}
                           {tutorial.league_names.length > 0 &&
-                            ` · leagues: ${tutorial.league_names.join(', ')}`}
+                            ` · ${T.leagues}: ${tutorial.league_names.join(', ')}`}
                         </span>
                       </div>
                       {tutorial.exercises.length === 0 ? (

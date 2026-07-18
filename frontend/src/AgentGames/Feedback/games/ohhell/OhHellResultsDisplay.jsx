@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
+import { useTerms } from '../../../Shared/terminology';
 
 // Oh Hell simulation rankings. total_points are tournament placement points
 // (higher = better); bid accuracy and avg round score are the raw-play stats.
 const OhHellResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
+    const T = useTerms();
     const [results, setResults] = useState([]);
     const [isTableVisible, setIsTableVisible] = useState(tablevisible);
     const userTeam = useSelector((state) => state.teams.currentTeam);
@@ -50,7 +52,7 @@ const OhHellResultsDisplay = ({ data, highlight = true, data_message = '', table
                         <thead>
                             <tr className="bg-league-blue text-white">
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Ranking</th>
-                                <th className="p-4 text-left font-semibold border-b border-ui-light">Team</th>
+                                <th className="p-4 text-left font-semibold border-b border-ui-light">{T.Team}</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Games Won</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Bid Accuracy ↑</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Avg Round Score ↑</th>
@@ -91,7 +93,7 @@ const OhHellResultsDisplay = ({ data, highlight = true, data_message = '', table
                     </table>
                     <div className="px-4 py-2 text-xs text-ui">
                         Total Points are tournament placement points across {data?.num_simulations?.toLocaleString()} games
-                        (1st = 4, 2nd = 2, 3rd = 1, 4th = 0). Bid Accuracy is the share of rounds where a team took
+                        (1st = 4, 2nd = 2, 3rd = 1, 4th = 0). Bid Accuracy is the share of rounds where a player took
                         exactly the tricks it bid; Avg Round Score is points per round — higher is better on both.
                     </div>
                 </div>

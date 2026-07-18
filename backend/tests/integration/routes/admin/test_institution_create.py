@@ -46,6 +46,50 @@ def test_institution_create_success(client, auth_headers, db_session):
     assert unassigned_league is not None
 
 
+def test_institution_create_is_teacher(client, auth_headers, db_session):
+    """is_teacher is persisted when set and defaults to False when omitted"""
+    teacher_data = {
+        "name": "teacher_institution",
+        "contact_person": "Ms Smith",
+        "contact_email": "smith@example.com",
+        "password": "teacher_password",
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
+        "is_teacher": True,
+    }
+    response = client.post(
+        "/admin/institution-create",
+        headers=auth_headers,
+        json=teacher_data,
+    )
+    assert response.status_code == 200
+    assert response.json()["is_teacher"] is True
+
+    teacher = db_session.exec(
+        select(Institution).where(Institution.name == "teacher_institution")
+    ).first()
+    assert teacher.is_teacher is True
+
+    plain_data = {
+        "name": "plain_institution",
+        "contact_person": "Plain Contact",
+        "contact_email": "plain@example.com",
+        "password": "plain_password",
+        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
+    }
+    response = client.post(
+        "/admin/institution-create",
+        headers=auth_headers,
+        json=plain_data,
+    )
+    assert response.status_code == 200
+    assert response.json()["is_teacher"] is False
+
+    plain = db_session.exec(
+        select(Institution).where(Institution.name == "plain_institution")
+    ).first()
+    assert plain.is_teacher is False
+
+
 def test_institution_create_failures(client, auth_headers, db_session):
     """Test failure cases for institution creation"""
     # Create an existing institution first

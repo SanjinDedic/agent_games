@@ -57,6 +57,9 @@ def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedel
         "is_demo": team.is_demo,
         "institution_id": team.institution_id,
         "league_id": team.league_id,
+        # Students of a teacher account see classroom/student wording; requires
+        # a session-attached team (relationship lazy-loads the institution).
+        "is_teacher": bool(team.institution.is_teacher) if team.institution else False,
     }
     if expires_delta is None:
         expires_delta = timedelta(minutes=TEAM_TOKEN_EXPIRY_MINUTES)
@@ -134,6 +137,7 @@ def get_institution_token(session: Session, institution_name: str, password: str
             "role": "institution",
             "institution_id": institution.id,
             "institution_name": institution_name,
+            "is_teacher": institution.is_teacher,
         },
         expires_delta=timedelta(minutes=INSTITUTION_TOKEN_EXPIRY_MINUTES),
     )

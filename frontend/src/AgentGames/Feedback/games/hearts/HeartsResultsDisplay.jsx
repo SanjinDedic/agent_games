@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
+import { useTerms } from '../../../Shared/terminology';
 
 // Hearts simulation rankings. total_points are tournament placement points
 // (higher = better); the raw hearts score only appears as avg points per hand.
 const HeartsResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
+    const T = useTerms();
     const [results, setResults] = useState([]);
     const [isTableVisible, setIsTableVisible] = useState(tablevisible);
     const userTeam = useSelector((state) => state.teams.currentTeam);
@@ -49,7 +51,7 @@ const HeartsResultsDisplay = ({ data, highlight = true, data_message = '', table
                         <thead>
                             <tr className="bg-league-blue text-white">
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Ranking</th>
-                                <th className="p-4 text-left font-semibold border-b border-ui-light">Team</th>
+                                <th className="p-4 text-left font-semibold border-b border-ui-light">{T.Team}</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Games Won</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Avg Pts / Hand ↓</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Moons Shot 🌙</th>

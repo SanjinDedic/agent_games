@@ -10,8 +10,10 @@ import {
   selectLeagueId,
 } from "../../slices/authSlice";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
+import { useTerms } from "../Shared/terminology";
 
 function AgentLeagueSignUp() {
+  const T = useTerms();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
@@ -95,12 +97,12 @@ function AgentLeagueSignUp() {
       <div className="w-full max-w-4xl mx-4">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-2xl font-bold text-ui-dark mb-2 text-center">
-            PICK A LEAGUE TO JOIN
+            {`PICK A ${T.League.toUpperCase()} TO JOIN`}
           </h1>
 
           {isAssignedToReal && (
             <p className="text-sm text-ui-dark/70 mb-6 text-center">
-              Your team{" "}
+              {`Your ${T.team} `}
               <span className="font-semibold">{currentUser?.name}</span> is
               already assigned to{" "}
               <span className="font-semibold">{assignedLeagueName}</span>.
@@ -115,8 +117,7 @@ function AgentLeagueSignUp() {
                 </p>
               </div>
               <p className="text-ui-dark mt-2">
-                Only demo leagues are displayed. Your progress will be available
-                for the duration of your demo session.
+                {`Only demo ${T.leagues} are displayed. Your progress will be available for the duration of your demo session.`}
               </p>
             </div>
           )}
@@ -153,7 +154,7 @@ function AgentLeagueSignUp() {
             ) : (
               <div className="col-span-3 text-center p-4">
                 <p className="text-ui-dark">
-                  No leagues available at this time.
+                  {`No ${T.leagues} available at this time.`}
                 </p>
               </div>
             )}
@@ -168,7 +169,7 @@ function AgentLeagueSignUp() {
                        shadow-md hover:shadow-lg
                        disabled:bg-ui-light disabled:cursor-not-allowed`}
             >
-              {isLoading ? "Joining..." : "Join League"}
+              {isLoading ? "Joining..." : `Join ${T.League}`}
             </button>
           </div>
         </div>
@@ -178,19 +179,18 @@ function AgentLeagueSignUp() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
             <h2 className="text-xl font-bold text-ui-dark mb-4">
-              Change league?
+              {`Change ${T.league}?`}
             </h2>
             <p className="text-ui-dark mb-3">
               <span className="font-semibold">
-                {institutionName || "Your institution"}
+                {institutionName || (currentUser?.is_teacher ? "Your teacher" : "Your institution")}
               </span>{" "}
               assigned you to{" "}
-              <span className="font-semibold">{assignedLeagueName}</span>. Are
-              you sure you want to change leagues?
+              <span className="font-semibold">{assignedLeagueName}</span>.{" "}
+              {`Are you sure you want to change ${T.leagues}?`}
             </p>
             <p className="text-ui-dark mb-6">
-              You may not be matched against the teams you are intended to play
-              against.
+              {`You may not be matched against the ${T.teams} you are intended to play against.`}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -203,7 +203,7 @@ function AgentLeagueSignUp() {
                 onClick={confirmLeagueChange}
                 className="px-4 py-2 rounded-md bg-primary hover:bg-primary-hover text-white"
               >
-                Yes, change league
+                {`Yes, change ${T.league}`}
               </button>
             </div>
           </div>

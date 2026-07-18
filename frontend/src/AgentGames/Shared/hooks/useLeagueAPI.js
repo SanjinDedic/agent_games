@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { setLeagues, setResults, clearResults, updateLeagueInfo as updateLeagueInfoAction, setRewardMeta } from '../../../slices/leaguesSlice';
 import { selectToken, setToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
+import { useTerms } from '../terminology';
 
 /**
  * Hook for handling league-related API calls
@@ -13,6 +14,7 @@ import { authFetch } from '../../../utils/authFetch';
  */
 export const useLeagueAPI = (userRole) => {
   const dispatch = useDispatch();
+  const T = useTerms();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,25 +56,25 @@ export const useLeagueAPI = (userRole) => {
         dispatch(setLeagues(data.leagues));
         return { success: true, leagues: data.leagues };
       } else {
-        toast.error(data.detail || 'Failed to fetch leagues');
-        return { success: false, error: data.detail || 'Failed to fetch leagues' };
+        toast.error(data.detail || `Failed to fetch ${T.leagues}`);
+        return { success: false, error: data.detail || `Failed to fetch ${T.leagues}` };
       }
     } catch (error) {
       console.error('Error fetching leagues:', error);
-      toast.error("Network error while fetching leagues");
+      toast.error(`Network error while fetching ${T.leagues}`);
       return { success: false, error: "Network error" };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken, dispatch]);
+  }, [apiUrl, accessToken, dispatch, T]);
 
   /**
    * Assign current user to a league
    */
   const assignToLeague = useCallback(async (leagueId) => {
     if (!leagueId) {
-      toast.error("League not selected");
-      return { success: false, error: "League not selected" };
+      toast.error(`${T.League} not selected`);
+      return { success: false, error: `${T.League} not selected` };
     }
 
     setIsLoading(true);
@@ -93,10 +95,10 @@ export const useLeagueAPI = (userRole) => {
         if (data.access_token) {
           dispatch(setToken(data.access_token));
         }
-        toast.success(data.message || 'Successfully joined league');
+        toast.success(data.message || `Successfully joined ${T.league}`);
         return { success: true };
       } else {
-        toast.error(data.detail || 'Failed to join league');
+        toast.error(data.detail || `Failed to join ${T.league}`);
         return { success: false, error: data.detail };
       }
     } catch (error) {
@@ -106,7 +108,7 @@ export const useLeagueAPI = (userRole) => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken, dispatch]);
+  }, [apiUrl, accessToken, dispatch, T]);
 
   /**
    * Fetch all simulation results for a league
@@ -130,20 +132,20 @@ export const useLeagueAPI = (userRole) => {
         const results = data.results || [];
         if (results.length === 0) {
           dispatch(clearResults());
-          toast.info('No results in the selected League');
+          toast.info(`No results in the selected ${T.League}`);
         } else {
           dispatch(setResults(results));
         }
         return { success: true, results };
       }
-      toast.error(data.detail || 'Failed to fetch league results');
+      toast.error(data.detail || `Failed to fetch ${T.league} results`);
       dispatch(clearResults());
       return { success: false, error: data.detail };
     } catch (error) {
       console.error('Error fetching league results:', error);
       return { success: false, error: 'Network error' };
     }
-  }, [apiUrl, accessToken, dispatch]);
+  }, [apiUrl, accessToken, dispatch, T]);
 
   /**
    * Run a simulation for the specified league
@@ -194,7 +196,7 @@ export const useLeagueAPI = (userRole) => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
   
   /**
    * Create a new league
@@ -216,20 +218,20 @@ export const useLeagueAPI = (userRole) => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('League created successfully');
+        toast.success(`${T.League} created successfully`);
         return { success: true, data };
       } else {
-        toast.error(data.detail || 'Failed to create league');
+        toast.error(data.detail || `Failed to create ${T.league}`);
         return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error creating league:', error);
-      toast.error('Failed to create league');
+      toast.error(`Failed to create ${T.league}`);
       return { success: false, error: "Network error" };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
   
   /**
    * Publish league results
@@ -269,7 +271,7 @@ export const useLeagueAPI = (userRole) => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
   
   /**
    * Update league expiry date
@@ -306,7 +308,7 @@ export const useLeagueAPI = (userRole) => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
   
   /**
    * Update per-league markdown info block
@@ -336,16 +338,16 @@ export const useLeagueAPI = (userRole) => {
         toast.success(data.message);
         return { success: true };
       }
-      toast.error(data.detail || 'Failed to update league info');
+      toast.error(data.detail || `Failed to update ${T.league} info`);
       return { success: false, error: data.detail };
     } catch (error) {
       console.error('Error updating league info:', error);
-      toast.error('Network error while updating league info');
+      toast.error(`Network error while updating ${T.league} info`);
       return { success: false, error: 'Network error' };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken, dispatch]);
+  }, [apiUrl, accessToken, dispatch, T]);
 
   /**
    * Get the ids of the tutorials attached to a league
@@ -366,12 +368,12 @@ export const useLeagueAPI = (userRole) => {
       if (response.ok && Array.isArray(data.tutorial_ids)) {
         return { success: true, tutorialIds: data.tutorial_ids };
       }
-      return { success: false, error: data.detail || 'Failed to load league tutorials' };
+      return { success: false, error: data.detail || `Failed to load ${T.league} tutorials` };
     } catch (error) {
       console.error('Error loading league tutorials:', error);
       return { success: false, error: 'Network error' };
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
 
   /**
    * Replace the set of tutorials attached to a league
@@ -394,16 +396,16 @@ export const useLeagueAPI = (userRole) => {
         toast.success(data.message);
         return { success: true, tutorialIds: data.tutorial_ids };
       }
-      toast.error(data.detail || 'Failed to update league tutorials');
+      toast.error(data.detail || `Failed to update ${T.league} tutorials`);
       return { success: false, error: data.detail };
     } catch (error) {
       console.error('Error updating league tutorials:', error);
-      toast.error('Network error while updating league tutorials');
+      toast.error(`Network error while updating ${T.league} tutorials`);
       return { success: false, error: 'Network error' };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
 
   /**
    * Assign team to league
@@ -430,17 +432,17 @@ export const useLeagueAPI = (userRole) => {
         toast.success(data.message);
         return { success: true };
       } else {
-        toast.error(data.detail || 'Failed to assign team to league');
+        toast.error(data.detail || `Failed to assign ${T.team} to ${T.league}`);
         return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error assigning team to league:', error);
-      toast.error('Failed to assign team to league');
+      toast.error(`Failed to assign ${T.team} to ${T.league}`);
       return { success: false, error: "Network error" };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
 
   /**
    * Unassign team (move to institution's 'unassigned' league)
@@ -463,17 +465,17 @@ export const useLeagueAPI = (userRole) => {
         toast.success(data.message);
         return { success: true };
       } else {
-        toast.error(data.detail || 'Failed to unassign team');
+        toast.error(data.detail || `Failed to unassign ${T.team}`);
         return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error unassigning team:', error);
-      toast.error('Failed to unassign team');
+      toast.error(`Failed to unassign ${T.team}`);
       return { success: false, error: 'Network error' };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken]);
+  }, [apiUrl, accessToken, T]);
 
   /**
    * Delete a league
@@ -498,17 +500,17 @@ export const useLeagueAPI = (userRole) => {
         await fetchUserLeagues();
         return { success: true, message: data.message };
       } else {
-        toast.error(data.detail || 'Failed to delete league');
+        toast.error(data.detail || `Failed to delete ${T.league}`);
         return { success: false, error: data.detail };
       }
     } catch (error) {
       console.error('Error deleting league:', error);
-      toast.error('Network error while deleting league');
+      toast.error(`Network error while deleting ${T.league}`);
       return { success: false, error: "Network error" };
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, accessToken, fetchUserLeagues]);
+  }, [apiUrl, accessToken, fetchUserLeagues, T]);
 
   /**
    * Fetch reward schema + markdown for a game, dispatch into Redux.

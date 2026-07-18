@@ -1,7 +1,9 @@
 import React from 'react';
 import moment from 'moment-timezone';
+import { useTerms } from '../terminology';
 
 const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) => {
+  const T = useTerms();
   const isActive = moment().isBefore(moment(league.expiry_date));
   // The "unassigned" league is a placeholder — its game assignment is meaningless
   const isPlaceholder = league.name.toLowerCase() === "unassigned";
@@ -28,13 +30,13 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
             <h3 className="font-medium truncate">{league.name}</h3>
           </div>
           <div className="text-xs text-ui mt-1">
-            {isPlaceholder ? "Placeholder league" : `Game: ${league.game}`}
+            {isPlaceholder ? `Placeholder ${T.league}` : `Game: ${league.game}`}
           </div>
         </div>
         <button
           onClick={handleDelete}
           className="p-1 rounded-full hover:bg-danger hover:text-white transition-colors"
-          title="Delete league"
+          title={`Delete ${T.league}`}
         >
           ×
         </button>
@@ -42,7 +44,7 @@ const LeagueCard = ({ league, isSelected, onSelect, onDelete, teamCount = 0 }) =
       <div className="flex justify-between items-end">
         <div className="text-xs text-ui">{moment(league.expiry_date).format('MMM D, YYYY')}</div>
         <div className="text-xs font-medium">
-          <span className="text-primary">{teamCount}</span> teams
+          <span className="text-primary">{teamCount}</span> {T.teams}
         </div>
       </div>
       {league.institution_name && (

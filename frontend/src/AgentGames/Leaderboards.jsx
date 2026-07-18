@@ -7,8 +7,10 @@ import { fetchAllRankings, fetchMyLeagueRankings } from "../slices/rankingsSlice
 import { selectCurrentUser } from "../slices/authSlice";
 import useLeagueAPI from "./Shared/hooks/useLeagueAPI";
 import PureMarkdown from "./Shared/Utilities/PureMarkdown";
+import { useTerms } from "./Shared/terminology";
 
 function Leaderboards() {
+  const T = useTerms();
   const dispatch = useDispatch();
   const publishedResults = useSelector((state) => state.rankings.allRankings);
   const myLeagueResults = useSelector(
@@ -124,23 +126,23 @@ function Leaderboards() {
                   <span className="text-primary">{myLeagueName}</span>.
                 </>
               ) : (
-                <> you are enrolled in your league.</>
+                <>{` you are enrolled in your ${T.league}.`}</>
               )}
             </h1>
             <p className="text-ui-dark mt-1">
-              Here is the key information for your league.
+              {`Here is the key information for your ${T.league}.`}
             </p>
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-ui-dark mb-2">
-              League Info
+              {`${T.League} Info`}
             </h2>
             {myLeagueMarkdown && myLeagueMarkdown.trim() ? (
               <PureMarkdown content={myLeagueMarkdown} />
             ) : (
               <p className="text-ui">
-                No info has been posted for this league yet.
+                {`No info has been posted for this ${T.league} yet.`}
               </p>
             )}
           </div>
@@ -194,7 +196,7 @@ function Leaderboards() {
             ) : !selectedResult ? (
               <div className="text-center py-8">
                 <p className="text-ui">
-                  No published results yet for your league.
+                  {`No published results yet for your ${T.league}.`}
                 </p>
               </div>
             ) : (
@@ -228,7 +230,7 @@ function Leaderboards() {
                     </p>
                   </div>
 
-                  <h3 className="font-medium text-ui-dark mb-2">Top Teams:</h3>
+                  <h3 className="font-medium text-ui-dark mb-2">{`Top ${T.Teams}:`}</h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full">
                       <thead>
@@ -237,7 +239,7 @@ function Leaderboards() {
                             Rank
                           </th>
                           <th className="px-4 py-2 text-left text-ui-dark">
-                            Team
+                            {T.Team}
                           </th>
                           <th className="px-4 py-2 text-left text-ui-dark">
                             Points
@@ -314,7 +316,7 @@ function Leaderboards() {
             </h1>
             <div className="flex items-center">
               <label htmlFor="league-filter" className="mr-2 text-ui-dark">
-                Filter by League:
+                {`Filter by ${T.League}:`}
               </label>
               <select
                 id="league-filter"
@@ -322,7 +324,7 @@ function Leaderboards() {
                 onChange={(e) => setSelectedLeague(e.target.value)}
                 className="p-2 border border-ui-light rounded-lg"
               >
-                <option value="all">All Leagues</option>
+                <option value="all">{`All ${T.Leagues}`}</option>
                 {leagues.map((league, index) => (
                   <option key={index} value={league}>
                     {league}
@@ -353,8 +355,8 @@ function Leaderboards() {
               <p className="text-ui">
                 No published results found for{" "}
                 {selectedLeague === "all"
-                  ? "any league"
-                  : `the league '${selectedLeague}'`}
+                  ? `any ${T.league}`
+                  : `the ${T.league} '${selectedLeague}'`}
                 .
               </p>
             </div>
@@ -393,7 +395,7 @@ function Leaderboards() {
                     </div>
 
                     <h3 className="font-medium text-ui-dark mb-2">
-                      Top Teams:
+                      {`Top ${T.Teams}:`}
                     </h3>
                     <div className="overflow-x-auto">
                       <table className="min-w-full">
@@ -403,7 +405,7 @@ function Leaderboards() {
                               Rank
                             </th>
                             <th className="px-4 py-2 text-left text-ui-dark">
-                              Team
+                              {T.Team}
                             </th>
                             <th className="px-4 py-2 text-left text-ui-dark">
                               Points

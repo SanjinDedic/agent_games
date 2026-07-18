@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import StrategyTooltip from '../../../Shared/Utilities/StrategyTooltip';
+import { useTerms } from '../../../Shared/terminology';
 
 const COLUMN_LABELS = {
     catches: 'Catches',
@@ -8,6 +9,7 @@ const COLUMN_LABELS = {
 };
 
 const BreakthroughResultsDisplay = ({ data, highlight = true, data_message = '', tablevisible }) => {
+    const T = useTerms();
     const [results, setResults] = useState([]);
     const [tableColumns, setTableColumns] = useState([]);
     const [isTableVisible, setIsTableVisible] = useState(tablevisible);
@@ -70,7 +72,7 @@ const BreakthroughResultsDisplay = ({ data, highlight = true, data_message = '',
                         <thead>
                             <tr className="bg-league-blue text-white">
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Ranking</th>
-                                <th className="p-4 text-left font-semibold border-b border-ui-light">Team</th>
+                                <th className="p-4 text-left font-semibold border-b border-ui-light">{T.Team}</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Matches</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Wins</th>
                                 <th className="p-4 text-left font-semibold border-b border-ui-light">Losses</th>

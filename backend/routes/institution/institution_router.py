@@ -179,6 +179,7 @@ async def get_subscription_endpoint(
         "contact_person": institution.contact_person,
         "contact_email": institution.contact_email,
         "address": institution.address,
+        "is_teacher": institution.is_teacher,
         "subscription": None,
     }
     if sub is not None:

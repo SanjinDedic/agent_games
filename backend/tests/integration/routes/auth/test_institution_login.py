@@ -153,3 +153,40 @@ def test_token_expiration(client, test_institution):
         "expired" in response.json()["detail"].lower()
         or "invalid" in response.json()["detail"].lower()
     )
+
+
+def test_institution_login_is_teacher_claim(client, db_session, test_institution):
+    """Institution tokens carry the is_teacher claim"""
+    create_test_institution(
+        db_session,
+        name="teacher_institution",
+        contact_person="Ms Smith",
+        contact_email="smith@example.com",
+        subscription_expiry=utc_now() + timedelta(days=30),
+        password_hash=TEST_PASSWORD_HASHES["inst_password"],
+        is_teacher=True,
+    )
+
+    from jose import jwt
+
+    from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
+
+    response = client.post(
+        "/auth/institution-login",
+        json={"name": "teacher_institution", "password": "inst_password"},
+    )
+    assert response.status_code == 200
+    payload = jwt.decode(
+        response.json()["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+    )
+    assert payload["is_teacher"] is True
+
+    response = client.post(
+        "/auth/institution-login",
+        json={"name": "test_institution", "password": "inst_password"},
+    )
+    assert response.status_code == 200
+    payload = jwt.decode(
+        response.json()["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+    )
+    assert payload["is_teacher"] is False

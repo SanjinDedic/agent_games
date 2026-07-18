@@ -6,8 +6,10 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setCurrentLeague } from '../../../slices/leaguesSlice';
 import LeagueCard from './LeagueCard';
 import useLeagueAPI from '../hooks/useLeagueAPI';
+import { useTerms } from '../terminology';
 
 const LeagueCardList = ({ userRole }) => {
+  const T = useTerms();
   const dispatch = useDispatch();
   const leagues = useSelector((state) => state.leagues.list);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -38,11 +40,11 @@ const LeagueCardList = ({ userRole }) => {
   
   const handleDeleteLeague = async (league) => {
     if (league.name.toLowerCase() === "unassigned") {
-      toast.error("Cannot delete the 'unassigned' league");
+      toast.error(`Cannot delete the 'unassigned' ${T.league}`);
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete league "${league.name}"? All teams will be moved to the unassigned league.`)) {
+    if (!window.confirm(`Are you sure you want to delete ${T.league} "${league.name}"? All ${T.teams} will be moved to the unassigned ${T.league}.`)) {
       return;
     }
 
@@ -56,10 +58,10 @@ const LeagueCardList = ({ userRole }) => {
             dispatch(setCurrentLeague(nextLeague.name));
           }
         }
-        toast.success(`League "${league.name}" deleted successfully`);
+        toast.success(`${T.League} "${league.name}" deleted successfully`);
       }
     } catch (error) {
-      toast.error(`Failed to delete league: ${error.message}`);
+      toast.error(`Failed to delete ${T.league}: ${error.message}`);
     } finally {
       setIsDeleting(false);
     }
@@ -91,7 +93,7 @@ const LeagueCardList = ({ userRole }) => {
       </div>
       {leagues.length === 0 && (
         <div className="p-4 bg-ui-lighter rounded-lg text-center text-ui">
-          No leagues available. Create one to get started.
+          {`No ${T.leagues} available. Create one to get started.`}
         </div>
       )}
     </div>

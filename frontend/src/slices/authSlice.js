@@ -51,13 +51,14 @@ export const selectCurrentUser = createSelector(
   [selectDecodedToken],
   (decoded) => {
     if (!decoded) {
-      return { name: null, role: null, exp: null, is_demo: false };
+      return { name: null, role: null, exp: null, is_demo: false, is_teacher: false };
     }
     return {
       name: decoded.sub ?? null,
       role: decoded.role ?? null,
       exp: decoded.exp ?? null,
       is_demo: decoded.is_demo ?? false,
+      is_teacher: decoded.is_teacher ?? false,
       team_id: decoded.team_id ?? null,
       team_type: decoded.team_type ?? null,
       league_id: decoded.league_id ?? null,
@@ -82,6 +83,7 @@ export const selectInstitutionId = (state) => selectCurrentUser(state).instituti
 export const selectInstitutionName = (state) => selectCurrentUser(state).institution_name;
 export const selectLeagueId = (state) => selectCurrentUser(state).league_id;
 export const selectIsDemo = (state) => selectCurrentUser(state).is_demo;
+export const selectIsTeacher = (state) => selectCurrentUser(state).is_teacher;
 export const selectTokenExp = (state) => selectCurrentUser(state).exp;
 
 export const selectIsTokenExpired = createSelector(

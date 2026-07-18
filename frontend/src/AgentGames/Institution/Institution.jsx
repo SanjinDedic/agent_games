@@ -8,7 +8,10 @@ import {
   selectIsTokenExpired,
 } from '../../slices/authSlice';
 
-function Institution() {
+// Teachers log in with the same institution credentials/endpoint; the
+// "teacher" variant only rebrands the copy for the /Teacher route.
+function Institution({ variant = "institution" }) {
+  const isTeacher = variant === "teacher";
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -78,11 +81,11 @@ function Institution() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen pt-16 px-4 bg-ui-lighter">
       <div className="w-full max-w-lg bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-ui-dark mb-8 text-center">Institution Login</h1>
+        <h1 className="text-3xl font-bold text-ui-dark mb-8 text-center">{isTeacher ? "Teacher Login" : "Institution Login"}</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label htmlFor="institution_name" className="text-xl font-bold text-ui-dark">Institution Name:</label>
+            <label htmlFor="institution_name" className="text-xl font-bold text-ui-dark">{isTeacher ? "Account Name:" : "Institution Name:"}</label>
             <input
               type="text"
               id="institution_name"
@@ -120,7 +123,11 @@ function Institution() {
         </form>
         
         <div className="mt-6 text-center text-ui">
-          <p>Contact your administrator if you don't have login credentials.</p>
+          <p>
+            {isTeacher
+              ? "Log in to manage your classrooms and students. Contact us if you don't have an account yet."
+              : "Contact your administrator if you don't have login credentials."}
+          </p>
         </div>
       </div>
     </div>

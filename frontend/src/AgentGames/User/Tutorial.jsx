@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import ExerciseSubmission from "./ExerciseSubmission";
 import TutorialOverview from "./TutorialOverview";
 import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
+import { useTerms } from "../Shared/terminology";
 
 /**
  * Tutorial page. The backend only returns the tutorials attached to the
@@ -16,6 +17,7 @@ import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
  * browser-back behave.
  */
 function Tutorial() {
+  const T = useTerms();
   const { getTutorials, getTutorial, getTutorialProgress } = useTutorialAPI();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -115,9 +117,9 @@ function Tutorial() {
     return (
       <div className="min-h-screen pt-12 flex items-center justify-center bg-white">
         <div className="text-center p-8 text-ui">
-          <p className="text-xl">Your league doesn't have any tutorials yet.</p>
+          <p className="text-xl">{`Your ${T.league} doesn't have any tutorials yet.`}</p>
           <p className="text-sm mt-2">
-            Check back soon — your teacher can add tutorials to the league.
+            {`Check back soon — your teacher can add tutorials to the ${T.league}.`}
           </p>
         </div>
       </div>

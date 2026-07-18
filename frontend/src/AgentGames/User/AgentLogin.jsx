@@ -136,7 +136,7 @@ function AgentLogin() {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-xl font-medium text-ui-dark">
-                  Team Name:
+                  Name:
                 </label>
                 <input
                   type="text"
@@ -145,7 +145,7 @@ function AgentLogin() {
                   onChange={handleChange}
                   onKeyDown={handleKeyDown}
                   className={inputClasses}
-                  placeholder="Enter your team name"
+                  placeholder="Enter your team or student name"
                   autoFocus
                 />
               </div>

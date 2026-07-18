@@ -20,8 +20,10 @@ import LeagueTutorials from './LeagueTutorials';
 import LeagueCardList from "./LeagueCardList";
 import PureMarkdown from '../Utilities/PureMarkdown';
 import useLeagueAPI from '../hooks/useLeagueAPI';
+import { useTerms } from '../terminology';
 
 const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
+  const T = useTerms();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -116,13 +118,13 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
     if (!currentLeague) return;
 
     if (currentLeague.name.toLowerCase() === "unassigned") {
-      toast.error("Cannot delete the 'unassigned' league");
+      toast.error(`Cannot delete the 'unassigned' ${T.league}`);
       return;
     }
 
     if (
       !window.confirm(
-        `Are you sure you want to delete league "${currentLeague.name}"? All teams will be moved to the unassigned league.`
+        `Are you sure you want to delete ${T.league} "${currentLeague.name}"? All ${T.teams} will be moved to the unassigned ${T.league}.`
       )
     ) {
       return;
@@ -183,7 +185,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
         <div className="mb-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-ui-dark mb-4">
-              League Management
+              {`${T.League} Management`}
             </h1>
             <button
               onClick={handleGoToSimulation}
@@ -200,7 +202,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-lg p-4">
               <h2 className="text-xl font-semibold text-ui-dark mb-4">
-                Leagues
+                {T.Leagues}
               </h2>
               <LeagueCardList userRole={userRole} />
             </div>
@@ -216,7 +218,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold text-ui-dark">
-                    League Details
+                    {`${T.League} Details`}
                   </h2>
                   <button
                     onClick={handleDeleteLeague}
@@ -224,17 +226,17 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                     disabled={currentLeague.name.toLowerCase() === "unassigned"}
                     title={
                       currentLeague.name.toLowerCase() === "unassigned"
-                        ? "Cannot delete the unassigned league"
-                        : "Delete this league"
+                        ? `Cannot delete the unassigned ${T.league}`
+                        : `Delete this ${T.league}`
                     }
                   >
-                    Delete League
+                    {`Delete ${T.League}`}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div>
-                    <span className="block text-ui">League Name:</span>
+                    <span className="block text-ui">{`${T.League} Name:`}</span>
                     <span className="block text-lg font-medium text-ui-dark">
                       {currentLeague.name}
                     </span>
@@ -275,7 +277,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                 {/* League Expiry Date Editor */}
                 <div className="mb-6">
                   <h3 className="text-lg font-medium text-ui-dark mb-2">
-                    League Expiry
+                    {`${T.League} Expiry`}
                   </h3>
                   <div className="flex items-center gap-2">
                     <DatePicker
@@ -328,8 +330,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                         </button>
                       </div>
                       <p className="mt-2 text-sm text-ui-dark">
-                        Share this link for teams to sign up directly to this
-                        league.
+                        {`Share this link for ${T.teams} to sign up directly to this ${T.league}.`}
                       </p>
                     </div>
                   ) : (
@@ -351,7 +352,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="text-lg font-medium text-ui-dark">
-                      League Info (Markdown)
+                      {`${T.League} Info (Markdown)`}
                     </h3>
                     <div className="flex items-center gap-2">
                       <button
@@ -372,9 +373,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                     </div>
                   </div>
                   <p className="text-sm text-ui mb-2">
-                    Shown to teams enrolled in this league on the leaderboard
-                    page. Use it for the simulation schedule, publishing
-                    cadence, league rules, etc.
+                    {`Shown to ${T.teams} enrolled in this ${T.league} on the leaderboard page. Use it for the simulation schedule, publishing cadence, ${T.league} rules, etc.`}
                   </p>
                   <div className={showInfoPreview ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
                     <div className="border border-ui-light rounded overflow-hidden" style={{ height: '320px' }}>
@@ -422,8 +421,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
             ) : (
               <div className="bg-white rounded-lg shadow-lg p-6 flex items-center justify-center">
                 <p className="text-ui-dark text-lg">
-                  Select a league from the list or create a new one to get
-                  started.
+                  {`Select a ${T.league} from the list or create a new one to get started.`}
                 </p>
               </div>
             )}

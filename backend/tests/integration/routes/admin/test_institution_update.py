@@ -72,6 +72,40 @@ def test_institution_update_success(client, auth_headers, update_institution_set
     assert institution.contact_email == "updated@example.com"  # Unchanged
 
 
+def test_institution_update_is_teacher(client, auth_headers, update_institution_setup, db_session):
+    """is_teacher can be toggled and is left unchanged when omitted"""
+    institution = update_institution_setup
+    assert institution.is_teacher is False
+
+    response = client.post(
+        "/admin/institution-update",
+        headers=auth_headers,
+        json={"id": institution.id, "is_teacher": True},
+    )
+    assert response.status_code == 200
+    db_session.refresh(institution)
+    assert institution.is_teacher is True
+
+    # Omitting the field leaves it unchanged
+    response = client.post(
+        "/admin/institution-update",
+        headers=auth_headers,
+        json={"id": institution.id, "contact_person": "Still A Teacher"},
+    )
+    assert response.status_code == 200
+    db_session.refresh(institution)
+    assert institution.is_teacher is True
+
+    response = client.post(
+        "/admin/institution-update",
+        headers=auth_headers,
+        json={"id": institution.id, "is_teacher": False},
+    )
+    assert response.status_code == 200
+    db_session.refresh(institution)
+    assert institution.is_teacher is False
+
+
 def test_institution_update_failures(client, auth_headers, update_institution_setup, db_session):
     """Test failure cases for institution update"""
     institution = update_institution_setup

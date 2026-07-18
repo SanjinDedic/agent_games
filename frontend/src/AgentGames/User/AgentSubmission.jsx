@@ -13,8 +13,10 @@ import GameResultsWrapper from "../Feedback/GameResultsWrapper";
 import useSubmissionWorkspace from "../Shared/hooks/useSubmissionWorkspace";
 import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
+import { useTerms } from "../Shared/terminology";
 
 function AgentSubmission() {
+  const T = useTerms();
   // Agent-specific state: game instructions and league resolution
   const [instructionData, setInstructionData] = useState("");
   const [isLoadingLeagueInfo, setIsLoadingLeagueInfo] = useState(false);
@@ -118,9 +120,9 @@ function AgentSubmission() {
           {...ws.footerProps}
           isLoading={isLoading}
           statusItems={[
-            { label: "TEAM", value: currentUser.name },
+            { label: T.Team.toUpperCase(), value: currentUser.name },
             { label: "GAME", value: currentLeague?.game },
-            { label: "LEAGUE", value: currentLeague?.name },
+            { label: T.League.toUpperCase(), value: currentLeague?.name },
           ]}
         />
       }

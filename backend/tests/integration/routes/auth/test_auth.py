@@ -325,3 +325,57 @@ def test_token_validation(client, db_session: Session):
     # Test missing token
     response = client.get("/institution/get-all-teams")
     assert response.status_code == 401
+
+
+def test_team_login_is_teacher_claim(client, db_session: Session):
+    """Team tokens carry is_teacher from the owning institution"""
+    teacher_inst = create_test_institution(
+        db_session,
+        name="teacher_claim_inst",
+        password_hash=TEST_PASSWORD_HASHES["inst_password"],
+        is_teacher=True,
+    )
+    plain_inst = create_test_institution(
+        db_session,
+        name="plain_claim_inst",
+        password_hash=TEST_PASSWORD_HASHES["inst_password"],
+    )
+
+    now = utc_now()
+    teams = {}
+    for key, inst in (("teacher", teacher_inst), ("plain", plain_inst)):
+        league = League(
+            name=f"{key}_claim_league",
+            created_date=now,
+            expiry_date=now + timedelta(days=7),
+            game="greedy_pig",
+            institution_id=inst.id,
+        )
+        db_session.add(league)
+        db_session.commit()
+        db_session.refresh(league)
+        team = Team(
+            name=f"{key}_claim_student",
+            school_name=inst.name,
+            password_hash=TEST_PASSWORD_HASHES["team_password"],
+            league_id=league.id,
+            institution_id=inst.id,
+        )
+        db_session.add(team)
+        db_session.commit()
+        teams[key] = team
+
+    from jose import jwt
+
+    from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
+
+    for key, expected in (("teacher", True), ("plain", False)):
+        response = client.post(
+            "/auth/team-login",
+            json={"name": teams[key].name, "password": "team_password"},
+        )
+        assert response.status_code == 200
+        payload = jwt.decode(
+            response.json()["access_token"], SECRET_KEY, algorithms=[ALGORITHM]
+        )
+        assert payload["is_teacher"] is expected
