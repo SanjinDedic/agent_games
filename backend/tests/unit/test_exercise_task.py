@@ -148,3 +148,66 @@ async def test_await_task_fault_becomes_clean_error():
     result = await await_exercise_result(async_result, timeout=1)
     assert result["status"] == "error"
     assert "Error while running tests" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# run_snippet: lesson demo blocks — exec + captured output, no entry
+# function, no tests. Same direct-call rationale as run_exercise above.
+# ---------------------------------------------------------------------------
+
+from backend.exercise_worker.tasks import (  # noqa: E402
+    SNIPPET_TIMEOUT_MESSAGE,
+    run_snippet,
+)
+from backend.tasks.exercise_task import await_snippet_result  # noqa: E402
+
+
+def test_snippet_captures_stdout():
+    result = run_snippet("print('hello')\nprint('world')")
+    assert result["status"] == "success"
+    assert result["stdout"] == "hello\nworld\n"
+    assert result["traceback"] is None
+    assert result["duration_ms"] is not None
+
+
+def test_snippet_runs_as_main():
+    result = run_snippet(
+        "if __name__ == '__main__':\n    print('guarded')"
+    )
+    assert result["status"] == "success"
+    assert result["stdout"] == "guarded\n"
+
+
+def test_snippet_exception_returns_traceback_and_partial_stdout():
+    result = run_snippet("print('before')\n1/0")
+    assert result["status"] == "error"
+    assert result["message"] == "ZeroDivisionError: division by zero"
+    assert "ZeroDivisionError" in result["traceback"]
+    assert result["stdout"] == "before\n"
+
+
+def test_snippet_stdout_is_bounded():
+    result = run_snippet(f"print('x' * {MAX_STDOUT_CHARS * 2})")
+    assert result["status"] == "success"
+    assert len(result["stdout"]) == MAX_STDOUT_CHARS
+
+
+def test_snippet_soft_time_limit_maps_to_timeout_message():
+    code = (
+        "from celery.exceptions import SoftTimeLimitExceeded\n"
+        "raise SoftTimeLimitExceeded()"
+    )
+    result = run_snippet(code)
+    assert result["status"] == "error"
+    assert result["message"] == SNIPPET_TIMEOUT_MESSAGE
+
+
+@pytest.mark.asyncio
+async def test_await_snippet_timeout_maps_to_timeout_result():
+    async_result = MagicMock()
+    async_result.ready.return_value = False
+    async_result.id = "test-task-id"
+
+    result = await await_snippet_result(async_result, timeout=0.05)
+    assert result["status"] == "error"
+    assert result["message"] == SNIPPET_TIMEOUT_MESSAGE

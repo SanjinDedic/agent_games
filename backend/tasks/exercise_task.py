@@ -16,7 +16,9 @@ from celery.exceptions import TimeLimitExceeded
 
 from backend.exercise_worker.tasks import (
     EXERCISE_TIMEOUT_MESSAGE,
+    SNIPPET_TIMEOUT_MESSAGE,
     normalize_result,
+    normalize_snippet_result,
 )
 from backend.tasks.celery_app import celery_app
 from backend.tasks.celery_utils import poll_task_result
@@ -67,4 +69,29 @@ async def await_exercise_result(
     except Exception as e:  # noqa: BLE001 - any task fault becomes a clean error
         return normalize_result(
             {"status": "error", "message": f"Error while running tests: {e}"}
+        )
+
+
+def enqueue_snippet_run(code: str):
+    """Enqueue a lesson snippet run that self-drops if it waits out its usefulness."""
+    return celery_app.send_task(
+        "exercises.run_snippet",
+        kwargs={"code": code},
+        expires=EXERCISE_TASK_EXPIRES,
+    )
+
+
+async def await_snippet_result(
+    async_result, timeout: float = EXERCISE_RESULT_TIMEOUT
+) -> Dict[str, Any]:
+    """Await a snippet task and always return a normalized SnippetRunResponse."""
+    try:
+        return await poll_task_result(async_result, timeout)
+    except (TimeLimitExceeded, WorkerLostError, TimeoutError):
+        return normalize_snippet_result(
+            {"status": "error", "message": SNIPPET_TIMEOUT_MESSAGE}
+        )
+    except Exception as e:  # noqa: BLE001 - any task fault becomes a clean error
+        return normalize_snippet_result(
+            {"status": "error", "message": f"Error while running your code: {e}"}
         )

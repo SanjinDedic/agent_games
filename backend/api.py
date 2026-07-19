@@ -40,6 +40,10 @@ from backend.routes.payments.payments_db import (
     InstitutionExistsError as PaidInstitutionExistsError,
     PaidSignupError,
 )
+from backend.routes.lesson.lesson_db import (
+    LessonExistsError,
+    LessonNotFoundError,
+)
 from backend.routes.tutorial.tutorial_db import (
     ExerciseNotFoundError,
     ExerciseReorderError,
@@ -64,6 +68,7 @@ from backend.routes.diagnostics.diagnostics_router import diagnostics_router
 from backend.routes.institution.institution_router import institution_router
 from backend.routes.payments.payments_router import payments_router
 from backend.routes.support.support_router import support_router
+from backend.routes.lesson.lesson_router import lesson_router
 from backend.routes.tutorial.tutorial_router import tutorial_router
 from backend.routes.user.user_router import user_router
 from sqlmodel import Session, text
@@ -302,6 +307,18 @@ async def exercise_reorder_handler(request: Request, exc: ExerciseReorderError):
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
+# Lesson-domain exceptions (snippet rate limiting reuses
+# SubmissionLimitExceededError above).
+@app.exception_handler(LessonNotFoundError)
+async def lesson_not_found_handler(request: Request, exc: LessonNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LessonExistsError)
+async def lesson_exists_handler(request: Request, exc: LessonExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 # Raised from both team-creation paths (institution team-create and
 # signup-link joins) when the plan's team/student cap is reached.
 @app.exception_handler(TeamLimitExceededError)
@@ -344,6 +361,7 @@ app.include_router(diagnostics_router, prefix="/diagnostics", tags=["Diagnostics
 app.include_router(support_router, prefix="/support", tags=["Support"])
 app.include_router(payments_router, prefix="/payments", tags=["Payments"])
 app.include_router(tutorial_router, prefix="/tutorial", tags=["Tutorial"])
+app.include_router(lesson_router, prefix="/lesson", tags=["Lesson"])
 
 
 @app.get("/", response_model=ResponseModel)

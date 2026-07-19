@@ -471,3 +471,22 @@ class ExerciseSubmission(SQLModel, table=True):
     )
     # `metadata` is reserved on SQLAlchemy declarative classes
     meta: ExerciseSubmissionMetadata = Relationship(back_populates="submission")
+
+
+class Lesson(SQLModel, table=True):
+    """A standalone markdown document explaining a concept.
+
+    Lessons are a global content library (not league-gated): they are reached
+    through `lesson://<slug>` links embedded in exercise problem markdown and
+    tutorial descriptions, which are themselves already league-gated. The
+    content may contain ```python-run fences, which the frontend renders as
+    editable runnable code blocks.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    slug: str = Field(unique=True, index=True)
+    title: str
+    content: str = Field(default="", sa_column=Column(Text(), nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
