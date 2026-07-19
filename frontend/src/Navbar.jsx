@@ -8,6 +8,7 @@ import {
 } from './slices/authSlice';
 import { clearTeam } from './slices/teamsSlice';
 import { clearResults, clearLeagues } from './slices/leaguesSlice';
+import { selectImmersiveMode } from './slices/settingsSlice';
 import { Button } from './components/ui';
 
 const NAV_LINKS_BY_ROLE = {
@@ -18,6 +19,7 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/AdminAPIKeys", label: "API Keys" },
     { to: "/AdminUserSupport", label: "User Support" },
     { to: "/AdminTutorials", label: "Tutorials" },
+    { to: "/AdminLessons", label: "Lessons" },
   ],
   institution: [
     { to: "/InstitutionTeam", label: "Team Section" },
@@ -73,6 +75,7 @@ function AgentGamesNavbar() {
 
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isImmersive = useSelector(selectImmersiveMode);
   const userRole = currentUser?.role || "";
   const navGroup = resolveNavGroup(currentUser, isAuthenticated);
   const navLinks = NAV_LINKS_BY_ROLE[navGroup];
@@ -131,6 +134,9 @@ function AgentGamesNavbar() {
   };
 
   const navLinkClasses = "inline-flex items-center px-3 py-3 text-lg text-white hover:bg-white/10 transition-colors duration-200";
+
+  // Immersive mode (submission workspaces) reclaims the navbar's screen space
+  if (isImmersive) return null;
 
   return (
     <nav className="bg-[#111827] fixed top-0 w-full z-50">

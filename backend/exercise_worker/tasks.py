@@ -1,4 +1,4 @@
-"""The exercises Celery app and its one task — the slim worker's whole codebase.
+"""The exercises Celery app and its tasks — the slim worker's whole codebase.
 
 The worker-exercises container image is python:alpine + celery[redis] + this
 single file, imported as top-level ``tasks`` (see the Dockerfile next to it).
@@ -111,6 +111,11 @@ EXERCISE_TIME_LIMIT = EXERCISE_TIMEOUT_SECONDS + 1
 EXERCISE_TIMEOUT_MESSAGE = (
     f"Your code consumes too much time - the tests did not finish within "
     f"{EXERCISE_TIMEOUT_SECONDS} seconds. It may be stuck in a loop."
+)
+
+SNIPPET_TIMEOUT_MESSAGE = (
+    f"Your code did not finish within {EXERCISE_TIMEOUT_SECONDS} seconds. "
+    f"It may be stuck in a loop."
 )
 
 # Students print-debug; keep captured output bounded so a print inside a loop
@@ -367,3 +372,54 @@ def run_exercise(
     if captured.strip():
         result["stdout"] = captured[:MAX_STDOUT_CHARS]
     return normalize_result(result)
+
+
+def normalize_snippet_result(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the full SnippetRunResponse shape consumers expect."""
+    return {
+        "status": result.get("status", "error"),
+        "message": result.get("message"),
+        "stdout": result.get("stdout"),
+        "traceback": result.get("traceback"),
+        "duration_ms": result.get("duration_ms"),
+    }
+
+
+@app.task(
+    name="exercises.run_snippet",
+    soft_time_limit=EXERCISE_TIMEOUT_SECONDS,
+    time_limit=EXERCISE_TIME_LIMIT,
+)
+def run_snippet(code: str) -> Dict[str, Any]:
+    """Run a lesson demo snippet: exec the code, return its output.
+
+    Unlike ``exercises.run`` there is no entry function and no test script —
+    the captured stdout (or the traceback) IS the result. Runs under the same
+    sandbox guarantees: fresh process, time limits, no secrets. ``__name__``
+    is ``"__main__"`` so demo code behind a main guard runs.
+    """
+    buf = io.StringIO()
+    result: Dict[str, Any]
+    t0 = time.perf_counter()
+    try:
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            exec(code, {"__name__": "__main__"})  # noqa: S102 - sandboxed worker
+        result = {
+            "status": "success",
+            "duration_ms": (time.perf_counter() - t0) * 1000,
+        }
+    except SoftTimeLimitExceeded:
+        result = {
+            "status": "error",
+            "message": SNIPPET_TIMEOUT_MESSAGE,
+        }
+    except Exception as e:  # noqa: BLE001 - the task boundary is the catch-all
+        result = {
+            "status": "error",
+            "message": _error_text(e),
+            "traceback": tb.format_exc(),
+        }
+    captured = buf.getvalue()
+    if captured.strip():
+        result["stdout"] = captured[:MAX_STDOUT_CHARS]
+    return normalize_snippet_result(result)

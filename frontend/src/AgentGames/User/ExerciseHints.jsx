@@ -1,14 +1,12 @@
 import React, { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
+import LessonMarkdown from "../Shared/Lesson/LessonMarkdown";
 
 /**
  * Condensed hints panel for an exercise: a single collapsed bar until the
  * student opens it, and hints inside are revealed one at a time, in order,
  * so nobody gets spoiled past the nudge they asked for. Renders nothing
- * when the exercise has no hints. Hints are Markdown; this reuses the
- * .markdown-content styles injected globally by FeedbackDisplay, which is
- * the only place this panel is mounted.
+ * when the exercise has no hints. Hints are Markdown, rendered through
+ * LessonMarkdown so they can carry lesson:// links too.
  */
 function ExerciseHints({ hints }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -42,10 +40,8 @@ function ExerciseHints({ hints }) {
                             <span className="font-semibold text-ui-dark/60 flex-shrink-0">
                                 {index + 1}.
                             </span>
-                            <div className="markdown-content hint-markdown min-w-0">
-                                <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                    {hint}
-                                </ReactMarkdown>
+                            <div className="hint-markdown min-w-0">
+                                <LessonMarkdown content={hint} />
                             </div>
                         </div>
                     ))}

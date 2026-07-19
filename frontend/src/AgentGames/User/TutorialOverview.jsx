@@ -1,4 +1,5 @@
 import React from "react";
+import LessonMarkdown from "../Shared/Lesson/LessonMarkdown";
 
 /**
  * Landing view for the tutorial: title, description, overall progress, and
@@ -34,7 +35,9 @@ function TutorialOverview({
           )}
           <h1 className="text-2xl font-bold text-ui-dark">{tutorial.title}</h1>
           {tutorial.description && (
-            <p className="mt-2 text-ui-dark/70">{tutorial.description}</p>
+            <div className="mt-2 text-ui-dark/70">
+              <LessonMarkdown content={tutorial.description} />
+            </div>
           )}
           <div className="mt-4">
             <div className="flex justify-between text-sm text-ui-dark/70 mb-1">

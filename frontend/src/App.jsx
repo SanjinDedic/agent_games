@@ -24,6 +24,8 @@ import AdminBackup from "./AgentGames/Admin/AdminBackup";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import AdminTutorials from "./AgentGames/Admin/AdminTutorials";
+import AdminLessons from "./AgentGames/Admin/AdminLessons";
+import LessonModalProvider from "./AgentGames/Shared/Lesson/LessonModalProvider";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
@@ -45,6 +47,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="App">
+        <LessonModalProvider>
         <AgentGamesNavbar />
         <Routes>
           <Route path="/" element={<AgentHome />} />
@@ -157,6 +160,14 @@ function App() {
               </AuthProtection>
             }
           />
+          <Route
+            path="AdminLessons"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminLessons />
+              </AuthProtection>
+            }
+          />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
           <Route path="Teacher" element={<Institution variant="teacher" />} />
@@ -229,6 +240,7 @@ function App() {
         <SupportButton />
 
         <CreditLink />
+        </LessonModalProvider>
       </div>
     </BrowserRouter>
   );

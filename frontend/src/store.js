@@ -15,7 +15,12 @@ import { registerOnUnauthorized } from './utils/authFetch';
 
 const saveState = (state) => {
   try {
-    const serializedState = JSON.stringify(state);
+    // immersiveMode mirrors the live browser-fullscreen state, which never
+    // survives a reload — persisting true would hide the navbar with no way back
+    const serializedState = JSON.stringify({
+      ...state,
+      settings: { ...state.settings, immersiveMode: false },
+    });
     sessionStorage.setItem('reduxState', serializedState); // Use sessionStorage instead of localStorage
   } catch (e) {
     console.warn('Error saving state to session storage:', e);
