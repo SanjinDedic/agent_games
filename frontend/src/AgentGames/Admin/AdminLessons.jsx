@@ -155,8 +155,12 @@ function LessonEditor({ initialForm, isNew, onSave, onCancel }) {
             <code className="font-mono">[text](lesson://{form.slug || 'my-slug'})</code>
             . Make a code block runnable with a{' '}
             <code className="font-mono">```python-run</code> fence — students
-            can edit it and run it in the sandbox. A tutorial_sync push
-            overwrites lesson content edited here — pull first to keep edits.
+            can edit it and run it in the sandbox. Use{' '}
+            <code className="font-mono">```output-mark</code> with a{' '}
+            <code className="font-mono">--- expected ---</code> line to turn it
+            into a self-checking mini-task that shows a green tick when the run
+            matches the target output. A tutorial_sync push overwrites lesson
+            content edited here — pull first to keep edits.
           </p>
         </div>
 
@@ -286,7 +290,9 @@ function AdminLessons() {
             <code className="font-mono">lesson://slug</code> links inside
             exercise problems, tutorial descriptions, and hints. Code blocks
             fenced as <code className="font-mono">```python-run</code> are
-            editable and runnable by students.
+            editable and runnable by students;{' '}
+            <code className="font-mono">```output-mark</code> blocks add a
+            target output and a green tick when it's matched.
           </p>
 
           {lessons.length === 0 ? (

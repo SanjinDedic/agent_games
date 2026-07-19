@@ -73,8 +73,6 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
           isLoading={isSubmitting}
           statusItems={[
             { label: "TEAM", value: currentUser.name },
-            { label: "TUTORIAL", value: tutorialTitle },
-            { label: "EXERCISE", value: exercise.title },
           ]}
         />
       }

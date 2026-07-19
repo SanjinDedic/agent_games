@@ -60,7 +60,7 @@ const markdownStyles = `
     background-color: rgba(27,31,35,0.05);
     border-radius: 3px;
   }
-  .lesson-markdown pre {
+  .lesson-markdown pre:not(.not-prose *) {
     padding: 16px;
     overflow: auto;
     font-size: 100%;
@@ -89,6 +89,24 @@ const codeClassName = (node) => {
   return className ? String(className) : '';
 };
 
+// An ```output-mark block is a graded ```python-run: a `--- expected ---`
+// line (however spaced) splits the fence into the starter code shown in the
+// editor (above) and the target output the run is checked against (below).
+// The separator lives in the fence *content* — not the info-string meta —
+// because rehypeRaw round-trips the tree through HTML and drops node.data.meta.
+// Without a separator the whole block is just runnable code with no target.
+const EXPECTED_SEPARATOR = /^\s*-{3,}\s*expected\s*-{3,}\s*$/i;
+
+const parseOutputMark = (text) => {
+  const lines = text.split('\n');
+  const sep = lines.findIndex((line) => EXPECTED_SEPARATOR.test(line));
+  if (sep === -1) return { code: text, expected: null };
+  return {
+    code: lines.slice(0, sep).join('\n').replace(/\s+$/, ''),
+    expected: lines.slice(sep + 1).join('\n'),
+  };
+};
+
 /**
  * The lesson-aware markdown renderer, used for lesson content, exercise
  * problem markdown, and tutorial descriptions:
@@ -96,6 +114,8 @@ const codeClassName = (node) => {
  * - `[text](lesson://my-slug)` links open the lesson modal instead of
  *   navigating.
  * - ```python-run fences render as editable RunnableCodeBlocks.
+ * - ```output-mark fences are graded RunnableCodeBlocks: a `--- expected ---`
+ *   line marks the target output, and a matching run earns a green tick.
  * - Other fenced languages get Prism syntax highlighting.
  */
 function LessonMarkdown({ content }) {
@@ -135,6 +155,12 @@ function LessonMarkdown({ content }) {
       const text = String(children).replace(/\n$/, '');
       if (match && match[1] === 'python-run') {
         return <RunnableCodeBlock initialCode={text} />;
+      }
+      if (match && match[1] === 'output-mark') {
+        const { code, expected } = parseOutputMark(text);
+        return (
+          <RunnableCodeBlock initialCode={code} expectedOutput={expected} />
+        );
       }
       if (match) {
         return (

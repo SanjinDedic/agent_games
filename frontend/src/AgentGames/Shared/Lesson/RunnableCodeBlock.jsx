@@ -2,21 +2,68 @@ import React, { useState } from 'react';
 import CodeEditor from '../Submission/CodeEditor';
 import useLessonAPI from '../hooks/useLessonAPI';
 
+// The editor grows with its content instead of scrolling internally (bad UX
+// for a few added lines), up to a cap past which a genuinely large paste
+// scrolls rather than taking over the modal.
+const MIN_EDITOR_HEIGHT = 60;
+const MAX_EDITOR_HEIGHT = 400;
+
+const clampHeight = (px) =>
+  Math.min(MAX_EDITOR_HEIGHT, Math.max(MIN_EDITOR_HEIGHT, px));
+
+// A pre-mount estimate so the first paint is close to the final size and
+// doesn't visibly jump when Monaco reports its real content height.
+const estimateHeight = (text) =>
+  clampHeight(text.split('\n').length * 19 + 20);
+
+// Whitespace-tolerant form mirroring the worker's _normalize_output: strip
+// trailing whitespace per line and tolerate one trailing newline, so a
+// student isn't failed by an invisible trailing space.
+const normalizeOutput = (text) => {
+  const lines = (text ?? '').split('\n').map((line) => line.replace(/\s+$/, ''));
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines.join('\n');
+};
+
 /**
  * One ```python-run block from a lesson: a small editable Monaco editor with
  * Run / Reset buttons. Run executes the (possibly edited) code in the
  * sandboxed exercise worker and shows its stdout — or its traceback, which
  * is just as instructive. Nothing is stored server-side.
+ *
+ * When `expectedOutput` is set (an ```output-mark block), the block is a
+ * self-checking mini-task: the run's stdout is compared against the target
+ * and a match earns an instant green tick. The check is purely client-side —
+ * the target is authored in the lesson content, so there is nothing to store
+ * or hide; it is instant feedback, not assessment.
  */
-function RunnableCodeBlock({ initialCode }) {
+function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
   const { runSnippet } = useLessonAPI();
   const [code, setCode] = useState(initialCode);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [running, setRunning] = useState(false);
 
-  const lineCount = initialCode.split('\n').length;
-  const editorHeight = `${Math.min(400, Math.max(60, lineCount * 19 + 20))}px`;
+  const [editorHeight, setEditorHeight] = useState(() =>
+    estimateHeight(initialCode)
+  );
+
+  // Auto-grow the editor to fit its content: Monaco fires this on every edit
+  // (Enter, paste, delete), so the block expands as the student types and
+  // shrinks back if lines are removed — no internal scrollbar until the cap.
+  const handleEditorMount = (editor) => {
+    const applyHeight = () =>
+      setEditorHeight(clampHeight(editor.getContentHeight()));
+    editor.onDidContentSizeChange(applyHeight);
+    applyHeight();
+  };
+
+  const graded = expectedOutput != null;
+  const targetText = graded ? normalizeOutput(expectedOutput) : '';
+  const passed =
+    graded &&
+    result?.status === 'success' &&
+    normalizeOutput(result.stdout) === targetText;
 
   const handleRun = async () => {
     setRunning(true);
@@ -39,11 +86,24 @@ function RunnableCodeBlock({ initialCode }) {
   };
 
   return (
-    <div className="my-4 border border-gray-300 rounded-md overflow-hidden not-prose">
+    <div
+      className={`my-4 border rounded-md overflow-hidden not-prose transition-colors duration-200 ${
+        passed ? 'border-green-500' : 'border-gray-300'
+      }`}
+    >
+      {graded && targetText !== '' && (
+        <div className="px-3 py-2 bg-blue-50 border-b border-gray-300 text-sm text-gray-700">
+          <span className="font-medium">🎯 Goal — make it print exactly:</span>
+          <pre className="mt-1 bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 overflow-x-auto m-0 whitespace-pre-wrap">
+            {targetText}
+          </pre>
+        </div>
+      )}
       <CodeEditor
         code={code}
         onCodeChange={(value) => setCode(value ?? '')}
-        height={editorHeight}
+        onMount={handleEditorMount}
+        height={`${editorHeight}px`}
         options={{
           scrollbar: {
             vertical: 'auto',
@@ -108,6 +168,19 @@ function RunnableCodeBlock({ initialCode }) {
                 Ran without output — add a print() to see results.
               </div>
             )}
+        </div>
+      )}
+      {graded && result?.status === 'success' && (
+        <div
+          className={`px-3 py-2 text-sm font-medium border-t border-gray-300 flex items-center gap-2 ${
+            passed ? 'bg-green-600 text-white' : 'bg-amber-50 text-amber-800'
+          }`}
+        >
+          {passed ? (
+            <>✓ Completed — your output matches the goal.</>
+          ) : (
+            <>Not quite yet — your output doesn't match the goal. Compare them and try again.</>
+          )}
         </div>
       )}
     </div>

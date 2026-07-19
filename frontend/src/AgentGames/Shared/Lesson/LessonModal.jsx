@@ -52,7 +52,7 @@ function LessonModal() {
       onClick={close}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col"
+        className="bg-white rounded-lg shadow-xl max-w-5xl w-full h-full flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-6 py-4 border-b border-ui-lighter">
