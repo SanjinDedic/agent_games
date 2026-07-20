@@ -22,6 +22,7 @@ from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.institution.institution_db import get_league_by_id
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
+from backend.routes.tutorial.tutorial_db import get_team_tutorials_progress
 from backend.routes.user.code_validation import validate_code
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
@@ -38,6 +39,7 @@ from backend.routes.user.user_db import (
     get_latest_submissions_for_league,
     get_league_by_signup_token,
     get_leagues_for_user,
+    get_team_agent_stats,
     get_published_result,
     get_result_by_publish_link,
     get_team_by_id,
@@ -243,6 +245,47 @@ async def submit_agent(
         # never advertises one regardless of rationing.
         "hint_available": False,
         "hint_cancelled": hint_cancelled,
+    }
+
+
+@user_router.get("/team-data")
+@verify_ai_agent_service_or_student
+async def get_team_data(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Everything the student landing page needs in one call: identity,
+    classroom-vs-competition wording flag, current league, per-tutorial
+    progress, and agent-game stats.
+
+    Resolved from the DB, not the token, so a mid-session league move or a
+    teacher-flag change shows up on the next page load. An unassigned team
+    gets league=None (with empty tutorials/agent_game) — the frontend sends
+    those students to the league picker.
+    """
+    team_id = _require_team_id(current_user)
+    team = get_team_by_id(session, team_id)
+    league = team.league
+    unassigned = league is None or league.name == "unassigned"
+    institution = team.institution
+
+    return {
+        "team_name": team.name,
+        "school_name": team.school_name,
+        "is_demo": team.is_demo,
+        # Same rule the JWT's is_teacher claim is minted from: students of a
+        # teacher account see classroom/student wording.
+        "is_classroom": bool(institution.is_teacher) if institution else False,
+        "institution_name": institution.name if institution else None,
+        "league": None
+        if unassigned
+        else {"id": league.id, "name": league.name, "game": league.game},
+        "tutorials": []
+        if unassigned
+        else get_team_tutorials_progress(session, team_id, league.id),
+        "agent_game": None
+        if unassigned
+        else get_team_agent_stats(session, team_id, league.id),
     }
 
 

@@ -64,7 +64,7 @@ function ClassroomJoin({ defaultTab = "login" }) {
     if (!routing || !leagueInfo || !isStudentSession) return;
 
     if (currentUser.league_id === leagueInfo.id) {
-      navigate("/AgentSubmission");
+      navigate("/TeamHome");
       return;
     }
 
@@ -88,7 +88,7 @@ function ClassroomJoin({ defaultTab = "login" }) {
 
       const assign = await assignToLeague(leagueInfo.id);
       if (cancelled) return;
-      navigate(assign.success ? "/AgentSubmission" : "/AgentLeagueSignUp");
+      navigate(assign.success ? "/TeamHome" : "/AgentLeagueSignUp");
     })();
 
     return () => {
@@ -129,7 +129,7 @@ function ClassroomJoin({ defaultTab = "login" }) {
 
   const handleSwitchLeague = async () => {
     const result = await assignToLeague(leagueInfo.id);
-    if (result.success) navigate("/AgentSubmission");
+    if (result.success) navigate("/TeamHome");
   };
 
   const tabClasses = (active) =>
@@ -175,7 +175,7 @@ function ClassroomJoin({ defaultTab = "login" }) {
                     {`Switch to ${leagueInfo.name}`}
                   </button>
                   <button
-                    onClick={() => navigate("/AgentSubmission")}
+                    onClick={() => navigate("/TeamHome")}
                     className="w-full py-3 px-4 text-lg font-medium text-ui-dark bg-ui-lighter hover:bg-ui-light rounded-lg transition-colors duration-200"
                   >
                     {`Stay in ${conflictLeague.name}`}

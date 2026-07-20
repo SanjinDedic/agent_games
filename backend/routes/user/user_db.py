@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from typing import Dict, Optional
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from backend.database.db_models import (
     League,
@@ -348,6 +348,50 @@ def get_team_submission(
     ).first()
 
     return {"code": submission.code if submission else None}
+
+
+def get_team_agent_stats(session: Session, team_id: int, league_id: int) -> dict:
+    """One team's agent-game stats scoped to one league: attempt/validated
+    counts, latest attempt timestamp, the last 3 validation rankings
+    (oldest -> newest, so they read as a trend), and whether the team ever
+    ranked first. The per-league scope is what makes the numbers mean
+    "progress in this game" — a team moved between leagues starts its story
+    fresh."""
+    total_attempts, latest = session.exec(
+        select(
+            func.count(SubmissionMetadata.id),
+            func.max(SubmissionMetadata.timestamp),
+        )
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.league_id == league_id)
+    ).one()
+
+    validated_submissions = session.exec(
+        select(func.count(Submission.id))
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.league_id == league_id)
+    ).one()
+
+    # Full ranked history newest-first: the window is the first 3 rows, but
+    # achieved_first must see everything. Pre-ranking submissions have NULL
+    # and are skipped (same convention as the institution progress view).
+    ranked = session.exec(
+        select(Submission.ranking)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.league_id == league_id)
+        .where(Submission.ranking.is_not(None))
+        .order_by(Submission.timestamp.desc(), Submission.id.desc())
+    ).all()
+
+    return {
+        "total_attempts": total_attempts,
+        "validated_submissions": validated_submissions,
+        "latest_submission": latest.isoformat() if latest else None,
+        "recent_rankings": list(reversed(ranked[:3])),
+        "achieved_first": 1 in ranked,
+    }
 
 
 def get_team_submission_history(session: Session, team_id: int) -> list:

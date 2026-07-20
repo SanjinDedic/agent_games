@@ -63,6 +63,9 @@ async function runGame(page, observed, spec) {
   await box.waitFor({ timeout: 20000 });
   await box.check();
   await page.click('button:has-text("Join League")');
+  // Joining lands on the student home page; the workspace is one click away
+  await page.waitForURL('**/TeamHome', { timeout: 30000 });
+  await page.click('a:has-text("Open Agent Workspace")');
   await page.waitForURL('**/AgentSubmission', { timeout: 30000 });
   await page.waitForSelector(`text=LEAGUE: ${spec.game}_demo`, { timeout: 20000 });
   console.log(`[5.2] joined ${spec.game}_demo`);

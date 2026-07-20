@@ -11,7 +11,7 @@ import { useTerms } from '../terminology';
 const LeagueCardList = ({ userRole }) => {
   const T = useTerms();
   const dispatch = useDispatch();
-  const leagues = useSelector((state) => state.leagues.list);
+  const leagues = useSelector((state) => state.leagues.list) || [];
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const teams = useSelector((state) => state.teams.list);
   const [isDeleting, setIsDeleting] = useState(false);

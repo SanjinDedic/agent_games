@@ -70,7 +70,7 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo, onShowLogin }) {
 
   const handleDismissModal = () => {
     toast.success(`Signed up as ${assignedTeamName}.`);
-    navigate("/AgentSubmission");
+    navigate("/TeamHome");
   };
 
   return (

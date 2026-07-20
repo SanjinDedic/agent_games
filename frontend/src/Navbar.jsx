@@ -37,11 +37,13 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/InstitutionSubscription", label: "Subscription" },
   ],
   team: [
+    { to: "/TeamHome", label: "Home" },
     { to: "/AgentSubmission", label: "Submit Agent" },
     { to: "/Tutorial", label: "Tutorial" },
     { to: "/Leaderboards", label: "Leaderboards" },
   ],
   demo: [
+    { to: "/TeamHome", label: "Home" },
     { to: "/AgentSubmission", label: "Submit Agent" },
     { to: "/Tutorial", label: "Tutorial" },
   ],

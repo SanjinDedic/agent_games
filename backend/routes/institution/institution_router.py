@@ -239,6 +239,16 @@ async def run_simulation_endpoint(
         player_feedback=True,
     )
     results = await poll_task_result(async_result, timeout=300)
+
+    # A failed run (e.g. no loadable players) must surface as an error, not be
+    # stored: saving it would leave an empty result in the history that renders
+    # as a rankings table with no rows and no explanation.
+    if results.get("status") == "error":
+        raise HTTPException(
+            status_code=400,
+            detail=results.get("message", "Simulation failed"),
+        )
+
     simulation_results = results.get("simulation_results")
     feedback = results.get("feedback")
     player_feedback = results.get("player_feedback")

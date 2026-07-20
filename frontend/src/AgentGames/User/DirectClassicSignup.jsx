@@ -71,7 +71,7 @@ function DirectClassicSignup({ leagueToken, leagueInfo, onShowLogin }) {
       toast.success("Signed up and joined league successfully!");
 
       setTimeout(() => {
-        navigate("/AgentSubmission");
+        navigate("/TeamHome");
       }, 300);
     } else {
       setError(result.error || "Failed to sign up");

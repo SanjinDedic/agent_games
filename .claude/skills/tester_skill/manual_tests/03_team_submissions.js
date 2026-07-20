@@ -119,8 +119,13 @@ async function runTeam(page, observed, signupUrl, team, { withTutorial = false }
   await page.waitForSelector('h2:has-text("SAVE YOUR CREDENTIALS NOW!")', { timeout: 15000 });
   await page.click('button:has-text("I\'ve Saved My Credentials")');
   await waitForToast(page, 'Signed up and joined league successfully!');
+  await page.waitForURL('**/TeamHome', { timeout: 20000 });
+  console.log('[3.1] signed up, landed on /TeamHome');
+
+  // The landing page links to the agent workspace
+  await page.click('a:has-text("Open Agent Workspace")');
   await page.waitForURL('**/AgentSubmission', { timeout: 20000 });
-  console.log('[3.1] signed up, landed on /AgentSubmission');
+  console.log('[3.1] opened the agent workspace from /TeamHome');
 
   // 3.2a submission 1 — starter code unchanged (valid)
   const starter = await getMonacoValue(page);

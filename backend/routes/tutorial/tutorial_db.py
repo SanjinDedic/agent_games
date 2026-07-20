@@ -228,6 +228,79 @@ def get_tutorial_progress(
     }
 
 
+def get_team_tutorials_progress(
+    session: Session, team_id: int, league_id: int
+) -> list:
+    """Per-tutorial progress for one team: each tutorial attached to the
+    league with its exercise count and how many exercises this team has
+    attempted and passed. The landing page's tutorial cards come from here —
+    one query set for all tutorials instead of a per-tutorial progress call."""
+    tutorials = session.exec(
+        select(Tutorial)
+        .join(LeagueTutorial, LeagueTutorial.tutorial_id == Tutorial.id)
+        .where(LeagueTutorial.league_id == league_id)
+        .order_by(Tutorial.id)
+    ).all()
+    if not tutorials:
+        return []
+
+    tutorial_ids = [tutorial.id for tutorial in tutorials]
+    exercise_counts = dict(
+        session.exec(
+            select(Exercise.tutorial_id, func.count(Exercise.id))
+            .where(Exercise.tutorial_id.in_(tutorial_ids))
+            .group_by(Exercise.tutorial_id)
+        ).all()
+    )
+    attempted_counts = dict(
+        session.exec(
+            select(
+                Exercise.tutorial_id,
+                func.count(func.distinct(ExerciseSubmissionMetadata.exercise_id)),
+            )
+            .join(
+                Exercise,
+                Exercise.id == ExerciseSubmissionMetadata.exercise_id,
+            )
+            .where(Exercise.tutorial_id.in_(tutorial_ids))
+            .where(ExerciseSubmissionMetadata.team_id == team_id)
+            .group_by(Exercise.tutorial_id)
+        ).all()
+    )
+    passed_counts = dict(
+        session.exec(
+            select(
+                Exercise.tutorial_id,
+                func.count(func.distinct(ExerciseSubmissionMetadata.exercise_id)),
+            )
+            .join(
+                ExerciseSubmission,
+                ExerciseSubmission.metadata_id == ExerciseSubmissionMetadata.id,
+            )
+            .join(
+                Exercise,
+                Exercise.id == ExerciseSubmissionMetadata.exercise_id,
+            )
+            .where(Exercise.tutorial_id.in_(tutorial_ids))
+            .where(ExerciseSubmissionMetadata.team_id == team_id)
+            .where(ExerciseSubmission.passed == True)  # noqa: E712
+            .group_by(Exercise.tutorial_id)
+        ).all()
+    )
+
+    return [
+        {
+            "id": tutorial.id,
+            "title": tutorial.title,
+            "description": tutorial.description,
+            "exercise_count": exercise_counts.get(tutorial.id, 0),
+            "attempted_count": attempted_counts.get(tutorial.id, 0),
+            "passed_count": passed_counts.get(tutorial.id, 0),
+        }
+        for tutorial in tutorials
+    ]
+
+
 def record_failed_exercise_submission(
     session: Session,
     team_id: int,

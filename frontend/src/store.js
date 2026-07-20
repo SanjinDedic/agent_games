@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import teamsReducer from './slices/teamsSlice';
 import leaguesReducer from './slices/leaguesSlice';
@@ -40,19 +40,43 @@ const loadState = () => {
   }
 };
 
-const persistedState = loadState();
+const rootReducer = combineReducers({
+  auth: authReducer,
+  teams: teamsReducer,
+  leagues: leaguesReducer,
+  games: gamesReducer,
+  rankings: rankingsReducer,
+  settings: settingsReducer,
+  feedback: feedbackReducer,
+  support: supportReducer,
+});
+
+// The persisted blob may have been written by a different build of the app
+// (dev branch switches, deploys mid-session), so its slices can be missing
+// keys the current reducers rely on — rehydrating such a shape wholesale
+// crashes the first component that dereferences an absent field. Merge each
+// persisted slice over the reducer's own defaults so every expected key
+// exists; a slice whose stored shape no longer matches at all is dropped.
+const isPlainObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const mergeWithDefaults = (persisted) => {
+  if (!isPlainObject(persisted)) return undefined;
+  const defaults = rootReducer(undefined, { type: '@@state-defaults-probe' });
+  const merged = {};
+  for (const sliceName of Object.keys(defaults)) {
+    const def = defaults[sliceName];
+    const saved = persisted[sliceName];
+    merged[sliceName] =
+      isPlainObject(def) && isPlainObject(saved) ? { ...def, ...saved } : def;
+  }
+  return merged;
+};
+
+const persistedState = mergeWithDefaults(loadState());
 
 export const store = configureStore({
-  reducer: {
-    auth: authReducer,
-    teams: teamsReducer,
-    leagues: leaguesReducer,
-    games: gamesReducer,
-    rankings: rankingsReducer,
-    settings: settingsReducer,
-    feedback: feedbackReducer,
-    support: supportReducer,
-  },
+  reducer: rootReducer,
   preloadedState: persistedState,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().prepend(authErrorMiddleware.middleware),

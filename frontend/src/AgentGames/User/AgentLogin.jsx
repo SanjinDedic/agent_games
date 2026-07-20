@@ -27,7 +27,7 @@ function AgentLogin() {
 
   useEffect(() => {
     if (isAuthenticated && !tokenExpired && currentUser.role === "student") {
-      navigate("/AgentLeagueSignUp", { state: { fromLogin: true } });
+      navigate("/TeamHome");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -68,7 +68,8 @@ function AgentLogin() {
     const result = await teamLogin(team.name, team.password);
 
     if (result.success) {
-      navigate("/AgentLeagueSignUp", { state: { fromLogin: true } });
+      // TeamHome bounces unassigned students to the league picker itself.
+      navigate("/TeamHome");
     } else {
       setErrorMessage(result.error || "Login failed");
     }

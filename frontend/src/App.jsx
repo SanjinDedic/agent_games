@@ -3,6 +3,7 @@ import AgentHome from './AgentGames/AgentHome';
 import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
+import TeamHome from './AgentGames/User/TeamHome';
 import Tutorial from './AgentGames/User/Tutorial';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
 import Institutions from './AgentGames/Institutions';
@@ -57,6 +58,14 @@ function App() {
             element={
               <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
                 <AgentLeagueSignUp />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="TeamHome"
+            element={
+              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
+                <TeamHome />
               </AuthProtection>
             }
           />
