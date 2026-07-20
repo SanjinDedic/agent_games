@@ -1,5 +1,8 @@
-// Stage 2 of docs/integration-test-manual.md — Institution:
-//   2.1 login as the KEPT institution (from Stage 1 state)
+// Stage 2 of docs/integration-test-manual.md — Institution (COMPETITION flow:
+// institution + league + team wording; the teacher/classroom counterpart is
+// 05_teacher_classroom.js):
+//   2.1 login as the KEPT institution (from Stage 1 state); the navbar must
+//       show league/team wording, never classroom/student
 //   2.2 create a greedy_pig league, capture + copy the signup URL
 //   2.3 attach the seeded tutorial to the league (teams only see tutorials
 //       attached to their league; league creation attaches none, and Stage
@@ -28,7 +31,12 @@ const {
     await page.fill('#institution_password', state.institution.password);
     await page.click('button:has-text("Login")');
     await page.waitForURL('**/InstitutionTeam', { timeout: 20000 });
-    console.log('[2.1] institution logged in -> /InstitutionTeam');
+    // Wording guard: a non-teacher institution gets league/team labels.
+    await page.waitForSelector('nav a:has-text("League Management")', { timeout: 15000 });
+    if (await page.locator('nav a:has-text("Classroom Management"), nav a:has-text("Student Section")').count()) {
+      throw new Error('institution navbar shows classroom/student wording — is_teacher leaked into a competition account');
+    }
+    console.log('[2.1] institution logged in -> /InstitutionTeam (league/team wording confirmed)');
 
     // 2.2 create the league (expiry left blank = 24h default; school league unchecked)
     await page.click('a:has-text("League Management"), button:has-text("League Management")');

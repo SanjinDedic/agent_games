@@ -1,4 +1,5 @@
-// Stage 5 of docs/integration-test-manual.md — Demo hint loop, one demo user per game:
+// Script 07 (manual Stage 5 of docs/integration-test-manual.md) — Demo hint
+// loop, one demo user per game:
 //   5.1 launch demo user  5.2 join <game>_demo league
 //   5.3 submit invalid code (per the manual's per-game table) -> hint becomes available
 //   5.4 Get Hint (without editing) -> read hint -> restore valid code -> submit
@@ -8,7 +9,7 @@
 // a hint is available after the first failed submission.
 // Hint contents are appended to the state file under `hintResults`, and each
 // hint panel is screenshotted to /tmp/agent_games_hint_<game>.png.
-//   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/05_demo_hints.js
+//   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/07_demo_hints.js
 const {
   BASE, saveState, launchPage, collectToasts, waitForToast, dismissToasts,
   setMonacoValue, getMonacoValue, submitCode, finish,
@@ -169,9 +170,9 @@ async function runGame(page, observed, spec) {
     for (const r of hintResults) {
       console.log(`${r.game}: line ${r.hint.line_number} — ${r.hint.small_hint}`);
     }
-    await finish(page, browser, observed, { name: 'STAGE5' });
+    await finish(page, browser, observed, { name: 'STAGE7' });
   } catch (err) {
     saveState({ hintResults });
-    await finish(page, browser, observed, { name: 'STAGE5', failure: err });
+    await finish(page, browser, observed, { name: 'STAGE7', failure: err });
   }
 })();

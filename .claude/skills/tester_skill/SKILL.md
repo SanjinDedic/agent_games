@@ -15,18 +15,23 @@ docker compose commands, or seed anything yourself.
 ## 1. Run
 
 ```bash
-cd /Users/slowturing/PROJECTS/agent_games
+# from the repo root
 ./run_playwright_tests.sh all
 ```
 
-`all` = non-interactive: headless, every stage (01–05) in order, per-stage
+`all` = non-interactive: headless, every stage (01–07) in order, per-stage
 summary at the end, exit 1 if anything failed. Without `all` the script is an
 interactive menu (browser mode, per-stage picker) — for humans, not for you.
+
+Stage layout: 01 admin setup (institutions + teacher account), 02–04 the
+COMPETITION flow (institution/league/team wording), 05–06 the CLASSROOM flow
+(teacher/classroom/student wording — same routes, different labels), 07 the
+demo hint loop.
 
 **Warning before running:** every launch does `docker compose down -v` — wipes
 the local DB and MinIO volumes. Say so first unless the user explicitly asked
 for a reset/clean run. Expect the full run to take several minutes (stack
-reset + healthcheck wait + 5 stages).
+reset + healthcheck wait + 7 stages).
 
 ## 2. Analyze failures
 
@@ -45,10 +50,13 @@ For each FAIL in the summary:
     stages; the runner continues.
   - Stage 1.5 needs `OPENAI_API_KEY` (script pulls it from `.env` or
     `.kamal/secrets`; it warns at startup if missing).
-  - Stage 3.3 tutorial steps fail if the private `tutorial_data/` folder is
-    missing — the script warns at seed time and tells you the pull command.
+  - The tutorial steps in stages 03 and 06 fail if the private
+    `tutorial_data/` folder is missing — the script warns at seed time and
+    tells you the pull command.
   - Stage 4.5 first gets a 403 (simulation Docker-access toggle); the script
     enables it via the admin UI and retries — not a failure.
+  - Classroom copy that still says "league" (stages 05/06 assert it as-is):
+    the student signup toast and the Save Tutorials toast.
 
 Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 
@@ -57,5 +65,5 @@ Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 Per-stage PASS/FAIL table, then for each failure: which step, what was
 observed (toast / console error / API response), the relevant log lines, and
 whether it's a known deviation or a real regression. Declare the stack healthy
-when stages 02–05 pass and stage 01's sole failure is the known 1.4
+when stages 02–07 pass and stage 01's sole failure is the known 1.4
 backup/restore.

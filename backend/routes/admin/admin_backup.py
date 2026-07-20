@@ -84,7 +84,12 @@ END $$;
 
 
 def _get_s3_client():
-    """Build a boto3 S3 client for AWS."""
+    """Build a boto3 S3 client for AWS.
+
+    Honours S3_ENDPOINT_URL like the assets/support clients do (support_s3.py),
+    so in dev the client targets MinIO (http://minio:9000) instead of real AWS.
+    When unset (production on real AWS S3) it falls back to the default endpoint.
+    """
     key = os.environ.get("AWS_ACCESS_KEY_ID")
     secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
     region = os.environ.get("AWS_REGION", "ap-southeast-2")
@@ -97,6 +102,7 @@ def _get_s3_client():
         aws_access_key_id=key,
         aws_secret_access_key=secret,
         region_name=region,
+        endpoint_url=os.environ.get("S3_ENDPOINT_URL") or None,
     )
 
 

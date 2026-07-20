@@ -1,4 +1,6 @@
-// Stage 4 of docs/integration-test-manual.md — Institution:
+// Stage 4 of docs/integration-test-manual.md — Institution (COMPETITION flow
+// only: reviews the Stage-3 teams' league; the classroom flow has no
+// review/publish stage):
 //   4.1 login  4.2 select the league on the Simulation page (record league id)
 //   4.3 review team submissions (read-only viewer, prev/next paging)
 //   4.4 plagiarism assessment via OpenAI  4.5 run a 100-round simulation

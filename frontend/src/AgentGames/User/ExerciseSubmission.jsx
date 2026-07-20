@@ -10,6 +10,7 @@ import SubmissionLayout from "../Shared/Submission/SubmissionLayout";
 import ExerciseResults from "./ExerciseResults";
 import useSubmissionWorkspace from "../Shared/hooks/useSubmissionWorkspace";
 import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
+import { useTerms } from "../Shared/terminology";
 
 /**
  * Submission workspace for one tutorial exercise. Mount it with
@@ -19,6 +20,7 @@ import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
  */
 function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
   const currentUser = useSelector(selectCurrentUser);
+  const T = useTerms();
 
   const {
     getLatestExerciseSubmission,
@@ -72,7 +74,7 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
           allowHint={false}
           isLoading={isSubmitting}
           statusItems={[
-            { label: "TEAM", value: currentUser.name },
+            { label: T.Team.toUpperCase(), value: currentUser.name },
           ]}
         />
       }

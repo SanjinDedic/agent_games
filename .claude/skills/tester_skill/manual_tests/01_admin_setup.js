@@ -1,5 +1,7 @@
 // Stage 1 of docs/integration-test-manual.md — Admin:
-//   1.1 login  1.2 create two institutions  1.3 delete one
+//   1.1 login  1.2 create two institutions + one TEACHER account (the
+//       "Teacher account (classroom/student wording)" checkbox — drives the
+//       classroom flow in scripts 05/06)  1.3 delete one institution
 //   1.4 backup + restore round-trip  1.5 configure OpenAI key  1.6 logout
 //
 // Requires OPENAI_API_KEY in the environment (a real, funded sk-... key).
@@ -32,18 +34,34 @@ const DEL = {
   contact_email: 'qa+delete@example.com',
   password: 'DeletePass123',
 };
+// Teacher account: same institution table/login, but is_teacher=true flips all
+// user-visible wording to classroom/student (scripts 05/06 exercise it).
+const TEACHER = {
+  name: `Test Teacher Keep ${RUN}`,
+  contact_person: 'QA Teacher',
+  contact_email: 'qa+teacher@example.com',
+  password: 'TeachPass123',
+};
 
-async function createInstitution(page, inst) {
+async function createInstitution(page, inst, { teacher = false } = {}) {
   await page.click('button:has-text("Add Institution")');
   await page.fill('#name', inst.name);
   await page.fill('#contact_person', inst.contact_person);
   await page.fill('#contact_email', inst.contact_email);
   await page.fill('#password', inst.password);
   // Subscription expiry: leave the default (1 year); Docker access: leave unchecked.
+  if (teacher) await page.check('#is_teacher');
   await page.click('button:has-text("Create Institution")');
   await waitForToast(page, 'Institution created successfully');
-  await page.waitForSelector(`tr:has-text("${inst.name}")`, { timeout: 15000 });
-  console.log(`  created institution: ${inst.name}`);
+  const row = page.locator(`tr:has-text("${inst.name}")`);
+  await row.waitFor({ timeout: 15000 });
+  // The Type badge must reflect the checkbox (it's also the toggle button).
+  const expectedType = teacher ? 'Teacher' : 'Institution';
+  const badge = await row.locator('td:nth-child(3) button').innerText();
+  if (badge.trim() !== expectedType) {
+    throw new Error(`institution "${inst.name}" shows Type "${badge.trim()}", expected "${expectedType}"`);
+  }
+  console.log(`  created ${expectedType.toLowerCase()} account: ${inst.name}`);
 }
 
 (async () => {
@@ -79,9 +97,10 @@ async function createInstitution(page, inst) {
       await page.waitForSelector('h1:has-text("Institution Management")');
     });
 
-    await step('1.2 create two institutions', true, async () => {
+    await step('1.2 create institutions + teacher account', true, async () => {
       await createInstitution(page, KEEP);
       await createInstitution(page, DEL);
+      await createInstitution(page, TEACHER, { teacher: true });
     });
 
     await step('1.3 delete one institution', false, async () => {
@@ -90,6 +109,9 @@ async function createInstitution(page, inst) {
       await page.waitForSelector(`tr:has-text("${DEL.name}")`, { state: 'detached', timeout: 15000 });
       if (!(await page.locator(`tr:has-text("${KEEP.name}")`).count())) {
         throw new Error('KEPT institution row disappeared after deleting the other one');
+      }
+      if (!(await page.locator(`tr:has-text("${TEACHER.name}")`).count())) {
+        throw new Error('TEACHER row disappeared after deleting the other institution');
       }
     });
 
@@ -144,13 +166,13 @@ async function createInstitution(page, inst) {
       await page.waitForURL('**/Admin', { timeout: 15000 });
     });
 
-    saveState({ run: RUN, institution: KEEP, deletedInstitution: DEL.name, stage1Results: results });
+    saveState({ run: RUN, institution: KEEP, teacher: TEACHER, deletedInstitution: DEL.name, stage1Results: results });
     const failed = results.filter((r) => r.includes('FAIL'));
     console.log('\n=== Stage 1 summary ===');
     results.forEach((r) => console.log('  ' + r));
     await finish(page, browser, observed, { name: 'STAGE1', failure: failed.length ? new Error(`${failed.length} step(s) failed`) : undefined });
   } catch (err) {
-    saveState({ run: RUN, institution: KEEP, deletedInstitution: DEL.name, stage1Results: results });
+    saveState({ run: RUN, institution: KEEP, teacher: TEACHER, deletedInstitution: DEL.name, stage1Results: results });
     console.log('\n=== Stage 1 summary (aborted) ===');
     results.forEach((r) => console.log('  ' + r));
     await finish(page, browser, observed, { name: 'STAGE1', failure: err });
