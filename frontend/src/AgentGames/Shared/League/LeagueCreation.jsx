@@ -194,7 +194,7 @@ const LeagueCreation = ({ userRole }) => {
         if (data.signup_token) {
           // Using window.location to dynamically build the URL based on current domain
           const baseUrl = `${window.location.protocol}//${window.location.host}`;
-          const signupPath = `/TeamSignup/${data.signup_token}`;
+          const signupPath = `/join/${data.signup_token}`;
           setSignupUrl(`${baseUrl}${signupPath}`);
           setCreatedSchoolLeague(Boolean(data.school_league));
         } else {
@@ -249,7 +249,7 @@ const LeagueCreation = ({ userRole }) => {
                   {`${T.League} Created Successfully`}
                 </h4>
                 <p className="text-sm text-ui-dark mb-2">
-                  {`Share this link for ${T.teams} to sign up directly:`}
+                  {`This is the ${T.league}'s login page — ${T.teams} use it to sign up and log in:`}
                 </p>
                 <div className="flex items-center">
                   <input

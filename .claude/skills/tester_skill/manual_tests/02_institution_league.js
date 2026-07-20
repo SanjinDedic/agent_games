@@ -51,7 +51,7 @@ const {
       .locator('h4:has-text("League Created Successfully") ~ div input[readonly], h4:has-text("League Created Successfully") >> xpath=../descendant::input[@readonly]')
       .first()
       .inputValue();
-    if (!/\/TeamSignup\/.+/.test(signupUrl)) throw new Error(`Signup URL looks wrong: "${signupUrl}"`);
+    if (!/\/join\/.+/.test(signupUrl)) throw new Error(`Signup URL looks wrong: "${signupUrl}"`);
     console.log(`[2.2] league created: ${leagueName}`);
     console.log(`      signup URL: ${signupUrl}`);
 
@@ -64,7 +64,7 @@ const {
     saveState({
       leagueName,
       signupUrl,
-      signupToken: signupUrl.split('/TeamSignup/')[1],
+      signupToken: signupUrl.split('/join/')[1],
       leagueCreateResponse: createBody,
     });
 

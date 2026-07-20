@@ -7,7 +7,7 @@ import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 import CredentialsModal from "../Shared/Utilities/CredentialsModal";
 
-function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
+function DirectSchoolLeagueSignup({ leagueToken, leagueInfo, onShowLogin }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { directSchoolSignup, isLoading } = useAuthAPI();
@@ -75,13 +75,6 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
 
   return (
     <>
-      <div className="mb-6 bg-blue-100 p-4 rounded-lg">
-        <h2 className="text-lg font-semibold text-blue-700">
-          Joining League: {leagueInfo.name}
-        </h2>
-        <p className="text-gray-700">Game: {leagueInfo.game}</p>
-      </div>
-
       <div
         className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded"
         role="alert"
@@ -157,10 +150,16 @@ function DirectSchoolLeagueSignup({ leagueToken, leagueInfo }) {
 
       <div className="mt-4 text-center text-gray-600">
         <p>
-          Already have a team?{" "}
-          <a href="/AgentLogin" className="text-blue-600">
-            Log in
-          </a>
+          Already signed up?{" "}
+          {onShowLogin ? (
+            <button onClick={onShowLogin} className="text-blue-600">
+              Log in
+            </button>
+          ) : (
+            <a href="/AgentLogin" className="text-blue-600">
+              Log in
+            </a>
+          )}
         </p>
       </div>
 

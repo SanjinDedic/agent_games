@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
@@ -15,6 +15,7 @@ import { useTerms } from "../Shared/terminology";
 function AgentLeagueSignUp() {
   const T = useTerms();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -54,6 +55,15 @@ function AgentLeagueSignUp() {
 
   const isAssignedToReal =
     assignedLeagueName && assignedLeagueName.toLowerCase() !== "unassigned";
+
+  // Fresh logins with a real assignment skip the picker; visiting this page
+  // deliberately (no fromLogin state) still offers the choice. Runs after the
+  // preselect effect above, so currentLeague is already set for the workspace.
+  useEffect(() => {
+    if (!location.state?.fromLogin) return;
+    if (!isAssignedToReal) return;
+    navigate("/AgentSubmission", { replace: true });
+  }, [location.state, isAssignedToReal, navigate]);
 
   const handleLeagueClick = (league) => {
     if (

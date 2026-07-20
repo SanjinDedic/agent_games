@@ -38,7 +38,7 @@ import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
 // import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
-import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
+import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
 import SupportButton from "./AgentGames/Support/SupportButton";
 import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
 import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
@@ -87,9 +87,12 @@ function App() {
           />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="About" element={<About />} />
+          {/* Per-classroom/league page: log in or sign up, land in the league.
+              /TeamSignup is the legacy shared-link path and opens on signup. */}
+          <Route path="/join/:leagueToken" element={<ClassroomJoin />} />
           <Route
             path="/TeamSignup/:leagueToken"
-            element={<DirectLeagueSignup />}
+            element={<ClassroomJoin defaultTab="signup" />}
           />
           {/* New Route for Published Results */}
           <Route path="/results/:publishLink" element={<PublishedResults />} />

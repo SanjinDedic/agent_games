@@ -107,9 +107,10 @@ async function runTutorialExercise(page) {
 async function runTeam(page, observed, signupUrl, team, { withTutorial = false } = {}) {
   console.log(`\n=== Team ${team.name} ===`);
 
-  // 3.1 signup
+  // 3.1 signup — the /join page opens on its login tab; switch to signup
+  // (the tab buttons render once the league info has loaded)
   await page.goto(signupUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('h2:has-text("Joining League:")', { timeout: 20000 });
+  await page.click('button:has-text("Sign up")', { timeout: 20000 });
   await page.fill('#teamName', team.name);
   await page.fill('#password', team.password);
   await page.fill('#confirmPassword', team.password);

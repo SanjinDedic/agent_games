@@ -446,6 +446,11 @@ async def get_league_by_token(
         "created_date": league.created_date,
         "expiry_date": league.expiry_date,
         "school_league": league.school_league,
+        # The join page is public (no token to read wording from), so it needs
+        # the owning institution's identity to render classroom/student vs
+        # league/team copy.
+        "institution_name": league.institution.name if league.institution else None,
+        "is_teacher": bool(league.institution.is_teacher) if league.institution else False,
     }
 
     if league.school_league:

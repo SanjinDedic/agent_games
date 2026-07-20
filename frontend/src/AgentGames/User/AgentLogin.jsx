@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   selectCurrentUser,
@@ -27,7 +27,7 @@ function AgentLogin() {
 
   useEffect(() => {
     if (isAuthenticated && !tokenExpired && currentUser.role === "student") {
-      navigate("/AgentLeagueSignUp");
+      navigate("/AgentLeagueSignUp", { state: { fromLogin: true } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -68,7 +68,7 @@ function AgentLogin() {
     const result = await teamLogin(team.name, team.password);
 
     if (result.success) {
-      navigate("/AgentLeagueSignUp");
+      navigate("/AgentLeagueSignUp", { state: { fromLogin: true } });
     } else {
       setErrorMessage(result.error || "Login failed");
     }
@@ -179,6 +179,28 @@ function AgentLogin() {
             </div>
           </div>
         )}
+
+        <div className="mt-6 text-center text-ui-dark/60 space-y-2">
+          <p>
+            Got a classroom or league link from your teacher? Open that link
+            to log in directly.
+          </p>
+          <p>
+            <Link
+              to="/Teacher"
+              className="text-primary hover:text-primary-hover font-medium"
+            >
+              Teacher login
+            </Link>
+            {" · "}
+            <Link
+              to="/Institution"
+              className="text-primary hover:text-primary-hover font-medium"
+            >
+              Competition organizer login
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

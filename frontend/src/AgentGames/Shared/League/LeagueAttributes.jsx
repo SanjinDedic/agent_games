@@ -64,7 +64,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   useEffect(() => {
     if (currentLeague && currentLeague.signup_link) {
       const baseUrl = `${window.location.protocol}//${window.location.host}`;
-      const signupPath = `/TeamSignup/${currentLeague.signup_link}`;
+      const signupPath = `/join/${currentLeague.signup_link}`;
       setSignupLink(`${baseUrl}${signupPath}`);
       setShowSignupLink(true);
     } else {
@@ -95,15 +95,15 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
 
       if (response.ok && data.signup_token) {
         const baseUrl = `${window.location.protocol}//${window.location.host}`;
-        const signupPath = `/TeamSignup/${data.signup_token}`;
+        const signupPath = `/join/${data.signup_token}`;
         const fullUrl = `${baseUrl}${signupPath}`;
 
         setSignupLink(fullUrl);
         setShowSignupLink(true);
 
-        toast.success(`Signup link generated for ${leagueName}`);
+        toast.success(`Login page created for ${leagueName}`);
       } else {
-        toast.error(data.detail || "Failed to generate signup link");
+        toast.error(data.detail || "Failed to generate the login page link");
       }
     } catch (error) {
       console.error("Error generating signup link:", error);
@@ -175,7 +175,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
   // Copy signup link to clipboard
   const copySignupLink = () => {
     navigator.clipboard.writeText(signupLink);
-    toast.success("Signup link copied to clipboard!");
+    toast.success("Login page link copied to clipboard!");
   };
 
   return (
@@ -293,10 +293,10 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                   </div>
                 </div>
 
-                {/* League Signup Link */}
+                {/* Shareable login page for this league/classroom */}
                 <div className="mb-6">
                   <h3 className="text-lg font-medium text-ui-dark mb-2">
-                    Signup Link
+                    {`${T.League} Login Page`}
                   </h3>
 
                   {showSignupLink ? (
@@ -330,7 +330,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                         </button>
                       </div>
                       <p className="mt-2 text-sm text-ui-dark">
-                        {`Share this link for ${T.teams} to sign up directly to this ${T.league}.`}
+                        {`Share this page with your ${T.teams} — they use it to sign up and log in to this ${T.league}.`}
                       </p>
                     </div>
                   ) : (
@@ -343,7 +343,7 @@ const LeagueAttributes = ({ userRole, redirectPath, onUnauthorized }) => {
                     >
                       {isLoadingSignupLink
                         ? "Generating..."
-                        : "Generate Signup Link"}
+                        : `Create ${T.League} Login Page`}
                     </button>
                   )}
                 </div>
