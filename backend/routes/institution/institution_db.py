@@ -26,7 +26,7 @@ from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
 from backend.team_capacity import assert_team_capacity
 from backend.utils import process_simulation_results
-from backend.time_utils import utc_now
+from backend.time_utils import ensure_utc, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +266,56 @@ def get_all_teams(session: Session, institution_id: int) -> Dict:
             for team in teams
         ]
     }
+
+
+def get_classroom_summaries(session: Session, institution_id: int) -> list:
+    """League/classroom cards for the institution home page: every non-deleted
+    league except the 'unassigned' holding pen, with its team count, attached
+    tutorial titles, and shareable signup link."""
+    leagues = session.exec(
+        select(League)
+        .where(
+            League.institution_id == institution_id,
+            League.deleted_date == None,  # noqa: E711
+            League.name != "unassigned",
+        )
+        .order_by(League.created_date.desc())
+    ).all()
+    league_ids = [league.id for league in leagues]
+
+    team_counts: dict = {}
+    tutorial_titles: dict = {}
+    if league_ids:
+        team_counts = dict(
+            session.exec(
+                select(Team.league_id, func.count(Team.id))
+                .where(Team.league_id.in_(league_ids))
+                .group_by(Team.league_id)
+            ).all()
+        )
+        for league_id, title in session.exec(
+            select(LeagueTutorial.league_id, Tutorial.title)
+            .join(Tutorial, Tutorial.id == LeagueTutorial.tutorial_id)
+            .where(LeagueTutorial.league_id.in_(league_ids))
+            .order_by(LeagueTutorial.tutorial_id)
+        ).all():
+            tutorial_titles.setdefault(league_id, []).append(title)
+
+    now = utc_now()
+    return [
+        {
+            "id": league.id,
+            "name": league.name,
+            "game": league.game,
+            "team_count": team_counts.get(league.id, 0),
+            "tutorials": tutorial_titles.get(league.id, []),
+            "signup_link": league.signup_link,
+            "created_date": league.created_date,
+            "expiry_date": league.expiry_date,
+            "is_active": ensure_utc(league.expiry_date) >= now,
+        }
+        for league in leagues
+    ]
 
 
 def get_teams_progress(session: Session, institution_id: int) -> list:

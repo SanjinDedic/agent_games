@@ -26,7 +26,7 @@ function Institution({ variant = "institution" }) {
   useEffect(() => {
     if (isAuthenticated && !tokenExpired) {
       if (currentUser.role === "institution") {
-        navigate('/InstitutionTeam');
+        navigate('/InstitutionHome');
       } else if (currentUser.role === "admin") {
         navigate('/AdminInstitutions');
       }
@@ -68,7 +68,7 @@ function Institution({ variant = "institution" }) {
       const data = await response.json();
       if (response.ok) {
         dispatch(setToken(data.access_token));
-        navigate("/InstitutionTeam");
+        navigate("/InstitutionHome");
       } else {
         setErrorMessage(data.detail || "Login failed");
       }

@@ -15,7 +15,7 @@ import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
 import InstitutionLeague from "./AgentGames/Institution/InstitutionLeague";
 import InstitutionLeagueSimulation from "./AgentGames/Institution/InstitutionLeagueSimulation";
 import InstitutionLeagueSubmissions from "./AgentGames/Institution/InstitutionLeagueSubmissions";
-import InstitutionSubscription from "./AgentGames/Institution/InstitutionSubscription";
+import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
 import InstitutionProgress from "./AgentGames/Institution/InstitutionProgress";
 import Leaderboards from "./AgentGames/Leaderboards";
 import Admin from "./AgentGames/Admin/Admin";
@@ -219,10 +219,10 @@ function App() {
             }
           />
           <Route
-            path="InstitutionSubscription"
+            path="InstitutionHome"
             element={
               <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionSubscription />
+                <InstitutionHome />
               </AuthProtection>
             }
           />

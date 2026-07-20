@@ -21,6 +21,7 @@ The platform serves two audiences with the same routes but different wording
 | `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; navbar must say "Classroom Management" / "Student Section"), create greedy_pig classroom ("Create Classroom", "Classroom Created Successfully"), capture join URL, attach the seeded tutorial |
 | `06_student_submissions.js` | classroom | mirror of 03 — two students: signup via the classroom join page ("Classroom · greedy_pig", "Student Name", "Sign Up & Join Classroom"), same 2-valid + 1-invalid submissions and history check (STUDENT:/CLASSROOM: footer); Student 1 runs the same tutorial exercise (per-student progress, STUDENT: footer) |
 | `07_demo_hints.js` | demo | manual Stage 5 — per game ×7: demo user, invalid submission, Get Hint, fix, valid submission |
+| `08_password_reset.js` | classroom | not in the manual yet — teacher generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
 
 ```bash
 # stack must be up (docker compose up -d); a wiped DB gives the cleanest run
@@ -30,14 +31,16 @@ docker compose exec api python tutorial_data/tutorial_sync.py push --target loca
 export OPENAI_API_KEY=sk-...
 for s in 01_admin_setup 02_institution_league 03_team_submissions \
          04_institution_review_publish 05_teacher_classroom \
-         06_student_submissions 07_demo_hints; do
+         06_student_submissions 07_demo_hints 08_password_reset; do
   NODE_PATH="$HOME/.agent-games-playwright/node_modules" \
     node .claude/skills/tester_skill/manual_tests/$s.js || break
 done
 ```
 
 State-file dependencies: 02–04 need 01 (institution) and each other in order; 05 needs 01
-(teacher account); 06 needs 05 (classroom join URL); 07 is independent.
+(teacher account); 06 needs 05 (classroom join URL); 07 is independent; 08 needs 01 + 05 + 06
+(teacher account, classroom name, student credentials — it rewrites Student 1's password in
+the state file after the reset).
 
 Conventions (see `_helpers.js`):
 

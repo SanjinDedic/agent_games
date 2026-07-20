@@ -19,14 +19,14 @@ docker compose commands, or seed anything yourself.
 ./run_playwright_tests.sh all
 ```
 
-`all` = non-interactive: headless, every stage (01–07) in order, per-stage
+`all` = non-interactive: headless, every stage (01–08) in order, per-stage
 summary at the end, exit 1 if anything failed. Without `all` the script is an
 interactive menu (browser mode, per-stage picker) — for humans, not for you.
 
 Stage layout: 01 admin setup (institutions + teacher account), 02–04 the
 COMPETITION flow (institution/league/team wording), 05–06 the CLASSROOM flow
 (teacher/classroom/student wording — same routes, different labels), 07 the
-demo hint loop.
+demo hint loop, 08 the one-time student password-reset link (classroom flow).
 
 **Warning before running:** every launch does `docker compose down -v` — wipes
 the local DB and MinIO volumes. Say so first unless the user explicitly asked
@@ -65,5 +65,5 @@ Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 Per-stage PASS/FAIL table, then for each failure: which step, what was
 observed (toast / console error / API response), the relevant log lines, and
 whether it's a known deviation or a real regression. Declare the stack healthy
-when stages 02–07 pass and stage 01's sole failure is the known 1.4
+when stages 02–08 pass and stage 01's sole failure is the known 1.4
 backup/restore.

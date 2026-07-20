@@ -95,13 +95,13 @@ function InstitutionSignup() {
                 return;
             }
             // Auto-login: the backend returns a token for the new institution,
-            // so log straight in and land on the Subscription tab.
+            // so log straight in and land on the home page.
             const noun = info?.is_teacher ? 'Teacher account' : 'Institution';
             const token = json?.access_token;
             if (token) {
                 dispatch(setToken(token));
                 toast.success(`${noun} created — you are now logged in.`);
-                navigate('/InstitutionSubscription');
+                navigate('/InstitutionHome');
             } else {
                 toast.success(`${noun} created — you can now log in.`);
                 navigate(info?.is_teacher ? '/Teacher' : '/Institution');

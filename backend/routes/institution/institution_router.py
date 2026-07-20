@@ -22,6 +22,7 @@ from backend.routes.institution.institution_db import (
     generate_team_password_reset,
     get_all_league_results,
     get_all_teams,
+    get_classroom_summaries,
     get_league_by_id,
     get_teams_progress,
     get_tutorials_progress,
@@ -157,23 +158,12 @@ async def team_progress_endpoint(
     }
 
 
-@institution_router.get("/subscription")
-@verify_institution_role
-async def get_subscription_endpoint(
-    session: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Return the logged-in institution's subscription + contact details.
+def _subscription_payload(institution: Institution) -> dict:
+    """Display-only subscription + contact fields for the given institution.
 
-    Read-only view backing the Subscription tab. Stripe object IDs are not
-    exposed — only display fields the institution needs to see.
+    Stripe object IDs are not exposed — only fields the institution needs to
+    see. Shared by the subscription and home endpoints.
     """
-    institution_id, _ = _require_institution(current_user)
-
-    institution = session.get(Institution, institution_id)
-    if not institution:
-        raise HTTPException(status_code=404, detail="Institution not found")
-
     sub = institution.subscription
     data = {
         "institution_name": institution.name,
@@ -200,6 +190,42 @@ async def get_subscription_endpoint(
                 sub.created_date.isoformat() if sub.created_date else None
             ),
         }
+    return data
+
+
+@institution_router.get("/subscription")
+@verify_institution_role
+async def get_subscription_endpoint(
+    session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the logged-in institution's subscription + contact details."""
+    institution_id, _ = _require_institution(current_user)
+
+    institution = session.get(Institution, institution_id)
+    if not institution:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    return _subscription_payload(institution)
+
+
+@institution_router.get("/home")
+@verify_institution_role
+async def get_home_endpoint(
+    session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Payload backing the institution/teacher home page: one card per
+    league/classroom (team count, game, attached tutorial titles, signup
+    link) plus the same subscription summary as /subscription."""
+    institution_id, _ = _require_institution(current_user)
+
+    institution = session.get(Institution, institution_id)
+    if not institution:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    data = _subscription_payload(institution)
+    data["classrooms"] = get_classroom_summaries(session, institution_id)
     return data
 
 

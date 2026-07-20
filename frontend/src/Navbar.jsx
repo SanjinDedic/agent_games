@@ -22,19 +22,19 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/AdminLessons", label: "Lessons" },
   ],
   institution: [
+    { to: "/InstitutionHome", label: "Home" },
     { to: "/InstitutionTeam", label: "Team Section" },
     { to: "/InstitutionProgress", label: "Team Progress" },
     { to: "/InstitutionLeague", label: "League Management" },
     { to: "/InstitutionLeagueSimulation", label: "League Simulation" },
-    { to: "/InstitutionSubscription", label: "Subscription" },
   ],
   // Teacher accounts share the institution routes; only the wording changes.
   teacher: [
+    { to: "/InstitutionHome", label: "Home" },
     { to: "/InstitutionTeam", label: "Student Section" },
     { to: "/InstitutionProgress", label: "Student Progress" },
     { to: "/InstitutionLeague", label: "Classroom Management" },
     { to: "/InstitutionLeagueSimulation", label: "Classroom Simulation" },
-    { to: "/InstitutionSubscription", label: "Subscription" },
   ],
   team: [
     { to: "/TeamHome", label: "Home" },
