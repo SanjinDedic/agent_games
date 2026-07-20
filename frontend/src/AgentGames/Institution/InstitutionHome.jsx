@@ -6,6 +6,7 @@ import { authFetch } from '../../utils/authFetch';
 import { selectToken } from '../../slices/authSlice';
 import { setCurrentLeague } from '../../slices/leaguesSlice';
 import useLeagueAPI from '../Shared/hooks/useLeagueAPI';
+import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
 import { useTerms } from '../Shared/terminology';
 
 // Display labels for the plan tiers (the price/amount is driven server-side).
@@ -59,9 +60,12 @@ function InstitutionHome() {
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
   const { fetchUserLeagues } = useLeagueAPI('institution');
+  const { getTutorials } = useTutorialAPI();
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState(null);
+  // Full tutorial library for the preview card (null = still loading).
+  const [tutorials, setTutorials] = useState(null);
   // league id whose signup link is currently being generated
   const [generatingFor, setGeneratingFor] = useState(null);
 
@@ -92,6 +96,19 @@ function InstitutionHome() {
   useEffect(() => {
     fetchHome();
   }, [fetchHome]);
+
+  // Institution tokens get the full tutorial library from this endpoint.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const result = await getTutorials();
+      if (!active) return;
+      setTutorials(result.success ? result.tutorials : []);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [getTutorials]);
 
   const loginUrlFor = (classroom) =>
     `${window.location.origin}/join/${classroom.signup_link}`;
@@ -187,18 +204,9 @@ function InstitutionHome() {
           <div className="space-y-8">
             {/* Active classrooms/leagues */}
             <section>
-              <div className="flex justify-between items-baseline mb-4">
-                <h2 className="text-2xl font-semibold text-ui-dark">
-                  {`Active ${T.Leagues}`}
-                </h2>
-                <button
-                  onClick={() => navigate('/TutorialPreview')}
-                  className="text-sm text-primary font-medium hover:underline"
-                  title={`Try any tutorial exactly as a ${T.team} would — nothing you run is saved`}
-                >
-                  Preview tutorials →
-                </button>
-              </div>
+              <h2 className="text-2xl font-semibold text-ui-dark mb-4">
+                {`Active ${T.Leagues}`}
+              </h2>
 
               {activeClassrooms.length === 0 ? (
                 <div className={`${card} text-ui`}>
@@ -329,46 +337,110 @@ function InstitutionHome() {
               )}
             </section>
 
-            {/* Subscription */}
-            <section>
-              <h2 className="text-2xl font-semibold text-ui-dark mb-4">
-                Subscription
-              </h2>
-              <div className={card}>
-                {sub ? (
-                  <div>
-                    <Row label="Plan">
-                      {TIER_LABELS[sub.tier] || sub.tier || 'Subscription'}
-                    </Row>
-                    <Row label="Status">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-sm font-medium ${
-                          subActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {subActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </Row>
-                    <Row label="Expires">{formatDate(sub.subscription_expiry)}</Row>
-                    <Row label="Auto-renew">{sub.auto_renew ? 'Yes' : 'No'}</Row>
-                    <Row label="Billed via">
-                      {PAYMENT_METHOD_LABELS[sub.payment_method] ||
-                        sub.payment_method ||
-                        '—'}
-                    </Row>
-                    <Row label="Contact">
-                      {[data.contact_person, data.contact_email]
-                        .filter(Boolean)
-                        .join(' — ') || '—'}
-                    </Row>
-                  </div>
-                ) : (
-                  <p className="text-ui">No active subscription on record.</p>
-                )}
-              </div>
-            </section>
+            {/* Subscription + tutorial library, side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+              {/* Subscription */}
+              <section className="flex flex-col">
+                <h2 className="text-2xl font-semibold text-ui-dark mb-4">
+                  Subscription
+                </h2>
+                <div className={`${card} flex-1`}>
+                  {sub ? (
+                    <div>
+                      <Row label="Plan">
+                        {TIER_LABELS[sub.tier] || sub.tier || 'Subscription'}
+                      </Row>
+                      <Row label="Status">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-sm font-medium ${
+                            subActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {subActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </Row>
+                      <Row label="Expires">
+                        {formatDate(sub.subscription_expiry)}
+                      </Row>
+                      <Row label="Auto-renew">{sub.auto_renew ? 'Yes' : 'No'}</Row>
+                      <Row label="Billed via">
+                        {PAYMENT_METHOD_LABELS[sub.payment_method] ||
+                          sub.payment_method ||
+                          '—'}
+                      </Row>
+                      <Row label="Contact">
+                        {[data.contact_person, data.contact_email]
+                          .filter(Boolean)
+                          .join(' — ') || '—'}
+                      </Row>
+                    </div>
+                  ) : (
+                    <p className="text-ui">No active subscription on record.</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Preview tutorials — scroll to browse the whole library */}
+              <section className="flex flex-col">
+                <div className="flex justify-between items-baseline mb-4">
+                  <h2 className="text-2xl font-semibold text-ui-dark">
+                    Preview tutorials
+                  </h2>
+                  <button
+                    onClick={() => navigate('/TutorialPreview')}
+                    className="text-sm text-primary font-medium hover:underline"
+                    title={`Try any tutorial exactly as a ${T.team} would — nothing you run is saved`}
+                  >
+                    Open full library →
+                  </button>
+                </div>
+                <div className={`${card} flex-1 flex flex-col min-h-0`}>
+                  <p className="text-sm text-ui mb-3">
+                    {`Click a tutorial to try it exactly as a ${T.team} would — nothing you run is saved.`}
+                  </p>
+                  {tutorials === null ? (
+                    <p className="text-sm text-ui">Loading tutorials…</p>
+                  ) : tutorials.length === 0 ? (
+                    <p className="text-sm text-ui">
+                      There are no tutorials in the library yet.
+                    </p>
+                  ) : (
+                    <div className="flex-1 min-h-0 overflow-y-auto max-h-[70vh] -mx-2 px-2 space-y-2">
+                      {tutorials.map((tut) => (
+                        <button
+                          key={tut.id}
+                          onClick={() =>
+                            navigate(`/TutorialPreview?tutorial=${tut.id}`)
+                          }
+                          className="w-full flex items-center gap-3 rounded-lg border border-ui-light p-3 text-left transition-colors hover:border-primary/60 hover:bg-primary/5"
+                          title={`Preview "${tut.title}" as a ${T.team} — nothing you run is saved`}
+                        >
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-medium text-ui-dark truncate">
+                              {tut.title}
+                            </span>
+                            {tut.description && (
+                              <span className="block text-sm text-ui truncate">
+                                {tut.description}
+                              </span>
+                            )}
+                            <span className="block text-xs text-ui mt-0.5">
+                              {tut.exercise_count}{' '}
+                              {tut.exercise_count === 1 ? 'exercise' : 'exercises'}
+                            </span>
+                          </span>
+                          <span className="text-ui-light" aria-hidden="true">
+                            →
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
         )}
       </div>
