@@ -17,8 +17,11 @@ import { useTerms } from "../Shared/terminology";
  * key={exercise.id} so switching exercises resets the editor and results.
  * `panelHeader` (optional) renders above the problem description — the
  * tutorial page uses it for the exercise picker.
+ * `preview` (institution/teacher/admin) submits to the no-persist preview
+ * endpoint and never touches the team-scoped submission history endpoints,
+ * so every exercise opens on the starter code.
  */
-function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
+function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = false }) {
   const currentUser = useSelector(selectCurrentUser);
   const T = useTerms();
 
@@ -30,9 +33,13 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
   } = useTutorialAPI();
 
   const ws = useSubmissionWorkspace({
-    getLatestSubmission: () => getLatestExerciseSubmission(exercise.id),
-    getSubmissionHistory: () => getExerciseSubmissions(exercise.id),
-    submitCode: (code) => submitExercise(exercise.id, code),
+    getLatestSubmission: preview
+      ? async () => ({ success: true, hasSubmission: false })
+      : () => getLatestExerciseSubmission(exercise.id),
+    getSubmissionHistory: preview
+      ? async () => ({ success: true, submissions: [] })
+      : () => getExerciseSubmissions(exercise.id),
+    submitCode: (code) => submitExercise(exercise.id, code, { preview }),
   });
 
   useEffect(() => {
@@ -73,9 +80,11 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader }) {
           {...ws.footerProps}
           allowHint={false}
           isLoading={isSubmitting}
-          statusItems={[
-            { label: T.Team.toUpperCase(), value: currentUser.name },
-          ]}
+          statusItems={
+            preview
+              ? [{ label: "MODE", value: "Preview — code is not saved" }]
+              : [{ label: T.Team.toUpperCase(), value: currentUser.name }]
+          }
         />
       }
     >

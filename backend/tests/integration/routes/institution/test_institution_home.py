@@ -110,7 +110,11 @@ def test_home_success(client, home_setup):
     active = classrooms["year9_code_club"]
     assert active["game"] == "greedy_pig"
     assert active["team_count"] == 3
-    assert active["tutorials"] == ["Home Test Printing", "Home Test Variables"]
+    assert [t["title"] for t in active["tutorials"]] == [
+        "Home Test Printing",
+        "Home Test Variables",
+    ]
+    assert all(isinstance(t["id"], int) for t in active["tutorials"])
     assert active["signup_link"] == "active-signup-token"
     assert active["is_active"] is True
 

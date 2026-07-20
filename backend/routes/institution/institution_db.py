@@ -293,13 +293,15 @@ def get_classroom_summaries(session: Session, institution_id: int) -> list:
                 .group_by(Team.league_id)
             ).all()
         )
-        for league_id, title in session.exec(
-            select(LeagueTutorial.league_id, Tutorial.title)
+        for league_id, tutorial_id, title in session.exec(
+            select(LeagueTutorial.league_id, Tutorial.id, Tutorial.title)
             .join(Tutorial, Tutorial.id == LeagueTutorial.tutorial_id)
             .where(LeagueTutorial.league_id.in_(league_ids))
             .order_by(LeagueTutorial.tutorial_id)
         ).all():
-            tutorial_titles.setdefault(league_id, []).append(title)
+            tutorial_titles.setdefault(league_id, []).append(
+                {"id": tutorial_id, "title": title}
+            )
 
     now = utc_now()
     return [

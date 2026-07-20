@@ -187,9 +187,18 @@ function InstitutionHome() {
           <div className="space-y-8">
             {/* Active classrooms/leagues */}
             <section>
-              <h2 className="text-2xl font-semibold text-ui-dark mb-4">
-                {`Active ${T.Leagues}`}
-              </h2>
+              <div className="flex justify-between items-baseline mb-4">
+                <h2 className="text-2xl font-semibold text-ui-dark">
+                  {`Active ${T.Leagues}`}
+                </h2>
+                <button
+                  onClick={() => navigate('/TutorialPreview')}
+                  className="text-sm text-primary font-medium hover:underline"
+                  title={`Try any tutorial exactly as a ${T.team} would — nothing you run is saved`}
+                >
+                  Preview tutorials →
+                </button>
+              </div>
 
               {activeClassrooms.length === 0 ? (
                 <div className={`${card} text-ui`}>
@@ -234,17 +243,23 @@ function InstitutionHome() {
                         </div>
                         <div>
                           <span className="block text-sm font-medium text-ui mb-1">
-                            Tutorials:
+                            Tutorials (click to preview as a {T.team}):
                           </span>
                           {classroom.tutorials.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
-                              {classroom.tutorials.map((title) => (
-                                <span
-                                  key={title}
-                                  className="text-xs bg-primary-light/20 text-primary-dark px-2 py-0.5 rounded-full"
+                              {classroom.tutorials.map((tutorial) => (
+                                <button
+                                  key={tutorial.id}
+                                  onClick={() =>
+                                    navigate(
+                                      `/TutorialPreview?tutorial=${tutorial.id}`
+                                    )
+                                  }
+                                  className="text-xs bg-primary-light/20 text-primary-dark px-2 py-0.5 rounded-full hover:bg-primary-light/40 hover:underline transition-colors"
+                                  title={`Preview "${tutorial.title}" as a ${T.team} — nothing you run is saved`}
                                 >
-                                  {title}
-                                </span>
+                                  {tutorial.title}
+                                </button>
                               ))}
                             </div>
                           ) : (

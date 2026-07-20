@@ -7,6 +7,7 @@ from sqlmodel import Session
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import (
     get_current_user,
+    verify_admin_or_institution,
     verify_admin_role,
     verify_ai_agent_service_or_student,
     verify_any_role,
@@ -132,6 +133,50 @@ async def submit_exercise(
         "test_results": test_results,
         "stdout": run_result.get("stdout"),
         "duration_ms": duration_ms,
+    }
+
+
+@tutorial_router.post("/preview/submit-exercise")
+@verify_admin_or_institution
+async def preview_submit_exercise(
+    submission: ExerciseSubmissionRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Run exercise code exactly like /submit-exercise but persist nothing.
+
+    Backs the tutorial preview for institution/teacher/admin accounts: they
+    try a tutorial as a fresh student would see it, so no submission or
+    metadata rows may be written — every preview starts blank. Response shape
+    mirrors /submit-exercise (submission_id is always null) so the same
+    frontend workspace drives both. No league check (these roles browse the
+    whole library) and no per-team rate limit (there is no team).
+    """
+    exercise = get_exercise_by_id(session, submission.exercise_id)
+
+    async_result = enqueue_exercise_run(
+        code=submission.code,
+        entry_function=exercise.entry_function,
+        test_code=exercise.test_code,
+    )
+    run_result = await await_exercise_result(async_result)
+
+    if run_result.get("status") == "error":
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": run_result.get("message", "Exercise run failed"),
+                "stdout": run_result.get("stdout"),
+            },
+        )
+
+    return {
+        "submission_id": None,
+        "exercise_id": exercise.id,
+        "passed": run_result.get("passed", False),
+        "test_results": run_result.get("test_results", []),
+        "stdout": run_result.get("stdout"),
+        "duration_ms": run_result.get("duration_ms"),
     }
 
 

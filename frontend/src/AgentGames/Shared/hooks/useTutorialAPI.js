@@ -168,7 +168,7 @@ export const useTutorialAPI = () => {
    * Failing tests come back as a success whose output lists the failures;
    * a 400 means the code never produced test results (unsafe/crashed/timeout).
    */
-  const submitExercise = useCallback(async (exerciseId, code) => {
+  const submitExercise = useCallback(async (exerciseId, code, { preview = false } = {}) => {
     if (!code || code.trim() === "") {
       toast.error("Please enter some code before submitting");
       return { success: false, error: "Empty code submission" };
@@ -176,8 +176,14 @@ export const useTutorialAPI = () => {
 
     setIsLoading(true);
 
+    // The preview endpoint (institution/teacher/admin tokens) runs the same
+    // tests but persists nothing — the response shape is identical.
+    const path = preview
+      ? '/tutorial/preview/submit-exercise'
+      : '/tutorial/submit-exercise';
+
     try {
-      const response = await authFetch(`${apiUrl}/tutorial/submit-exercise`, {
+      const response = await authFetch(`${apiUrl}${path}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

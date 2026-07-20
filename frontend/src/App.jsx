@@ -86,6 +86,19 @@ function App() {
               </AuthProtection>
             }
           />
+          {/* Institutions/teachers/admins trying tutorials as a student would
+              see them — nothing run here is saved */}
+          <Route
+            path="TutorialPreview"
+            element={
+              <AuthProtection
+                requiredRole={["institution", "admin"]}
+                redirectTo="/"
+              >
+                <Tutorial preview />
+              </AuthProtection>
+            }
+          />
           <Route path="Rankings" element={<AgentRankings />} />
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />

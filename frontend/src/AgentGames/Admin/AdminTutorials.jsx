@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
 import CodeEditor from '../Shared/Submission/CodeEditor';
@@ -397,6 +398,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
 }
 
 function AdminTutorials() {
+  const navigate = useNavigate();
   const {
     getTutorials,
     getTutorialAdmin,
@@ -685,15 +687,26 @@ function AdminTutorials() {
                     <h1 className="text-2xl font-bold text-gray-800">
                       Edit Tutorial
                     </h1>
-                    <button
-                      onClick={handleSaveMeta}
-                      disabled={savingMeta}
-                      className={`px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 ${
-                        savingMeta ? 'opacity-70 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {savingMeta ? 'Saving...' : 'Save Tutorial'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          navigate(`/TutorialPreview?tutorial=${detail.id}`)
+                        }
+                        className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                        title="Open this tutorial as a student would see it — nothing you run is saved"
+                      >
+                        Preview as student
+                      </button>
+                      <button
+                        onClick={handleSaveMeta}
+                        disabled={savingMeta}
+                        className={`px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 ${
+                          savingMeta ? 'opacity-70 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {savingMeta ? 'Saving...' : 'Save Tutorial'}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     <div>

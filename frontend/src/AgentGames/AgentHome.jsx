@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 import Footer from '../Footer';
 import { imageUrl } from '../config/assets';
@@ -24,6 +25,25 @@ const HOW_IT_WORKS_STEPS = [
 ];
 
 const Homepage = () => {
+  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
+  const [contentOverview, setContentOverview] = useState(null);
+
+  // Live tutorial/lesson counts for the hero strip
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${apiUrl}/demo/content_overview`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setContentOverview(data);
+      })
+      .catch(() => {
+        // Informational strip only — omit it if the fetch fails
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl]);
+
   return (
     <div className="min-h-screen bg-ui-lighter pt-12">
       {/* Hero Section */}
@@ -37,6 +57,28 @@ const Homepage = () => {
             guided tutorials, instant feedback, and live leaderboards. Set up
             your classroom in minutes.
           </p>
+          {contentOverview && (
+            <div className="flex justify-center gap-10 mb-10">
+              <div className="text-center">
+                <p className="text-4xl font-bold text-white">
+                  {contentOverview.total_tutorials}
+                </p>
+                <p className="text-league-text">Guided Tutorials</p>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-bold text-white">
+                  {contentOverview.total_lessons}
+                </p>
+                <p className="text-league-text">Python Lessons</p>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-bold text-white">
+                  {featuredGames.length}
+                </p>
+                <p className="text-league-text">Strategy Games</p>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col md:flex-row justify-center gap-4">
             <Link to="/Demo" className="inline-block">
               <button className="bg-success hover:bg-success-hover text-white shadow-lg text-xl py-3 px-8 rounded">
