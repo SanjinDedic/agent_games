@@ -48,6 +48,11 @@ const Homepage = () => {
                 Create Your Classroom
               </button>
             </Link>
+            <Link to="/Institutions" className="inline-block">
+              <button className="border-2 border-white text-white hover:bg-white hover:text-primary shadow-lg text-xl py-3 px-8 rounded">
+                Create a Coding Competition
+              </button>
+            </Link>
           </div>
           <p className="mt-8 text-league-text">
             Students: open the classroom link your teacher shared, or{" "}

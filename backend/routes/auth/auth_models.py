@@ -59,7 +59,14 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class InstitutionsResponse(BaseModel):
-    """Public list of institution names for the login selector."""
+class CompetitionInfo(BaseModel):
+    """One competition on the public login picker."""
 
-    institutions: list[str]
+    name: str
+    icon: str | None = None
+
+
+class CompetitionsResponse(BaseModel):
+    """Public list of competitions for the login picker."""
+
+    competitions: list[CompetitionInfo]

@@ -47,12 +47,13 @@ const NAV_LINKS_BY_ROLE = {
     { to: "/AgentSubmission", label: "Submit Agent" },
     { to: "/Tutorial", label: "Tutorial" },
   ],
-  // Logged-out visitors get the teacher-first pitch; everything else
-  // (About, Leaderboards) lives on the home page and footer.
+  // Logged-out visitors get the teacher-first pitch. Navbar links go to the
+  // login pages (returning users); the home-page hero carries the signup CTAs,
+  // and each login page links back to its signup/pricing page.
   public: [
     { to: "/Demo", label: "Demo" },
-    { to: "/Teachers", label: "For Teachers" },
-    { to: "/Institutions", label: "For Competitions" },
+    { to: "/Teacher", label: "For Teachers" },
+    { to: "/Institution", label: "For Competitions" },
   ],
 };
 

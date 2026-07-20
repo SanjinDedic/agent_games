@@ -124,16 +124,21 @@ function Institution({ variant = "institution" }) {
         
         <div className="mt-6 text-center text-ui">
           <p>
+            Don't have an account yet?{' '}
             {isTeacher ? (
               <>
-                Don't have an account yet?{' '}
                 <Link to="/Teachers" className="text-primary font-semibold underline">
-                  See teacher plans
+                  Sign up here
                 </Link>{' '}
                 — from $29 for 90 days.
               </>
             ) : (
-              "Contact your administrator if you don't have login credentials."
+              <>
+                <Link to="/Institutions" className="text-primary font-semibold underline">
+                  Sign up here
+                </Link>{' '}
+                to host a competition.
+              </>
             )}
           </p>
         </div>

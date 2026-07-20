@@ -59,6 +59,9 @@ class Institution(SQLModel, table=True):
         default=False,
         sa_column=Column(Boolean(), nullable=False, server_default=text("false")),
     )
+    # Emoji or image URL shown next to the name on the public competition
+    # picker (student login page). Only meaningful for non-teacher accounts.
+    icon: Optional[str] = Field(default=None, sa_column=Column(Text(), nullable=True))
     teams: List["Team"] = Relationship(back_populates="institution")
     leagues: List["League"] = Relationship(back_populates="institution")
     subscription: Optional["InstitutionSubscription"] = Relationship(
