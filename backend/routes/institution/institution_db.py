@@ -698,6 +698,39 @@ def generate_signup_link(session: Session, league_id: int, institution_id: int, 
     return {"signup_token": signup_token, "league_name": league.name}
 
 
+# How long a password-reset link stays usable. Generous on purpose: a teacher
+# may generate links in the evening for a class that runs the next day.
+PASSWORD_RESET_LINK_HOURS = 48
+
+
+def generate_team_password_reset(
+    session: Session, team_id: int, institution_id: int
+) -> Dict:
+    """Create a one-time password-reset token for a team the institution owns.
+
+    Regenerating replaces any previous token, so a mis-shared link can be
+    invalidated by generating a fresh one.
+    """
+    team = session.get(Team, team_id)
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+
+    if team.institution_id != institution_id:
+        raise InstitutionAccessError(
+            "You don't have permission to reset this team's password"
+        )
+
+    reset_token = secrets.token_urlsafe(16)
+    team.password_reset_token = reset_token
+    team.password_reset_expiry = utc_now() + timedelta(
+        hours=PASSWORD_RESET_LINK_HOURS
+    )
+    session.add(team)
+    session.commit()
+
+    return {"reset_token": reset_token, "team_name": team.name}
+
+
 def delete_league(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Delete a league and move its teams to the unassigned league"""
     league = session.get(League, league_id)

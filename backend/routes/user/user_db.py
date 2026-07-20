@@ -427,6 +427,39 @@ def get_league_by_signup_token(session: Session, signup_token: str) -> League:
     return league
 
 
+def get_team_by_reset_token(session: Session, reset_token: str) -> Team:
+    """Resolve a team from a password-reset token, checking expiry.
+
+    A consumed, regenerated, or expired link is indistinguishable from one
+    that never existed: all raise TeamNotFoundError (HTTP 404) with the same
+    message, so the public endpoint leaks nothing about token state.
+    """
+    team = session.exec(
+        select(Team).where(Team.password_reset_token == reset_token)
+    ).first()
+    if (
+        not team
+        or team.password_reset_expiry is None
+        or ensure_utc(team.password_reset_expiry) < utc_now()
+    ):
+        raise TeamNotFoundError(
+            "This password reset link is invalid or has expired"
+        )
+    return team
+
+
+def reset_team_password(session: Session, reset_token: str, password: str) -> Team:
+    """Set a new password via a reset token and consume the token."""
+    team = get_team_by_reset_token(session, reset_token)
+    team.set_password(password)
+    team.password_reset_token = None
+    team.password_reset_expiry = None
+    session.add(team)
+    session.commit()
+    session.refresh(team)
+    return team
+
+
 def create_team_and_assign_to_league(
     session: Session,
     team_name: str,

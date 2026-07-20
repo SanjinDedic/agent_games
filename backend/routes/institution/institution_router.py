@@ -19,6 +19,7 @@ from backend.routes.institution.institution_db import (
     delete_league,
     delete_team,
     generate_signup_link,
+    generate_team_password_reset,
     get_all_league_results,
     get_all_teams,
     get_league_by_id,
@@ -428,6 +429,25 @@ async def generate_signup_link_endpoint(
     return {
         "message": f"Signup link generated for league {result['league_name']}",
         "signup_token": result["signup_token"],
+    }
+
+
+@institution_router.post("/team-password-reset")
+@verify_institution_role
+async def team_password_reset_endpoint(
+    team: TeamIdRef,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Generate a shareable one-time password-reset link for a team."""
+    institution_id, _ = _require_institution(current_user)
+    result = generate_team_password_reset(session, team.team_id, institution_id)
+    return {
+        "message": (
+            f"Password reset link generated for '{result['team_name']}'"
+        ),
+        "reset_token": result["reset_token"],
+        "team_name": result["team_name"],
     }
 
 

@@ -43,9 +43,11 @@ from backend.routes.user.user_db import (
     get_published_result,
     get_result_by_publish_link,
     get_team_by_id,
+    get_team_by_reset_token,
     get_team_submission,
     get_team_submission_history,
     record_failed_submission,
+    reset_team_password,
     save_submission,
 )
 from backend.routes.user.user_models import (
@@ -54,6 +56,7 @@ from backend.routes.user.user_models import (
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
+    TeamPasswordReset,
 )
 from backend.schools.providers import SchoolsProviderError, get_schools_provider
 from backend.tasks.validation_task import (
@@ -507,6 +510,43 @@ async def get_league_by_token(
         data["schools"] = schools
 
     return data
+
+
+@user_router.get("/password-reset-info/{reset_token}")
+async def get_password_reset_info(
+    reset_token: str,
+    session: Session = Depends(get_db),
+):
+    """Who this reset link is for — public, rendered on the /reset page."""
+    team = get_team_by_reset_token(session, reset_token)
+    return {
+        "team_name": team.name,
+        # The reset page is public (no token to read wording from), so it
+        # needs the owning institution's identity to render classroom/student
+        # vs league/team copy — same contract as league-info above.
+        "institution_name": team.institution.name if team.institution else None,
+        "is_teacher": (
+            bool(team.institution.is_teacher) if team.institution else False
+        ),
+    }
+
+
+@user_router.post("/reset-team-password")
+async def reset_team_password_endpoint(
+    payload: TeamPasswordReset,
+    session: Session = Depends(get_db),
+):
+    """Set a new password via a reset link, consume the link, and log the
+    team straight in so the student continues from their existing progress."""
+    team = reset_team_password(session, payload.reset_token, payload.password)
+    return {
+        "message": f"Password updated for '{team.name}'",
+        "team_id": team.id,
+        "team_name": team.name,
+        "league_id": team.league_id,
+        "access_token": mint_team_token(team),
+        "token_type": "bearer",
+    }
 
 
 @user_router.post("/direct-school-league-signup")

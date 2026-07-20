@@ -40,6 +40,7 @@ import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
 // import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
+import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
 import SupportButton from "./AgentGames/Support/SupportButton";
 import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
 import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
@@ -103,6 +104,8 @@ function App() {
             path="/TeamSignup/:leagueToken"
             element={<ClassroomJoin defaultTab="signup" />}
           />
+          {/* One-time password-reset link shared by the institution */}
+          <Route path="/reset/:resetToken" element={<TeamPasswordReset />} />
           {/* New Route for Published Results */}
           <Route path="/results/:publishLink" element={<PublishedResults />} />
           {/* Admin Routes */}
