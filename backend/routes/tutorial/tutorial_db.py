@@ -675,6 +675,7 @@ def get_exercise_submission_history(
             "code": sub.code,
             "timestamp": sub.timestamp.isoformat(),
             "passed": sub.passed,
+            "test_results": sub.test_results,
             "duration_ms": meta.duration_ms,
         }
         for sub, meta in rows

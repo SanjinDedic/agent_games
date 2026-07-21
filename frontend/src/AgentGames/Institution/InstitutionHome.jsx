@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { authFetch } from '../../utils/authFetch';
 import { selectToken } from '../../slices/authSlice';
-import { setCurrentLeague } from '../../slices/leaguesSlice';
-import useLeagueAPI from '../Shared/hooks/useLeagueAPI';
+import LeagueCreation from '../Shared/League/LeagueCreation';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
 import { useTerms } from '../Shared/terminology';
 
@@ -56,10 +55,8 @@ function InstitutionHome() {
   const T = useTerms();
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
   const accessToken = useSelector(selectToken);
-  const { fetchUserLeagues } = useLeagueAPI('institution');
   const { getTutorials } = useTutorialAPI();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -152,13 +149,10 @@ function InstitutionHome() {
     }
   };
 
-  // Open League/Classroom Management with this classroom pre-selected: the
-  // leagues list must be in Redux before setCurrentLeague can find it by name.
-  const openManagement = async (classroom) => {
-    await fetchUserLeagues();
-    dispatch(setCurrentLeague(classroom.name));
-    navigate('/InstitutionLeague');
-  };
+  // Everything about a classroom lives in its workspace; the workspace loads
+  // the league list itself, so this is a plain navigation.
+  const openClassroom = (classroom, tab) =>
+    navigate(`/Classroom/${classroom.id}${tab ? `/${tab}` : ''}`);
 
   const card = 'bg-white rounded-lg shadow-lg p-6';
   const classrooms = data?.classrooms || [];
@@ -208,25 +202,14 @@ function InstitutionHome() {
                 {`Active ${T.Leagues}`}
               </h2>
 
-              {activeClassrooms.length === 0 ? (
-                <div className={`${card} text-ui`}>
-                  {`You have no active ${T.leagues} yet. `}
-                  <button
-                    onClick={() => navigate('/InstitutionLeague')}
-                    className="text-primary font-semibold underline"
-                  >
-                    {`Create one in ${T.League} Management`}
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {activeClassrooms.map((classroom) => (
                     <div key={classroom.id} className={card}>
                       <div className="flex justify-between items-start mb-4">
                         <button
-                          onClick={() => openManagement(classroom)}
+                          onClick={() => openClassroom(classroom)}
                           className="text-left"
-                          title={`Open ${classroom.name} in ${T.League} Management`}
+                          title={`Open the ${classroom.name} workspace`}
                         >
                           <span className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-success"></span>
@@ -316,8 +299,13 @@ function InstitutionHome() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Creation card lives in the grid so it's always in reach */}
+                  <LeagueCreation
+                    userRole="institution"
+                    onCreated={fetchHome}
+                  />
                 </div>
-              )}
 
               {expiredClassrooms.length > 0 && (
                 <div className="mt-4 text-sm text-ui">
@@ -326,8 +314,9 @@ function InstitutionHome() {
                     <span key={classroom.id}>
                       {i > 0 && ', '}
                       <button
-                        onClick={() => openManagement(classroom)}
+                        onClick={() => openClassroom(classroom, 'settings')}
                         className="underline hover:text-primary"
+                        title={`Open ${classroom.name}'s settings to extend its expiry`}
                       >
                         {classroom.name}
                       </button>

@@ -12,11 +12,9 @@ import InstitutionSignup from './AgentGames/InstitutionSignup';
 import InstitutionInvoiceSignup from './AgentGames/InstitutionInvoiceSignup';
 import Institution from "./AgentGames/Institution/Institution";
 import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
-import InstitutionLeague from "./AgentGames/Institution/InstitutionLeague";
-import InstitutionLeagueSimulation from "./AgentGames/Institution/InstitutionLeagueSimulation";
-import InstitutionLeagueSubmissions from "./AgentGames/Institution/InstitutionLeagueSubmissions";
 import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
-import InstitutionProgress from "./AgentGames/Institution/InstitutionProgress";
+import ClassroomWorkspace from "./AgentGames/Institution/Classroom/ClassroomWorkspace";
+import StudentDetail from "./AgentGames/Institution/Classroom/StudentDetail";
 import Leaderboards from "./AgentGames/Leaderboards";
 import Admin from "./AgentGames/Admin/Admin";
 import AdminLeague from "./AgentGames/Admin/AdminLeague";
@@ -30,7 +28,7 @@ import LessonModalProvider from "./AgentGames/Shared/Lesson/LessonModalProvider"
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import React from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -200,26 +198,18 @@ function App() {
           <Route path="Institution" element={<Institution />} />
           <Route path="Teacher" element={<Institution variant="teacher" />} />
           <Route
-            path="InstitutionLeague"
+            path="Classroom/:leagueId/student/:teamId"
             element={
               <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionLeague />
+                <StudentDetail />
               </AuthProtection>
             }
           />
           <Route
-            path="InstitutionLeagueSimulation"
+            path="Classroom/:leagueId/:tab?"
             element={
               <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionLeagueSimulation />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="InstitutionLeagueSubmissions/:leagueId"
-            element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionLeagueSubmissions />
+                <ClassroomWorkspace />
               </AuthProtection>
             }
           />
@@ -239,13 +229,23 @@ function App() {
               </AuthProtection>
             }
           />
+          {/* Legacy routes from the pre-workspace layout redirect into the
+              classroom workspace (or home when no classroom is implied). */}
+          <Route
+            path="InstitutionLeagueSubmissions/:leagueId"
+            element={<LegacySubmissionsRedirect />}
+          />
           <Route
             path="InstitutionProgress"
-            element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionProgress />
-              </AuthProtection>
-            }
+            element={<Navigate to="/InstitutionHome" replace />}
+          />
+          <Route
+            path="InstitutionLeague"
+            element={<Navigate to="/InstitutionHome" replace />}
+          />
+          <Route
+            path="InstitutionLeagueSimulation"
+            element={<Navigate to="/InstitutionHome" replace />}
           />
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />
@@ -274,12 +274,17 @@ function App() {
   );
 }
 
+function LegacySubmissionsRedirect() {
+  const { leagueId } = useParams();
+  return <Navigate to={`/Classroom/${leagueId}/submissions`} replace />;
+}
+
 function CreditLink() {
   const { pathname } = useLocation();
   const hideOn = [
     /^\/AgentSubmission\b/,
     /^\/Tutorial\b/,
-    /^\/InstitutionLeagueSubmissions\//,
+    /^\/Classroom\//,
   ];
   if (hideOn.some((re) => re.test(pathname))) return null;
 

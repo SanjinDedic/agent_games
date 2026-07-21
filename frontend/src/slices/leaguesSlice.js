@@ -78,6 +78,14 @@ const leaguesSlice = createSlice({
         state.currentLeague = league;
       }
     },
+    // URL-driven selection for the classroom workspace (routes carry ids,
+    // not names). No-op when the id isn't in the list.
+    setCurrentLeagueById: (state, action) => {
+      const league = state.list.find(league => league.id === action.payload);
+      if (league) {
+        state.currentLeague = league;
+      }
+    },
     clearLeagues: (state) => {
       state.list = [];
       state.currentLeague = null;
@@ -141,6 +149,7 @@ export const {
   setLeagues,
   addLeague,
   setCurrentLeague,
+  setCurrentLeagueById,
   clearLeagues,
   updateExpiryDate,
   updateLeagueInfo,

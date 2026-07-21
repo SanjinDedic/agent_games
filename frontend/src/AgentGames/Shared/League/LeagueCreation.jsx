@@ -26,7 +26,7 @@ const EMPTY_FORM = {
  * tutorials the league's teams will see. After a successful creation the
  * modal shows the signup link until dismissed.
  */
-const LeagueCreation = ({ userRole }) => {
+const LeagueCreation = ({ userRole, onCreated }) => {
   const T = useTerms();
   const token = useSelector(selectToken);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -189,6 +189,7 @@ const LeagueCreation = ({ userRole }) => {
       if (response.ok) {
         toast.success(`${T.League} created successfully!`);
         fetchUserLeagues();
+        if (onCreated) onCreated(data);
 
         // Create the signup URL from the signup token
         if (data.signup_token) {
