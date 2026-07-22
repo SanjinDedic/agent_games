@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 import Footer from '../Footer';
@@ -31,6 +31,18 @@ const DASHBOARD_SHOTS = [
 ];
 
 const Homepage = () => {
+  // Lightbox: clicking any image zooms it into a fullscreen modal.
+  // The modal closes on the X, on any click, or on any keypress.
+  const [zoomedImage, setZoomedImage] = useState(null); // { src, alt } | null
+  const closeZoom = useCallback(() => setZoomedImage(null), []);
+
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const dismiss = () => closeZoom();
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [zoomedImage, closeZoom]);
+
   return (
     <div className="min-h-screen bg-ui-lighter pt-12">
       {/* Hero Section */}
@@ -107,7 +119,10 @@ const Homepage = () => {
                 <img
                   src={imageUrl(shot.src)}
                   alt={shot.title}
-                  className="w-full h-auto rounded-lg shadow-lg border border-ui-light"
+                  onClick={() =>
+                    setZoomedImage({ src: imageUrl(shot.src), alt: shot.title })
+                  }
+                  className="w-full h-auto rounded-lg shadow-lg border border-ui-light cursor-zoom-in transition-transform hover:scale-[1.02]"
                 />
                 <figcaption className="text-center text-sm text-ui mt-3">
                   {shot.text}
@@ -234,7 +249,13 @@ const Homepage = () => {
                   <img
                     src={imageUrl(game.thumbnail)}
                     alt={`${game.displayName} game`}
-                    className="w-full h-48 object-cover"
+                    onClick={() =>
+                      setZoomedImage({
+                        src: imageUrl(game.thumbnail),
+                        alt: `${game.displayName} game`,
+                      })
+                    }
+                    className="w-full h-48 object-cover cursor-zoom-in transition-transform hover:scale-[1.02]"
                   />
                 </div>
                 <h3 className="text-xl font-semibold text-ui-dark mb-2">
@@ -324,6 +345,31 @@ const Homepage = () => {
       </section>
 
       <Footer />
+
+      {/* Image lightbox — closes on the X, any click, or any keypress */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 cursor-zoom-out"
+          onClick={closeZoom}
+          role="dialog"
+          aria-modal="true"
+          aria-label={zoomedImage.alt}
+        >
+          <button
+            type="button"
+            onClick={closeZoom}
+            aria-label="Close"
+            className="absolute top-4 right-4 text-white/80 hover:text-white text-5xl leading-none font-light"
+          >
+            &times;
+          </button>
+          <img
+            src={zoomedImage.src}
+            alt={zoomedImage.alt}
+            className="max-h-full max-w-full rounded-lg shadow-2xl"
+          />
+        </div>
+      )}
     </div>
   );
 };
