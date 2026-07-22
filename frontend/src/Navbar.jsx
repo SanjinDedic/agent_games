@@ -53,6 +53,7 @@ function getNavLinks(T) {
       { to: "/Demo", label: "Demo" },
       { to: "/Teacher", label: "For Teachers" },
       { to: "/Institution", label: "For Competitions" },
+      { to: "/About", label: "About" },
     ],
   };
 }
