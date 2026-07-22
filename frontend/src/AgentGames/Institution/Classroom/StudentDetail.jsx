@@ -209,7 +209,7 @@ function StudentDetail() {
         {/* Tutorial progress */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-semibold text-ui-dark mb-1">
-            Tutorial Progress
+            {`${T.Tutorial} Progress`}
           </h2>
           <p className="text-sm text-ui mb-4">
             <span className="text-green-700 font-bold">✓</span> passed ·{' '}
@@ -219,7 +219,7 @@ function StudentDetail() {
           </p>
           {tutorials.length === 0 ? (
             <p className="text-ui">
-              {`No tutorials are attached to this ${T.team}'s ${T.league}.`}
+              {`No ${T.tutorials} are attached to this ${T.team}'s ${T.league}.`}
             </p>
           ) : (
             <div className="space-y-5">

@@ -102,7 +102,7 @@ function Tutorial({ preview = false }) {
   const previewNotice = preview ? (
     <div className="mb-4 bg-notice-orange/10 border border-notice-orange/40 rounded-lg px-4 py-2 text-sm text-ui-dark">
       <span className="font-semibold">Preview mode</span>
-      {` — you are seeing this tutorial as a new ${T.team} would. Code you run here is not saved.`}
+      {` — you are seeing this ${T.tutorial} as a new ${T.team} would. Code you run here is not saved.`}
     </div>
   ) : null;
 
@@ -110,7 +110,7 @@ function Tutorial({ preview = false }) {
     return (
       <div className="min-h-screen pt-12 flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        <span className="ml-3 text-ui-dark">Loading tutorial...</span>
+        <span className="ml-3 text-ui-dark">{`Loading ${T.tutorial}...`}</span>
       </div>
     );
   }
@@ -131,12 +131,12 @@ function Tutorial({ preview = false }) {
       <div className="min-h-screen pt-12 flex items-center justify-center bg-white">
         <div className="text-center p-8 text-ui">
           {preview ? (
-            <p className="text-xl">There are no tutorials in the library yet.</p>
+            <p className="text-xl">{`There are no ${T.tutorials} in the library yet.`}</p>
           ) : (
             <>
-              <p className="text-xl">{`Your ${T.league} doesn't have any tutorials yet.`}</p>
+              <p className="text-xl">{`Your ${T.league} doesn't have any ${T.tutorials} yet.`}</p>
               <p className="text-sm mt-2">
-                {`Check back soon — your teacher can add tutorials to the ${T.league}.`}
+                {`Check back soon — your teacher can add ${T.tutorials} to the ${T.league}.`}
               </p>
             </>
           )}
@@ -160,9 +160,9 @@ function Tutorial({ preview = false }) {
         <div className="max-w-3xl mx-auto px-4">
           {previewNotice}
           <div className="bg-white rounded-lg shadow border border-ui-light/30 p-6">
-            <h1 className="text-2xl font-bold text-ui-dark">Tutorials</h1>
+            <h1 className="text-2xl font-bold text-ui-dark">{T.Tutorials}</h1>
             <p className="mt-2 text-ui-dark/70">
-              Pick a tutorial to work through its exercises.
+              {`Pick a ${T.tutorial} to work through its exercises.`}
             </p>
           </div>
           <ul className="mt-6 space-y-3">
@@ -202,7 +202,7 @@ function Tutorial({ preview = false }) {
     return (
       <div className="min-h-screen pt-12 flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        <span className="ml-3 text-ui-dark">Loading tutorial...</span>
+        <span className="ml-3 text-ui-dark">{`Loading ${T.tutorial}...`}</span>
       </div>
     );
   }
@@ -211,7 +211,7 @@ function Tutorial({ preview = false }) {
     return (
       <div className="min-h-screen pt-12 flex items-center justify-center bg-white">
         <div className="text-center p-8 text-ui">
-          <p className="text-xl">This tutorial has no exercises yet.</p>
+          <p className="text-xl">{`This ${T.tutorial} has no exercises yet.`}</p>
           <p className="text-sm mt-2">
             Check back soon — exercises are on the way.
           </p>
@@ -220,7 +220,7 @@ function Tutorial({ preview = false }) {
               onClick={showTutorialList}
               className="mt-4 py-2 px-4 rounded bg-ui-lighter text-ui-dark hover:bg-ui-light/50 transition-colors"
             >
-              ← All tutorials
+              {`← All ${T.tutorials}`}
             </button>
           )}
         </div>

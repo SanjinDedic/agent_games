@@ -284,7 +284,7 @@ function StudentsTab({ league }) {
                   <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Hints</th>
                   <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark" title="Validation placements over time, oldest to newest">Ranking Trend</th>
                   <th className="px-4 py-3 text-center text-base font-semibold text-ui-dark">1st Place</th>
-                  <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark" title="Exercises passed / exercises in this classroom's tutorials">Exercises</th>
+                  <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark" title={`Exercises passed / exercises in this ${T.league}'s ${T.tutorials}`}>Exercises</th>
                   <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark" title="Most recent agent or exercise activity">Last Active</th>
                   <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Actions</th>
                 </tr>

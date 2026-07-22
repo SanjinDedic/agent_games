@@ -68,7 +68,7 @@ function DirectClassicSignup({ leagueToken, leagueInfo, onShowLogin }) {
       );
       dispatch(setCurrentLeague(leagueInfo.name));
 
-      toast.success("Signed up and joined league successfully!");
+      toast.success(`Signed up and joined ${T.league} successfully!`);
 
       setTimeout(() => {
         navigate("/TeamHome");

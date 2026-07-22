@@ -368,7 +368,7 @@ export const useLeagueAPI = (userRole) => {
       if (response.ok && Array.isArray(data.tutorial_ids)) {
         return { success: true, tutorialIds: data.tutorial_ids };
       }
-      return { success: false, error: data.detail || `Failed to load ${T.league} tutorials` };
+      return { success: false, error: data.detail || `Failed to load ${T.league} ${T.tutorials}` };
     } catch (error) {
       console.error('Error loading league tutorials:', error);
       return { success: false, error: 'Network error' };
@@ -396,11 +396,11 @@ export const useLeagueAPI = (userRole) => {
         toast.success(data.message);
         return { success: true, tutorialIds: data.tutorial_ids };
       }
-      toast.error(data.detail || `Failed to update ${T.league} tutorials`);
+      toast.error(data.detail || `Failed to update ${T.league} ${T.tutorials}`);
       return { success: false, error: data.detail };
     } catch (error) {
       console.error('Error updating league tutorials:', error);
-      toast.error(`Network error while updating ${T.league} tutorials`);
+      toast.error(`Network error while updating ${T.league} ${T.tutorials}`);
       return { success: false, error: 'Network error' };
     } finally {
       setIsLoading(false);

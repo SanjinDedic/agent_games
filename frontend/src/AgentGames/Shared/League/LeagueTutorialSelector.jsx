@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useTutorialAPI from "../hooks/useTutorialAPI";
+import { useTerms } from "../terminology";
 
 /**
  * Checkbox list of every tutorial in the library, for attaching tutorials to
@@ -8,6 +9,7 @@ import useTutorialAPI from "../hooks/useTutorialAPI";
  * library from /tutorial/tutorials.
  */
 function LeagueTutorialSelector({ selectedIds, onChange, disabled = false }) {
+  const T = useTerms();
   const { getTutorials } = useTutorialAPI();
   const [tutorials, setTutorials] = useState(null); // null = still loading
   const [loadError, setLoadError] = useState("");
@@ -20,7 +22,7 @@ function LeagueTutorialSelector({ selectedIds, onChange, disabled = false }) {
       if (result.success) {
         setTutorials(result.tutorials);
       } else {
-        setLoadError(result.error || "Failed to load tutorials");
+        setLoadError(result.error || `Failed to load ${T.tutorials}`);
         setTutorials([]);
       }
     };
@@ -40,7 +42,7 @@ function LeagueTutorialSelector({ selectedIds, onChange, disabled = false }) {
   };
 
   if (tutorials === null) {
-    return <p className="text-sm text-ui">Loading tutorials...</p>;
+    return <p className="text-sm text-ui">{`Loading ${T.tutorials}...`}</p>;
   }
   if (loadError) {
     return <p className="text-sm text-danger">{loadError}</p>;
@@ -48,7 +50,7 @@ function LeagueTutorialSelector({ selectedIds, onChange, disabled = false }) {
   if (tutorials.length === 0) {
     return (
       <p className="text-sm text-ui">
-        No tutorials exist yet. Admins can create them under Tutorials.
+        {`No ${T.tutorials} exist yet. Admins can create them under Tutorials.`}
       </p>
     );
   }

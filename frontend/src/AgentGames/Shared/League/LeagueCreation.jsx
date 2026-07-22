@@ -219,7 +219,7 @@ const LeagueCreation = ({ userRole, onCreated }) => {
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-xl font-bold text-ui-dark mb-4">{`Create New ${T.League}`}</h2>
       <p className="text-sm text-ui mb-4">
-        {`Set up the game, signup options, and the tutorials ${T.teams} in the ${T.league} will see.`}
+        {`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
       </p>
       <button
         onClick={() => setIsOpen(true)}
@@ -338,9 +338,9 @@ const LeagueCreation = ({ userRole, onCreated }) => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-ui-dark mb-1">Tutorials</label>
+                  <label className="block text-ui-dark mb-1">{T.Tutorials}</label>
                   <p className="text-sm text-ui mb-2">
-                    {`${T.Teams} in this ${T.league} will only see the tutorials selected here. Leave empty for no tutorials.`}
+                    {`${T.Teams} in this ${T.league} will only see the ${T.tutorials} selected here. Leave empty for no ${T.tutorials}.`}
                   </p>
                   <LeagueTutorialSelector
                     selectedIds={leagueInfo.tutorialIds}

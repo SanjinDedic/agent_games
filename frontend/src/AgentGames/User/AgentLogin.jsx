@@ -251,7 +251,7 @@ function AgentLogin() {
                   onChange={handleChange}
                   onKeyDown={handleKeyDown}
                   className={inputClasses}
-                  placeholder="Enter your team or student name"
+                  placeholder="Enter your team name"
                   autoFocus
                 />
               </div>

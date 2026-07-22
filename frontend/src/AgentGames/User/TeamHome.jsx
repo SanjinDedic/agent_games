@@ -103,7 +103,7 @@ function TeamHome() {
           </h1>
           <p className="mt-2 text-ui-dark/70">
             {teamData.is_classroom
-              ? `You're in the ${teamData.league.name} classroom. Work through your tutorials, then improve your ${gameDisplayName} agent.`
+              ? `You're in the ${teamData.league.name} ${T.league}. Work through your ${T.tutorials}, then improve your ${gameDisplayName} agent.`
               : `You're competing in ${teamData.league.name}. Keep improving your ${gameDisplayName} agent to climb the rankings.`}
           </p>
         </div>
@@ -111,15 +111,15 @@ function TeamHome() {
         {/* Tutorials */}
         {showTutorials && (
           <section className="mt-8">
-            <h2 className="text-xl font-bold text-ui-dark mb-1">Tutorials</h2>
+            <h2 className="text-xl font-bold text-ui-dark mb-1">{T.Tutorials}</h2>
             <p className="text-ui-dark/60 mb-4">
               {teamData.is_classroom
-                ? "Guided Python exercises set up for your classroom."
+                ? `Guided Python exercises set up for your ${T.league}.`
                 : `Practice exercises available to your ${T.league}.`}
             </p>
             {tutorials.length === 0 ? (
               <div className="bg-white rounded-lg shadow border border-ui-light/30 p-6 text-ui-dark/60">
-                Your teacher hasn't added any tutorials yet — check back soon.
+                {`Your teacher hasn't added any ${T.tutorials} yet — check back soon.`}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

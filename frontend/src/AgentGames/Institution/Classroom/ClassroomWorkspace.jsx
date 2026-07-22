@@ -73,7 +73,7 @@ function ClassroomWorkspace() {
   const isActive = moment().isBefore(moment(league.expiry_date));
   const tabs = [
     { key: 'students', label: T.Teams },
-    { key: 'tutorials', label: 'Tutorial Progress' },
+    { key: 'tutorials', label: `${T.Tutorial} Progress` },
     { key: 'submissions', label: 'Submissions' },
     { key: 'simulation', label: 'Simulation' },
     { key: 'settings', label: 'Settings' },

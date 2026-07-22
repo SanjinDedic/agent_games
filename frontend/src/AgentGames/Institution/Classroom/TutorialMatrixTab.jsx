@@ -42,7 +42,7 @@ function TutorialMatrixTab({ league }) {
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 text-ui">
-        Loading tutorial progress…
+        {`Loading ${T.tutorial} progress…`}
       </div>
     );
   }
@@ -56,7 +56,7 @@ function TutorialMatrixTab({ league }) {
   if (tutorials.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 text-ui">
-        {`No tutorials are attached to this ${T.league} yet — attach them in the Settings tab.`}
+        {`No ${T.tutorials} are attached to this ${T.league} yet — attach them in the Settings tab.`}
       </div>
     );
   }

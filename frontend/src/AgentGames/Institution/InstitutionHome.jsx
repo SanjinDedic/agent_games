@@ -234,7 +234,7 @@ function InstitutionHome() {
                         </div>
                         <div>
                           <span className="block text-sm font-medium text-ui mb-1">
-                            Tutorials (click to preview as a {T.team}):
+                            {`${T.Tutorials} (click to preview as a ${T.team}):`}
                           </span>
                           {classroom.tutorials.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
@@ -255,7 +255,7 @@ function InstitutionHome() {
                             </div>
                           ) : (
                             <span className="text-sm text-ui">
-                              No tutorials selected
+                              {`No ${T.tutorials} selected`}
                             </span>
                           )}
                         </div>
@@ -375,25 +375,25 @@ function InstitutionHome() {
               <section className="flex flex-col">
                 <div className="flex justify-between items-baseline mb-4">
                   <h2 className="text-2xl font-semibold text-ui-dark">
-                    Preview tutorials
+                    {`Preview ${T.tutorials}`}
                   </h2>
                   <button
                     onClick={() => navigate('/TutorialPreview')}
                     className="text-sm text-primary font-medium hover:underline"
-                    title={`Try any tutorial exactly as a ${T.team} would — nothing you run is saved`}
+                    title={`Try any ${T.tutorial} exactly as a ${T.team} would — nothing you run is saved`}
                   >
                     Open full library →
                   </button>
                 </div>
                 <div className={`${card} flex-1 flex flex-col min-h-0`}>
                   <p className="text-sm text-ui mb-3">
-                    {`Click a tutorial to try it exactly as a ${T.team} would — nothing you run is saved.`}
+                    {`Click a ${T.tutorial} to try it exactly as a ${T.team} would — nothing you run is saved.`}
                   </p>
                   {tutorials === null ? (
-                    <p className="text-sm text-ui">Loading tutorials…</p>
+                    <p className="text-sm text-ui">{`Loading ${T.tutorials}…`}</p>
                   ) : tutorials.length === 0 ? (
                     <p className="text-sm text-ui">
-                      There are no tutorials in the library yet.
+                      {`There are no ${T.tutorials} in the library yet.`}
                     </p>
                   ) : (
                     <div className="flex-1 min-h-0 overflow-y-auto max-h-[70vh] -mx-2 px-2 space-y-2">

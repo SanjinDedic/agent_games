@@ -10,55 +10,58 @@ import { clearTeam } from './slices/teamsSlice';
 import { clearResults, clearLeagues } from './slices/leaguesSlice';
 import { selectImmersiveMode } from './slices/settingsSlice';
 import { Button } from './components/ui';
+import { useTerms } from './AgentGames/Shared/terminology';
 
-const NAV_LINKS_BY_ROLE = {
-  admin: [
-    { to: "/AdminInstitutions", label: "Institutions" },
-    { to: "/AdminDockerStatus", label: "Service Status" },
-    { to: "/AdminBackup", label: "Backups" },
-    { to: "/AdminAPIKeys", label: "API Keys" },
-    { to: "/AdminUserSupport", label: "User Support" },
-    { to: "/AdminTutorials", label: "Tutorials" },
-    { to: "/AdminLessons", label: "Lessons" },
-  ],
-  // Everything about one league/classroom lives in the /Classroom/:id
-  // workspace, entered from the Home cards; the navbar only keeps Home and
-  // the institution-wide directory (the sole surface for unassigned members).
-  institution: [
-    { to: "/InstitutionHome", label: "Home" },
-    { to: "/InstitutionTeam", label: "Teams" },
-  ],
-  // Teacher accounts share the institution routes; only the wording changes.
-  teacher: [
-    { to: "/InstitutionHome", label: "Home" },
-    { to: "/InstitutionTeam", label: "Students" },
-  ],
-  team: [
-    { to: "/TeamHome", label: "Home" },
-    { to: "/AgentSubmission", label: "Submit Agent" },
-    { to: "/Tutorial", label: "Tutorial" },
-    { to: "/Leaderboards", label: "Leaderboards" },
-  ],
-  demo: [
-    { to: "/TeamHome", label: "Home" },
-    { to: "/AgentSubmission", label: "Submit Agent" },
-    { to: "/Tutorial", label: "Tutorial" },
-  ],
-  // Logged-out visitors get the teacher-first pitch. Navbar links go to the
-  // login pages (returning users); the home-page hero carries the signup CTAs,
-  // and each login page links back to its signup/pricing page.
-  public: [
-    { to: "/Demo", label: "Demo" },
-    { to: "/Teacher", label: "For Teachers" },
-    { to: "/Institution", label: "For Competitions" },
-  ],
-};
+// User-visible entity labels come from terminology.js (the `T` map): teacher
+// accounts see "Students"/"Short Course", everyone else "Teams"/"Tutorial".
+// Routes, admin-section labels, and marketing copy stay literal.
+function getNavLinks(T) {
+  return {
+    admin: [
+      { to: "/AdminInstitutions", label: "Institutions" },
+      { to: "/AdminDockerStatus", label: "Service Status" },
+      { to: "/AdminBackup", label: "Backups" },
+      { to: "/AdminAPIKeys", label: "API Keys" },
+      { to: "/AdminUserSupport", label: "User Support" },
+      { to: "/AdminTutorials", label: "Tutorials" },
+      { to: "/AdminLessons", label: "Lessons" },
+    ],
+    // Everything about one league/classroom lives in the /Classroom/:id
+    // workspace, entered from the Home cards; the navbar only keeps Home and
+    // the institution-wide directory (the sole surface for unassigned members).
+    // Teacher and competition institutions share these routes — `T.Teams`
+    // renders "Students" vs "Teams" from the account's own terminology.
+    institution: [
+      { to: "/InstitutionHome", label: "Home" },
+      { to: "/InstitutionTeam", label: T.Teams },
+    ],
+    team: [
+      { to: "/TeamHome", label: "Home" },
+      { to: "/AgentSubmission", label: "Submit Agent" },
+      { to: "/Tutorial", label: T.Tutorial },
+      { to: "/Leaderboards", label: "Leaderboards" },
+    ],
+    demo: [
+      { to: "/TeamHome", label: "Home" },
+      { to: "/AgentSubmission", label: "Submit Agent" },
+      { to: "/Tutorial", label: T.Tutorial },
+    ],
+    // Logged-out visitors get the teacher-first pitch. Navbar links go to the
+    // login pages (returning users); the home-page hero carries the signup CTAs,
+    // and each login page links back to its signup/pricing page.
+    public: [
+      { to: "/Demo", label: "Demo" },
+      { to: "/Teacher", label: "For Teachers" },
+      { to: "/Institution", label: "For Competitions" },
+    ],
+  };
+}
 
 function resolveNavGroup(currentUser, isAuthenticated) {
   if (!isAuthenticated) return "public";
   const role = currentUser?.role;
   if (role === "admin") return "admin";
-  if (role === "institution") return currentUser?.is_teacher ? "teacher" : "institution";
+  if (role === "institution") return "institution";
   if (role === "student") return currentUser?.is_demo ? "demo" : "team";
   return "public";
 }
@@ -70,9 +73,10 @@ function AgentGamesNavbar() {
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isImmersive = useSelector(selectImmersiveMode);
+  const T = useTerms();
   const userRole = currentUser?.role || "";
   const navGroup = resolveNavGroup(currentUser, isAuthenticated);
-  const navLinks = NAV_LINKS_BY_ROLE[navGroup];
+  const navLinks = getNavLinks(T)[navGroup];
 
   const [repoStats, setRepoStats] = useState(() => {
     try {
