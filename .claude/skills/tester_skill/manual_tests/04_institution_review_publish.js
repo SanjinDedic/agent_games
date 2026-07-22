@@ -1,10 +1,16 @@
 // Stage 4 of docs/integration-test-manual.md — Institution (COMPETITION flow
 // only: reviews the Stage-3 teams' league; the classroom flow has no
-// review/publish stage):
-//   4.1 login  4.2 select the league on the Simulation page (record league id)
-//   4.3 review team submissions (read-only viewer, prev/next paging)
-//   4.4 plagiarism assessment via OpenAI  4.5 run a 100-round simulation
-//   4.6 publish the results + verify the public /results/<link> page  4.7 logout
+// review/publish stage). Post-revamp, everything lives in the league's
+// /Classroom/:id/:tab workspace — the old standalone Simulation and
+// Submissions pages are gone:
+//   4.1 login -> /InstitutionHome
+//   4.2 open the league's workspace from its Home card (record league id)
+//   4.3 review team submissions on the Submissions tab (read-only viewer,
+//       prev/next paging)
+//   4.4 plagiarism assessment via OpenAI (Submissions tab)
+//   4.5 run a 100-round simulation on the Simulation tab
+//   4.6 publish the results + verify the public /results/<link> page
+//   4.7 logout
 //
 // Reads institution/league/teams from the state file (stages 1–3);
 // writes leagueId, publishedUrl and the plagiarism verdict back.
@@ -28,28 +34,25 @@ const {
     await page.fill('#institution_name', state.institution.name);
     await page.fill('#institution_password', state.institution.password);
     await page.click('button:has-text("Login")');
-    await page.waitForURL('**/InstitutionTeam', { timeout: 20000 });
+    await page.waitForURL('**/InstitutionHome', { timeout: 20000 });
     console.log('[4.1] institution logged in');
 
-    // 4.2 select the league on the Simulation page
-    await page.click('a:has-text("League Simulation"), button:has-text("League Simulation")');
-    await page.waitForURL('**/InstitutionLeagueSimulation', { timeout: 15000 });
-    await page.click(`h3:has-text("${state.leagueName}")`);
-    await page.waitForSelector(`text=Selected League: ${state.leagueName} (greedy_pig)`, { timeout: 15000 });
-    console.log('[4.2] league selected on Simulation page');
+    // 4.2 open the Stage-3 league's workspace from its Home card
+    const workspaceCard = page.locator(`button[title="Open the ${state.leagueName} workspace"]`);
+    await workspaceCard.waitFor({ timeout: 15000 });
+    await workspaceCard.click();
+    await page.waitForURL('**/Classroom/**', { timeout: 15000 });
+    const leagueId = page.url().split('/Classroom/')[1].split('/')[0];
+    await page.waitForSelector(`h1:has-text("${state.leagueName}")`, { timeout: 15000 });
+    console.log(`[4.2] classroom workspace open, league id = ${leagueId}`);
 
-    // 4.3 review submissions
-    await page.click('button:has-text("View League Submissions")');
-    await page.waitForURL('**/InstitutionLeagueSubmissions/*', { timeout: 20000 });
-    const leagueId = page.url().split('/').pop();
-    await page.waitForSelector(`h1:has-text("League Submissions: ${state.leagueName}")`, { timeout: 20000 });
-    await page.waitForSelector('span:has-text("League ID:")');
-    console.log(`[4.3] submissions page open, league id = ${leagueId}`);
-
+    // 4.3 review submissions (Submissions tab). :text-is targets the tab
+    // button exactly so it can't match the team cards' "N submissions" text.
+    await page.click('button:text-is("Submissions")');
     // Every Stage-3 team must appear with its 2 valid submissions, pageable in the viewer.
     for (const team of state.teams) {
       const card = page.locator(`button:has(div.font-medium:text-is("${team.name}"))`);
-      await card.waitFor({ timeout: 15000 });
+      await card.waitFor({ timeout: 20000 });
       const cardText = await card.innerText();
       if (!/2 submissions/.test(cardText)) {
         throw new Error(`team card for ${team.name} does not show 2 submissions: "${cardText.replace(/\n/g, ' | ')}"`);
@@ -83,9 +86,9 @@ const {
     console.log(`      progression=${verdict.progression_verdict} ai_generated=${verdict.ai_generation_verdict} overall=${verdict.overall_concern_level}`);
     await page.click('div.fixed button:has-text("Close")');
 
-    // 4.5 run the simulation (100 rounds)
-    await page.goBack();
-    await page.waitForURL('**/InstitutionLeagueSimulation', { timeout: 15000 });
+    // 4.5 run the simulation (100 rounds) on the Simulation tab
+    await page.click('button:text-is("Simulation")');
+    await page.waitForSelector('button:has-text("RUN SIMULATION")', { timeout: 15000 });
     await page.waitForSelector(`text=Selected League: ${state.leagueName} (greedy_pig)`, { timeout: 15000 });
     await page.fill('input[type="number"]', '100');
 
@@ -146,8 +149,9 @@ const {
     const listedNow = (await page.locator('h3:has-text("Published Results")').count()) > 0;
     observed.notes = observed.notes || [];
     observed.notes.push(`after publish (no reload): dropdown "(Published)" tag=${taggedNow}, Published Results section=${listedNow}`);
+    // Reload lands back on the Simulation tab (URL-driven); the workspace
+    // re-selects this league automatically, so no card click is needed.
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.click(`h3:has-text("${state.leagueName}")`);
     await page.waitForSelector('select', { timeout: 20000 });
     const taggedAfterReload = (await page.locator('select option:has-text("(Published)")').count()) > 0;
     const listedAfterReload = (await page.locator('h3:has-text("Published Results")').count()) > 0;

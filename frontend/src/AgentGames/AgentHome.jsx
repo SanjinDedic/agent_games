@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 
 import Footer from '../Footer';
 import { imageUrl } from '../config/assets';
@@ -25,25 +24,6 @@ const HOW_IT_WORKS_STEPS = [
 ];
 
 const Homepage = () => {
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const [contentOverview, setContentOverview] = useState(null);
-
-  // Live tutorial/lesson counts for the hero strip
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${apiUrl}/demo/content_overview`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled && data) setContentOverview(data);
-      })
-      .catch(() => {
-        // Informational strip only — omit it if the fetch fails
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [apiUrl]);
-
   return (
     <div className="min-h-screen bg-ui-lighter pt-12">
       {/* Hero Section */}
@@ -57,28 +37,6 @@ const Homepage = () => {
             guided tutorials, instant feedback, and live leaderboards. Set up
             your classroom in minutes.
           </p>
-          {contentOverview && (
-            <div className="flex justify-center gap-10 mb-10">
-              <div className="text-center">
-                <p className="text-4xl font-bold text-white">
-                  {contentOverview.total_tutorials}
-                </p>
-                <p className="text-league-text">Guided Tutorials</p>
-              </div>
-              <div className="text-center">
-                <p className="text-4xl font-bold text-white">
-                  {contentOverview.total_lessons}
-                </p>
-                <p className="text-league-text">Python Lessons</p>
-              </div>
-              <div className="text-center">
-                <p className="text-4xl font-bold text-white">
-                  {featuredGames.length}
-                </p>
-                <p className="text-league-text">Strategy Games</p>
-              </div>
-            </div>
-          )}
           <div className="flex flex-col md:flex-row justify-center gap-4">
             <Link to="/Demo" className="inline-block">
               <button className="bg-success hover:bg-success-hover text-white shadow-lg text-xl py-3 px-8 rounded">
@@ -279,6 +237,164 @@ const Homepage = () => {
                     Try it →
                   </span>
                 </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Child Safe & Responsible AI Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-ui-dark text-center mb-12">
+            Safe and Responsible by Design
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Child Safe */}
+            <div className="bg-ui-lighter p-8 rounded-lg shadow-md border-t-4 border-success">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-success-light flex items-center justify-center mr-4 flex-shrink-0">
+                  <svg
+                    className="w-7 h-7 text-success"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-ui-dark">Child Safe</h3>
+              </div>
+              <ul className="space-y-3 text-ui">
+                {[
+                  "No student emails or personal information stored",
+                  "No chat interfaces for students",
+                  "All student activity on the platform viewable from the teacher dashboard",
+                ].map((point) => (
+                  <li key={point} className="flex items-start">
+                    <svg
+                      className="w-5 h-5 text-success mt-0.5 mr-2 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* AI Enhancing not replacing learning */}
+            <div className="bg-ui-lighter p-8 rounded-lg shadow-md border-t-4 border-primary">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-primary-light flex items-center justify-center mr-4 flex-shrink-0">
+                  <svg
+                    className="w-7 h-7 text-primary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-ui-dark">
+                  AI Enhancing, Not Replacing Learning
+                </h3>
+              </div>
+              <ul className="space-y-3 text-ui">
+                {[
+                  "When students are stuck and not making progress, an AI hint is provided",
+                  "AI hints help students with typos and syntax errors",
+                  "AI hints do not solve challenges",
+                ].map((point) => (
+                  <li key={point} className="flex items-start">
+                    <svg
+                      className="w-5 h-5 text-primary mt-0.5 mr-2 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Teacher Dashboards (in development) */}
+      <section className="py-16 bg-ui-lighter">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-3">
+            <span className="inline-block bg-notice-yellowBg text-notice-yellow text-sm font-semibold px-3 py-1 rounded-full">
+              In development
+            </span>
+          </div>
+          <h2 className="text-3xl font-bold text-ui-dark text-center mb-4">
+            The Teacher Dashboard
+          </h2>
+          <p className="text-ui text-center max-w-2xl mx-auto mb-12">
+            See every student's progress and activity at a glance. These views
+            are being built right now — here's a preview of what's coming.
+          </p>
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {[
+              "Class Progress Overview",
+              "Student Activity & Submissions",
+            ].map((label) => (
+              <div
+                key={label}
+                className="bg-white rounded-lg shadow-md overflow-hidden"
+              >
+                <div className="flex items-center justify-center h-64 bg-ui-lighter border-2 border-dashed border-ui-light">
+                  <div className="text-center px-4">
+                    <svg
+                      className="w-12 h-12 text-ui-light mx-auto mb-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 15l4-4a2 2 0 012.828 0L15 15m-2-2l1.586-1.586a2 2 0 012.828 0L20 13M8 9h.01"
+                      />
+                    </svg>
+                    <p className="text-ui font-medium">Dashboard preview</p>
+                    <p className="text-ui-light text-sm">Coming soon</p>
+                  </div>
+                </div>
+                <div className="p-4 text-center">
+                  <h3 className="text-lg font-semibold text-ui-dark">{label}</h3>
+                </div>
               </div>
             ))}
           </div>

@@ -12,16 +12,24 @@ The platform serves two audiences with the same routes but different wording
 - **Competition flow** (institution + league + team wording): scripts 02–04
 - **Classroom flow** (teacher + classroom + student wording): scripts 05–06
 
+Post-revamp layout (both flows): institution/teacher login lands on `/InstitutionHome`,
+where leagues/classrooms are created (the `LeagueCreation` card + modal) and each is opened
+into its `/Classroom/:id/:tab` workspace. Everything else — roster (**Students**/**Teams**),
+**Tutorial Progress**, **Submissions**, **Simulation**, **Settings** (expiry, login page,
+tutorials, delete) — lives behind that workspace's tabs. The old standalone
+`/InstitutionLeague`, `/InstitutionLeagueSimulation` and `/InstitutionLeagueSubmissions`
+pages are gone (their routes now redirect into Home/the workspace).
+
 | Script | Flow | What it covers |
 |--------|------|----------------|
 | `01_admin_setup.js` | shared | manual Stage 1 — admin login, institutions ×2 + one **teacher account** (`is_teacher` checkbox; Type badge asserted) + delete ×1, backup/restore, OpenAI key (needs `OPENAI_API_KEY` env var), logout |
-| `02_institution_league.js` | competition | manual Stage 2 — institution login (navbar must say "League Management", never classroom wording), create greedy_pig league, capture signup URL, attach the seeded tutorial |
+| `02_institution_league.js` | competition | manual Stage 2 — institution login (lands on `/InstitutionHome`; navbar "Teams" + heading "Active Leagues", never classroom/student wording), create greedy_pig league from the Home "Create New League" card, capture signup URL, attach the seeded tutorial via the workspace **Settings** tab |
 | `03_team_submissions.js` | competition | manual Stage 3 — three teams: signup via the join page ("League · greedy_pig", "Team Name", "Sign Up & Join League"), 2 valid + 1 invalid submission, history check, logout; Team 1 also runs tutorial exercise #4 "Add Up the Scoreboard" end-to-end (TEAM: footer) |
-| `04_institution_review_publish.js` | competition | manual Stage 4 — review submissions, plagiarism (OpenAI), 100-round simulation, publish + public page |
-| `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; navbar must say "Classroom Management" / "Student Section"), create greedy_pig classroom ("Create Classroom", "Classroom Created Successfully"), capture join URL, attach the seeded tutorial |
+| `04_institution_review_publish.js` | competition | manual Stage 4 — open the league workspace from Home, then its tabs: review submissions (**Submissions**), plagiarism (OpenAI), 100-round simulation + publish (**Simulation**), verify the public page |
+| `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; lands on `/InstitutionHome`, navbar "Students" + heading "Active Classrooms"), create greedy_pig classroom from the Home "Create New Classroom" card ("Classroom Created Successfully"), capture join URL, attach the seeded tutorial via the workspace **Settings** tab |
 | `06_student_submissions.js` | classroom | mirror of 03 — two students: signup via the classroom join page ("Classroom · greedy_pig", "Student Name", "Sign Up & Join Classroom"), same 2-valid + 1-invalid submissions and history check (STUDENT:/CLASSROOM: footer); Student 1 runs the same tutorial exercise (per-student progress, STUDENT: footer) |
 | `07_demo_hints.js` | demo | manual Stage 5 — per game ×7: demo user, invalid submission, Get Hint, fix, valid submission |
-| `08_password_reset.js` | classroom | not in the manual yet — teacher generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
+| `08_password_reset.js` | classroom | not in the manual yet — teacher opens the classroom workspace **Students** tab and generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
 
 ```bash
 # stack must be up (docker compose up -d); a wiped DB gives the cleanest run

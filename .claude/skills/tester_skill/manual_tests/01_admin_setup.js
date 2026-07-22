@@ -18,7 +18,7 @@
 // backup bucket and the restore replays the newest dump (its own) into the
 // local DB.
 const {
-  BASE, saveState, launchPage, acceptDialogs, waitForToast, finish,
+  BASE, saveState, launchPage, acceptDialogs, waitForToast, dismissToasts, finish,
 } = require('./_helpers');
 
 const RUN = Math.floor(1000 + Math.random() * 9000);
@@ -143,6 +143,11 @@ async function createInstitution(page, inst, { teacher = false } = {}) {
     });
 
     await step('1.5 configure OpenAI key', true, async () => {
+      // If 1.4's backup/restore failed (known local-dev limitation), its error
+      // toast lingers over the top-center navbar — and react-toastify pauses
+      // its auto-dismiss timer in an unfocused headless window, so it never
+      // clears itself and intercepts the "API Keys" nav click. Dismiss it first.
+      await dismissToasts(page);
       await page.click('a:has-text("API Keys"), button:has-text("API Keys")');
       await page.waitForURL('**/AdminAPIKeys', { timeout: 15000 });
       await page.waitForSelector('h1:has-text("API Keys Configuration")');

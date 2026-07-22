@@ -54,6 +54,8 @@ async function runGame(page, observed, spec) {
   await collectToasts(page, observed); // page.goto resets the toast collector
   await page.goto(`${BASE}/Demo`, { waitUntil: 'domcontentloaded' });
   await page.fill('input[placeholder^="Enter a team name"]', spec.user);
+  // The demo now requires a valid email before it will launch.
+  await page.fill('input[type="email"]', `${spec.user}@example.com`);
   await page.click('button:has-text("Launch Demo Now")');
   await page.waitForURL('**/AgentLeagueSignUp', { timeout: 30000 });
   await page.waitForSelector('text=DEMO MODE', { timeout: 15000 });
@@ -136,11 +138,12 @@ async function runGame(page, observed, spec) {
   }
   console.log(`[5.4b] valid resubmission accepted (id=${goodSub.body.submission_id})`);
 
-  // 5.5 logout; hint content is recorded by the caller
+  // 5.5 logout — a demo session is account-less, so logout lands on the home
+  // page (/), not the team login page; hint content is recorded by the caller
   await collectToasts(page, observed);
   await page.click('button:has-text("Logout")');
-  await page.waitForURL('**/AgentLogin', { timeout: 15000 });
-  console.log('[5.5] logged out');
+  await page.waitForURL((url) => new URL(url).pathname === '/', { timeout: 15000 });
+  console.log('[5.5] logged out -> home');
 
   return {
     game: spec.game,

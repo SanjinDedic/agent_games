@@ -3,13 +3,21 @@
 // routes and endpoints, but every user-visible label switches to
 // classroom/student wording (frontend/src/AgentGames/Shared/terminology.js).
 //   5.1 login via /Teacher ("Teacher Login" heading, "Account Name:" label)
-//       with the teacher credentials from Stage 1; navbar must show
-//       "Classroom Management" / "Student Section", never league/team labels
-//   5.2 create a greedy_pig classroom ("Create Classroom" button,
-//       "Classroom Created Successfully" modal), capture + copy the join URL
-//   5.3 attach the seeded tutorial to the classroom (students only see
-//       attached tutorials — script 06's Tutorial steps are empty without it)
+//       with the teacher credentials from Stage 1; login lands on
+//       /InstitutionHome, whose navbar shows "Students" (never "Teams") and
+//       whose heading is "Active Classrooms" (never "Active Leagues")
+//   5.2 create a greedy_pig classroom from the Home page's "Create New
+//       Classroom" card ("Create Classroom" button, "Classroom Created
+//       Successfully" modal); capture + copy the join URL
+//   5.3 open the new classroom's workspace and attach the seeded tutorial from
+//       its Settings tab (students only see attached tutorials — script 06's
+//       Tutorial steps are empty without it)
 //   5.4 logout -> /Teacher (teacher accounts return to the teacher login)
+//
+// Post-revamp layout: the old "Classroom Management" navbar page is gone.
+// Creation lives on /InstitutionHome (LeagueCreation card + modal); everything
+// else about a classroom lives in the /Classroom/:id/:tab workspace opened from
+// the Home card.
 //
 // Known app copy that stays "league" even for teachers (backend message):
 // the Save Tutorials toast is "Tutorials updated for league '<name>'".
@@ -41,18 +49,19 @@ const {
     await page.fill('#institution_name', state.teacher.name);
     await page.fill('#institution_password', state.teacher.password);
     await page.click('button:has-text("Login")');
-    await page.waitForURL('**/InstitutionTeam', { timeout: 20000 });
-    // Wording guard: a teacher account gets classroom/student labels.
-    await page.waitForSelector('nav a:has-text("Classroom Management")', { timeout: 15000 });
-    await page.waitForSelector('nav a:has-text("Student Section")', { timeout: 15000 });
-    if (await page.locator('nav a:has-text("League Management"), nav a:has-text("Team Section")').count()) {
-      throw new Error('teacher navbar shows league/team wording — terminology switch regressed');
+    await page.waitForURL('**/InstitutionHome', { timeout: 20000 });
+    // Wording guard: a teacher account gets classroom/student labels — the
+    // navbar shows "Students" (never "Teams") and the home page lists
+    // "Active Classrooms" (never "Active Leagues").
+    await page.waitForSelector('h2:has-text("Active Classrooms")', { timeout: 15000 });
+    await page.waitForSelector('nav a:has-text("Students")', { timeout: 15000 });
+    if (await page.locator('nav a:has-text("Teams")').count()) {
+      throw new Error('teacher navbar shows team wording — terminology switch regressed');
     }
-    console.log('[5.1] teacher logged in -> /InstitutionTeam (classroom/student wording confirmed)');
+    console.log('[5.1] teacher logged in -> /InstitutionHome (classroom/student wording confirmed)');
 
-    // 5.2 create the classroom (expiry left blank = 24h default; school league unchecked)
-    await page.click('a:has-text("Classroom Management")');
-    await page.waitForURL('**/InstitutionLeague', { timeout: 15000 });
+    // 5.2 create the classroom from the Home page's creation card (expiry left
+    // blank = 24h default; school league unchecked; no tutorials selected here)
     await page.waitForSelector('h2:has-text("Create New Classroom")', { timeout: 15000 });
     await page.click('button:has-text("Create Classroom")');
     const modal = page.locator('div.fixed.inset-0');
@@ -65,19 +74,24 @@ const {
     const createBody = await createResp.json().catch(() => ({}));
     if (!createResp.ok()) throw new Error(`league-create HTTP ${createResp.status()}: ${JSON.stringify(createBody)}`);
     await waitForToast(page, 'Classroom created successfully!');
-    await page.waitForSelector('h4:has-text("Classroom Created Successfully")', { timeout: 15000 });
 
-    const signupUrl = await page
-      .locator('h4:has-text("Classroom Created Successfully") ~ div input[readonly], h4:has-text("Classroom Created Successfully") >> xpath=../descendant::input[@readonly]')
-      .first()
-      .inputValue();
+    // Post-revamp, the join link is NOT read from the creation modal: creating
+    // from Home refetches the page, and that refetch's loading state unmounts the
+    // whole creation card (modal included) before its success view can be read.
+    // The new classroom is created WITH a join link, so grab it from the
+    // classroom's Home card instead (readonly input + "Copy" button).
+    const card = page
+      .locator('div.rounded-lg.shadow-lg')
+      .filter({ has: page.locator(`button[title="Open the ${classroomName} workspace"]`) });
+    await card.waitFor({ timeout: 15000 });
+    const signupUrl = await card.locator('input[readonly]').inputValue();
     if (!/\/join\/.+/.test(signupUrl)) throw new Error(`Classroom join URL looks wrong: "${signupUrl}"`);
     console.log(`[5.2] classroom created: ${classroomName}`);
     console.log(`      join URL: ${signupUrl}`);
 
-    // copy-icon click should toast (same behavior as the league flow)
-    await page.locator('button[title="Copy to clipboard"]').last().click();
-    await waitForToast(page, 'Signup URL copied to clipboard!');
+    // The card's Copy button copies the login link (same behavior as the league flow)
+    await card.locator('button:has-text("Copy")').click();
+    await waitForToast(page, 'Login link copied to clipboard!');
     const clipboard = await page.evaluate(() => navigator.clipboard.readText()).catch(() => null);
     if (clipboard !== signupUrl) console.warn(`  NOTE: clipboard content mismatch: ${clipboard}`);
 
@@ -88,15 +102,14 @@ const {
       classroomCreateResponse: createBody,
     });
 
-    // Dismiss the success modal so its overlay doesn't block further clicks.
-    await modal.locator('button:has-text("Done")').click();
-    await modal.waitFor({ state: 'detached', timeout: 10000 });
-
-    // 5.3 attach the seeded tutorial: select the classroom card, tick the
-    // tutorial in the Tutorials section, save. The runner seeds the tutorial
-    // before Stage 1, so it exists in the library but is not yet attached
-    // (the seed only auto-attaches to leagues existing at seed time).
-    await page.click(`h3:has-text("${classroomName}")`);
+    // 5.3 attach the seeded tutorial: open the classroom workspace from its Home
+    // card, go to the Settings tab, tick the tutorial in the Tutorials section,
+    // save. The runner seeds the tutorial before Stage 1, so it exists in the
+    // library but is not yet attached (the seed only auto-attaches to leagues
+    // existing at seed time).
+    await card.locator(`button[title="Open the ${classroomName} workspace"]`).click();
+    await page.waitForURL('**/Classroom/**', { timeout: 15000 });
+    await page.click('button:text-is("Settings")');
     await page.waitForSelector('h3:has-text("Tutorials")', { timeout: 15000 });
     const tutorialLabel = page.locator('label:has-text("Python Foundations for Greedy Pig")');
     await tutorialLabel.waitFor({ timeout: 15000 });
@@ -104,7 +117,7 @@ const {
     await page.click('button:has-text("Save Tutorials")');
     // Backend copy: this toast says "league" even for classrooms.
     await waitForToast(page, `Tutorials updated for league '${classroomName}'`);
-    console.log('[5.3] tutorial attached to classroom');
+    console.log('[5.3] tutorial attached to classroom via the workspace Settings tab');
 
     // 5.4 logout — teacher accounts land back on /Teacher, not /Institution
     await page.click('button:has-text("Logout")');

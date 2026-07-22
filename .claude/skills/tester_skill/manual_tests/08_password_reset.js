@@ -1,7 +1,9 @@
 // Script 08 — Team password reset (CLASSROOM flow). Exercises the one-time
 // reset link end-to-end against the student created by 06_student_submissions.js:
-//   8.1 teacher login via /Teacher -> /InstitutionTeam; click Reset on
-//       Student 1's card -> POST /institution/team-password-reset returns a
+//   8.1 teacher login via /Teacher -> /InstitutionHome; open the classroom
+//       workspace from its Home card (the roster now lives on the workspace
+//       Students tab, not the old /InstitutionTeam page); click Reset on
+//       Student 1's row -> POST /institution/team-password-reset returns a
 //       reset_token; modal must use student wording ("Share this link with
 //       the student.") and promise "works once and expires in 48 hours";
 //       clicking Reset AGAIN issues a different token (regeneration replaces
@@ -45,15 +47,22 @@ const {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
 
   try {
-    // 8.1 teacher login (as in 05.1) — lands on /InstitutionTeam, the student list
+    // 8.1 teacher login (as in 05.1) — lands on /InstitutionHome
     await page.goto(`${BASE}/Teacher`, { waitUntil: 'domcontentloaded' });
     await page.fill('#institution_name', state.teacher.name);
     await page.fill('#institution_password', state.teacher.password);
     await page.click('button:has-text("Login")');
-    await page.waitForURL('**/InstitutionTeam', { timeout: 20000 });
+    await page.waitForURL('**/InstitutionHome', { timeout: 20000 });
 
-    // Student 1's card (name + school + Reset/X buttons) inside the table
-    const card = page.locator(`td div.bg-ui-lighter:has(span:text-is("${student.name}"))`);
+    // The roster lives on the classroom workspace Students tab now — open the
+    // classroom from its Home card (the workspace defaults to that tab).
+    const workspaceCard = page.locator(`button[title="Open the ${state.classroomName} workspace"]`);
+    await workspaceCard.waitFor({ timeout: 15000 });
+    await workspaceCard.click();
+    await page.waitForURL('**/Classroom/**', { timeout: 15000 });
+
+    // Student 1's row (name cell + Reset/Unassign/X actions) in the roster table
+    const card = page.locator(`tr:has(td:text-is("${student.name}"))`);
     await card.waitFor({ timeout: 20000 });
 
     const clickReset = async () => {

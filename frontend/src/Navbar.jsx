@@ -122,6 +122,10 @@ function AgentGamesNavbar() {
       navigate("/Admin");
     } else if (userRole === "institution") {
       navigate(currentUser?.is_teacher ? "/Teacher" : "/Institution");
+    } else if (currentUser?.is_demo) {
+      // Demo sessions are account-less — send them back to the home page,
+      // not a login page they can't use.
+      navigate("/");
     } else {
       navigate("/AgentLogin");
     }
