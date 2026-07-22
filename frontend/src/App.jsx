@@ -3,6 +3,7 @@ import AgentHome from './AgentGames/AgentHome';
 import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
+import TeamHome from './AgentGames/User/TeamHome';
 import Tutorial from './AgentGames/User/Tutorial';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
 import Institutions from './AgentGames/Institutions';
@@ -11,11 +12,9 @@ import InstitutionSignup from './AgentGames/InstitutionSignup';
 import InstitutionInvoiceSignup from './AgentGames/InstitutionInvoiceSignup';
 import Institution from "./AgentGames/Institution/Institution";
 import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
-import InstitutionLeague from "./AgentGames/Institution/InstitutionLeague";
-import InstitutionLeagueSimulation from "./AgentGames/Institution/InstitutionLeagueSimulation";
-import InstitutionLeagueSubmissions from "./AgentGames/Institution/InstitutionLeagueSubmissions";
-import InstitutionSubscription from "./AgentGames/Institution/InstitutionSubscription";
-import InstitutionProgress from "./AgentGames/Institution/InstitutionProgress";
+import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
+import ClassroomWorkspace from "./AgentGames/Institution/Classroom/ClassroomWorkspace";
+import StudentDetail from "./AgentGames/Institution/Classroom/StudentDetail";
 import Leaderboards from "./AgentGames/Leaderboards";
 import Admin from "./AgentGames/Admin/Admin";
 import AdminLeague from "./AgentGames/Admin/AdminLeague";
@@ -29,7 +28,7 @@ import LessonModalProvider from "./AgentGames/Shared/Lesson/LessonModalProvider"
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import React from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -38,7 +37,8 @@ import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
 // import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
-import DirectLeagueSignup from "./AgentGames/User/DirectLeagueSignup";
+import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
+import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
 import SupportButton from "./AgentGames/Support/SupportButton";
 import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
 import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
@@ -61,6 +61,14 @@ function App() {
             }
           />
           <Route
+            path="TeamHome"
+            element={
+              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
+                <TeamHome />
+              </AuthProtection>
+            }
+          />
+          <Route
             path="AgentSubmission"
             element={
               <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
@@ -76,6 +84,19 @@ function App() {
               </AuthProtection>
             }
           />
+          {/* Institutions/teachers/admins trying tutorials as a student would
+              see them — nothing run here is saved */}
+          <Route
+            path="TutorialPreview"
+            element={
+              <AuthProtection
+                requiredRole={["institution", "admin"]}
+                redirectTo="/"
+              >
+                <Tutorial preview />
+              </AuthProtection>
+            }
+          />
           <Route path="Rankings" element={<AgentRankings />} />
           <Route path="Demo" element={<Demo />} />
           <Route path="Institutions" element={<Institutions />} />
@@ -87,10 +108,15 @@ function App() {
           />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="About" element={<About />} />
+          {/* Per-classroom/league page: log in or sign up, land in the league.
+              /TeamSignup is the legacy shared-link path and opens on signup. */}
+          <Route path="/join/:leagueToken" element={<ClassroomJoin />} />
           <Route
             path="/TeamSignup/:leagueToken"
-            element={<DirectLeagueSignup />}
+            element={<ClassroomJoin defaultTab="signup" />}
           />
+          {/* One-time password-reset link shared by the institution */}
+          <Route path="/reset/:resetToken" element={<TeamPasswordReset />} />
           {/* New Route for Published Results */}
           <Route path="/results/:publishLink" element={<PublishedResults />} />
           {/* Admin Routes */}
@@ -172,26 +198,18 @@ function App() {
           <Route path="Institution" element={<Institution />} />
           <Route path="Teacher" element={<Institution variant="teacher" />} />
           <Route
-            path="InstitutionLeague"
+            path="Classroom/:leagueId/student/:teamId"
             element={
               <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionLeague />
+                <StudentDetail />
               </AuthProtection>
             }
           />
           <Route
-            path="InstitutionLeagueSimulation"
+            path="Classroom/:leagueId/:tab?"
             element={
               <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionLeagueSimulation />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="InstitutionLeagueSubmissions/:leagueId"
-            element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionLeagueSubmissions />
+                <ClassroomWorkspace />
               </AuthProtection>
             }
           />
@@ -204,20 +222,30 @@ function App() {
             }
           />
           <Route
-            path="InstitutionSubscription"
+            path="InstitutionHome"
             element={
               <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionSubscription />
+                <InstitutionHome />
               </AuthProtection>
             }
           />
+          {/* Legacy routes from the pre-workspace layout redirect into the
+              classroom workspace (or home when no classroom is implied). */}
+          <Route
+            path="InstitutionLeagueSubmissions/:leagueId"
+            element={<LegacySubmissionsRedirect />}
+          />
           <Route
             path="InstitutionProgress"
-            element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionProgress />
-              </AuthProtection>
-            }
+            element={<Navigate to="/InstitutionHome" replace />}
+          />
+          <Route
+            path="InstitutionLeague"
+            element={<Navigate to="/InstitutionHome" replace />}
+          />
+          <Route
+            path="InstitutionLeagueSimulation"
+            element={<Navigate to="/InstitutionHome" replace />}
           />
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />
@@ -246,12 +274,17 @@ function App() {
   );
 }
 
+function LegacySubmissionsRedirect() {
+  const { leagueId } = useParams();
+  return <Navigate to={`/Classroom/${leagueId}/submissions`} replace />;
+}
+
 function CreditLink() {
   const { pathname } = useLocation();
   const hideOn = [
     /^\/AgentSubmission\b/,
     /^\/Tutorial\b/,
-    /^\/InstitutionLeagueSubmissions\//,
+    /^\/Classroom\//,
   ];
   if (hideOn.some((re) => re.test(pathname))) return null;
 

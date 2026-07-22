@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -10,61 +10,59 @@ import { clearTeam } from './slices/teamsSlice';
 import { clearResults, clearLeagues } from './slices/leaguesSlice';
 import { selectImmersiveMode } from './slices/settingsSlice';
 import { Button } from './components/ui';
+import { useTerms } from './AgentGames/Shared/terminology';
 
-const NAV_LINKS_BY_ROLE = {
-  admin: [
-    { to: "/AdminInstitutions", label: "Institutions" },
-    { to: "/AdminDockerStatus", label: "Service Status" },
-    { to: "/AdminBackup", label: "Backups" },
-    { to: "/AdminAPIKeys", label: "API Keys" },
-    { to: "/AdminUserSupport", label: "User Support" },
-    { to: "/AdminTutorials", label: "Tutorials" },
-    { to: "/AdminLessons", label: "Lessons" },
-  ],
-  institution: [
-    { to: "/InstitutionTeam", label: "Team Section" },
-    { to: "/InstitutionProgress", label: "Team Progress" },
-    { to: "/InstitutionLeague", label: "League Management" },
-    { to: "/InstitutionLeagueSimulation", label: "League Simulation" },
-    { to: "/InstitutionSubscription", label: "Subscription" },
-  ],
-  // Teacher accounts share the institution routes; only the wording changes.
-  teacher: [
-    { to: "/InstitutionTeam", label: "Student Section" },
-    { to: "/InstitutionProgress", label: "Student Progress" },
-    { to: "/InstitutionLeague", label: "Classroom Management" },
-    { to: "/InstitutionLeagueSimulation", label: "Classroom Simulation" },
-    { to: "/InstitutionSubscription", label: "Subscription" },
-  ],
-  team: [
-    { to: "/", label: "Home" },
-    { to: "/AgentSubmission", label: "Submit Agent" },
-    { to: "/Tutorial", label: "Tutorial" },
-    { to: "/Leaderboards", label: "Leaderboards" },
-    { to: "/About", label: "About" },
-  ],
-  demo: [
-    { to: "/", label: "Home" },
-    { to: "/AgentSubmission", label: "Submit Agent" },
-    { to: "/Tutorial", label: "Tutorial" },
-    { to: "/About", label: "About" },
-  ],
-  public: [
-    { to: "/", label: "Home" },
-    { to: "/Demo", label: "Demo" },
-    { to: "/Institution", label: "Institutions" },
-    { to: "/Teachers", label: "Teachers" },
-    { to: "/Leaderboards", label: "Leaderboards" },
-    { to: "/About", label: "About" },
-    { to: "/AgentLogin", label: "Student Login" },
-  ],
-};
+// User-visible entity labels come from terminology.js (the `T` map): teacher
+// accounts see "Students"/"Short Course", everyone else "Teams"/"Tutorial".
+// Routes, admin-section labels, and marketing copy stay literal.
+function getNavLinks(T) {
+  return {
+    admin: [
+      { to: "/AdminInstitutions", label: "Institutions" },
+      { to: "/AdminDockerStatus", label: "Service Status" },
+      { to: "/AdminBackup", label: "Backups" },
+      { to: "/AdminAPIKeys", label: "API Keys" },
+      { to: "/AdminUserSupport", label: "User Support" },
+      { to: "/AdminTutorials", label: "Tutorials" },
+      { to: "/AdminLessons", label: "Lessons" },
+    ],
+    // Everything about one league/classroom lives in the /Classroom/:id
+    // workspace, entered from the Home cards; the navbar only keeps Home and
+    // the institution-wide directory (the sole surface for unassigned members).
+    // Teacher and competition institutions share these routes — `T.Teams`
+    // renders "Students" vs "Teams" from the account's own terminology.
+    institution: [
+      { to: "/InstitutionHome", label: "Home" },
+      { to: "/InstitutionTeam", label: T.Teams },
+    ],
+    team: [
+      { to: "/TeamHome", label: "Home" },
+      { to: "/AgentSubmission", label: "Submit Agent" },
+      { to: "/Tutorial", label: T.Tutorial },
+      { to: "/Leaderboards", label: "Leaderboards" },
+    ],
+    demo: [
+      { to: "/TeamHome", label: "Home" },
+      { to: "/AgentSubmission", label: "Submit Agent" },
+      { to: "/Tutorial", label: T.Tutorial },
+    ],
+    // Logged-out visitors get the teacher-first pitch. Navbar links go to the
+    // login pages (returning users); the home-page hero carries the signup CTAs,
+    // and each login page links back to its signup/pricing page.
+    public: [
+      { to: "/Demo", label: "Demo" },
+      { to: "/Teacher", label: "For Teachers" },
+      { to: "/Institution", label: "For Competitions" },
+      { to: "/About", label: "About" },
+    ],
+  };
+}
 
 function resolveNavGroup(currentUser, isAuthenticated) {
   if (!isAuthenticated) return "public";
   const role = currentUser?.role;
   if (role === "admin") return "admin";
-  if (role === "institution") return currentUser?.is_teacher ? "teacher" : "institution";
+  if (role === "institution") return "institution";
   if (role === "student") return currentUser?.is_demo ? "demo" : "team";
   return "public";
 }
@@ -76,9 +74,10 @@ function AgentGamesNavbar() {
   const currentUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isImmersive = useSelector(selectImmersiveMode);
+  const T = useTerms();
   const userRole = currentUser?.role || "";
   const navGroup = resolveNavGroup(currentUser, isAuthenticated);
-  const navLinks = NAV_LINKS_BY_ROLE[navGroup];
+  const navLinks = getNavLinks(T)[navGroup];
 
   const [repoStats, setRepoStats] = useState(() => {
     try {
@@ -128,6 +127,10 @@ function AgentGamesNavbar() {
       navigate("/Admin");
     } else if (userRole === "institution") {
       navigate(currentUser?.is_teacher ? "/Teacher" : "/Institution");
+    } else if (currentUser?.is_demo) {
+      // Demo sessions are account-less — send them back to the home page,
+      // not a login page they can't use.
+      navigate("/");
     } else {
       navigate("/AgentLogin");
     }
@@ -142,8 +145,14 @@ function AgentGamesNavbar() {
     <nav className="bg-[#111827] fixed top-0 w-full z-50">
       <div className="w-full mx-auto px-4">
         <div className="flex justify-between items-center">
-          {/* Left side - Navigation links evenly spaced */}
-          <div className="flex-1 flex items-center justify-around">
+          {/* Left side - brand + role-specific links */}
+          <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              className="inline-flex items-center px-3 py-3 text-lg font-bold text-white hover:bg-white/10 transition-colors duration-200"
+            >
+              Agent Games
+            </Link>
             {navLinks.map((link) => (
               <Link key={link.to} to={link.to} className={navLinkClasses}>
                 {link.label}
@@ -154,6 +163,9 @@ function AgentGamesNavbar() {
           {/* Right side - GitHub info and logout */}
           <div className="flex items-center">
             {/* GitHub Repo Info */}
+            <span className="ml-4 text-white text-sm font-medium">
+              Open Source
+            </span>
             <a
               href="https://github.com/SanjinDedic/agent_games"
               className="flex items-center text-white hover:text-gray-200 transition-colors duration-200 ml-4"

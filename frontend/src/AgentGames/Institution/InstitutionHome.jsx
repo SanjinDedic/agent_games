@@ -1,0 +1,440 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { authFetch } from '../../utils/authFetch';
+import { selectToken } from '../../slices/authSlice';
+import LeagueCreation from '../Shared/League/LeagueCreation';
+import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
+import { useTerms } from '../Shared/terminology';
+
+// Display labels for the plan tiers (the price/amount is driven server-side).
+const TIER_LABELS = {
+  club: 'Club & School',
+  university: 'University & Large Cohort',
+  teacher: 'Teacher',
+  school: 'Whole School',
+};
+
+const PAYMENT_METHOD_LABELS = {
+  card: 'Card',
+  invoice: 'Invoice',
+  admin: 'Manually granted',
+};
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+// "greedy_pig" -> "Greedy Pig"
+function formatGameName(game) {
+  if (!game) return '—';
+  return game
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function Row({ label, children }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-baseline py-2 border-b border-ui-light last:border-b-0">
+      <span className="w-full sm:w-1/3 text-sm font-medium text-ui">{label}</span>
+      <span className="w-full sm:w-2/3 text-ui-dark">{children}</span>
+    </div>
+  );
+}
+
+function InstitutionHome() {
+  const T = useTerms();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
+  const accessToken = useSelector(selectToken);
+  const { getTutorials } = useTutorialAPI();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState(null);
+  // Full tutorial library for the preview card (null = still loading).
+  const [tutorials, setTutorials] = useState(null);
+  // league id whose signup link is currently being generated
+  const [generatingFor, setGeneratingFor] = useState(null);
+
+  // Passed through from the invoiced signup flow so the hosted invoice link
+  // isn't lost after auto-login. Only present right after signup.
+  const hostedInvoiceUrl = location.state?.hostedInvoiceUrl || null;
+
+  const fetchHome = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/institution/home`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await response.json();
+      if (response.ok) {
+        setData(json);
+      } else {
+        toast.error(json.detail || 'Could not load your home page');
+      }
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+      toast.error('Could not reach the server. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken]);
+
+  useEffect(() => {
+    fetchHome();
+  }, [fetchHome]);
+
+  // Institution tokens get the full tutorial library from this endpoint.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const result = await getTutorials();
+      if (!active) return;
+      setTutorials(result.success ? result.tutorials : []);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [getTutorials]);
+
+  const loginUrlFor = (classroom) =>
+    `${window.location.origin}/join/${classroom.signup_link}`;
+
+  const copyLoginLink = (classroom) => {
+    navigator.clipboard.writeText(loginUrlFor(classroom));
+    toast.success('Login link copied to clipboard!');
+  };
+
+  const createLoginLink = async (classroom) => {
+    setGeneratingFor(classroom.id);
+    try {
+      const response = await authFetch(
+        `${apiUrl}/institution/generate-signup-link`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ league_id: classroom.id }),
+        }
+      );
+      const json = await response.json();
+      if (response.ok && json.signup_token) {
+        setData((prev) => ({
+          ...prev,
+          classrooms: prev.classrooms.map((c) =>
+            c.id === classroom.id ? { ...c, signup_link: json.signup_token } : c
+          ),
+        }));
+        toast.success(`Login link created for ${classroom.name}`);
+      } else {
+        toast.error(json.detail || 'Failed to create the login link');
+      }
+    } catch (error) {
+      console.error('Error generating signup link:', error);
+      toast.error('Network error while creating the login link');
+    } finally {
+      setGeneratingFor(null);
+    }
+  };
+
+  // Everything about a classroom lives in its workspace; the workspace loads
+  // the league list itself, so this is a plain navigation.
+  const openClassroom = (classroom, tab) =>
+    navigate(`/Classroom/${classroom.id}${tab ? `/${tab}` : ''}`);
+
+  const card = 'bg-white rounded-lg shadow-lg p-6';
+  const classrooms = data?.classrooms || [];
+  const activeClassrooms = classrooms.filter((c) => c.is_active);
+  const expiredClassrooms = classrooms.filter((c) => !c.is_active);
+  const sub = data?.subscription;
+  const subActive = sub?.subscription_active;
+
+  return (
+    <div className="min-h-screen pt-16 bg-ui-lighter">
+      <div className="w-full max-w-6xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-ui-dark mb-2">
+          {data?.institution_name ? `Welcome, ${data.institution_name}` : 'Home'}
+        </h1>
+        <p className="text-ui mb-6">
+          {`Your active ${T.leagues} at a glance — share a login link with your ${T.teams} to get them started.`}
+        </p>
+
+        {hostedInvoiceUrl && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-ui-dark">
+              Your invoice has been issued and emailed (net 30 — no payment
+              needed now).{' '}
+              <a
+                href={hostedInvoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline font-medium"
+              >
+                View or download your invoice
+              </a>
+            </p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className={`${card} text-center text-ui`}>Loading…</div>
+        ) : !data ? (
+          <div className={`${card} text-center text-ui`}>
+            Nothing to show yet.
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Active classrooms/leagues */}
+            <section>
+              <h2 className="text-2xl font-semibold text-ui-dark mb-4">
+                {`Active ${T.Leagues}`}
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {activeClassrooms.map((classroom) => (
+                    <div key={classroom.id} className={card}>
+                      <div className="flex justify-between items-start mb-4">
+                        <button
+                          onClick={() => openClassroom(classroom)}
+                          className="text-left"
+                          title={`Open the ${classroom.name} workspace`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-success"></span>
+                            <span className="text-xl font-semibold text-primary hover:underline">
+                              {classroom.name}
+                            </span>
+                          </span>
+                        </button>
+                        <span className="text-sm font-medium text-ui-dark bg-ui-lighter px-3 py-1 rounded-full whitespace-nowrap">
+                          {`${classroom.team_count} ${
+                            classroom.team_count === 1 ? T.team : T.teams
+                          }`}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 mb-4">
+                        <div>
+                          <span className="text-sm font-medium text-ui">Game: </span>
+                          <span className="text-ui-dark font-medium">
+                            {formatGameName(classroom.game)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-sm font-medium text-ui mb-1">
+                            {`${T.Tutorials} (click to preview as a ${T.team}):`}
+                          </span>
+                          {classroom.tutorials.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {classroom.tutorials.map((tutorial) => (
+                                <button
+                                  key={tutorial.id}
+                                  onClick={() =>
+                                    navigate(
+                                      `/TutorialPreview?tutorial=${tutorial.id}`
+                                    )
+                                  }
+                                  className="text-xs bg-primary-light/20 text-primary-dark px-2 py-0.5 rounded-full hover:bg-primary-light/40 hover:underline transition-colors"
+                                  title={`Preview "${tutorial.title}" as a ${T.team} — nothing you run is saved`}
+                                >
+                                  {tutorial.title}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-ui">
+                              {`No ${T.tutorials} selected`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-ui-light">
+                        <span className="block text-sm font-medium text-ui mb-2">
+                          {`${T.Team} login link:`}
+                        </span>
+                        {classroom.signup_link ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={loginUrlFor(classroom)}
+                              readOnly
+                              onFocus={(e) => e.target.select()}
+                              className="flex-1 p-2 border border-ui-light rounded-lg text-sm bg-ui-lighter"
+                            />
+                            <button
+                              onClick={() => copyLoginLink(classroom)}
+                              className="px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium"
+                              title="Copy to clipboard"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => createLoginLink(classroom)}
+                            disabled={generatingFor === classroom.id}
+                            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium transition-colors disabled:bg-ui-light disabled:cursor-not-allowed"
+                          >
+                            {generatingFor === classroom.id
+                              ? 'Creating…'
+                              : 'Create login link'}
+                          </button>
+                        )}
+                        <p className="mt-2 text-xs text-ui">
+                          {`Share this link with your ${T.teams} — they use it to sign up and log in to this ${T.league}.`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Creation card lives in the grid so it's always in reach */}
+                  <LeagueCreation
+                    userRole="institution"
+                    onCreated={fetchHome}
+                  />
+                </div>
+
+              {expiredClassrooms.length > 0 && (
+                <div className="mt-4 text-sm text-ui">
+                  {`Expired ${T.leagues}: `}
+                  {expiredClassrooms.map((classroom, i) => (
+                    <span key={classroom.id}>
+                      {i > 0 && ', '}
+                      <button
+                        onClick={() => openClassroom(classroom, 'settings')}
+                        className="underline hover:text-primary"
+                        title={`Open ${classroom.name}'s settings to extend its expiry`}
+                      >
+                        {classroom.name}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Subscription + tutorial library, side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+              {/* Subscription */}
+              <section className="flex flex-col">
+                <h2 className="text-2xl font-semibold text-ui-dark mb-4">
+                  Subscription
+                </h2>
+                <div className={`${card} flex-1`}>
+                  {sub ? (
+                    <div>
+                      <Row label="Plan">
+                        {TIER_LABELS[sub.tier] || sub.tier || 'Subscription'}
+                      </Row>
+                      <Row label="Status">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-sm font-medium ${
+                            subActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {subActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </Row>
+                      <Row label="Expires">
+                        {formatDate(sub.subscription_expiry)}
+                      </Row>
+                      <Row label="Auto-renew">{sub.auto_renew ? 'Yes' : 'No'}</Row>
+                      <Row label="Billed via">
+                        {PAYMENT_METHOD_LABELS[sub.payment_method] ||
+                          sub.payment_method ||
+                          '—'}
+                      </Row>
+                      <Row label="Contact">
+                        {[data.contact_person, data.contact_email]
+                          .filter(Boolean)
+                          .join(' — ') || '—'}
+                      </Row>
+                    </div>
+                  ) : (
+                    <p className="text-ui">No active subscription on record.</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Preview tutorials — scroll to browse the whole library */}
+              <section className="flex flex-col">
+                <div className="flex justify-between items-baseline mb-4">
+                  <h2 className="text-2xl font-semibold text-ui-dark">
+                    {`Preview ${T.tutorials}`}
+                  </h2>
+                  <button
+                    onClick={() => navigate('/TutorialPreview')}
+                    className="text-sm text-primary font-medium hover:underline"
+                    title={`Try any ${T.tutorial} exactly as a ${T.team} would — nothing you run is saved`}
+                  >
+                    Open full library →
+                  </button>
+                </div>
+                <div className={`${card} flex-1 flex flex-col min-h-0`}>
+                  <p className="text-sm text-ui mb-3">
+                    {`Click a ${T.tutorial} to try it exactly as a ${T.team} would — nothing you run is saved.`}
+                  </p>
+                  {tutorials === null ? (
+                    <p className="text-sm text-ui">{`Loading ${T.tutorials}…`}</p>
+                  ) : tutorials.length === 0 ? (
+                    <p className="text-sm text-ui">
+                      {`There are no ${T.tutorials} in the library yet.`}
+                    </p>
+                  ) : (
+                    <div className="flex-1 min-h-0 overflow-y-auto max-h-[70vh] -mx-2 px-2 space-y-2">
+                      {tutorials.map((tut) => (
+                        <button
+                          key={tut.id}
+                          onClick={() =>
+                            navigate(`/TutorialPreview?tutorial=${tut.id}`)
+                          }
+                          className="w-full flex items-center gap-3 rounded-lg border border-ui-light p-3 text-left transition-colors hover:border-primary/60 hover:bg-primary/5"
+                          title={`Preview "${tut.title}" as a ${T.team} — nothing you run is saved`}
+                        >
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-medium text-ui-dark truncate">
+                              {tut.title}
+                            </span>
+                            {tut.description && (
+                              <span className="block text-sm text-ui truncate">
+                                {tut.description}
+                              </span>
+                            )}
+                            <span className="block text-xs text-ui mt-0.5">
+                              {tut.exercise_count}{' '}
+                              {tut.exercise_count === 1 ? 'exercise' : 'exercises'}
+                            </span>
+                          </span>
+                          <span className="text-ui-light" aria-hidden="true">
+                            →
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default InstitutionHome;

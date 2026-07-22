@@ -8,14 +8,23 @@
 #   ./run_playwright_tests.sh all    non-interactive: headless, every stage in
 #                                    order, per-stage summary, exit 1 on failure
 #
+# Stages (see .claude/skills/tester_skill/manual_tests/README.md):
+#   01 admin setup (institutions + teacher account)
+#   02-04 COMPETITION flow: institution league -> team submissions -> review/publish
+#   05-06 CLASSROOM flow: teacher classroom -> student submissions
+#   07 demo hint loop
+#   08 student password-reset link (classroom flow; needs 01 + 05 + 06)
+#
 # Owns all setup: ensures the permanent Playwright install (outside the repo),
 # sources .env, pulls OPENAI_API_KEY from .kamal/secrets when .env doesn't
 # provide one (stage 1.5 validates it against OpenAI). Stages share state via
-# /tmp/agent_games_manual_state.json — run 01 before 02-05.
+# /tmp/agent_games_manual_state.json — run 01 before 02-08 (05 needs 01's
+# teacher account; 06 needs 05's classroom join URL; 08 needs 06's students).
 #
 # Every launch resets the stack first: docker compose down -v, up -d --wait
 # (blocks until the api healthcheck passes, i.e. init_db + migrations are
-# done), then seeds the tutorial (Stage 3.3 needs it; not seeded on boot).
+# done), then seeds the tutorial (the tutorial steps in stages 03 and 06
+# need it; not seeded on boot).
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -58,7 +67,7 @@ if [[ -f tutorial_data/tutorial_sync.py ]]; then
   docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues \
     || { echo "tutorial seed failed"; exit 1; }
 else
-  echo "WARNING: tutorial_data/ missing (private, gitignored) — stage 3.3 tutorial steps will fail."
+  echo "WARNING: tutorial_data/ missing (private, gitignored) — the stage 03/06 tutorial steps will fail."
   echo "  Populate once with: docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py pull --target prod"
 fi
 

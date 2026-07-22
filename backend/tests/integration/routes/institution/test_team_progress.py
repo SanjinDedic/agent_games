@@ -10,8 +10,6 @@ from sqlmodel import Session
 
 from backend.database.db_models import (
     Exercise,
-    ExerciseSubmission,
-    ExerciseSubmissionMetadata,
     League,
     LeagueTutorial,
     Team,
@@ -19,33 +17,12 @@ from backend.database.db_models import (
 )
 from backend.routes.auth.auth_core import create_access_token
 from backend.tests.conftest import (
+    add_exercise_attempt,
     add_failed_submission,
     add_submission,
     create_test_institution,
 )
 from backend.time_utils import utc_now
-
-
-def add_exercise_attempt(
-    db_session: Session, team_id: int, exercise_id: int, passed=None
-):
-    """One attempt: metadata-only when passed is None, otherwise a stored run."""
-    now = utc_now()
-    meta = ExerciseSubmissionMetadata(
-        team_id=team_id, exercise_id=exercise_id, timestamp=now
-    )
-    db_session.add(meta)
-    if passed is not None:
-        db_session.flush()
-        db_session.add(
-            ExerciseSubmission(
-                code="def solve(): pass",
-                timestamp=now,
-                passed=passed,
-                test_results=[],
-                metadata_id=meta.id,
-            )
-        )
 
 
 @pytest.fixture

@@ -1,4 +1,6 @@
-// Stage 3 of docs/integration-test-manual.md — Teams ×3:
+// Stage 3 of docs/integration-test-manual.md — Teams ×3 (COMPETITION flow:
+// the join page and workspace must use league/team wording; the
+// student/classroom counterpart is 06_student_submissions.js):
 //   3.1 sign up via the Stage-2 signup URL (credentials modal must appear)
 //   3.2 three submissions: starter code (valid), threshold variant (valid),
 //       `import os` prepended (must fail the AST safety check)
@@ -48,11 +50,11 @@ async function runTutorialExercise(page) {
   await page.click('li button:has-text("Add Up the Scoreboard")');
   await page.waitForSelector('button:has-text("Problem Description")', { timeout: 30000 });
   await page.waitForSelector('text=4. Add Up the Scoreboard', { timeout: 15000 });
-  await page.waitForSelector('text=EXERCISE:', { timeout: 15000 });
+  await page.waitForSelector('text=TEAM:', { timeout: 15000 });
   if (await page.locator('button:has-text("Get Hint")').count()) {
     throw new Error('tutorial workspace unexpectedly shows a Get Hint button (hints are agent-submission only)');
   }
-  console.log('[3.3] exercise workspace open (Problem Description, footer EXERCISE label, no Get Hint)');
+  console.log('[3.3] exercise workspace open (Problem Description, footer TEAM label, no Get Hint)');
 
   const starter = await getMonacoValue(page);
   if (!starter.includes('def total_banked(banked_money):')) {
@@ -107,9 +109,17 @@ async function runTutorialExercise(page) {
 async function runTeam(page, observed, signupUrl, team, { withTutorial = false } = {}) {
   console.log(`\n=== Team ${team.name} ===`);
 
-  // 3.1 signup
+  // 3.1 signup — the /join page opens on its login tab; switch to signup
+  // (the tab buttons render once the league info has loaded). A competition
+  // league's join page must use league/team wording (classroom/student
+  // wording is the teacher flow, script 06).
   await page.goto(signupUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('h2:has-text("Joining League:")', { timeout: 20000 });
+  await page.waitForSelector('text=League · greedy_pig', { timeout: 20000 });
+  await page.click('button:has-text("Sign up")', { timeout: 20000 });
+  const nameLabel = (await page.locator('label[for="teamName"]').innerText()).trim();
+  if (nameLabel !== 'Team Name') {
+    throw new Error(`join page name label is "${nameLabel}", expected "Team Name" on a competition league`);
+  }
   await page.fill('#teamName', team.name);
   await page.fill('#password', team.password);
   await page.fill('#confirmPassword', team.password);
@@ -118,8 +128,18 @@ async function runTeam(page, observed, signupUrl, team, { withTutorial = false }
   await page.waitForSelector('h2:has-text("SAVE YOUR CREDENTIALS NOW!")', { timeout: 15000 });
   await page.click('button:has-text("I\'ve Saved My Credentials")');
   await waitForToast(page, 'Signed up and joined league successfully!');
+  await page.waitForURL('**/TeamHome', { timeout: 20000 });
+  // Competition wording on the landing page: "competing", not "classroom".
+  await page.waitForSelector('text=You\'re competing in', { timeout: 15000 });
+  console.log('[3.1] signed up, landed on /TeamHome (competition wording)');
+
+  // The landing page links to the agent workspace
+  await page.click('a:has-text("Open Agent Workspace")');
   await page.waitForURL('**/AgentSubmission', { timeout: 20000 });
-  console.log('[3.1] signed up, landed on /AgentSubmission');
+  // Workspace footer labels come from the same terminology switch.
+  await page.waitForSelector('text=TEAM:', { timeout: 20000 });
+  await page.waitForSelector('text=LEAGUE:', { timeout: 20000 });
+  console.log('[3.1] opened the agent workspace from /TeamHome (TEAM:/LEAGUE: footer)');
 
   // 3.2a submission 1 — starter code unchanged (valid)
   const starter = await getMonacoValue(page);

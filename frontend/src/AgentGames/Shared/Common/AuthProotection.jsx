@@ -8,6 +8,15 @@ import {
 } from '../../../slices/authSlice';
 import { sessionExpired } from '../../../middleware/authErrorMiddleware';
 
+// requiredRole: a single role string, or an array when several roles may
+// enter (e.g. ["admin", "institution"] for the tutorial preview).
+const roleAllowed = (requiredRole, role) => {
+  if (!requiredRole) return true;
+  return Array.isArray(requiredRole)
+    ? requiredRole.includes(role)
+    : role === requiredRole;
+};
+
 const AuthProtection = ({
   children,
   requiredRole,
@@ -24,13 +33,13 @@ const AuthProtection = ({
       dispatch(sessionExpired());
       return;
     }
-    if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole)) {
+    if (!isAuthenticated || !roleAllowed(requiredRole, currentUser.role)) {
       navigate(redirectTo);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!isAuthenticated || (requiredRole && currentUser.role !== requiredRole)) {
+  if (!isAuthenticated || !roleAllowed(requiredRole, currentUser.role)) {
     return null;
   }
 

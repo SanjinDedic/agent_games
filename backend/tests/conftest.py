@@ -12,6 +12,8 @@ from backend.database.db_config import get_database_url
 from backend.database.db_models import (
     Admin,
     DemoUser,
+    ExerciseSubmission,
+    ExerciseSubmissionMetadata,
     Institution,
     InstitutionSubscription,
     League,
@@ -426,6 +428,35 @@ def add_failed_submission(
     )
     session.add(meta)
     return meta
+
+
+def add_exercise_attempt(
+    session,
+    team_id: int,
+    exercise_id: int,
+    passed: bool = None,
+    timestamp: datetime = None,
+    code: str = "def solve(): pass",
+    test_results: list = None,
+):
+    """One exercise attempt: metadata-only when passed is None, otherwise a
+    stored run. Does not commit."""
+    now = timestamp or utc_now()
+    meta = ExerciseSubmissionMetadata(
+        team_id=team_id, exercise_id=exercise_id, timestamp=now
+    )
+    session.add(meta)
+    if passed is not None:
+        session.flush()
+        session.add(
+            ExerciseSubmission(
+                code=code,
+                timestamp=now,
+                passed=passed,
+                test_results=test_results or [],
+                metadata_id=meta.id,
+            )
+        )
 
 
 @pytest.fixture

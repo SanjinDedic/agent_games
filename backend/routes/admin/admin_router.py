@@ -168,7 +168,10 @@ async def backup_database_endpoint(
     current_user: dict = Depends(get_current_user),
 ):
     """Create a pg_dump backup and upload to DigitalOcean Spaces."""
-    result = create_backup()
+    try:
+        result = create_backup()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backup failed: {e}")
     return {"message": f"Backup created: {result['filename']}", **result}
 
 
@@ -178,7 +181,10 @@ async def list_backups_endpoint(
     current_user: dict = Depends(get_current_user),
 ):
     """List all database backups in DigitalOcean Spaces."""
-    return {"backups": list_backups()}
+    try:
+        return {"backups": list_backups()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list backups: {e}")
 
 
 @admin_router.post("/restore-database")
@@ -188,7 +194,10 @@ async def restore_database_endpoint(
     current_user: dict = Depends(get_current_user),
 ):
     """Restore the database from an S3 backup."""
-    result = restore_backup(request.s3_key)
+    try:
+        result = restore_backup(request.s3_key)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Restore failed: {e}")
     return {"message": f"Database restored from {result['filename']}", **result}
 
 

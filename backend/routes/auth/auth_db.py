@@ -36,15 +36,20 @@ class RateLimitExceededError(Exception):
     pass
 
 
-def get_institution_names(session: Session):
-    """Get list of active institution names for the login selector"""
+def get_competitions(session: Session):
+    """Active competition institutions for the public login picker.
+
+    Teacher accounts are excluded: classroom students log in through their
+    league's shareable /join/<token> page, never through this list.
+    """
     institutions = session.exec(
         select(Institution)
         .join(InstitutionSubscription)
         .where(InstitutionSubscription.subscription_active == True)
         .where(Institution.name != "Demo Institution")
+        .where(Institution.is_teacher == False)
     ).all()
-    return [inst.name for inst in institutions]
+    return [{"name": inst.name, "icon": inst.icon} for inst in institutions]
 
 
 def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedelta = None) -> str:

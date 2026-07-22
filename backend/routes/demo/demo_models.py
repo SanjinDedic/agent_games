@@ -15,7 +15,7 @@ class DemoLaunchRequestWithUser(BaseModel):
     username: str = Field(
         ..., description="Username for demo mode (max 10 chars, alphanumeric)"
     )
-    email: str | None = Field(None, description="Optional email address")
+    email: str = Field(..., description="Email address (required)")
 
     @field_validator("username")
     def validate_username(cls, v):
@@ -35,13 +35,14 @@ class DemoLaunchRequestWithUser(BaseModel):
 
     @field_validator("email")
     def validate_email(cls, v):
-        # Email is optional, but if provided, it should be valid
-        if v is not None and v.strip():
-            # Simple email regex
-            if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
-                raise ValueError("Please provide a valid email address")
-            return v.strip()
-        return None
+        # A demo launch must carry a real-looking email address
+        if v is None or not v.strip():
+            raise ValueError("Email address is required")
+        v = v.strip()
+        # Simple email regex
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Please provide a valid email address")
+        return v
 
 
 class DemoGameSelectRequest(BaseModel):
@@ -60,3 +61,16 @@ class DemoLaunchResponse(BaseModel):
     expires_at: str
     available_games: list[str]
     demo_leagues: list[str]
+
+
+class DemoContentOverview(BaseModel):
+    """Public summary of the demo sample vs the full content library.
+
+    Backs the marketing pages: the demo page lists the sample titles, the
+    home page shows the totals.
+    """
+
+    demo_tutorials: list[str]
+    demo_lessons: list[str]
+    total_tutorials: int
+    total_lessons: int

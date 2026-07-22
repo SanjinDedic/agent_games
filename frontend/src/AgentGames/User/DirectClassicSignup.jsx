@@ -5,12 +5,15 @@ import { toast } from "react-toastify";
 
 import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
+import { getTerms } from "../Shared/terminology";
 import CredentialsModal from "../Shared/Utilities/CredentialsModal";
 
-function DirectClassicSignup({ leagueToken, leagueInfo }) {
+function DirectClassicSignup({ leagueToken, leagueInfo, onShowLogin }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { directSignup, isLoading } = useAuthAPI();
+  // Visitors are logged out, so wording comes from the league's institution.
+  const T = getTerms(Boolean(leagueInfo?.is_teacher));
 
   const [formData, setFormData] = useState({
     teamName: "",
@@ -65,10 +68,10 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
       );
       dispatch(setCurrentLeague(leagueInfo.name));
 
-      toast.success("Signed up and joined league successfully!");
+      toast.success(`Signed up and joined ${T.league} successfully!`);
 
       setTimeout(() => {
-        navigate("/AgentSubmission");
+        navigate("/TeamHome");
       }, 300);
     } else {
       setError(result.error || "Failed to sign up");
@@ -77,17 +80,10 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
 
   return (
     <>
-      <div className="mb-6 bg-blue-100 p-4 rounded-lg">
-        <h2 className="text-lg font-semibold text-blue-700">
-          Joining League: {leagueInfo.name}
-        </h2>
-        <p className="text-gray-700">Game: {leagueInfo.game}</p>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="teamName" className="block text-ui-dark mb-1">
-            Team Name
+            {`${T.Team} Name`}
           </label>
           <input
             type="text"
@@ -96,7 +92,7 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
             value={formData.teamName}
             onChange={handleChange}
             className="w-full p-2 border border-ui-light rounded"
-            placeholder="Choose a team name"
+            placeholder={`Choose a ${T.team} name`}
           />
         </div>
 
@@ -152,16 +148,22 @@ function DirectClassicSignup({ leagueToken, leagueInfo }) {
           disabled={isLoading}
           className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:bg-gray-400"
         >
-          {isLoading ? "Signing up..." : "Sign Up & Join League"}
+          {isLoading ? "Signing up..." : `Sign Up & Join ${T.League}`}
         </button>
       </form>
 
       <div className="mt-4 text-center text-gray-600">
         <p>
-          Already have a team?{" "}
-          <a href="/AgentLogin" className="text-blue-600">
-            Log in
-          </a>
+          Already signed up?{" "}
+          {onShowLogin ? (
+            <button onClick={onShowLogin} className="text-blue-600">
+              Log in
+            </button>
+          ) : (
+            <a href="/AgentLogin" className="text-blue-600">
+              Log in
+            </a>
+          )}
         </p>
       </div>
 

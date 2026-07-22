@@ -7,12 +7,15 @@ import LessonMarkdown from "../Shared/Lesson/LessonMarkdown";
  * team's status (completed / in progress / not started) and opens the
  * exercise workspace via onSelectExercise. When the league has more than one
  * tutorial, onBackToList renders a link back to the tutorial picker.
+ * `notice` (optional) renders above the header card — the preview mode uses
+ * it to flag that nothing is saved.
  */
 function TutorialOverview({
   tutorial,
   progressByExerciseId,
   onSelectExercise,
   onBackToList = null,
+  notice = null,
 }) {
   const exercises = tutorial.exercises;
   const passedCount = exercises.filter(
@@ -24,6 +27,7 @@ function TutorialOverview({
   return (
     <div className="min-h-screen pt-16 pb-12 bg-ui-lighter">
       <div className="max-w-3xl mx-auto px-4">
+        {notice}
         <div className="bg-white rounded-lg shadow border border-ui-light/30 p-6">
           {onBackToList && (
             <button

@@ -15,6 +15,7 @@ class CreateInstitution(BaseModel):
     password: str
     subscription_expiry: datetime
     is_teacher: bool = False
+    icon: Optional[str] = None
 
     @field_validator("name")
     def validate_name(cls, v):
@@ -34,6 +35,8 @@ class InstitutionUpdate(BaseModel):
     subscription_expiry: Optional[datetime] = None
     password: Optional[str] = None
     is_teacher: Optional[bool] = None
+    # Empty string clears the icon; None means "leave unchanged".
+    icon: Optional[str] = None
 
 
 class DeleteInstitution(BaseModel):

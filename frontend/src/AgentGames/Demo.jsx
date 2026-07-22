@@ -15,6 +15,23 @@ function Demo() {
     const [email, setEmail] = useState('');
     const [errors, setErrors] = useState({});
     const [countdown, setCountdown] = useState('');
+    const [contentOverview, setContentOverview] = useState(null);
+
+    // What the demo includes (5 tutorials / 5 lessons) plus library totals
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`${apiUrl}/demo/content_overview`)
+            .then((response) => (response.ok ? response.json() : null))
+            .then((data) => {
+                if (!cancelled && data) setContentOverview(data);
+            })
+            .catch(() => {
+                // Purely informational section — hide it if the fetch fails
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [apiUrl]);
 
     // Timer for countdown display if we have a demo session
     useEffect(() => {
@@ -57,8 +74,10 @@ function Demo() {
             newErrors.username = 'Team name must be alphanumeric';
         }
 
-        // Email validation (optional)
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        // Email validation (required)
+        if (!email.trim()) {
+            newErrors.email = 'Email address is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             newErrors.email = 'Please enter a valid email address';
         }
 
@@ -80,7 +99,7 @@ function Demo() {
                 },
                 body: JSON.stringify({
                     username: username,
-                    email: email || null
+                    email: email.trim()
                 })
             });
 
@@ -139,6 +158,36 @@ function Demo() {
                             </div>
                         </div>
 
+                        {contentOverview && (
+                            <div className="bg-ui-lighter p-6 rounded-lg">
+                                <h2 className="text-xl font-semibold text-ui-dark mb-4">Included in the Demo:</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded shadow">
+                                        <h3 className="font-medium text-lg mb-2">
+                                            {contentOverview.demo_tutorials.length} Tutorials
+                                            <span className="text-sm text-ui font-normal"> (of {contentOverview.total_tutorials} on the full platform)</span>
+                                        </h3>
+                                        <ul className="list-disc pl-5 space-y-1 text-sm text-ui">
+                                            {contentOverview.demo_tutorials.map((title) => (
+                                                <li key={title}>{title}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div className="bg-white p-4 rounded shadow">
+                                        <h3 className="font-medium text-lg mb-2">
+                                            {contentOverview.demo_lessons.length} Lessons
+                                            <span className="text-sm text-ui font-normal"> (of {contentOverview.total_lessons} on the full platform)</span>
+                                        </h3>
+                                        <ul className="list-disc pl-5 space-y-1 text-sm text-ui">
+                                            {contentOverview.demo_lessons.map((title) => (
+                                                <li key={title}>{title}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="bg-white p-6 rounded-lg shadow">
                             <h2 className="text-xl font-semibold text-ui-dark mb-4">Get Started</h2>
 
@@ -161,16 +210,18 @@ function Demo() {
 
                                 <div>
                                     <label className="block text-ui-dark mb-2">
-                                        Email <span className="text-ui text-sm">(Optional)</span>
+                                        Email <span className="text-danger">*</span>
                                     </label>
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="Enter your email (optional)"
+                                        placeholder="Enter your email"
                                         className={`w-full p-3 rounded-lg border ${errors.email ? 'border-danger' : 'border-ui-light'}`}
+                                        required
                                     />
                                     {errors.email && <p className="text-danger mt-1 text-sm">{errors.email}</p>}
+                                    <p className="text-ui text-sm mt-1">A valid email address is required to start the demo.</p>
                                 </div>
                             </div>
                         </div>

@@ -4,12 +4,19 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from backend.database.db_models import Institution
+from backend.database.db_models import Institution, Tutorial
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_institution,
     verify_institution_role,
+)
+from backend.routes.institution.classroom_db import (
+    get_classroom_progress,
+    get_classroom_tutorial_matrix,
+    get_student_agent_submissions,
+    get_student_summary,
+    get_team_by_id,
 )
 from backend.routes.institution.institution_db import (
     ProtectedLeagueError,
@@ -19,8 +26,10 @@ from backend.routes.institution.institution_db import (
     delete_league,
     delete_team,
     generate_signup_link,
+    generate_team_password_reset,
     get_all_league_results,
     get_all_teams,
+    get_classroom_summaries,
     get_league_by_id,
     get_teams_progress,
     get_tutorials_progress,
@@ -45,6 +54,8 @@ from backend.routes.institution.institution_models import (
     TeamSignup,
 )
 from backend.routes.tutorial.tutorial_db import (
+    get_exercise_by_id,
+    get_exercise_submission_history,
     get_league_tutorial_ids,
     set_league_tutorials,
 )
@@ -156,23 +167,99 @@ async def team_progress_endpoint(
     }
 
 
-@institution_router.get("/subscription")
-@verify_institution_role
-async def get_subscription_endpoint(
-    session: Session = Depends(get_db),
+@institution_router.get("/classroom/{league_id}/progress")
+@verify_admin_or_institution
+async def classroom_progress_endpoint(
+    league_id: int,
     current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
 ):
-    """Return the logged-in institution's subscription + contact details.
+    """Per-student roster stats for one classroom: lifetime agent submission
+    stats, full ranking trend, last-active across agent and exercise
+    activity, and exercise completion against the classroom's tutorials."""
+    institution_id, is_admin = _require_institution(current_user)
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
+    return get_classroom_progress(session, league)
 
-    Read-only view backing the Subscription tab. Stripe object IDs are not
-    exposed — only display fields the institution needs to see.
+
+@institution_router.get("/classroom/{league_id}/tutorial-matrix")
+@verify_admin_or_institution
+async def classroom_tutorial_matrix_endpoint(
+    league_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Student x exercise status grid for each tutorial attached to the
+    classroom. Untouched cells are omitted from the payload."""
+    institution_id, is_admin = _require_institution(current_user)
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
+    return get_classroom_tutorial_matrix(session, league)
+
+
+@institution_router.get("/student/{team_id}/summary")
+@verify_admin_or_institution
+async def student_summary_endpoint(
+    team_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Drill-down header for one student: identity, lifetime agent stats with
+    ranking trend, and per-exercise tutorial status in their classroom."""
+    institution_id, is_admin = _require_institution(current_user)
+    team = get_team_by_id(session, team_id, institution_id, is_admin=is_admin)
+    return get_student_summary(session, team)
+
+
+@institution_router.get("/student/{team_id}/agent-submissions")
+@verify_admin_or_institution
+async def student_agent_submissions_endpoint(
+    team_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """One student's full validated agent submission history (code included),
+    oldest first."""
+    institution_id, is_admin = _require_institution(current_user)
+    team = get_team_by_id(session, team_id, institution_id, is_admin=is_admin)
+    return get_student_agent_submissions(session, team)
+
+
+@institution_router.get("/student/{team_id}/exercise-submissions")
+@verify_admin_or_institution
+async def student_exercise_submissions_endpoint(
+    team_id: int,
+    exercise_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """One student's submission history for one exercise, newest first, with
+    code and per-test results. Ownership is team-level: the exercise need not
+    be attached to the student's current league, so history survives league
+    moves and tutorial detachment."""
+    institution_id, is_admin = _require_institution(current_user)
+    team = get_team_by_id(session, team_id, institution_id, is_admin=is_admin)
+    exercise = get_exercise_by_id(session, exercise_id)
+    tutorial = session.get(Tutorial, exercise.tutorial_id)
+    return {
+        "team": {"id": team.id, "name": team.name},
+        "exercise": {
+            "id": exercise.id,
+            "title": exercise.title,
+            "tutorial_id": exercise.tutorial_id,
+            "tutorial_title": tutorial.title if tutorial else None,
+        },
+        "submissions": get_exercise_submission_history(
+            session, team.id, exercise.id
+        ),
+    }
+
+
+def _subscription_payload(institution: Institution) -> dict:
+    """Display-only subscription + contact fields for the given institution.
+
+    Stripe object IDs are not exposed — only fields the institution needs to
+    see. Shared by the subscription and home endpoints.
     """
-    institution_id, _ = _require_institution(current_user)
-
-    institution = session.get(Institution, institution_id)
-    if not institution:
-        raise HTTPException(status_code=404, detail="Institution not found")
-
     sub = institution.subscription
     data = {
         "institution_name": institution.name,
@@ -199,6 +286,42 @@ async def get_subscription_endpoint(
                 sub.created_date.isoformat() if sub.created_date else None
             ),
         }
+    return data
+
+
+@institution_router.get("/subscription")
+@verify_institution_role
+async def get_subscription_endpoint(
+    session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return the logged-in institution's subscription + contact details."""
+    institution_id, _ = _require_institution(current_user)
+
+    institution = session.get(Institution, institution_id)
+    if not institution:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    return _subscription_payload(institution)
+
+
+@institution_router.get("/home")
+@verify_institution_role
+async def get_home_endpoint(
+    session: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Payload backing the institution/teacher home page: one card per
+    league/classroom (team count, game, attached tutorial titles, signup
+    link) plus the same subscription summary as /subscription."""
+    institution_id, _ = _require_institution(current_user)
+
+    institution = session.get(Institution, institution_id)
+    if not institution:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    data = _subscription_payload(institution)
+    data["classrooms"] = get_classroom_summaries(session, institution_id)
     return data
 
 
@@ -239,6 +362,16 @@ async def run_simulation_endpoint(
         player_feedback=True,
     )
     results = await poll_task_result(async_result, timeout=300)
+
+    # A failed run (e.g. no loadable players) must surface as an error, not be
+    # stored: saving it would leave an empty result in the history that renders
+    # as a rankings table with no rows and no explanation.
+    if results.get("status") == "error":
+        raise HTTPException(
+            status_code=400,
+            detail=results.get("message", "Simulation failed"),
+        )
+
     simulation_results = results.get("simulation_results")
     feedback = results.get("feedback")
     player_feedback = results.get("player_feedback")
@@ -418,6 +551,25 @@ async def generate_signup_link_endpoint(
     return {
         "message": f"Signup link generated for league {result['league_name']}",
         "signup_token": result["signup_token"],
+    }
+
+
+@institution_router.post("/team-password-reset")
+@verify_institution_role
+async def team_password_reset_endpoint(
+    team: TeamIdRef,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Generate a shareable one-time password-reset link for a team."""
+    institution_id, _ = _require_institution(current_user)
+    result = generate_team_password_reset(session, team.team_id, institution_id)
+    return {
+        "message": (
+            f"Password reset link generated for '{result['team_name']}'"
+        ),
+        "reset_token": result["reset_token"],
+        "team_name": result["team_name"],
     }
 
 

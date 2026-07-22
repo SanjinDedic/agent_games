@@ -6,16 +6,16 @@ from sqlmodel import Session
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_db import (
     get_admin_token,
+    get_competitions,
     get_institution_token,
-    get_institution_names,
     get_team_token,
     verify_agent_api_key,
 )
 from backend.routes.auth.auth_models import (
     AdminLogin,
     AgentLogin,
+    CompetitionsResponse,
     InstitutionLogin,
-    InstitutionsResponse,
     TeamLogin,
     TokenResponse,
 )
@@ -29,10 +29,10 @@ auth_router = APIRouter()
 # keeps each route a single expression instead of a per-route try/except.
 
 
-@auth_router.get("/institutions", response_model=InstitutionsResponse)
-def list_institutions(session: Session = Depends(get_db)):
-    """Public endpoint to list institution names for the login selector."""
-    return InstitutionsResponse(institutions=get_institution_names(session))
+@auth_router.get("/competitions", response_model=CompetitionsResponse)
+def list_competitions(session: Session = Depends(get_db)):
+    """Public endpoint listing competitions for the student login picker."""
+    return CompetitionsResponse(competitions=get_competitions(session))
 
 
 @auth_router.post("/admin-login", response_model=TokenResponse)

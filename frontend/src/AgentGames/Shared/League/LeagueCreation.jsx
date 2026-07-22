@@ -26,7 +26,7 @@ const EMPTY_FORM = {
  * tutorials the league's teams will see. After a successful creation the
  * modal shows the signup link until dismissed.
  */
-const LeagueCreation = ({ userRole }) => {
+const LeagueCreation = ({ userRole, onCreated }) => {
   const T = useTerms();
   const token = useSelector(selectToken);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -189,12 +189,13 @@ const LeagueCreation = ({ userRole }) => {
       if (response.ok) {
         toast.success(`${T.League} created successfully!`);
         fetchUserLeagues();
+        if (onCreated) onCreated(data);
 
         // Create the signup URL from the signup token
         if (data.signup_token) {
           // Using window.location to dynamically build the URL based on current domain
           const baseUrl = `${window.location.protocol}//${window.location.host}`;
-          const signupPath = `/TeamSignup/${data.signup_token}`;
+          const signupPath = `/join/${data.signup_token}`;
           setSignupUrl(`${baseUrl}${signupPath}`);
           setCreatedSchoolLeague(Boolean(data.school_league));
         } else {
@@ -218,7 +219,7 @@ const LeagueCreation = ({ userRole }) => {
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-xl font-bold text-ui-dark mb-4">{`Create New ${T.League}`}</h2>
       <p className="text-sm text-ui mb-4">
-        {`Set up the game, signup options, and the tutorials ${T.teams} in the ${T.league} will see.`}
+        {`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
       </p>
       <button
         onClick={() => setIsOpen(true)}
@@ -249,7 +250,7 @@ const LeagueCreation = ({ userRole }) => {
                   {`${T.League} Created Successfully`}
                 </h4>
                 <p className="text-sm text-ui-dark mb-2">
-                  {`Share this link for ${T.teams} to sign up directly:`}
+                  {`This is the ${T.league}'s login page — ${T.teams} use it to sign up and log in:`}
                 </p>
                 <div className="flex items-center">
                   <input
@@ -337,9 +338,9 @@ const LeagueCreation = ({ userRole }) => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-ui-dark mb-1">Tutorials</label>
+                  <label className="block text-ui-dark mb-1">{T.Tutorials}</label>
                   <p className="text-sm text-ui mb-2">
-                    {`${T.Teams} in this ${T.league} will only see the tutorials selected here. Leave empty for no tutorials.`}
+                    {`${T.Teams} in this ${T.league} will only see the ${T.tutorials} selected here. Leave empty for no ${T.tutorials}.`}
                   </p>
                   <LeagueTutorialSelector
                     selectedIds={leagueInfo.tutorialIds}

@@ -119,6 +119,43 @@ def test_league_info_includes_schools(client, school_league_fixture):
     payload = resp.json()
     assert payload["school_league"] is True
     assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
+    assert payload["institution_name"] == "School League Test School"
+    assert payload["is_teacher"] is False
+
+
+def test_league_info_flags_teacher_institution(client, db_session):
+    """The join page needs is_teacher to pick classroom/student wording."""
+    now = utc_now()
+    institution = build_institution(
+        name="Teacher Wording School",
+        contact_person="Teacher",
+        contact_email="teacher@wording.com",
+        created_date=now,
+        password_hash="hash",
+        is_teacher=True,
+    )
+    db_session.add(institution)
+    db_session.commit()
+    db_session.refresh(institution)
+
+    token = secrets.token_urlsafe(16)
+    league = League(
+        name="teacher_wording_league",
+        created_date=now,
+        expiry_date=now + timedelta(days=7),
+        game="greedy_pig",
+        institution_id=institution.id,
+        league_type=LeagueType.INSTITUTION,
+        signup_link=token,
+    )
+    db_session.add(league)
+    db_session.commit()
+
+    resp = client.get(f"/user/league-info/{token}")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["institution_name"] == "Teacher Wording School"
+    assert payload["is_teacher"] is True
 
 
 def test_league_info_non_school_omits_schools(client, non_school_league_fixture):

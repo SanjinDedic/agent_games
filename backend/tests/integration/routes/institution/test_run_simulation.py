@@ -157,6 +157,44 @@ def test_run_simulation_success(client, simulation_setup, db_session):
         assert data["rewards"] == custom_rewards
 
 
+def test_run_simulation_worker_error_surfaces_and_stores_nothing(
+    client, simulation_setup, db_session
+):
+    """A run the worker reports as failed (e.g. no loadable players) must
+    return 400 with the worker's message and must NOT store a result row —
+    storing one renders as an empty rankings table with no explanation."""
+    institution, league, team, _, headers = simulation_setup
+
+    before = len(db_session.exec(select(SimulationResult)).all())
+
+    with patch(
+        "backend.routes.institution.institution_router.run_simulation"
+    ) as mock_task:
+        mock_async = mock_task.delay.return_value
+        mock_async.ready.return_value = True
+        mock_async.successful.return_value = True
+        mock_async.result = {
+            "status": "error",
+            "message": "No players loaded for simulation",
+            "simulation_results": {
+                "total_points": {},
+                "num_simulations": 10,
+                "table": {},
+            },
+        }
+
+        response = client.post(
+            "/institution/run-simulation",
+            headers=headers,
+            json={"league_id": league.id, "num_simulations": 10},
+        )
+
+    assert response.status_code == 400
+    assert "no players loaded" in response.json()["detail"].lower()
+    after = len(db_session.exec(select(SimulationResult)).all())
+    assert after == before
+
+
 def test_run_simulation_rejects_unassigned_league(
     client, simulation_setup, db_session
 ):

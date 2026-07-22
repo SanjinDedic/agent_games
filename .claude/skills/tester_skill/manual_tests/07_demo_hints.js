@@ -1,4 +1,5 @@
-// Stage 5 of docs/integration-test-manual.md — Demo hint loop, one demo user per game:
+// Script 07 (manual Stage 5 of docs/integration-test-manual.md) — Demo hint
+// loop, one demo user per game:
 //   5.1 launch demo user  5.2 join <game>_demo league
 //   5.3 submit invalid code (per the manual's per-game table) -> hint becomes available
 //   5.4 Get Hint (without editing) -> read hint -> restore valid code -> submit
@@ -8,7 +9,7 @@
 // a hint is available after the first failed submission.
 // Hint contents are appended to the state file under `hintResults`, and each
 // hint panel is screenshotted to /tmp/agent_games_hint_<game>.png.
-//   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/05_demo_hints.js
+//   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/07_demo_hints.js
 const {
   BASE, saveState, launchPage, collectToasts, waitForToast, dismissToasts,
   setMonacoValue, getMonacoValue, submitCode, finish,
@@ -53,6 +54,8 @@ async function runGame(page, observed, spec) {
   await collectToasts(page, observed); // page.goto resets the toast collector
   await page.goto(`${BASE}/Demo`, { waitUntil: 'domcontentloaded' });
   await page.fill('input[placeholder^="Enter a team name"]', spec.user);
+  // The demo now requires a valid email before it will launch.
+  await page.fill('input[type="email"]', `${spec.user}@example.com`);
   await page.click('button:has-text("Launch Demo Now")');
   await page.waitForURL('**/AgentLeagueSignUp', { timeout: 30000 });
   await page.waitForSelector('text=DEMO MODE', { timeout: 15000 });
@@ -63,6 +66,9 @@ async function runGame(page, observed, spec) {
   await box.waitFor({ timeout: 20000 });
   await box.check();
   await page.click('button:has-text("Join League")');
+  // Joining lands on the student home page; the workspace is one click away
+  await page.waitForURL('**/TeamHome', { timeout: 30000 });
+  await page.click('a:has-text("Open Agent Workspace")');
   await page.waitForURL('**/AgentSubmission', { timeout: 30000 });
   await page.waitForSelector(`text=LEAGUE: ${spec.game}_demo`, { timeout: 20000 });
   console.log(`[5.2] joined ${spec.game}_demo`);
@@ -132,11 +138,12 @@ async function runGame(page, observed, spec) {
   }
   console.log(`[5.4b] valid resubmission accepted (id=${goodSub.body.submission_id})`);
 
-  // 5.5 logout; hint content is recorded by the caller
+  // 5.5 logout — a demo session is account-less, so logout lands on the home
+  // page (/), not the team login page; hint content is recorded by the caller
   await collectToasts(page, observed);
   await page.click('button:has-text("Logout")');
-  await page.waitForURL('**/AgentLogin', { timeout: 15000 });
-  console.log('[5.5] logged out');
+  await page.waitForURL((url) => new URL(url).pathname === '/', { timeout: 15000 });
+  console.log('[5.5] logged out -> home');
 
   return {
     game: spec.game,
@@ -166,9 +173,9 @@ async function runGame(page, observed, spec) {
     for (const r of hintResults) {
       console.log(`${r.game}: line ${r.hint.line_number} — ${r.hint.small_hint}`);
     }
-    await finish(page, browser, observed, { name: 'STAGE5' });
+    await finish(page, browser, observed, { name: 'STAGE7' });
   } catch (err) {
     saveState({ hintResults });
-    await finish(page, browser, observed, { name: 'STAGE5', failure: err });
+    await finish(page, browser, observed, { name: 'STAGE7', failure: err });
   }
 })();

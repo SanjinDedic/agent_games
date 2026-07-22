@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from typing import Dict, Optional
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from backend.database.db_models import (
     League,
@@ -350,6 +350,50 @@ def get_team_submission(
     return {"code": submission.code if submission else None}
 
 
+def get_team_agent_stats(session: Session, team_id: int, league_id: int) -> dict:
+    """One team's agent-game stats scoped to one league: attempt/validated
+    counts, latest attempt timestamp, the last 3 validation rankings
+    (oldest -> newest, so they read as a trend), and whether the team ever
+    ranked first. The per-league scope is what makes the numbers mean
+    "progress in this game" — a team moved between leagues starts its story
+    fresh."""
+    total_attempts, latest = session.exec(
+        select(
+            func.count(SubmissionMetadata.id),
+            func.max(SubmissionMetadata.timestamp),
+        )
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.league_id == league_id)
+    ).one()
+
+    validated_submissions = session.exec(
+        select(func.count(Submission.id))
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.league_id == league_id)
+    ).one()
+
+    # Full ranked history newest-first: the window is the first 3 rows, but
+    # achieved_first must see everything. Pre-ranking submissions have NULL
+    # and are skipped (same convention as the institution progress view).
+    ranked = session.exec(
+        select(Submission.ranking)
+        .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
+        .where(SubmissionMetadata.team_id == team_id)
+        .where(SubmissionMetadata.league_id == league_id)
+        .where(Submission.ranking.is_not(None))
+        .order_by(Submission.timestamp.desc(), Submission.id.desc())
+    ).all()
+
+    return {
+        "total_attempts": total_attempts,
+        "validated_submissions": validated_submissions,
+        "latest_submission": latest.isoformat() if latest else None,
+        "recent_rankings": list(reversed(ranked[:3])),
+        "achieved_first": 1 in ranked,
+    }
+
+
 def get_team_submission_history(session: Session, team_id: int) -> list:
     """Get full submission history for a team, newest first."""
 
@@ -381,6 +425,39 @@ def get_league_by_signup_token(session: Session, signup_token: str) -> League:
             f"League with signup token '{signup_token}' not found"
         )
     return league
+
+
+def get_team_by_reset_token(session: Session, reset_token: str) -> Team:
+    """Resolve a team from a password-reset token, checking expiry.
+
+    A consumed, regenerated, or expired link is indistinguishable from one
+    that never existed: all raise TeamNotFoundError (HTTP 404) with the same
+    message, so the public endpoint leaks nothing about token state.
+    """
+    team = session.exec(
+        select(Team).where(Team.password_reset_token == reset_token)
+    ).first()
+    if (
+        not team
+        or team.password_reset_expiry is None
+        or ensure_utc(team.password_reset_expiry) < utc_now()
+    ):
+        raise TeamNotFoundError(
+            "This password reset link is invalid or has expired"
+        )
+    return team
+
+
+def reset_team_password(session: Session, reset_token: str, password: str) -> Team:
+    """Set a new password via a reset token and consume the token."""
+    team = get_team_by_reset_token(session, reset_token)
+    team.set_password(password)
+    team.password_reset_token = None
+    team.password_reset_expiry = None
+    session.add(team)
+    session.commit()
+    session.refresh(team)
+    return team
 
 
 def create_team_and_assign_to_league(

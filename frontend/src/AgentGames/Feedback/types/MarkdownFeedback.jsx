@@ -10,13 +10,12 @@ const MarkdownFeedback = ({ feedback }) => {
       return <div className="text-danger font-medium">Error: Markdown feedback must be a string</div>;
     }
 
+    // react-markdown v9 removed the className prop (v10 throws on it), so
+    // the styling class lives on a wrapper div instead.
     return (
-      <ReactMarkdown
-        rehypePlugins={[rehypeRaw]}
-        className="prose prose-sm max-w-none"
-      >
-        {feedback}
-      </ReactMarkdown>
+      <div className="prose prose-sm max-w-none">
+        <ReactMarkdown rehypePlugins={[rehypeRaw]}>{feedback}</ReactMarkdown>
+      </div>
     );
   };
 

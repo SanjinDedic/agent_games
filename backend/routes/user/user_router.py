@@ -22,6 +22,7 @@ from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.institution.institution_db import get_league_by_id
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
+from backend.routes.tutorial.tutorial_db import get_team_tutorials_progress
 from backend.routes.user.code_validation import validate_code
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
@@ -38,12 +39,15 @@ from backend.routes.user.user_db import (
     get_latest_submissions_for_league,
     get_league_by_signup_token,
     get_leagues_for_user,
+    get_team_agent_stats,
     get_published_result,
     get_result_by_publish_link,
     get_team_by_id,
+    get_team_by_reset_token,
     get_team_submission,
     get_team_submission_history,
     record_failed_submission,
+    reset_team_password,
     save_submission,
 )
 from backend.routes.user.user_models import (
@@ -52,6 +56,7 @@ from backend.routes.user.user_models import (
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
+    TeamPasswordReset,
 )
 from backend.schools.providers import SchoolsProviderError, get_schools_provider
 from backend.tasks.validation_task import (
@@ -243,6 +248,47 @@ async def submit_agent(
         # never advertises one regardless of rationing.
         "hint_available": False,
         "hint_cancelled": hint_cancelled,
+    }
+
+
+@user_router.get("/team-data")
+@verify_ai_agent_service_or_student
+async def get_team_data(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Everything the student landing page needs in one call: identity,
+    classroom-vs-competition wording flag, current league, per-tutorial
+    progress, and agent-game stats.
+
+    Resolved from the DB, not the token, so a mid-session league move or a
+    teacher-flag change shows up on the next page load. An unassigned team
+    gets league=None (with empty tutorials/agent_game) — the frontend sends
+    those students to the league picker.
+    """
+    team_id = _require_team_id(current_user)
+    team = get_team_by_id(session, team_id)
+    league = team.league
+    unassigned = league is None or league.name == "unassigned"
+    institution = team.institution
+
+    return {
+        "team_name": team.name,
+        "school_name": team.school_name,
+        "is_demo": team.is_demo,
+        # Same rule the JWT's is_teacher claim is minted from: students of a
+        # teacher account see classroom/student wording.
+        "is_classroom": bool(institution.is_teacher) if institution else False,
+        "institution_name": institution.name if institution else None,
+        "league": None
+        if unassigned
+        else {"id": league.id, "name": league.name, "game": league.game},
+        "tutorials": []
+        if unassigned
+        else get_team_tutorials_progress(session, team_id, league.id),
+        "agent_game": None
+        if unassigned
+        else get_team_agent_stats(session, team_id, league.id),
     }
 
 
@@ -446,6 +492,11 @@ async def get_league_by_token(
         "created_date": league.created_date,
         "expiry_date": league.expiry_date,
         "school_league": league.school_league,
+        # The join page is public (no token to read wording from), so it needs
+        # the owning institution's identity to render classroom/student vs
+        # league/team copy.
+        "institution_name": league.institution.name if league.institution else None,
+        "is_teacher": bool(league.institution.is_teacher) if league.institution else False,
     }
 
     if league.school_league:
@@ -459,6 +510,43 @@ async def get_league_by_token(
         data["schools"] = schools
 
     return data
+
+
+@user_router.get("/password-reset-info/{reset_token}")
+async def get_password_reset_info(
+    reset_token: str,
+    session: Session = Depends(get_db),
+):
+    """Who this reset link is for — public, rendered on the /reset page."""
+    team = get_team_by_reset_token(session, reset_token)
+    return {
+        "team_name": team.name,
+        # The reset page is public (no token to read wording from), so it
+        # needs the owning institution's identity to render classroom/student
+        # vs league/team copy — same contract as league-info above.
+        "institution_name": team.institution.name if team.institution else None,
+        "is_teacher": (
+            bool(team.institution.is_teacher) if team.institution else False
+        ),
+    }
+
+
+@user_router.post("/reset-team-password")
+async def reset_team_password_endpoint(
+    payload: TeamPasswordReset,
+    session: Session = Depends(get_db),
+):
+    """Set a new password via a reset link, consume the link, and log the
+    team straight in so the student continues from their existing progress."""
+    team = reset_team_password(session, payload.reset_token, payload.password)
+    return {
+        "message": f"Password updated for '{team.name}'",
+        "team_id": team.id,
+        "team_name": team.name,
+        "league_id": team.league_id,
+        "access_token": mint_team_token(team),
+        "token_type": "bearer",
+    }
 
 
 @user_router.post("/direct-school-league-signup")

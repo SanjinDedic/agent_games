@@ -18,6 +18,8 @@ function InstitutionTeam() {
   const [isLoading, setIsLoading] = useState(false);
   const [team, setTeam] = useState({ name: '', password: '', school_name: '' });
   const [showAddTeamForm, setShowAddTeamForm] = useState(false);
+  // { teamName, url } while the share-this-reset-link modal is open
+  const [resetLink, setResetLink] = useState(null);
 
   const fetchAllTeams = useCallback(async () => {
     setIsLoading(true);
@@ -107,6 +109,36 @@ function InstitutionTeam() {
     }
   };
 
+  const handleResetPassword = async (id) => {
+    try {
+      const response = await authFetch(`${apiUrl}/institution/team-password-reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ team_id: id }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setResetLink({
+          teamName: data.team_name,
+          url: `${window.location.origin}/reset/${data.reset_token}`,
+        });
+      } else {
+        toast.error(data.detail || 'Failed to generate reset link');
+      }
+    } catch (error) {
+      console.error('Error generating reset link:', error);
+      toast.error('Failed to generate reset link');
+    }
+  };
+
+  const copyResetLink = () => {
+    navigator.clipboard.writeText(resetLink.url);
+    toast.success('Password reset link copied to clipboard!');
+  };
+
   const groupTeamsIntoRows = () => {
     const rows = [];
     for (let i = 0; i < teams.length; i += 4) {
@@ -149,6 +181,13 @@ function InstitutionTeam() {
                                 <span className="text-sm text-ui">{team.school}</span>
                               </div>
                               <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleResetPassword(team.id)}
+                                  className="p-1.5 text-xs bg-primary hover:bg-primary-hover text-white rounded"
+                                  title="Generate a password reset link"
+                                >
+                                  Reset
+                                </button>
                                 <button
                                   onClick={() => handleDelete(team.id, team.name)}
                                   className="p-1.5 text-xs bg-danger hover:bg-danger-hover text-white rounded"
@@ -219,6 +258,47 @@ function InstitutionTeam() {
           )}
         </div>
       </div>
+
+      {resetLink && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setResetLink(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-ui-dark">
+              {`Password reset link for ${resetLink.teamName}`}
+            </h2>
+            <p className="text-ui-dark/70">
+              {`Share this link with the ${T.team}. It opens a page showing their name where they set a new password and are logged straight back into their account — all their work is kept. The link works once and expires in 48 hours.`}
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={resetLink.url}
+                readOnly
+                onFocus={(e) => e.target.select()}
+                className="flex-1 p-3 border border-ui-light rounded-lg text-sm bg-ui-lighter"
+              />
+              <button
+                onClick={copyResetLink}
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium"
+                title="Copy to clipboard"
+              >
+                Copy
+              </button>
+            </div>
+            <button
+              onClick={() => setResetLink(null)}
+              className="w-full py-2 bg-ui-lighter hover:bg-ui-light text-ui-dark rounded-lg font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

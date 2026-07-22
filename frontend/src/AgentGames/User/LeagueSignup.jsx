@@ -80,7 +80,7 @@ function AgentLeagueSignUp() {
     if (!currentLeague) return;
     const result = await assignToLeague(currentLeague.id);
     if (result.success) {
-      navigate("/AgentSubmission");
+      navigate("/TeamHome");
     }
   };
 

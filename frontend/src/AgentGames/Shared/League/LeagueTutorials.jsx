@@ -27,7 +27,7 @@ function LeagueTutorials({ leagueId, userRole }) {
         setSelectedIds(result.tutorialIds);
         setSavedIds(result.tutorialIds);
       } else {
-        setLoadError(result.error || `Failed to load ${T.league} tutorials`);
+        setLoadError(result.error || `Failed to load ${T.league} ${T.tutorials}`);
       }
     };
     load();
@@ -53,18 +53,18 @@ function LeagueTutorials({ leagueId, userRole }) {
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-medium text-ui-dark">Tutorials</h3>
+        <h3 className="text-lg font-medium text-ui-dark">{T.Tutorials}</h3>
         <button
           type="button"
           onClick={handleSave}
           disabled={!hasChanges || isSaving}
           className="px-3 py-1 text-sm bg-primary hover:bg-primary-hover text-white rounded disabled:bg-ui-light disabled:cursor-not-allowed"
         >
-          {isSaving ? "Saving..." : "Save Tutorials"}
+          {isSaving ? "Saving..." : `Save ${T.Tutorials}`}
         </button>
       </div>
       <p className="text-sm text-ui mb-2">
-        {`${T.Teams} in this ${T.league} only see the tutorials selected here.`}
+        {`${T.Teams} in this ${T.league} only see the ${T.tutorials} selected here.`}
       </p>
       {loadError ? (
         <p className="text-sm text-danger">{loadError}</p>

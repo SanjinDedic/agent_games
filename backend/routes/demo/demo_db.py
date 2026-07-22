@@ -4,6 +4,7 @@ import string
 from datetime import timedelta
 from typing import List
 
+from sqlalchemy import func
 from sqlmodel import Session, delete, select
 
 from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
@@ -14,6 +15,7 @@ from backend.database.db_models import (
     League,
     LeagueType,
     LeagueTutorial,
+    Lesson,
     Submission,
     SubmissionMetadata,
     Team,
@@ -26,6 +28,12 @@ from backend.utils import get_games_names
 from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
+
+# The demo is a capped sample of the content library: demo leagues carry the
+# first N tutorials, and marketing pages show the same N titles alongside the
+# full-library counts (see get_demo_content_summary).
+DEMO_TUTORIAL_LIMIT = 5
+DEMO_LESSON_LIMIT = 5
 
 
 def get_or_create_demo_institution(session: Session) -> Institution:
@@ -142,6 +150,47 @@ def ensure_demo_leagues_exist(session: Session) -> List[League]:
     return demo_leagues
 
 
+def _demo_tutorial_ids(session: Session) -> List[int]:
+    """The tutorials the demo includes: the first DEMO_TUTORIAL_LIMIT by id
+    (creation order, which mirrors curriculum order from the seed tooling)."""
+    return list(
+        session.exec(
+            select(Tutorial.id).order_by(Tutorial.id).limit(DEMO_TUTORIAL_LIMIT)
+        ).all()
+    )
+
+
+def _sync_demo_league_tutorials(session: Session, league: League) -> None:
+    """Make the league's tutorial links exactly the demo sample.
+
+    Runs on every launch so leagues created before the cap (or before a
+    content push) converge without a migration. Commits only when links
+    actually change.
+    """
+    expected_ids = set(_demo_tutorial_ids(session))
+    linked_ids = set(
+        session.exec(
+            select(LeagueTutorial.tutorial_id).where(
+                LeagueTutorial.league_id == league.id
+            )
+        ).all()
+    )
+
+    if linked_ids == expected_ids:
+        return
+
+    extra = linked_ids - expected_ids
+    if extra:
+        session.exec(
+            delete(LeagueTutorial)
+            .where(LeagueTutorial.league_id == league.id)
+            .where(LeagueTutorial.tutorial_id.in_(extra))
+        )
+    for tutorial_id in expected_ids - linked_ids:
+        session.add(LeagueTutorial(league_id=league.id, tutorial_id=tutorial_id))
+    session.commit()
+
+
 def get_or_create_demo_league(session: Session, game_name: str) -> League:
     """Get an existing demo league or create a new one for the given game"""
     league_name = f"{game_name}_demo"
@@ -152,6 +201,7 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
     ).first()
 
     if existing_league:
+        _sync_demo_league_tutorials(session, existing_league)
         return existing_league
 
     # Find or create a demo institution
@@ -171,8 +221,7 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
     session.add(demo_league)
     session.flush()
 
-    # Demo leagues showcase the platform, so they get every tutorial.
-    for tutorial_id in session.exec(select(Tutorial.id)).all():
+    for tutorial_id in _demo_tutorial_ids(session):
         session.add(
             LeagueTutorial(league_id=demo_league.id, tutorial_id=tutorial_id)
         )
@@ -181,6 +230,38 @@ def get_or_create_demo_league(session: Session, game_name: str) -> League:
 
     logger.info(f"Created demo league: {league_name}")
     return demo_league
+
+
+def get_demo_content_summary(session: Session) -> dict:
+    """Sample titles the demo includes plus full-library counts.
+
+    Public marketing data (no auth): the demo page lists the sample, the
+    home page shows the totals. Lessons are not league-gated, so the lesson
+    sample is informational — it mirrors the tutorial rule (first N by id).
+    """
+    demo_tutorials = list(
+        session.exec(
+            select(Tutorial.title)
+            .order_by(Tutorial.id)
+            .limit(DEMO_TUTORIAL_LIMIT)
+        ).all()
+    )
+    demo_lessons = list(
+        session.exec(
+            select(Lesson.title).order_by(Lesson.id).limit(DEMO_LESSON_LIMIT)
+        ).all()
+    )
+    total_tutorials = session.exec(
+        select(func.count()).select_from(Tutorial)
+    ).one()
+    total_lessons = session.exec(select(func.count()).select_from(Lesson)).one()
+
+    return {
+        "demo_tutorials": demo_tutorials,
+        "demo_lessons": demo_lessons,
+        "total_tutorials": total_tutorials,
+        "total_lessons": total_lessons,
+    }
 
 
 def assign_user_to_demo_league(session: Session, user_id: int, league_id: int) -> bool:

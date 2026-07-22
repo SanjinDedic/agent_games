@@ -11,10 +11,25 @@ from backend.routes.auth.auth_config import (
     DEMO_TOKEN_EXPIRY_MINUTES,
     SECRET_KEY,
 )
-from backend.database.db_models import DemoUser, League, Team
-from backend.routes.demo.demo_db import create_demo_user, get_or_create_demo_league
+from backend.database.db_models import (
+    DemoUser,
+    League,
+    LeagueTutorial,
+    Lesson,
+    Team,
+    Tutorial,
+)
+from backend.routes.demo.demo_db import (
+    DEMO_TUTORIAL_LIMIT,
+    create_demo_user,
+    get_or_create_demo_league,
+)
 from backend.tests.conftest import make_student_token
 from backend.time_utils import utc_now
+
+# Email is required to launch a demo, so every test that just needs a session
+# posts this valid body.
+VALID_LAUNCH_BODY = {"username": "Guest", "email": "guest@example.com"}
 
 
 @pytest.fixture
@@ -36,8 +51,8 @@ def demo_team_headers(demo_team: Team) -> dict:
 
 
 def test_launch_demo_success(client: TestClient, db_session: Session):
-    """Test successful demo launch without user info"""
-    response = client.post("/demo/launch_demo")
+    """Test successful demo launch with the minimal valid body"""
+    response = client.post("/demo/launch_demo", json=VALID_LAUNCH_BODY)
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
@@ -100,6 +115,23 @@ def test_launch_demo_validation_errors(client: TestClient):
     assert response.status_code == 422
 
 
+def test_launch_demo_requires_email(client: TestClient):
+    """A demo cannot be launched without a valid email address."""
+    # No body at all
+    response = client.post("/demo/launch_demo")
+    assert response.status_code == 422
+
+    # Username but no email field
+    response = client.post("/demo/launch_demo", json={"username": "ValidName"})
+    assert response.status_code == 422
+
+    # Blank email
+    response = client.post(
+        "/demo/launch_demo", json={"username": "ValidName", "email": "   "}
+    )
+    assert response.status_code == 422
+
+
 def test_launch_demo_requires_unassigned_league(
     client: TestClient, db_session: Session
 ):
@@ -118,14 +150,14 @@ def test_launch_demo_requires_unassigned_league(
     # The `client` fixture re-raises server exceptions; this one asserts the
     # response a real caller gets instead of a masked 200.
     non_raising_client = TestClient(app, raise_server_exceptions=False)
-    response = non_raising_client.post("/demo/launch_demo")
+    response = non_raising_client.post("/demo/launch_demo", json=VALID_LAUNCH_BODY)
     assert response.status_code == 500
 
 
 def test_demo_leagues_creation(client: TestClient, db_session: Session):
     """Test demo leagues are created properly"""
     # Call launch demo to trigger league creation
-    response = client.post("/demo/launch_demo")
+    response = client.post("/demo/launch_demo", json=VALID_LAUNCH_BODY)
     assert response.status_code == 200
 
     # Verify demo leagues exist
@@ -142,7 +174,7 @@ def test_demo_leagues_creation(client: TestClient, db_session: Session):
 def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):
     """Test complete demo authentication lifecycle"""
     # 1. Launch demo to get token
-    response = client.post("/demo/launch_demo")
+    response = client.post("/demo/launch_demo", json=VALID_LAUNCH_BODY)
     assert response.status_code == 200
     data = response.json()
     token = data["access_token"]
@@ -158,7 +190,7 @@ def test_demo_authentication_lifecycle(client: TestClient, db_session: Session):
 
 def test_demo_token_includes_institution_id(client: TestClient, db_session: Session):
     """Test that demo token includes institution_id so demo users can see demo leagues"""
-    response = client.post("/demo/launch_demo")
+    response = client.post("/demo/launch_demo", json=VALID_LAUNCH_BODY)
     assert response.status_code == 200
     token = response.json()["access_token"]
 
@@ -178,7 +210,7 @@ def test_demo_token_includes_institution_id(client: TestClient, db_session: Sess
 
 def test_launch_demo_token_expiry_matches_config(client: TestClient):
     """The token's exp and the advertised expiry both come from the demo config."""
-    response = client.post("/demo/launch_demo")
+    response = client.post("/demo/launch_demo", json=VALID_LAUNCH_BODY)
     assert response.status_code == 200
     data = response.json()
     assert data["expires_in_minutes"] == DEMO_TOKEN_EXPIRY_MINUTES
@@ -200,6 +232,100 @@ def test_demo_user_can_join_demo_league(
     )
     assert response.status_code == 200
     assert "assigned to league" in response.json()["message"]
+
+
+@pytest.fixture
+def content_library(db_session: Session) -> dict:
+    """More tutorials than the demo cap, plus a few lessons."""
+    tutorials = [
+        Tutorial(title=f"Tutorial {i}", description=f"Tutorial number {i}")
+        for i in range(1, DEMO_TUTORIAL_LIMIT + 3)
+    ]
+    lessons = [
+        Lesson(slug=f"lesson-{i}", title=f"Lesson {i}", content="# Content")
+        for i in range(1, 4)
+    ]
+    db_session.add_all(tutorials + lessons)
+    db_session.commit()
+    for record in tutorials + lessons:
+        db_session.refresh(record)
+    return {"tutorials": tutorials, "lessons": lessons}
+
+
+def test_demo_league_links_only_first_five_tutorials(
+    db_session: Session, content_library: dict
+):
+    """A new demo league carries the first DEMO_TUTORIAL_LIMIT tutorials by id."""
+    league = get_or_create_demo_league(db_session, "greedy_pig")
+
+    linked_ids = set(
+        db_session.exec(
+            select(LeagueTutorial.tutorial_id).where(
+                LeagueTutorial.league_id == league.id
+            )
+        ).all()
+    )
+    expected_ids = {t.id for t in content_library["tutorials"][:DEMO_TUTORIAL_LIMIT]}
+    assert linked_ids == expected_ids
+
+
+def test_existing_demo_league_is_trimmed_to_cap(
+    db_session: Session, content_library: dict
+):
+    """Leagues created before the cap converge to the sample on next launch."""
+    league = get_or_create_demo_league(db_session, "greedy_pig")
+
+    # Simulate the pre-cap state: every tutorial linked
+    for tutorial in content_library["tutorials"]:
+        existing = db_session.exec(
+            select(LeagueTutorial)
+            .where(LeagueTutorial.league_id == league.id)
+            .where(LeagueTutorial.tutorial_id == tutorial.id)
+        ).first()
+        if not existing:
+            db_session.add(
+                LeagueTutorial(league_id=league.id, tutorial_id=tutorial.id)
+            )
+    db_session.commit()
+
+    league = get_or_create_demo_league(db_session, "greedy_pig")
+
+    linked_ids = set(
+        db_session.exec(
+            select(LeagueTutorial.tutorial_id).where(
+                LeagueTutorial.league_id == league.id
+            )
+        ).all()
+    )
+    expected_ids = {t.id for t in content_library["tutorials"][:DEMO_TUTORIAL_LIMIT]}
+    assert linked_ids == expected_ids
+
+
+def test_content_overview_lists_sample_and_totals(
+    client: TestClient, content_library: dict
+):
+    """The public endpoint reports the 5-item samples and full-library counts."""
+    response = client.get("/demo/content_overview")
+    assert response.status_code == 200
+    data = response.json()
+
+    tutorials = content_library["tutorials"]
+    lessons = content_library["lessons"]
+    assert data["demo_tutorials"] == [
+        t.title for t in tutorials[:DEMO_TUTORIAL_LIMIT]
+    ]
+    assert data["demo_lessons"] == [lesson.title for lesson in lessons]
+    assert data["total_tutorials"] == len(tutorials)
+    assert data["total_lessons"] == len(lessons)
+
+
+def test_content_overview_requires_no_auth(client: TestClient):
+    """An empty library still answers 200 with zero counts (public endpoint)."""
+    response = client.get("/demo/content_overview")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_tutorials"] >= 0
+    assert data["total_lessons"] >= 0
 
 
 def test_demo_user_cannot_join_non_demo_league(

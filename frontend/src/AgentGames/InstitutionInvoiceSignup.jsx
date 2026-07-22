@@ -70,14 +70,14 @@ function InstitutionInvoiceSignup() {
             }
             // Access is already granted and Stripe has emailed the invoice
             // (net 30 — no payment needed now). Auto-login and land on the
-            // Subscription tab, passing the hosted invoice link through so it's
+            // home page, passing the hosted invoice link through so it's
             // surfaced there rather than lost.
             toast.success('Institution created — your invoice has been issued.');
             const token = json?.access_token;
             const hostedInvoiceUrl = json?.hosted_invoice_url || null;
             if (token) {
                 dispatch(setToken(token));
-                navigate('/InstitutionSubscription', {
+                navigate('/InstitutionHome', {
                     state: { hostedInvoiceUrl },
                 });
             } else {

@@ -6,8 +6,16 @@ from sqlmodel import Session
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_config import DEMO_TOKEN_EXPIRY_MINUTES
 from backend.routes.auth.auth_db import mint_team_token
-from backend.routes.demo.demo_db import create_demo_user, ensure_demo_leagues_exist
-from backend.routes.demo.demo_models import DemoLaunchRequestWithUser, DemoLaunchResponse
+from backend.routes.demo.demo_db import (
+    create_demo_user,
+    ensure_demo_leagues_exist,
+    get_demo_content_summary,
+)
+from backend.routes.demo.demo_models import (
+    DemoContentOverview,
+    DemoLaunchRequestWithUser,
+    DemoLaunchResponse,
+)
 from backend.time_utils import utc_now
 from backend.utils import get_games_names
 
@@ -21,12 +29,12 @@ demo_router = APIRouter()
 
 @demo_router.post("/launch_demo", response_model=DemoLaunchResponse)
 async def launch_demo(
-    request: DemoLaunchRequestWithUser = None,
+    request: DemoLaunchRequestWithUser,
     session: Session = Depends(get_db),
 ):
     """Create a demo user with temporary credentials and return a token."""
-    username = request.username if request else "Guest"
-    email = request.email if request else None
+    username = request.username
+    email = request.email
 
     demo_leagues = ensure_demo_leagues_exist(session)
     demo_user = create_demo_user(session, username, email)
@@ -42,3 +50,13 @@ async def launch_demo(
         available_games=get_games_names(),
         demo_leagues=[league.name for league in demo_leagues],
     )
+
+
+@demo_router.get("/content_overview", response_model=DemoContentOverview)
+async def content_overview(session: Session = Depends(get_db)):
+    """What the demo includes and how much content the full platform has.
+
+    Unauthenticated by design: it feeds the public home and demo pages and
+    exposes only titles and counts.
+    """
+    return DemoContentOverview(**get_demo_content_summary(session))

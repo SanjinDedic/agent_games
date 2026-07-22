@@ -22,6 +22,7 @@ function AdminInstitutions() {
     password: '',
     subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default to 1 year
     is_teacher: false,
+    icon: '',
   });
 
   useEffect(() => {
@@ -97,6 +98,7 @@ function AdminInstitutions() {
             password: '',
             subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
             is_teacher: false,
+            icon: '',
           });
           fetchInstitutions(); // Refresh the list
         } else {
@@ -135,6 +137,39 @@ function AdminInstitutions() {
       })
       .catch(error => {
         console.error('Error updating institution:', error);
+        toast.error('Error connecting to server');
+        setIsLoading(false);
+      });
+  };
+
+  const handleSetIcon = (institution) => {
+    const typed = window.prompt(
+      `Icon for "${institution.name}" — an emoji or an image URL, shown on the competition login picker. Leave empty to clear:`,
+      institution.icon || ''
+    );
+    if (typed === null) return;
+
+    setIsLoading(true);
+    authFetch(`${apiUrl}/admin/institution-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ id: institution.id, icon: typed }),
+    })
+      .then(async response => {
+        const data = await response.json();
+        if (response.ok) {
+          toast.success('Icon updated');
+          fetchInstitutions();
+        } else {
+          toast.error(data.detail || 'Failed to update icon');
+        }
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error updating icon:', error);
         toast.error('Error connecting to server');
         setIsLoading(false);
       });
@@ -312,6 +347,18 @@ function AdminInstitutions() {
                       minDate={new Date()}
                     />
                   </div>
+                  <div>
+                    <label htmlFor="icon" className="block text-ui-dark mb-1">Icon (emoji or image URL)</label>
+                    <input
+                      type="text"
+                      id="icon"
+                      name="icon"
+                      value={institutionForm.icon}
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-ui-light rounded-lg"
+                      placeholder="🏆 — shown on the competition login picker"
+                    />
+                  </div>
                   <div className="flex items-center gap-2 self-end pb-2">
                     <input
                       type="checkbox"
@@ -370,7 +417,22 @@ function AdminInstitutions() {
                                          moment(institution.subscription_expiry).isAfter(moment());
                         return (
                           <tr key={institution.id} className="border-b border-ui-light hover:bg-ui-lighter/50">
-                            <td className="px-4 py-3">{institution.name}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleSetIcon(institution)}
+                                  title="Click to set the icon shown on the competition login picker"
+                                  className="text-lg leading-none hover:opacity-70"
+                                >
+                                  {institution.icon && /^(https?:\/\/|\/)/.test(institution.icon) ? (
+                                    <img src={institution.icon} alt="" className="h-6 w-6 object-contain rounded" />
+                                  ) : (
+                                    <span>{institution.icon || '➕'}</span>
+                                  )}
+                                </button>
+                                <span>{institution.name}</span>
+                              </div>
+                            </td>
                             <td className="px-4 py-3">{institution.contact_person}</td>
                             <td className="px-4 py-3">
                               <button

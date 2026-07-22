@@ -43,6 +43,19 @@ class DirectLeagueSignup(BaseModel):
         return v.strip()
 
 
+class TeamPasswordReset(BaseModel):
+    """Consume a password-reset link: set a new password for its team."""
+
+    reset_token: str
+    password: str
+
+    @field_validator("reset_token", "password")
+    def validate_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Field cannot be empty")
+        return v.strip()
+
+
 class DirectSchoolLeagueSignup(BaseModel):
     """Model for direct team signup for a school league.
 
