@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import Footer from '../Footer';
@@ -11,7 +11,9 @@ const HOW_IT_WORKS_STEPS = [
   { time: "5 min", title: "Invite students and watch them log in and progress" },
 ];
 
-// Real teacher-dashboard screenshots (hosted alongside the other assets on S3).
+// Real product screenshots (hosted alongside the other assets on S3). All of
+// them are captured at the same 1700x1050, so the tiles line up without any
+// cropping and the click-to-zoom view shows them at their natural size.
 const DASHBOARD_SHOTS = [
   {
     src: "teacher/dashboard-roster.png",
@@ -30,7 +32,86 @@ const DASHBOARD_SHOTS = [
   },
 ];
 
+const STUDENT_SHOTS = [
+  {
+    src: "student/student-feedback.png",
+    title: "Submit an agent, watch it compete",
+    text: "Every submission plays a full set of games straight away: where the agent placed, and a round-by-round replay of the decisions it made.",
+  },
+  {
+    src: "student/student-hint.png",
+    title: "A hint when the error is in the way",
+    text: "Stuck on a syntax error? The hint points at the offending line and asks a question first — the full explanation stays one click away.",
+  },
+  {
+    src: "student/student-lesson.png",
+    title: "Lessons with runnable code",
+    text: "Concepts open next to the exercise, and every example is editable and runs in a sandbox — students try an idea without losing their place.",
+  },
+];
+
+// Click-to-zoom for the screenshot tiles: the shots are 1700px wide, which is
+// the size the overlay shows them at on a big screen.
+const ShotLightbox = ({ shot, onClose }) => {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={shot.title}
+    >
+      <img
+        src={imageUrl(shot.src)}
+        alt={shot.title}
+        className="w-full max-w-[1700px] max-h-full h-auto object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-4 right-6 text-white text-4xl leading-none hover:text-league-text"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
+const ShotGrid = ({ shots, onZoom }) => (
+  <div className="grid md:grid-cols-3 gap-6">
+    {shots.map((shot) => (
+      <figure key={shot.src}>
+        <button
+          type="button"
+          onClick={() => onZoom(shot)}
+          className="block w-full cursor-zoom-in"
+          aria-label={`Enlarge: ${shot.title}`}
+        >
+          <img
+            src={imageUrl(shot.src)}
+            alt={shot.title}
+            className="w-full h-auto rounded-lg shadow-lg border border-ui-light"
+          />
+        </button>
+        <figcaption className="text-center text-sm text-ui mt-3">
+          {shot.text}
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+);
+
 const Homepage = () => {
+  const [zoomed, setZoomed] = useState(null);
+
   return (
     <div className="min-h-screen bg-ui-lighter pt-12">
       {/* Hero Section */}
@@ -101,20 +182,20 @@ const Homepage = () => {
       {/* Teacher Dashboard — real product screenshots, side by side */}
       <section className="py-6 bg-ui-lighter">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            {DASHBOARD_SHOTS.map((shot) => (
-              <figure key={shot.src}>
-                <img
-                  src={imageUrl(shot.src)}
-                  alt={shot.title}
-                  className="w-full h-auto rounded-lg shadow-lg border border-ui-light"
-                />
-                <figcaption className="text-center text-sm text-ui mt-3">
-                  {shot.text}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-ui-dark text-center mb-4">
+            What the teacher sees
+          </h2>
+          <ShotGrid shots={DASHBOARD_SHOTS} onZoom={setZoomed} />
+        </div>
+      </section>
+
+      {/* Student experience — the same product, from the student's side */}
+      <section className="py-6 bg-white">
+        <div className="container mx-auto px-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-ui-dark text-center mb-4">
+            What the student sees
+          </h2>
+          <ShotGrid shots={STUDENT_SHOTS} onZoom={setZoomed} />
         </div>
       </section>
 
@@ -194,8 +275,8 @@ const Homepage = () => {
               <ul className="space-y-3 text-ui">
                 {[
                   "When students are stuck and not making progress, an AI hint is provided",
-                  "AI hints help students with typos and syntax errors",
-                  "AI hints do not solve challenges",
+                  "Students spend more time focusing on reasoning and algorithmic thinking",
+                  "AI removes some friction around syntax errors, indentation and bugs"
                 ].map((point) => (
                   <li key={point} className="flex items-start">
                     <svg
@@ -324,6 +405,8 @@ const Homepage = () => {
       </section>
 
       <Footer />
+
+      {zoomed && <ShotLightbox shot={zoomed} onClose={() => setZoomed(null)} />}
     </div>
   );
 };
