@@ -24,9 +24,11 @@ const EMPTY_FORM = {
  * "Create New League" button that opens the creation form in a modal.
  * The form covers name, game, school-league settings, expiry, and which
  * tutorials the league's teams will see. After a successful creation the
- * modal shows the signup link until dismissed.
+ * modal shows the signup link until dismissed. `compact` renders the card
+ * as a single thin row (title + button) so it can share a column with
+ * other cards.
  */
-const LeagueCreation = ({ userRole, onCreated }) => {
+const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
   const T = useTerms();
   const token = useSelector(selectToken);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -216,17 +218,36 @@ const LeagueCreation = ({ userRole, onCreated }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-bold text-ui-dark mb-4">{`Create New ${T.League}`}</h2>
-      <p className="text-sm text-ui mb-4">
-        {`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
-      </p>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="w-full py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors"
-      >
-        {`Create ${T.League}`}
-      </button>
+    <div className={`bg-white rounded-lg shadow-lg ${compact ? 'p-4' : 'p-6'}`}>
+      {compact ? (
+        <div className="flex items-center justify-between gap-4">
+          <h2
+            className="text-lg font-bold text-ui-dark"
+            title={`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
+          >
+            {`Create New ${T.League}`}
+          </h2>
+          <button
+            onClick={() => setIsOpen(true)}
+            className="py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors whitespace-nowrap"
+          >
+            {`Create ${T.League}`}
+          </button>
+        </div>
+      ) : (
+        <>
+          <h2 className="text-xl font-bold text-ui-dark mb-4">{`Create New ${T.League}`}</h2>
+          <p className="text-sm text-ui mb-4">
+            {`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
+          </p>
+          <button
+            onClick={() => setIsOpen(true)}
+            className="w-full py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors"
+          >
+            {`Create ${T.League}`}
+          </button>
+        </>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
