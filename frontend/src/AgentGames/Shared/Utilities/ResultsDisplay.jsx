@@ -34,7 +34,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
 
   return (
     <div className="w-full">
-      {data && (
+      {data && data_message && (
         <h2 className="text-2xl font-bold text-ui-dark mb-6">{data_message}</h2>
       )}
 
@@ -51,7 +51,7 @@ const ResultsDisplay = ({ data, highlight = true, data_message = '', tablevisibl
           onClick={() => setIsTableVisible(true)}
           className="w-full py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors duration-200"
         >
-          Show Results
+          Show full results table
         </button>
       )}
 

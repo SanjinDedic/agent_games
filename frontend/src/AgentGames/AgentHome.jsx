@@ -11,6 +11,12 @@ const HOW_IT_WORKS_STEPS = [
   { time: "5 min", title: "Invite students and watch them log in and progress" },
 ];
 
+// The two showcase headings are full sentences, so from lg up they scale with
+// the viewport instead of wrapping — one line, whatever the window width.
+const SHOWCASE_HEADING =
+  "text-2xl md:text-3xl font-bold text-ui-dark text-center mb-4 " +
+  "lg:whitespace-nowrap lg:text-[clamp(0.9rem,1.4vw,1.5rem)]";
+
 // Real product screenshots (hosted alongside the other assets on S3). All of
 // them are captured at the same 1700x1050, so the tiles line up without any
 // cropping and the click-to-zoom view shows them at their natural size.
@@ -34,9 +40,9 @@ const DASHBOARD_SHOTS = [
 
 const STUDENT_SHOTS = [
   {
-    src: "student/student-feedback.png",
-    title: "Submit an agent, watch it compete",
-    text: "Every submission plays a full set of games straight away: where the agent placed, and a round-by-round replay of the decisions it made.",
+    src: "student/student-lesson.png",
+    title: "Lessons with runnable code",
+    text: "Concepts open next to the exercise, and every example is editable and runs in a sandbox — students try an idea without losing their place.",
   },
   {
     src: "student/student-hint.png",
@@ -44,9 +50,9 @@ const STUDENT_SHOTS = [
     text: "Stuck on a syntax error? The hint points at the offending line and asks a question first — the full explanation stays one click away.",
   },
   {
-    src: "student/student-lesson.png",
-    title: "Lessons with runnable code",
-    text: "Concepts open next to the exercise, and every example is editable and runs in a sandbox — students try an idea without losing their place.",
+    src: "student/student-feedback.png",
+    title: "Submit an agent, watch it compete",
+    text: "Every submission plays a full set of games straight away: where the agent placed, and a round-by-round replay of the decisions it made.",
   },
 ];
 
@@ -182,8 +188,8 @@ const Homepage = () => {
       {/* Teacher Dashboard — real product screenshots, side by side */}
       <section className="py-6 bg-ui-lighter">
         <div className="container mx-auto px-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-ui-dark text-center mb-4">
-            What the teacher sees
+          <h2 className={SHOWCASE_HEADING}>
+            Teachers see who needs help and who needs extension
           </h2>
           <ShotGrid shots={DASHBOARD_SHOTS} onZoom={setZoomed} />
         </div>
@@ -192,8 +198,13 @@ const Homepage = () => {
       {/* Student experience — the same product, from the student's side */}
       <section className="py-6 bg-white">
         <div className="container mx-auto px-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-ui-dark text-center mb-4">
-            What the student sees
+          <h2 className={SHOWCASE_HEADING}>
+            <span className="block">
+              Students complete short courses and exercises
+            </span>
+            <span className="block">
+              Then program agents that win at games of strategy
+            </span>
           </h2>
           <ShotGrid shots={STUDENT_SHOTS} onZoom={setZoomed} />
         </div>

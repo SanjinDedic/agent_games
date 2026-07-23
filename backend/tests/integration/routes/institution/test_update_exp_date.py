@@ -99,6 +99,29 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
     assert league.expiry_date > new_expiry
 
 
+def test_update_expiry_date_capped_at_membership_end(client, expiry_setup, db_session):
+    """A league may not outlive the institution's subscription: a later date is
+    capped at the membership expiry and the message says so."""
+    institution, league, _, headers = expiry_setup
+    membership_expiry = institution.subscription.subscription_expiry
+
+    beyond_membership = utc_now() + timedelta(days=365)
+    response = client.post(
+        "/institution/update-expiry-date",
+        headers=headers,
+        json={
+            "league_id": league.id,
+            "date": beyond_membership.isoformat(),
+        },
+    )
+    assert response.status_code == 200
+    assert "capped" in response.json()["message"].lower()
+
+    db_session.refresh(league)
+    assert abs((league.expiry_date - membership_expiry).total_seconds()) < 1
+    assert league.expiry_date < beyond_membership
+
+
 def test_update_expiry_date_failures(client, expiry_setup, db_session):
     """Test failure cases for updating expiry date"""
     institution, league, _, headers = expiry_setup

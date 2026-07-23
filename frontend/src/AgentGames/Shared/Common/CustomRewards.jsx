@@ -44,9 +44,13 @@ const CustomRewards = () => {
   const dispatch = useDispatch();
   const schema = useSelector((state) => state.leagues.currentRewardSchema);
   const instructions = useSelector((state) => state.leagues.currentRewardInstructions);
+  const rewards = useSelector((state) => state.leagues.currentRewards);
 
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
+  // Collapsed by default: most runs use the default rewards, and the explainer
+  // is long. The input stays mounted so a typed value survives collapsing.
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     setInputValue('');
@@ -91,11 +95,32 @@ const CustomRewards = () => {
     }
   };
 
+  const activeSummary = rewards ? JSON.stringify(rewards) : `Default ${defaultStr}`;
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-ui-dark mb-4">Custom Rewards</h2>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="w-full flex flex-wrap items-center justify-between gap-2 text-left"
+      >
+        <span className="flex flex-wrap items-baseline gap-2">
+          <span className="text-xl font-semibold text-ui-dark">Custom Rewards</span>
+          <span className="font-mono text-sm text-ui">{activeSummary}</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-primary">
+          {isOpen ? 'Hide' : 'Edit'}
+          <span
+            className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          >
+            ▼
+          </span>
+        </span>
+      </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div
+        className={`grid grid-cols-1 lg:grid-cols-5 gap-6 mt-4 ${isOpen ? '' : 'hidden'}`}
+      >
         {/* Markdown explainer */}
         {instructions && (
           <div className="lg:col-span-3 max-w-none text-ui-dark">

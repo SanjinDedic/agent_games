@@ -50,60 +50,72 @@ const SimulationRunner = ({ league, userRole }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4">
-      <h2 className="text-xl font-semibold text-ui-dark mb-4">Run Simulation</h2>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={handleSimulation}
-            disabled={isDisabled}
-            className={`
-              flex-grow px-6 py-3 rounded-lg font-semibold text-lg transition-colors
-              focus:ring-2 focus:ring-offset-2 outline-none
-              ${isDisabled
-                ? "bg-ui-light text-ui cursor-not-allowed"
-                : "bg-notice-orange hover:bg-notice-orange/90 text-white"}
-            `}
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+        <div>
+          <label
+            htmlFor="simulation-game-count"
+            className="block text-sm font-medium text-ui mb-1"
           >
-            {isLoading ? "RUNNING..." : "RUN SIMULATION"}
-          </button>
-
+            Games per run
+          </label>
           <input
+            id="simulation-game-count"
             type="number"
             value={simulationNumber}
             onChange={handleNumberChange}
             min="1"
             max="10000"
             disabled={isLoading || isPlaceholder}
-            className="w-24 p-2 border border-ui-light rounded-lg text-lg shadow-sm
+            className="w-32 p-3 border border-ui-light rounded-lg text-lg shadow-sm
                      focus:ring-2 focus:ring-primary focus:border-primary outline-none
                      disabled:bg-ui-light disabled:cursor-not-allowed"
           />
         </div>
 
+        <button
+          onClick={handleSimulation}
+          disabled={isDisabled}
+          className={`
+            px-8 py-3 rounded-lg font-semibold text-lg transition-colors
+            focus:ring-2 focus:ring-offset-2 outline-none
+            ${isDisabled
+              ? "bg-ui-light text-ui cursor-not-allowed"
+              : "bg-notice-orange hover:bg-notice-orange/90 text-white"}
+          `}
+        >
+          {isLoading ? "RUNNING..." : "RUN SIMULATION"}
+        </button>
+
         {league && (
-          <div className="text-sm text-ui">
+          <div className="flex-1 text-sm text-ui lg:pb-3">
             {isPlaceholder ? (
               <>
                 {`The "unassigned" ${T.league} is a placeholder for ${T.teams} without a ${T.league} — simulations cannot be run on it.`}
               </>
             ) : (
               <>
-                {`Selected ${T.League}: `}{league.name} ({league.game})
+                <span className="font-medium text-ui-dark">{league.name}</span>
+                {` · ${league.game} · every ${T.team}'s latest agent competes`}
               </>
             )}
           </div>
         )}
+      </div>
 
-        {!isPlaceholder && (
-          <div className="text-xs text-ui bg-ui-light/60 rounded-md px-3 py-2">
+      {!isPlaceholder && (
+        <details className="mt-3 text-sm text-ui">
+          <summary className="cursor-pointer hover:text-ui-dark">
+            Why a run can return fewer games than requested
+          </summary>
+          <p className="mt-2 text-xs bg-ui-light/60 rounded-md px-3 py-2">
             Simulation runs are capped at 10 minutes. If the requested number of
             games would take longer, we run as many complete games as fit in the
             time limit and report the actual count — a run never stops
             mid-game, so the results stay fair.
-          </div>
-        )}
-      </div>
+          </p>
+        </details>
+      )}
     </div>
   );
 };

@@ -59,7 +59,12 @@ export const useClassroomAPI = () => {
     [get]
   );
 
+  // Institution-only: the logged-in institution's subscription + contact
+  // details. Used for the membership end date a classroom cannot outlive.
+  const getSubscription = useCallback(() => get('/institution/subscription'), [get]);
+
   return {
+    getSubscription,
     getClassroomProgress,
     getTutorialMatrix,
     getStudentSummary,
