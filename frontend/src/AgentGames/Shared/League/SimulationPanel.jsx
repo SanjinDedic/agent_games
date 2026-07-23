@@ -6,9 +6,7 @@ import { setCurrentSimulation } from "../../../slices/leaguesSlice";
 
 import SimulationRunner from "./SimulationRunner";
 import SimulationRunSummary from "./SimulationRunSummary";
-import CustomRewards from "../Common/CustomRewards";
-import ResultsDisplay from "../Utilities/ResultsDisplay";
-import FeedbackSelector from "../../Feedback/FeedbackSelector";
+import RunResultsModal from "./RunResultsModal";
 
 import useClassroomAPI from "../hooks/useClassroomAPI";
 import useLeagueAPI from "../hooks/useLeagueAPI";
@@ -37,6 +35,8 @@ const SimulationPanel = ({ userRole }) => {
   // Roster names, used to show who had no agent in the selected run. Null when
   // unavailable (e.g. the progress call failed) — the block then stays hidden.
   const [roster, setRoster] = useState(null);
+  // Leaderboard + feedback of the selected run open in a modal on demand.
+  const [showResults, setShowResults] = useState(false);
 
   // The "unassigned" league is a placeholder — no simulations, results or game
   const isPlaceholderLeague =
@@ -98,35 +98,14 @@ const SimulationPanel = ({ userRole }) => {
             league={currentLeague}
             userRole={userRole}
             roster={roster}
+            onViewResults={() => setShowResults(true)}
           />
 
-          {currentSimulation && (
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-ui-dark mb-4">
-                Leaderboard
-              </h2>
-              <ResultsDisplay
-                data={currentSimulation}
-                highlight={false}
-                data_message={currentSimulation.message}
-                tablevisible={!currentSimulation.feedback}
-              />
-            </div>
-          )}
-
-          {currentSimulation?.feedback && (
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-ui-dark mb-1">
-                {`Feedback shown to ${T.teams}`}
-              </h2>
-              <p className="text-sm text-ui mb-4">
-                {`Published with this run — ${T.teams} see it on the results page.`}
-              </p>
-              <FeedbackSelector
-                feedback={currentSimulation.feedback}
-                collapsible={false}
-              />
-            </div>
+          {showResults && currentSimulation && (
+            <RunResultsModal
+              simulation={currentSimulation}
+              onClose={() => setShowResults(false)}
+            />
           )}
         </>
       ) : (
@@ -141,9 +120,6 @@ const SimulationPanel = ({ userRole }) => {
           </div>
         </div>
       )}
-
-      {/* Custom Rewards (hidden when game has no schema) */}
-      {!isPlaceholderLeague && <CustomRewards />}
     </div>
   );
 };

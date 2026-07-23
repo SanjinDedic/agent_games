@@ -39,6 +39,9 @@ const markdownComponents = {
  * per-cell labels all come from the selected game's `reward_schema` exposed
  * via `/user/get-game-instructions`. When the schema is null the component
  * renders nothing — the game does not support custom rewards.
+ *
+ * Renders as a compact disclosure (no card chrome) so it can sit inside the
+ * run card next to the controls it configures.
  */
 const CustomRewards = () => {
   const dispatch = useDispatch();
@@ -98,18 +101,18 @@ const CustomRewards = () => {
   const activeSummary = rewards ? JSON.stringify(rewards) : `Default ${defaultStr}`;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="mt-4 pt-3 border-t border-ui-light">
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className="w-full flex flex-wrap items-center justify-between gap-2 text-left"
       >
-        <span className="flex flex-wrap items-baseline gap-2">
-          <span className="text-xl font-semibold text-ui-dark">Custom Rewards</span>
-          <span className="font-mono text-sm text-ui">{activeSummary}</span>
+        <span className="flex flex-wrap items-baseline gap-2 text-sm">
+          <span className="font-medium text-ui-dark">Rewards</span>
+          <span className="font-mono text-xs text-ui">{activeSummary}</span>
         </span>
         <span className="flex items-center gap-2 text-sm text-primary">
-          {isOpen ? 'Hide' : 'Edit'}
+          {isOpen ? 'Hide' : 'Customise'}
           <span
             className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           >

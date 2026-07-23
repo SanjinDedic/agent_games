@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addSimulationResult } from '../../../slices/leaguesSlice';
+import CustomRewards from '../Common/CustomRewards';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 import { useTerms } from '../terminology';
 
@@ -102,6 +103,9 @@ const SimulationRunner = ({ league, userRole }) => {
           </div>
         )}
       </div>
+
+      {/* Rewards are a run parameter, so they live with the run controls */}
+      {!isPlaceholder && <CustomRewards />}
 
       {!isPlaceholder && (
         <details className="mt-3 text-sm text-ui">

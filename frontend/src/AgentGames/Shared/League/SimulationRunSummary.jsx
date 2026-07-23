@@ -67,6 +67,7 @@ const SimulationRunSummary = ({
   league,
   userRole,
   roster,
+  onViewResults,
 }) => {
   const T = useTerms();
   const [showAllMovement, setShowAllMovement] = useState(false);
@@ -123,20 +124,22 @@ const SimulationRunSummary = ({
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 space-y-5">
-      {/* Run picker + publish state */}
-      <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-        <div className="flex-1">
-          <label
-            htmlFor="simulation-run-picker"
-            className="block text-sm font-medium text-ui mb-1"
-          >
-            Showing run
-          </label>
+      {/* Run picker + publish state. The button/box sits beside the select and
+          top-aligns with it — the helper line lives below the whole row so it
+          can't push the two out of line. */}
+      <div>
+        <label
+          htmlFor="simulation-run-picker"
+          className="block text-sm font-medium text-ui mb-1"
+        >
+          Showing run
+        </label>
+        <div className="flex flex-col lg:flex-row lg:items-start gap-3">
           <select
             id="simulation-run-picker"
             value={current?.timestamp ?? ''}
             onChange={(event) => onSelect(event.target.value)}
-            className="w-full p-3 border border-ui-light rounded-lg bg-white text-ui-dark shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+            className="flex-1 p-3 border border-ui-light rounded-lg bg-white text-ui-dark shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
           >
             {simulations.map((run) => (
               <option key={run.id} value={run.timestamp}>
@@ -144,50 +147,50 @@ const SimulationRunSummary = ({
               </option>
             ))}
           </select>
-          <p className="text-xs text-ui mt-1">
-            {simulations.length} run{simulations.length !== 1 ? 's' : ''} recorded
-            {publishedRuns.length > 0
-              ? ` · ${publishedRuns.length} published`
-              : ' · none published yet'}
-          </p>
-        </div>
 
-        <div className="lg:w-80">
-          {current?.publish_link ? (
-            <div className="p-3 bg-success-light rounded-lg">
-              <p className="text-sm font-medium text-success mb-2">
-                {`This run is live for your ${T.teams}`}
-              </p>
-              <div className="flex items-center gap-2">
-                <a
-                  href={resultsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 p-2 bg-white border border-ui-light rounded-lg text-xs text-primary truncate"
-                  title={fullUrl}
-                >
-                  {fullUrl}
-                </a>
-                <button
-                  onClick={() => copy(fullUrl)}
-                  className="p-2 bg-primary hover:bg-primary-hover text-white rounded text-xs"
-                >
-                  Copy
-                </button>
+          <div className="lg:w-80">
+            {current?.publish_link ? (
+              <div className="p-3 bg-success-light rounded-lg">
+                <p className="text-sm font-medium text-success mb-2">
+                  {`This run is live for your ${T.teams}`}
+                </p>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={resultsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 p-2 bg-white border border-ui-light rounded-lg text-xs text-primary truncate"
+                    title={fullUrl}
+                  >
+                    {fullUrl}
+                  </a>
+                  <button
+                    onClick={() => copy(fullUrl)}
+                    className="p-2 bg-primary hover:bg-primary-hover text-white rounded text-xs"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            current &&
-            league && (
-              <LeaguePublish
-                simulation_id={current.id}
-                selected_league_id={league.id}
-                selected_league_name={league.name}
-                userRole={userRole}
-              />
-            )
-          )}
+            ) : (
+              current &&
+              league && (
+                <LeaguePublish
+                  simulation_id={current.id}
+                  selected_league_id={league.id}
+                  selected_league_name={league.name}
+                  userRole={userRole}
+                />
+              )
+            )}
+          </div>
         </div>
+        <p className="text-xs text-ui mt-1">
+          {simulations.length} run{simulations.length !== 1 ? 's' : ''} recorded
+          {publishedRuns.length > 0
+            ? ` · ${publishedRuns.length} published`
+            : ' · none published yet'}
+        </p>
       </div>
 
       {/* Headline numbers for the selected run */}
@@ -266,13 +269,28 @@ const SimulationRunSummary = ({
         </div>
       )}
 
-      {/* Every published run of this classroom */}
-      {publishedRuns.length > 0 && (
+      {/* The reveal: full table + feedback open in a modal, off the page —
+          teachers project this moment, so the table stays hidden until asked */}
+      {onViewResults && current && (
         <div className="border-t border-ui-light pt-4">
-          <h3 className="text-base font-semibold text-ui-dark mb-2">
-            Published links
-          </h3>
-          <div className="space-y-2">
+          <button
+            onClick={onViewResults}
+            className="w-full py-3 px-4 bg-primary hover:bg-primary-hover text-white rounded-lg font-semibold text-lg transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-2 outline-none"
+          >
+            {current.feedback
+              ? `Show results — leaderboard & ${T.team} feedback`
+              : 'Show results — leaderboard'}
+          </button>
+        </div>
+      )}
+
+      {/* Every published run of this classroom — history, so collapsed */}
+      {publishedRuns.length > 0 && (
+        <details className="border-t border-ui-light pt-4">
+          <summary className="cursor-pointer text-base font-semibold text-ui-dark hover:text-primary">
+            Published links ({publishedRuns.length})
+          </summary>
+          <div className="space-y-2 mt-2">
             {publishedRuns.map((run) => {
               const url = `/results/${run.publish_link}`;
               const absolute = `${window.location.protocol}//${window.location.host}${url}`;
@@ -309,7 +327,7 @@ const SimulationRunSummary = ({
               );
             })}
           </div>
-        </div>
+        </details>
       )}
     </div>
   );
