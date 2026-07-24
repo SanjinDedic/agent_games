@@ -140,18 +140,18 @@ function SubmissionsTab({ league }) {
 
         {/* Right: Team list */}
         <div className="w-full lg:w-1/2 bg-white rounded-lg shadow p-4 overflow-y-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-ui-dark">{T.Teams}</h2>
-            {selectedTeam && (
-              <button
-                onClick={handleAssessPlagiarism}
-                disabled={assessing}
-                className="px-3 py-1 text-sm rounded bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
-              >
-                {assessing ? 'Assessing...' : `Assess ${selectedTeam}`}
-              </button>
-            )}
-          </div>
+          <h2 className="text-lg font-semibold text-ui-dark mb-3">{T.Teams}</h2>
+          {selectedTeam && (
+            <button
+              onClick={handleAssessPlagiarism}
+              disabled={assessing}
+              className="w-full mb-4 px-4 py-3 text-base font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
+            >
+              {assessing
+                ? 'Assessing...'
+                : `AI plagiarism assessment for ${selectedTeam}`}
+            </button>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {teamList.map((team) => {
               const subs = submissions[team] || [];

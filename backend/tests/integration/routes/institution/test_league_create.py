@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from sqlmodel import select
 
-from backend.database.db_models import League
+from backend.database.db_models import Institution, League
 from backend.routes.auth.auth_core import create_access_token
 
 
@@ -25,6 +25,18 @@ def test_league_create_success(client, institution_headers, db_session):
     ).first()
     assert league is not None
     assert league.game == "greedy_pig"
+
+    # A new league runs until the institution's membership ends
+    institution = db_session.get(Institution, league.institution_id)
+    assert (
+        abs(
+            (
+                league.expiry_date
+                - institution.subscription.subscription_expiry
+            ).total_seconds()
+        )
+        < 1
+    )
 
 
 def test_league_create_failures(client, institution_headers, db_session):

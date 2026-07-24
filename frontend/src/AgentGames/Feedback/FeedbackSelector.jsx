@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { getFeedbackComponent } from "./utils/FeedbackRegistry";
 
-const FeedbackSelector = ({ feedback, startExpanded = true }) => {
+const FeedbackSelector = ({ feedback, startExpanded = true, collapsible = true }) => {
   // Add configurable initial state with a default
   const [isExpanded, setIsExpanded] = useState(startExpanded);
 
   if (!feedback) return null;
 
   const FeedbackComponent = getFeedbackComponent(feedback);
+
+  // Callers that already frame the feedback in their own card (the simulation
+  // panel) don't want a second expand control stacked on top of it.
+  if (!collapsible) {
+    return <FeedbackComponent feedback={feedback} />;
+  }
 
   return (
     <div className="relative mb-10">

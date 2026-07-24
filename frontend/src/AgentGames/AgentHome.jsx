@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import Footer from '../Footer';
@@ -11,7 +11,15 @@ const HOW_IT_WORKS_STEPS = [
   { time: "5 min", title: "Invite students and watch them log in and progress" },
 ];
 
-// Real teacher-dashboard screenshots (hosted alongside the other assets on S3).
+// The two showcase headings are full sentences, so from lg up they scale with
+// the viewport instead of wrapping — one line, whatever the window width.
+const SHOWCASE_HEADING =
+  "text-2xl md:text-3xl font-bold text-ui-dark text-center mb-4 " +
+  "lg:whitespace-nowrap lg:text-[clamp(0.9rem,1.4vw,1.5rem)]";
+
+// Real product screenshots (hosted alongside the other assets on S3). All of
+// them are captured at the same 1700x1050, so the tiles line up without any
+// cropping and the click-to-zoom view shows them at their natural size.
 const DASHBOARD_SHOTS = [
   {
     src: "teacher/dashboard-roster.png",
@@ -30,18 +38,85 @@ const DASHBOARD_SHOTS = [
   },
 ];
 
-const Homepage = () => {
-  // Lightbox: clicking any image zooms it into a fullscreen modal.
-  // The modal closes on the X, on any click, or on any keypress.
-  const [zoomedImage, setZoomedImage] = useState(null); // { src, alt } | null
-  const closeZoom = useCallback(() => setZoomedImage(null), []);
+const STUDENT_SHOTS = [
+  {
+    src: "student/student-lesson.png",
+    title: "Lessons with runnable code",
+    text: "Concepts open next to the exercise, and every example is editable and runs in a sandbox — students try an idea without losing their place.",
+  },
+  {
+    src: "student/student-hint.png",
+    title: "A hint when the error is in the way",
+    text: "Stuck on a syntax error? The hint points at the offending line and asks a question first — the full explanation stays one click away.",
+  },
+  {
+    src: "student/student-feedback.png",
+    title: "Submit an agent, watch it compete",
+    text: "Every submission plays a full set of games straight away: where the agent placed, and a round-by-round replay of the decisions it made.",
+  },
+];
 
+// Click-to-zoom for the screenshot tiles: the shots are 1700px wide, which is
+// the size the overlay shows them at on a big screen.
+const ShotLightbox = ({ shot, onClose }) => {
   useEffect(() => {
-    if (!zoomedImage) return;
-    const dismiss = () => closeZoom();
-    window.addEventListener("keydown", dismiss);
-    return () => window.removeEventListener("keydown", dismiss);
-  }, [zoomedImage, closeZoom]);
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={shot.title}
+    >
+      <img
+        src={imageUrl(shot.src)}
+        alt={shot.title}
+        className="w-full max-w-[1700px] max-h-full h-auto object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-4 right-6 text-white text-4xl leading-none hover:text-league-text"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
+const ShotGrid = ({ shots, onZoom }) => (
+  <div className="grid md:grid-cols-3 gap-6">
+    {shots.map((shot) => (
+      <figure key={shot.src}>
+        <button
+          type="button"
+          onClick={() => onZoom(shot)}
+          className="block w-full cursor-zoom-in"
+          aria-label={`Enlarge: ${shot.title}`}
+        >
+          <img
+            src={imageUrl(shot.src)}
+            alt={shot.title}
+            className="w-full h-auto rounded-lg shadow-lg border border-ui-light"
+          />
+        </button>
+        <figcaption className="text-center text-sm text-ui mt-3">
+          {shot.text}
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+);
+
+const Homepage = () => {
+  const [zoomed, setZoomed] = useState(null);
 
   return (
     <div className="min-h-screen bg-ui-lighter pt-12">
@@ -113,23 +188,25 @@ const Homepage = () => {
       {/* Teacher Dashboard — real product screenshots, side by side */}
       <section className="py-6 bg-ui-lighter">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            {DASHBOARD_SHOTS.map((shot) => (
-              <figure key={shot.src}>
-                <img
-                  src={imageUrl(shot.src)}
-                  alt={shot.title}
-                  onClick={() =>
-                    setZoomedImage({ src: imageUrl(shot.src), alt: shot.title })
-                  }
-                  className="w-full h-auto rounded-lg shadow-lg border border-ui-light cursor-zoom-in transition-transform hover:scale-[1.02]"
-                />
-                <figcaption className="text-center text-sm text-ui mt-3">
-                  {shot.text}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <h2 className={SHOWCASE_HEADING}>
+            Teachers see who needs help and who needs extension
+          </h2>
+          <ShotGrid shots={DASHBOARD_SHOTS} onZoom={setZoomed} />
+        </div>
+      </section>
+
+      {/* Student experience — the same product, from the student's side */}
+      <section className="py-6 bg-white">
+        <div className="container mx-auto px-6">
+          <h2 className={SHOWCASE_HEADING}>
+            <span className="block">
+              Students complete short courses and exercises
+            </span>
+            <span className="block">
+              Then program agents that win at games of strategy
+            </span>
+          </h2>
+          <ShotGrid shots={STUDENT_SHOTS} onZoom={setZoomed} />
         </div>
       </section>
 
@@ -209,8 +286,8 @@ const Homepage = () => {
               <ul className="space-y-3 text-ui">
                 {[
                   "When students are stuck and not making progress, an AI hint is provided",
-                  "AI hints help students with typos and syntax errors",
-                  "AI hints do not solve challenges",
+                  "Students spend more time focusing on reasoning and algorithmic thinking",
+                  "AI removes some friction around syntax errors, indentation and bugs"
                 ].map((point) => (
                   <li key={point} className="flex items-start">
                     <svg
@@ -346,30 +423,7 @@ const Homepage = () => {
 
       <Footer />
 
-      {/* Image lightbox — closes on the X, any click, or any keypress */}
-      {zoomedImage && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 cursor-zoom-out"
-          onClick={closeZoom}
-          role="dialog"
-          aria-modal="true"
-          aria-label={zoomedImage.alt}
-        >
-          <button
-            type="button"
-            onClick={closeZoom}
-            aria-label="Close"
-            className="absolute top-4 right-4 text-white/80 hover:text-white text-5xl leading-none font-light"
-          >
-            &times;
-          </button>
-          <img
-            src={zoomedImage.src}
-            alt={zoomedImage.alt}
-            className="max-h-full max-w-full rounded-lg shadow-2xl"
-          />
-        </div>
-      )}
+      {zoomed && <ShotLightbox shot={zoomed} onClose={() => setZoomed(null)} />}
     </div>
   );
 };

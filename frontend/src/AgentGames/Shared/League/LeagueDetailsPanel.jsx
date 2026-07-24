@@ -16,8 +16,17 @@ import { authFetch } from '../../../utils/authFetch';
 import LeagueTeams from './LeagueTeams';
 import LeagueTutorials from './LeagueTutorials';
 import PureMarkdown from '../Utilities/PureMarkdown';
+import StatChip from '../Common/StatChip';
+import useClassroomAPI from '../hooks/useClassroomAPI';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 import { useTerms } from '../terminology';
+
+// Mirrors StatChip's tones so the inline expiry editor reads as one of the chips.
+const EXPIRY_TONES = {
+  plain: 'bg-ui-lighter border-ui-light text-ui-dark',
+  warning: 'bg-notice-orange/10 border-notice-orange/40 text-ui-dark',
+  danger: 'bg-danger-light border-danger/30 text-danger',
+};
 
 /**
  * The details card for the league currently selected in Redux: expiry,
@@ -44,11 +53,49 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     deleteLeague,
   } = useLeagueAPI(userRole);
 
+  const { getClassroomProgress, getSubscription } = useClassroomAPI();
+
   const [infoMarkdownDraft, setInfoMarkdownDraft] = useState('');
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [showInfoPreview, setShowInfoPreview] = useState(false);
+  const [showInfoEditor, setShowInfoEditor] = useState(false);
+  // Roster counts for the overview chips; null while loading or unavailable.
+  const [progress, setProgress] = useState(null);
+  // The institution's membership end date — a league may not outlive it.
+  const [membershipExpiry, setMembershipExpiry] = useState(null);
 
   moment.tz.setDefault("Australia/Sydney");
+
+  // Roster + exercise counts for the overview chips
+  useEffect(() => {
+    let active = true;
+    setProgress(null);
+    if (!currentLeague?.id) return undefined;
+    (async () => {
+      const result = await getClassroomProgress(currentLeague.id);
+      if (active && result.success) setProgress(result.data);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [currentLeague?.id, getClassroomProgress]);
+
+  // Membership end date (institutions only — admins have no subscription of
+  // their own and are not capped by one).
+  useEffect(() => {
+    let active = true;
+    if (userRole !== 'institution') return undefined;
+    (async () => {
+      const result = await getSubscription();
+      const expiry = result.success
+        ? result.data?.subscription?.subscription_expiry ?? null
+        : null;
+      if (active) setMembershipExpiry(expiry);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [userRole, getSubscription]);
 
   // Reset markdown draft when the selected league changes
   useEffect(() => {
@@ -132,9 +179,14 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     }
   };
 
-  // Handle expiry date update
+  // Handle expiry date update. The server caps anything past the membership
+  // end date, so clamp here too and Redux stays in step with what was stored.
   const handleExpiryDateChange = async (date) => {
-    const formattedDate = date.toISOString();
+    const capped =
+      membershipExpiry && date > new Date(membershipExpiry)
+        ? new Date(membershipExpiry)
+        : date;
+    const formattedDate = capped.toISOString();
 
     try {
       const result = await updateLeagueExpiry(currentLeague.id, formattedDate);
@@ -171,6 +223,17 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     toast.success("Login page link copied to clipboard!");
   };
 
+  const isActive =
+    currentLeague != null &&
+    moment().isBefore(moment(currentLeague.expiry_date));
+  // Amber inside a week, red once expired.
+  const daysLeft = currentLeague
+    ? moment(currentLeague.expiry_date).diff(moment(), 'days')
+    : 0;
+  const expiryTone = !isActive ? 'danger' : daysLeft < 7 ? 'warning' : 'plain';
+  // Every team in a classroom shares the same attached-exercise total.
+  const exercisesAttached = progress?.teams?.[0]?.exercises_total ?? 0;
+
   if (!currentLeague) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6 flex items-center justify-center">
@@ -183,101 +246,81 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-ui-dark">
-          {`${T.League} Details`}
-        </h2>
-        <button
-          onClick={handleDeleteLeague}
-          className="px-4 py-2 bg-danger hover:bg-danger-hover text-white rounded-lg transition-colors"
-          disabled={currentLeague.name.toLowerCase() === "unassigned"}
-          title={
-            currentLeague.name.toLowerCase() === "unassigned"
-              ? `Cannot delete the unassigned ${T.league}`
-              : `Delete this ${T.league}`
-          }
-        >
-          {`Delete ${T.League}`}
-        </button>
-      </div>
+      <h2 className="text-xl font-semibold text-ui-dark mb-6">
+        {`${T.League} Details`}
+      </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div>
-          <span className="block text-ui">{`${T.League} Name:`}</span>
-          <span className="block text-lg font-medium text-ui-dark">
-            {currentLeague.name}
-          </span>
-        </div>
-
-        <div>
-          <span className="block text-ui">Game Type:</span>
-          <span className="block text-lg font-medium text-ui-dark">
-            {currentLeague.game}
-          </span>
-        </div>
-
-        <div>
-          <span className="block text-ui">Created Date:</span>
-          <span className="block text-lg font-medium text-ui-dark">
-            {moment(currentLeague.created_date).format(
-              "MMMM D, YYYY"
-            )}
-          </span>
-        </div>
-
-        <div>
-          <span className="block text-ui">Status:</span>
-          <span
-            className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-              moment().isBefore(moment(currentLeague.expiry_date))
-                ? "bg-success-light text-success"
-                : "bg-danger-light text-danger"
-            }`}
-          >
-            {moment().isBefore(moment(currentLeague.expiry_date))
-              ? "Active"
-              : "Expired"}
-          </span>
-        </div>
-      </div>
-
-      {/* League Expiry Date Editor */}
+      {/* Overview — the expiry chip is the editor, no separate section */}
       <div className="mb-6">
-        <h3 className="text-lg font-medium text-ui-dark mb-2">
-          {`${T.League} Expiry`}
-        </h3>
-        <div className="flex items-center gap-2">
-          <DatePicker
-            selected={new Date(currentLeague.expiry_date)}
-            onChange={handleExpiryDateChange}
-            showTimeSelect
-            dateFormat="MMMM d, yyyy h:mm aa"
-            className="p-2 border border-ui-light rounded w-64"
+        <div className="flex flex-wrap gap-3">
+          <StatChip label="Game" value={currentLeague.game} />
+          <StatChip
+            label="Status"
+            value={isActive ? 'Active' : 'Expired'}
+            tone={isActive ? 'success' : 'danger'}
           />
-          <span className="text-ui">
-            {moment(currentLeague.expiry_date).fromNow()}
-          </span>
+          <StatChip
+            label={T.Teams}
+            value={progress?.teams ? progress.teams.length : '—'}
+            title={`${T.Teams} enrolled in this ${T.league}`}
+          />
+          <StatChip
+            label="Exercises"
+            value={progress ? exercisesAttached : '—'}
+            title={`Exercises across the ${T.tutorials} attached below`}
+          />
+          <StatChip
+            label="Created"
+            value={moment(currentLeague.created_date).format('D MMM YYYY')}
+          />
+          <div
+            className={`px-4 py-2 rounded-lg border ${EXPIRY_TONES[expiryTone]}`}
+            title="Click the date to change it"
+          >
+            <div className="text-xs uppercase tracking-wide text-ui">
+              {isActive ? 'Expires' : 'Expired'}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <DatePicker
+                selected={new Date(currentLeague.expiry_date)}
+                onChange={handleExpiryDateChange}
+                showTimeSelect
+                dateFormat="d MMM yyyy, h:mm aa"
+                maxDate={membershipExpiry ? new Date(membershipExpiry) : undefined}
+                className="w-44 bg-transparent text-base font-semibold leading-tight cursor-pointer outline-none border-b border-dashed border-ui"
+              />
+              <span className="text-sm">
+                {moment(currentLeague.expiry_date).fromNow()}
+              </span>
+            </div>
+          </div>
         </div>
+        {membershipExpiry && (
+          <p className="text-sm text-ui mt-2">
+            {`Your membership ends ${moment(membershipExpiry).format(
+              'D MMMM YYYY'
+            )} — a ${T.league} can't outlast it, so later dates are capped.`}
+          </p>
+        )}
       </div>
 
-      {/* Shareable login page for this league/classroom */}
+      {/* Shareable login page — one slim row, the URL is the content */}
       <div className="mb-6">
-        <h3 className="text-lg font-medium text-ui-dark mb-2">
-          {`${T.League} Login Page`}
-        </h3>
-
-        {showSignupLink ? (
-          <div className="p-4 bg-success-light rounded-lg">
-            <div className="flex items-center">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-ui-dark whitespace-nowrap">
+            Login page
+          </span>
+          {showSignupLink ? (
+            <>
               <input
                 type="text"
                 value={signupLink}
                 readOnly
-                className="flex-1 p-2 border border-ui-light rounded-lg text-sm bg-white"
+                className="flex-1 min-w-64 p-2 border border-ui-light rounded-lg text-sm bg-ui-lighter"
               />
               <button
                 onClick={copySignupLink}
-                className="ml-2 p-2 bg-primary hover:bg-primary-hover text-white rounded-lg"
+                className="p-2 bg-primary hover:bg-primary-hover text-white rounded-lg"
                 title="Copy to clipboard"
               >
                 <svg
@@ -295,89 +338,117 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
                   />
                 </svg>
               </button>
-            </div>
-            <p className="mt-2 text-sm text-ui-dark">
-              {`Share this page with your ${T.teams} — they use it to sign up and log in to this ${T.league}.`}
-            </p>
-          </div>
-        ) : (
-          <button
-            onClick={() =>
-              generateSignupLink(currentLeague.id, currentLeague.name)
-            }
-            disabled={isLoadingSignupLink}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:bg-ui-light disabled:cursor-not-allowed"
-          >
-            {isLoadingSignupLink
-              ? "Generating..."
-              : `Create ${T.League} Login Page`}
-          </button>
+            </>
+          ) : (
+            <button
+              onClick={() =>
+                generateSignupLink(currentLeague.id, currentLeague.name)
+              }
+              disabled={isLoadingSignupLink}
+              className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors disabled:bg-ui-light disabled:cursor-not-allowed"
+            >
+              {isLoadingSignupLink
+                ? "Generating..."
+                : `Create ${T.League} Login Page`}
+            </button>
+          )}
+        </div>
+        {showSignupLink && (
+          <p className="text-xs text-ui mt-1">
+            {`Share this page with your ${T.teams} — they use it to sign up and log in to this ${T.league}.`}
+          </p>
         )}
       </div>
 
-      {/* League Info Markdown */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
+      {/* League Info Markdown — rendered by default, editor on demand */}
+      <div className="mb-6 border-t border-ui-light pt-5">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
           <h3 className="text-lg font-medium text-ui-dark">
-            {`${T.League} Info (Markdown)`}
+            {`${T.League} Info`}
           </h3>
           <div className="flex items-center gap-2">
+            {showInfoEditor && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowInfoPreview((v) => !v)}
+                  className="px-3 py-1 text-sm bg-ui-light hover:bg-ui-light/80 text-ui-dark rounded"
+                >
+                  {showInfoPreview ? 'Hide Preview' : 'Show Preview'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveInfo}
+                  disabled={!infoHasChanges || isSavingInfo}
+                  className="px-3 py-1 text-sm bg-primary hover:bg-primary-hover text-white rounded disabled:bg-ui-light disabled:cursor-not-allowed"
+                >
+                  {isSavingInfo ? 'Saving...' : 'Save Info'}
+                </button>
+              </>
+            )}
             <button
               type="button"
-              onClick={() => setShowInfoPreview((v) => !v)}
+              onClick={() => setShowInfoEditor((v) => !v)}
               className="px-3 py-1 text-sm bg-ui-light hover:bg-ui-light/80 text-ui-dark rounded"
             >
-              {showInfoPreview ? 'Hide Preview' : 'Show Preview'}
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveInfo}
-              disabled={!infoHasChanges || isSavingInfo}
-              className="px-3 py-1 text-sm bg-primary hover:bg-primary-hover text-white rounded disabled:bg-ui-light disabled:cursor-not-allowed"
-            >
-              {isSavingInfo ? 'Saving...' : 'Save Info'}
+              {showInfoEditor ? 'Done' : 'Edit Markdown'}
             </button>
           </div>
         </div>
-        <p className="text-sm text-ui mb-2">
+        <p className="text-sm text-ui mb-3">
           {`Shown to ${T.teams} enrolled in this ${T.league} on the leaderboard page. Use it for the simulation schedule, publishing cadence, ${T.league} rules, etc.`}
         </p>
-        <div className={showInfoPreview ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
-          <div className="border border-ui-light rounded overflow-hidden" style={{ height: '320px' }}>
-            <Editor
-              height="320px"
-              defaultLanguage="markdown"
-              language="markdown"
-              theme="vs-dark"
-              value={infoMarkdownDraft}
-              onChange={(value) => setInfoMarkdownDraft(value ?? '')}
-              options={{
-                minimap: { enabled: false },
-                wordWrap: 'on',
-                fontSize: 14,
-                lineNumbers: 'on',
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-              }}
-            />
-          </div>
-          {showInfoPreview && (
-            <div className="border border-ui-light rounded p-3 bg-ui-lighter overflow-auto" style={{ height: '320px' }}>
-              {infoMarkdownDraft.trim() ? (
-                <PureMarkdown content={infoMarkdownDraft} />
-              ) : (
-                <p className="text-ui">Nothing to preview yet.</p>
-              )}
+
+        {showInfoEditor ? (
+          <div className={showInfoPreview ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
+            <div className="border border-ui-light rounded overflow-hidden" style={{ height: '240px' }}>
+              <Editor
+                height="240px"
+                defaultLanguage="markdown"
+                language="markdown"
+                theme="vs-dark"
+                value={infoMarkdownDraft}
+                onChange={(value) => setInfoMarkdownDraft(value ?? '')}
+                options={{
+                  minimap: { enabled: false },
+                  wordWrap: 'on',
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  automaticLayout: true,
+                  scrollBeyondLastLine: false,
+                }}
+              />
             </div>
-          )}
-        </div>
+            {showInfoPreview && (
+              <div className="border border-ui-light rounded p-3 bg-ui-lighter overflow-auto" style={{ height: '240px' }}>
+                {infoMarkdownDraft.trim() ? (
+                  <PureMarkdown content={infoMarkdownDraft} />
+                ) : (
+                  <p className="text-ui">Nothing to preview yet.</p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="border border-ui-light rounded p-3 bg-ui-lighter overflow-auto max-h-60">
+            {(currentLeague.info_markdown ?? '').trim() ? (
+              <PureMarkdown content={currentLeague.info_markdown} />
+            ) : (
+              <p className="text-ui">
+                {`Nothing here yet — Edit Markdown to write a welcome note for your ${T.teams}.`}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* League Tutorials */}
-      <LeagueTutorials
-        leagueId={currentLeague.id}
-        userRole={userRole}
-      />
+      <div className="border-t border-ui-light pt-5">
+        <LeagueTutorials
+          leagueId={currentLeague.id}
+          userRole={userRole}
+        />
+      </div>
 
       {/* Teams Grid */}
       {showTeams && (
@@ -386,6 +457,30 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
           userRole={userRole}
         />
       )}
+
+      {/* Danger zone — the destructive action lives last, away from daily controls */}
+      <div className="border-t border-ui-light pt-5 mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-medium text-ui-dark">Danger zone</h3>
+            <p className="text-sm text-ui">
+              {`Deleting this ${T.league} moves all its ${T.teams} to the unassigned ${T.league}.`}
+            </p>
+          </div>
+          <button
+            onClick={handleDeleteLeague}
+            className="px-4 py-2 bg-danger hover:bg-danger-hover text-white rounded-lg transition-colors disabled:bg-ui-light disabled:cursor-not-allowed"
+            disabled={currentLeague.name.toLowerCase() === "unassigned"}
+            title={
+              currentLeague.name.toLowerCase() === "unassigned"
+                ? `Cannot delete the unassigned ${T.league}`
+                : `Delete this ${T.league}`
+            }
+          >
+            {`Delete ${T.League}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

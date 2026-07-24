@@ -26,7 +26,7 @@ from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
 from backend.team_capacity import assert_team_capacity
 from backend.utils import process_simulation_results
-from backend.time_utils import ensure_utc, utc_now
+from backend.time_utils import ensure_utc, to_sydney, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,16 @@ def _build_schools_config(
     return StaticSchoolsConfig(schools=list(league_data.schools))
 
 
+def _membership_expiry(session: Session, institution_id: int) -> Optional[datetime]:
+    """The institution's subscription end date, or None when it has no
+    subscription record. A league may not outlive it."""
+    institution = session.get(Institution, institution_id)
+    subscription = institution.subscription if institution else None
+    if subscription is None or subscription.subscription_expiry is None:
+        return None
+    return ensure_utc(subscription.subscription_expiry)
+
+
 def create_league(
     session: Session, league_data: LeagueSignUp, institution_id: int
 ) -> Dict:
@@ -132,13 +142,16 @@ def create_league(
     # Generate unique signup token
     signup_token = secrets.token_urlsafe(16)
 
+    # A new league runs until the institution's membership ends; without a
+    # subscription record on file it falls back to a 24 hour trial window.
+    membership_expiry = _membership_expiry(session, institution_id)
+    default_expiry = membership_expiry or (utc_now() + timedelta(hours=24))
+
     # Create the league
     league = League(
         name=league_data.name,
         created_date=utc_now(),
-        expiry_date=(
-            utc_now() + timedelta(hours=24)
-        ),  # Default 24 hour expiry
+        expiry_date=default_expiry,
         game=league_data.game,
         institution_id=institution_id,
         league_type=LeagueType.INSTITUTION,
@@ -648,14 +661,32 @@ def publish_sim_results(
 def update_expiry_date(
     session: Session, league_id: int, expiry_date: datetime, institution_id: int, is_admin: bool = False
 ) -> str:
-    """Update league expiry date"""
+    """Update league expiry date.
+
+    A league may not outlive the owning institution's membership: a later date
+    is capped at the subscription expiry and the message says so. Admins set
+    dates freely.
+    """
     league = session.get(League, league_id)
     if not league or (not is_admin and league.institution_id != institution_id):
         raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
 
+    capped_at = None
+    if not is_admin and league.institution_id is not None:
+        membership_expiry = _membership_expiry(session, league.institution_id)
+        if membership_expiry and ensure_utc(expiry_date) > membership_expiry:
+            expiry_date = membership_expiry
+            capped_at = membership_expiry
+
     league.expiry_date = expiry_date
     session.add(league)
     session.commit()
+
+    if capped_at:
+        return (
+            f"Expiry capped at your membership end date "
+            f"({to_sydney(capped_at).strftime('%d %B %Y')}) for league '{league.name}'"
+        )
     return f"Expiry date updated successfully for league '{league.name}'"
 
 

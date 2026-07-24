@@ -39,14 +39,21 @@ const markdownComponents = {
  * per-cell labels all come from the selected game's `reward_schema` exposed
  * via `/user/get-game-instructions`. When the schema is null the component
  * renders nothing — the game does not support custom rewards.
+ *
+ * Renders as a compact disclosure (no card chrome) so it can sit inside the
+ * run card next to the controls it configures.
  */
 const CustomRewards = () => {
   const dispatch = useDispatch();
   const schema = useSelector((state) => state.leagues.currentRewardSchema);
   const instructions = useSelector((state) => state.leagues.currentRewardInstructions);
+  const rewards = useSelector((state) => state.leagues.currentRewards);
 
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
+  // Collapsed by default: most runs use the default rewards, and the explainer
+  // is long. The input stays mounted so a typed value survives collapsing.
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     setInputValue('');
@@ -91,11 +98,32 @@ const CustomRewards = () => {
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-ui-dark mb-4">Custom Rewards</h2>
+  const activeSummary = rewards ? JSON.stringify(rewards) : `Default ${defaultStr}`;
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+  return (
+    <div className="mt-4 pt-3 border-t border-ui-light">
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="w-full flex flex-wrap items-center justify-between gap-2 text-left"
+      >
+        <span className="flex flex-wrap items-baseline gap-2 text-sm">
+          <span className="font-medium text-ui-dark">Rewards</span>
+          <span className="font-mono text-xs text-ui">{activeSummary}</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-primary">
+          {isOpen ? 'Hide' : 'Customise'}
+          <span
+            className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          >
+            ▼
+          </span>
+        </span>
+      </button>
+
+      <div
+        className={`grid grid-cols-1 lg:grid-cols-5 gap-6 mt-4 ${isOpen ? '' : 'hidden'}`}
+      >
         {/* Markdown explainer */}
         {instructions && (
           <div className="lg:col-span-3 max-w-none text-ui-dark">

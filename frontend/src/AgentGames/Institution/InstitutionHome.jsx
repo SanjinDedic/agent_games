@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { authFetch } from '../../utils/authFetch';
 import { selectToken } from '../../slices/authSlice';
 import LeagueCreation from '../Shared/League/LeagueCreation';
+import UnassignedStudentsCard from './UnassignedStudentsCard';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
 import { useTerms } from '../Shared/terminology';
 
@@ -70,8 +71,10 @@ function InstitutionHome() {
   // isn't lost after auto-login. Only present right after signup.
   const hostedInvoiceUrl = location.state?.hostedInvoiceUrl || null;
 
-  const fetchHome = useCallback(async () => {
-    setIsLoading(true);
+  // silent = refresh the data without flashing the loading state (used after
+  // an inline action like assigning a student, where the page stays visible)
+  const fetchHome = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
     try {
       const response = await authFetch(`${apiUrl}/institution/home`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -300,11 +303,19 @@ function InstitutionHome() {
                     </div>
                   ))}
 
-                  {/* Creation card lives in the grid so it's always in reach */}
-                  <LeagueCreation
-                    userRole="institution"
-                    onCreated={fetchHome}
-                  />
+                  {/* Creation + unassigned students share one grid cell so
+                      the classroom cards keep their proportions */}
+                  <div className="flex flex-col gap-6">
+                    <LeagueCreation
+                      userRole="institution"
+                      onCreated={fetchHome}
+                      compact
+                    />
+                    <UnassignedStudentsCard
+                      classrooms={activeClassrooms}
+                      onAssigned={() => fetchHome({ silent: true })}
+                    />
+                  </div>
                 </div>
 
               {expiredClassrooms.length > 0 && (

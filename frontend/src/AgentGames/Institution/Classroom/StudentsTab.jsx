@@ -283,7 +283,7 @@ function StudentsTab({ league }) {
                   <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Validated</th>
                   <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Hints</th>
                   <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark" title="Validation placements over time, oldest to newest">Ranking Trend</th>
-                  <th className="px-4 py-3 text-center text-base font-semibold text-ui-dark">1st Place</th>
+                  <th className="px-4 py-3 text-center text-base font-semibold text-ui-dark">Won vs bots</th>
                   <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark" title={`Exercises passed / exercises in this ${T.league}'s ${T.tutorials}`}>Exercises</th>
                   <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark" title="Most recent agent or exercise activity">Last Active</th>
                   <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Actions</th>
@@ -310,7 +310,7 @@ function StudentsTab({ league }) {
                       {team.achieved_first && (
                         <span
                           className="text-success text-xl font-bold"
-                          title={`This ${T.team} has reached 1st place`}
+                          title={`This ${T.team} has won vs bots`}
                         >
                           ✓
                         </span>
@@ -329,7 +329,7 @@ function StudentsTab({ league }) {
                           className="p-1.5 text-xs bg-primary hover:bg-primary-hover text-white rounded"
                           title="Generate a password reset link"
                         >
-                          Reset
+                          Reset Password
                         </button>
                         <button
                           onClick={() => handleUnassign(team)}

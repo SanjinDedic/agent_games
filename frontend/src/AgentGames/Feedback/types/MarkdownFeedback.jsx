@@ -25,11 +25,14 @@ const MarkdownFeedback = ({ feedback }) => {
         className="flex justify-between items-center p-4 bg-ui-lighter cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <h3 className="text-lg font-medium text-ui-dark m-0">
-          Feedback (press down arrow to expand)
-        </h3>
-        <span className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-          ▼
+        <h3 className="text-lg font-medium text-ui-dark m-0">Feedback</h3>
+        <span className="flex items-center gap-2 text-sm text-ui">
+          {isExpanded ? 'Show less' : 'Show more'}
+          <span
+            className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          >
+            ▼
+          </span>
         </span>
       </div>
       <div className={`

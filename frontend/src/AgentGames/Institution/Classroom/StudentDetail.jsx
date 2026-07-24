@@ -141,9 +141,9 @@ function StudentDetail() {
             {agent.achieved_first && (
               <span
                 className="text-success font-bold"
-                title={`This ${T.team} has reached 1st place`}
+                title={`This ${T.team} has won vs bots`}
               >
-                ✓ 1st place
+                ✓ Won vs bots
               </span>
             )}
           </div>
