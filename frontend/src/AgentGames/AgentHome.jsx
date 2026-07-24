@@ -326,7 +326,13 @@ const Homepage = () => {
                   <img
                     src={imageUrl(game.thumbnail)}
                     alt={`${game.displayName} game`}
-                    className="w-full h-48 object-cover"
+                    onClick={() =>
+                      setZoomedImage({
+                        src: imageUrl(game.thumbnail),
+                        alt: `${game.displayName} game`,
+                      })
+                    }
+                    className="w-full h-48 object-cover cursor-zoom-in transition-transform hover:scale-[1.02]"
                   />
                 </div>
                 <h3 className="text-xl font-semibold text-ui-dark mb-2">
