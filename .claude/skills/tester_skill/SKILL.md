@@ -31,7 +31,7 @@ demo hint loop, 08 the one-time student password-reset link (classroom flow).
 **Warning before running:** every launch does `docker compose down -v` — wipes
 the local DB and MinIO volumes. Say so first unless the user explicitly asked
 for a reset/clean run. Expect the full run to take several minutes (stack
-reset + healthcheck wait + 7 stages).
+reset + healthcheck wait + 8 stages).
 
 ## 2. Analyze failures
 
@@ -45,18 +45,21 @@ For each FAIL in the summary:
   `agent_games-worker-exercises-1`).
 - **Known deviations** (expected, not regressions — full detail in
   `docs/test_findings/integration-manual-run-2026-07-11.md`):
-  - Stage 1.4 backup/restore fails in local dev (backup S3 client ignores
-    `S3_ENDPOINT_URL`) — stage 01 exits 1 but still records state for later
-    stages; the runner continues.
   - Stage 1.5 needs `OPENAI_API_KEY` (script pulls it from `.env` or
     `.kamal/secrets`; it warns at startup if missing).
+  - Stage 7 can fail with a 502 "LLM provider failed to generate a valid
+    hint" on any game: `hint_service._validate_hints` drops every hint whose
+    `quoted_line` doesn't match the line it claims, so an off-target model
+    response leaves nothing to return. Intermittent — re-run the stage before
+    calling it a regression.
   - The tutorial steps in stages 03 and 06 fail if the private
     `tutorial_data/` folder is missing — the script warns at seed time and
     tells you the pull command.
   - Stage 4.5 first gets a 403 (simulation Docker-access toggle); the script
     enables it via the admin UI and retries — not a failure.
-  - Classroom copy that still says "league" (stages 05/06 assert it as-is):
-    the student signup toast and the Save Tutorials toast.
+  - Backend copy that still says "league"/"tutorials" for classrooms (stage 05
+    asserts it as-is): the Save Short Courses toast, "Tutorials updated for
+    league '<name>'". Frontend copy is terminology-aware throughout.
 
 Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 
@@ -65,5 +68,4 @@ Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 Per-stage PASS/FAIL table, then for each failure: which step, what was
 observed (toast / console error / API response), the relevant log lines, and
 whether it's a known deviation or a real regression. Declare the stack healthy
-when stages 02–08 pass and stage 01's sole failure is the known 1.4
-backup/restore.
+when stages 01–08 all pass.

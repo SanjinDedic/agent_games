@@ -10,8 +10,9 @@
 //       Classroom" card ("Create Classroom" button, "Classroom Created
 //       Successfully" modal); capture + copy the join URL
 //   5.3 open the new classroom's workspace and attach the seeded tutorial from
-//       its Settings tab (students only see attached tutorials — script 06's
-//       Tutorial steps are empty without it)
+//       its Settings tab — a teacher sees it as the "Short Courses" section
+//       (students only see attached tutorials — script 06's Short Course steps
+//       are empty without it)
 //   5.4 logout -> /Teacher (teacher accounts return to the teacher login)
 //
 // Post-revamp layout: the old "Classroom Management" navbar page is gone.
@@ -110,14 +111,20 @@ const {
     await card.locator(`button[title="Open the ${classroomName} workspace"]`).click();
     await page.waitForURL('**/Classroom/**', { timeout: 15000 });
     await page.click('button:text-is("Settings")');
-    await page.waitForSelector('h3:has-text("Tutorials")', { timeout: 15000 });
+    // Teacher wording: tutorials are "Short Courses" throughout a teacher account
+    // (Shared/terminology.js TEACHER_TERMS), so the section heading and its save
+    // button are "Short Courses" / "Save Short Courses", never "Tutorials".
+    await page.waitForSelector('h3:has-text("Short Courses")', { timeout: 15000 });
+    if (await page.locator('h3:text-is("Tutorials")').count()) {
+      throw new Error('teacher Settings tab shows tutorial wording — terminology switch regressed');
+    }
     const tutorialLabel = page.locator('label:has-text("Python Foundations for Greedy Pig")');
     await tutorialLabel.waitFor({ timeout: 15000 });
     await tutorialLabel.locator('input[type="checkbox"]').check();
-    await page.click('button:has-text("Save Tutorials")');
-    // Backend copy: this toast says "league" even for classrooms.
+    await page.click('button:has-text("Save Short Courses")');
+    // Backend copy: this toast says "tutorials"/"league" even for classrooms.
     await waitForToast(page, `Tutorials updated for league '${classroomName}'`);
-    console.log('[5.3] tutorial attached to classroom via the workspace Settings tab');
+    console.log('[5.3] short course attached to classroom via the workspace Settings tab');
 
     // 5.4 logout — teacher accounts land back on /Teacher, not /Institution
     await page.click('button:has-text("Logout")');

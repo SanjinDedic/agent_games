@@ -101,9 +101,9 @@ else
   done
 fi
 
-# Full run: every stage runs even after a failure (stage 01's known 1.4
-# backup/restore failure exits 1 in local dev but still records the state
-# later stages need), then a per-stage summary; exit 1 if anything failed.
+# Full run: every stage runs even after a failure (a failing stage 01 still
+# records the state later stages need), then a per-stage summary; exit 1 if
+# anything failed.
 if [[ "$run_all" == 1 ]]; then
   results=()
   failed=0
