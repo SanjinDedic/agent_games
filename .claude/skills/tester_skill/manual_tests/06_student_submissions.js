@@ -8,16 +8,17 @@
 //       `import os` prepended (must fail the AST safety check)
 //       + My Submissions history check
 //   6.3 (Student 1 only) one tutorial exercise end-to-end, exactly as in
-//       Stage 3.3 but with the STUDENT: footer label: starter fails 0/5 ->
-//       fix passes 5/5 -> broken code 400s -> overview Completed / 1 of 10.
-//       PREREQUISITES: tutorial seeded AND attached to the classroom (05
-//       attaches it). Tutorial progress is per-student, so this classroom
-//       student starts at 0 of 10 even after Stage 3 ran.
+//       Stage 3.3 but with the classroom wording (STUDENT: footer label, and
+//       the navbar link reading "Short Course" rather than "Tutorial"):
+//       starter fails 0/5 -> fix passes 5/5 -> broken code 400s -> overview
+//       Completed / 1 of 10. PREREQUISITES: tutorial seeded AND attached to
+//       the classroom (05 attaches it). Progress is per-student, so this
+//       classroom student starts at 0 of 10 even after Stage 3 ran.
 //   6.4 logout
 //
-// Known app copy that stays "league" even for students (hardcoded in
-// DirectClassicSignup): the signup toast is
-// "Signed up and joined league successfully!".
+// Terminology note: the signup toast follows the classroom terminology now
+// ("Signed up and joined classroom successfully!"); only backend copy such as
+// the Save Short Courses toast still says "league"/"tutorials".
 //
 // Reads classroomSignupUrl/classroomName from the state file written by
 // 05_teacher_classroom.js; writes the student credentials back as `students`.
@@ -39,9 +40,14 @@ const studentDefs = (run) => [
 // footer label is STUDENT:, not TEAM:. Submission outcomes are asserted from
 // the /tutorial/submit-exercise response body exactly as in Stage 3.3.
 async function runTutorialExercise(page) {
-  console.log('\n=== Tutorial exercise (Student 1 only) ===');
+  console.log('\n=== Short Course exercise (Student 1 only) ===');
 
-  await page.click('nav a:has-text("Tutorial")');
+  // Teacher wording: a classroom student's navbar link is "Short Course"
+  // (Navbar.jsx renders T.Tutorial), never "Tutorial".
+  if (await page.locator('nav a:has-text("Tutorial")').count()) {
+    throw new Error('classroom student navbar shows tutorial wording — terminology switch regressed');
+  }
+  await page.click('nav a:has-text("Short Course")');
   await page.waitForURL('**/Tutorial', { timeout: 20000 });
   await page.waitForSelector('h1:has-text("Python Foundations for Greedy Pig")', { timeout: 30000 });
   await page.waitForSelector('text=0 of 10 exercises completed', { timeout: 15000 });
@@ -124,8 +130,9 @@ async function runStudent(page, observed, state, student, { withTutorial = false
   await page.click('button:has-text("Sign Up & Join Classroom")');
   await page.waitForSelector('h2:has-text("SAVE YOUR CREDENTIALS NOW!")', { timeout: 15000 });
   await page.click('button:has-text("I\'ve Saved My Credentials")');
-  // Known app copy: this toast is hardcoded and still says "league".
-  await waitForToast(page, 'Signed up and joined league successfully!');
+  // The signup toast follows the classroom's terminology (DirectClassicSignup
+  // renders `Signed up and joined ${T.league} successfully!`).
+  await waitForToast(page, 'Signed up and joined classroom successfully!');
   await page.waitForURL('**/TeamHome', { timeout: 20000 });
   await page.waitForSelector(`text=You're in the ${state.classroomName} classroom`, { timeout: 15000 });
   console.log('[6.1] signed up, landed on /TeamHome (classroom wording)');

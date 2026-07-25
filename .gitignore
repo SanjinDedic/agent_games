@@ -197,4 +197,6 @@ backend/celery_easy/
 .gitignore
 .claude/skills/stripe-best-practices
 .claude/skills/stripe-projects
+.claude/skills/lesson_author
+.claude/skills/exercise_author
 reasearch/.env

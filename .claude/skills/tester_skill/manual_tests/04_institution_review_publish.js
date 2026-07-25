@@ -5,12 +5,25 @@
 // Submissions pages are gone:
 //   4.1 login -> /InstitutionHome
 //   4.2 open the league's workspace from its Home card (record league id)
-//   4.3 review team submissions on the Submissions tab (read-only viewer,
-//       prev/next paging)
-//   4.4 plagiarism assessment via OpenAI (Submissions tab)
+//   4.3 review team submissions on the Submissions tab: one grid row per team,
+//       one cell per submission (coloured by validation placement); a cell
+//       opens the code modal on that submission, ALL opens it on the newest
+//   4.4 plagiarism assessment via OpenAI (from inside the code modal)
 //   4.5 run a 100-round simulation on the Simulation tab
 //   4.6 publish the results + verify the public /results/<link> page
 //   4.7 logout
+//
+// The Submissions tab is a grid now, not a team-card list: SubmissionsTab.jsx
+// renders a table (one row per team, the last 15 submissions as StatusCell
+// buttons titled "<team> — submission N of M · ...") and AgentCodeModal.jsx
+// holds the read-only Monaco viewer + the "AI plagiarism assessment" button
+// (the old per-team "Assess <team>" button is gone).
+//
+// The Simulation tab is split into SimulationRunner (the RUN SIMULATION
+// controls) + SimulationRunSummary (run picker, headline stats, publish box)
+// + RunResultsModal (the leaderboard table, opened by "Show results"). The old
+// always-visible ranking table and "Selected League: <name> (<game>)" line are
+// gone.
 //
 // Reads institution/league/teams from the state file (stages 1–3);
 // writes leagueId, publishedUrl and the plagiarism verdict back.
@@ -47,50 +60,85 @@ const {
     console.log(`[4.2] classroom workspace open, league id = ${leagueId}`);
 
     // 4.3 review submissions (Submissions tab). :text-is targets the tab
-    // button exactly so it can't match the team cards' "N submissions" text.
+    // button exactly so it can't match other tabs' text.
     await page.click('button:text-is("Submissions")');
-    // Every Stage-3 team must appear with its 2 valid submissions, pageable in the viewer.
+    await page.waitForSelector('h2:has-text("Agent submissions")', { timeout: 20000 });
+    // Every Stage-3 team gets a grid row with its 2 valid submissions as cells.
+    // The code modal opens on whichever cell was clicked and pages prev/next.
+    const codeModal = page.locator('div.fixed:has(h3:has-text("— submissions"))');
     for (const team of state.teams) {
-      const card = page.locator(`button:has(div.font-medium:text-is("${team.name}"))`);
-      await card.waitFor({ timeout: 20000 });
-      const cardText = await card.innerText();
-      if (!/2 submissions/.test(cardText)) {
-        throw new Error(`team card for ${team.name} does not show 2 submissions: "${cardText.replace(/\n/g, ' | ')}"`);
+      const row = page.locator('tr').filter({ has: page.locator(`td:text-is("${team.name}")`) });
+      await row.waitFor({ timeout: 20000 });
+      // Only real submissions get a titled cell button; empty slots are spans.
+      const cells = row.locator(`button[title^="${team.name} — submission "]`);
+      const cellCount = await cells.count();
+      if (cellCount !== 2) {
+        throw new Error(`grid row for ${team.name} shows ${cellCount} submission cells, expected 2`);
       }
-      await card.click();
-      await page.waitForSelector('text=Submission 2 of 2', { timeout: 15000 });
-      await page.click('button:has-text("← Prev")');
-      await page.waitForSelector('text=Submission 1 of 2', { timeout: 15000 });
-      await page.click('button:has-text("Next →")');
-      await page.waitForSelector('text=Submission 2 of 2', { timeout: 15000 });
-      console.log(`  reviewed ${team.name}: 2 submissions, prev/next paging works`);
+      // Total column (second-to-last cell, beside the ALL button) must agree with the grid.
+      const cellsInRow = await row.locator('td').count();
+      const total = (await row.locator('td').nth(cellsInRow - 2).innerText()).trim();
+      if (total !== '2') {
+        throw new Error(`grid row for ${team.name} totals "${total}" submissions, expected 2`);
+      }
+
+      // Clicking the OLDEST cell must open the modal on submission 1, not the newest.
+      await cells.first().click();
+      await codeModal.waitFor({ timeout: 15000 });
+      await codeModal.locator('text=Submission 1 of 2').waitFor({ timeout: 15000 });
+      await codeModal.locator('button:has-text("Next →")').click();
+      await codeModal.locator('text=Submission 2 of 2').waitFor({ timeout: 15000 });
+      await codeModal.locator('button:has-text("← Prev")').click();
+      await codeModal.locator('text=Submission 1 of 2').waitFor({ timeout: 15000 });
+      await codeModal.locator('button[aria-label="Close"]').click();
+      await codeModal.waitFor({ state: 'detached', timeout: 10000 });
+
+      // ALL opens the same history on the NEWEST submission.
+      await row.locator('button:text-is("ALL")').click();
+      await codeModal.locator('text=Submission 2 of 2').waitFor({ timeout: 15000 });
+      await codeModal.locator('button[aria-label="Close"]').click();
+      await codeModal.waitFor({ state: 'detached', timeout: 10000 });
+      console.log(`  reviewed ${team.name}: 2 submission cells, ALL opens the newest, prev/next paging works`);
     }
 
-    // 4.4 plagiarism assessment on the first team (needs >= 2 submissions)
+    // 4.4 plagiarism assessment on the first team (needs >= 2 submissions).
+    // The button lives in the code modal now, and acts on the team being read.
     const assessTeam = state.teams[0].name;
-    await page.click(`button:has(div.font-medium:text-is("${assessTeam}"))`);
+    const assessRow = page.locator('tr').filter({ has: page.locator(`td:text-is("${assessTeam}")`) });
+    await assessRow.locator('button:text-is("ALL")').click();
+    await codeModal.waitFor({ timeout: 15000 });
     const [assessResp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/ai/assess-plagiarism'), { timeout: 180000 }),
-      page.click(`button:has-text("Assess ${assessTeam}")`),
+      codeModal.locator('button:has-text("AI plagiarism assessment")').click(),
     ]);
     const assessBody = await assessResp.json().catch(() => ({}));
     if (!assessResp.ok()) {
       throw new Error(`assess-plagiarism HTTP ${assessResp.status()}: ${JSON.stringify(assessBody).slice(0, 400)}`);
     }
-    await page.waitForSelector(`h3:has-text("Assessment: ${assessTeam}")`, { timeout: 15000 });
-    await page.waitForSelector('h4:has-text("Deterministic Analysis")');
-    await page.waitForSelector('h4:has-text("AI Analysis")');
+    const report = page.locator(`div.fixed:has(h3:has-text("Assessment: ${assessTeam}"))`);
+    await report.waitFor({ timeout: 15000 });
+    await report.locator('h4:has-text("Deterministic Analysis")').waitFor({ timeout: 15000 });
+    await report.locator('h4:has-text("AI Analysis")').waitFor({ timeout: 15000 });
     const verdict = assessBody.verdict || {};
     console.log(`[4.4] plagiarism report shown for ${assessTeam}:`);
     console.log(`      deterministic: ${assessBody.deterministic_concern_level}`);
     console.log(`      progression=${verdict.progression_verdict} ai_generated=${verdict.ai_generation_verdict} overall=${verdict.overall_concern_level}`);
-    await page.click('div.fixed button:has-text("Close")');
+    await report.locator('button:text-is("Close")').click();
+    await report.waitFor({ state: 'detached', timeout: 10000 });
+    await codeModal.locator('button[aria-label="Close"]').click();
+    await codeModal.waitFor({ state: 'detached', timeout: 10000 });
 
-    // 4.5 run the simulation (100 rounds) on the Simulation tab
+    // 4.5 run the simulation (100 rounds) on the Simulation tab. The runner
+    // names the target league inline ("<name> · <game> · every team's latest
+    // agent competes") instead of the old "Selected League:" line.
     await page.click('button:text-is("Simulation")');
-    await page.waitForSelector('button:has-text("RUN SIMULATION")', { timeout: 15000 });
-    await page.waitForSelector(`text=Selected League: ${state.leagueName} (greedy_pig)`, { timeout: 15000 });
-    await page.fill('input[type="number"]', '100');
+    const runner = page.locator('div.bg-white').filter({ has: page.locator('button:has-text("RUN SIMULATION")') }).first();
+    await runner.waitFor({ timeout: 15000 });
+    const runnerText = await runner.innerText();
+    if (!runnerText.includes(state.leagueName) || !runnerText.includes('greedy_pig')) {
+      throw new Error(`simulation runner does not name the league/game: "${runnerText.replace(/\n/g, ' | ').slice(0, 200)}"`);
+    }
+    await page.fill('#simulation-game-count', '100');
 
     const runSimulationOnce = async () => {
       const [resp] = await Promise.all([
@@ -123,12 +171,21 @@ const {
       ({ resp: simResp, body: simBody } = await runSimulationOnce());
     }
     if (!simResp.ok()) throw new Error(`run-simulation HTTP ${simResp.status()}: ${JSON.stringify(simBody).slice(0, 400)}`);
-    await page.waitForSelector('select', { timeout: 30000 });
-    // Ranking table should list the Stage-3 teams
+    // The run summary replaces the old always-visible table: run picker +
+    // headline chips. The leaderboard itself is behind "Show results".
+    await page.waitForSelector('#simulation-run-picker', { timeout: 30000 });
+    await page.waitForSelector('text=Games played', { timeout: 15000 });
+    await page.waitForSelector(`text=Agents in run`, { timeout: 15000 });
+    const runResults = page.locator('div.fixed:has(h3:text-is("Run results"))');
+    await page.click('button:has-text("Show results")');
+    await runResults.waitFor({ timeout: 15000 });
+    // Leaderboard in the modal must list the Stage-3 teams
     for (const team of state.teams) {
-      await page.waitForSelector(`text=${team.name}`, { timeout: 15000 });
+      await runResults.locator(`text=${team.name}`).first().waitFor({ timeout: 15000 });
     }
-    console.log('[4.5] simulation ran; results table shows all teams');
+    await runResults.locator('button[aria-label="Close"]').click();
+    await runResults.waitFor({ state: 'detached', timeout: 10000 });
+    console.log('[4.5] simulation ran; Show results modal lists all teams');
 
     // 4.6 publish + verify the public results page
     const [pubResp] = await Promise.all([
@@ -139,23 +196,34 @@ const {
     if (!pubResp.ok() || !pubBody.publish_link) {
       throw new Error(`publish-results HTTP ${pubResp.status()}: ${JSON.stringify(pubBody).slice(0, 400)}`);
     }
-    await page.waitForSelector('text=Results published successfully!', { timeout: 15000 });
     const publishedUrl = `${BASE}/results/${pubBody.publish_link}`;
+    // Publishing flips the whole box: the LeaguePublish button is replaced by
+    // the "this run is live" panel carrying the public URL. (LeaguePublish's own
+    // "Results published successfully!" view is never reached here — the parent
+    // re-renders on the Redux publish_link first.)
+    await page.locator('p:has-text("This run is live for your teams")').waitFor({ timeout: 15000 });
+    const liveLink = page.locator(`a[href="/results/${pubBody.publish_link}"]`).first();
+    await liveLink.waitFor({ timeout: 15000 });
     console.log(`[4.6] published: ${publishedUrl}`);
 
-    // The manual expects the published run to be tagged "(Published)" in the dropdown
-    // and listed under "Published Results" without a reload — record what happens.
-    const taggedNow = (await page.locator('select option:has-text("(Published)")').count()) > 0;
-    const listedNow = (await page.locator('h3:has-text("Published Results")').count()) > 0;
-    observed.notes = observed.notes || [];
-    observed.notes.push(`after publish (no reload): dropdown "(Published)" tag=${taggedNow}, Published Results section=${listedNow}`);
+    // Without a reload the run picker must tag the run "· Published" and the
+    // "Published links (N)" section must appear (the Redux publish_link update
+    // drives both) — assert it here rather than only recording it.
+    const assertPublishedMarkers = async (when) => {
+      const tagged = (await page.locator('#simulation-run-picker option:has-text("· Published")').count()) > 0;
+      const listed = (await page.locator('summary:has-text("Published links (1)")').count()) > 0;
+      if (!tagged || !listed) {
+        throw new Error(`${when}: run picker "· Published" tag=${tagged}, "Published links (1)" section=${listed}`);
+      }
+      observed.notes = observed.notes || [];
+      observed.notes.push(`${when}: run picker tagged "· Published" and "Published links (1)" section present`);
+    };
+    await assertPublishedMarkers('after publish (no reload)');
     // Reload lands back on the Simulation tab (URL-driven); the workspace
     // re-selects this league automatically, so no card click is needed.
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('select', { timeout: 20000 });
-    const taggedAfterReload = (await page.locator('select option:has-text("(Published)")').count()) > 0;
-    const listedAfterReload = (await page.locator('h3:has-text("Published Results")').count()) > 0;
-    observed.notes.push(`after reload: dropdown "(Published)" tag=${taggedAfterReload}, Published Results section=${listedAfterReload}`);
+    await page.waitForSelector('#simulation-run-picker', { timeout: 20000 });
+    await assertPublishedMarkers('after reload');
 
     // public page renders with no login (fresh context would be stricter; new tab is close enough
     // since the public route never sends the Authorization header)

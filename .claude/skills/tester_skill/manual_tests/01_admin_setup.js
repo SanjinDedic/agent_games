@@ -11,12 +11,13 @@
 //
 // Steps run independently where possible: a failing step is recorded (and the
 // script exits 1 at the end) but later steps still run, so one broken feature
-// doesn't hide the state of the others. Note on 1.4 backup/restore:
-// admin_backup._get_s3_client() ignores S3_ENDPOINT_URL, so it always talks to
-// real AWS — with the default MinIO creds it 500s (InvalidAccessKeyId); with
-// real creds (.aws.env) it works, but the MANUAL dump lands in the production
-// backup bucket and the restore replays the newest dump (its own) into the
-// local DB.
+// doesn't hide the state of the others. Note on 1.4 backup/restore: it runs
+// against MinIO locally (admin_backup._get_s3_client() honours S3_ENDPOINT_URL)
+// and needs the AWS_S3_BUCKET bucket to exist — the minio service's compose
+// entrypoint pre-creates it, so a `docker compose down -v` reset is fine. With
+// real creds (.aws.env) it talks to real AWS instead: the MANUAL dump then
+// lands in the production backup bucket and the restore replays the newest
+// dump (its own) into the local DB.
 const {
   BASE, saveState, launchPage, acceptDialogs, waitForToast, dismissToasts, finish,
 } = require('./_helpers');

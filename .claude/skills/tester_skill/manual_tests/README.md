@@ -25,9 +25,9 @@ pages are gone (their routes now redirect into Home/the workspace).
 | `01_admin_setup.js` | shared | manual Stage 1 — admin login, institutions ×2 + one **teacher account** (`is_teacher` checkbox; Type badge asserted) + delete ×1, backup/restore, OpenAI key (needs `OPENAI_API_KEY` env var), logout |
 | `02_institution_league.js` | competition | manual Stage 2 — institution login (lands on `/InstitutionHome`; navbar "Teams" + heading "Active Leagues", never classroom/student wording), create greedy_pig league from the Home "Create New League" card, capture signup URL, attach the seeded tutorial via the workspace **Settings** tab |
 | `03_team_submissions.js` | competition | manual Stage 3 — three teams: signup via the join page ("League · greedy_pig", "Team Name", "Sign Up & Join League"), 2 valid + 1 invalid submission, history check, logout; Team 1 also runs tutorial exercise #4 "Add Up the Scoreboard" end-to-end (TEAM: footer) |
-| `04_institution_review_publish.js` | competition | manual Stage 4 — open the league workspace from Home, then its tabs: review submissions (**Submissions**), plagiarism (OpenAI), 100-round simulation + publish (**Simulation**), verify the public page |
-| `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; lands on `/InstitutionHome`, navbar "Students" + heading "Active Classrooms"), create greedy_pig classroom from the Home "Create New Classroom" card ("Classroom Created Successfully"), capture join URL, attach the seeded tutorial via the workspace **Settings** tab |
-| `06_student_submissions.js` | classroom | mirror of 03 — two students: signup via the classroom join page ("Classroom · greedy_pig", "Student Name", "Sign Up & Join Classroom"), same 2-valid + 1-invalid submissions and history check (STUDENT:/CLASSROOM: footer); Student 1 runs the same tutorial exercise (per-student progress, STUDENT: footer) |
+| `04_institution_review_publish.js` | competition | manual Stage 4 — open the league workspace from Home, then its tabs: review submissions in the **Submissions** grid (one row per team, one cell per submission; a cell or **ALL** opens the code modal), plagiarism from inside that modal (OpenAI), 100-round simulation + publish (**Simulation**: runner → run summary → "Show results" modal), verify the public page |
+| `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; lands on `/InstitutionHome`, navbar "Students" + heading "Active Classrooms"), create greedy_pig classroom from the Home "Create New Classroom" card ("Classroom Created Successfully"), capture join URL, attach the seeded tutorial via the workspace **Settings** tab (a teacher sees it as **Short Courses**) |
+| `06_student_submissions.js` | classroom | mirror of 03 — two students: signup via the classroom join page ("Classroom · greedy_pig", "Student Name", "Sign Up & Join Classroom"), same 2-valid + 1-invalid submissions and history check (STUDENT:/CLASSROOM: footer); Student 1 runs the same tutorial exercise, reached via the navbar's **Short Course** link (per-student progress, STUDENT: footer) |
 | `07_demo_hints.js` | demo | manual Stage 5 — per game ×7: demo user, invalid submission, Get Hint, fix, valid submission |
 | `08_password_reset.js` | classroom | not in the manual yet — teacher opens the classroom workspace **Students** tab and generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
 
@@ -75,6 +75,11 @@ Known app-side deviations the scripts expect and document (full detail in
   manual's "invalid" return (asserted each run — acceptance is a failure), then a syntax error
   drives the hint flow; the failed submission's response must advertise the hint immediately
   (asserted, no retry).
-- Classroom copy that still says "league" (asserted as-is by 05/06): the student signup toast
-  ("Signed up and joined league successfully!", hardcoded in `DirectClassicSignup.jsx`) and the
-  Save Tutorials toast ("Tutorials updated for league '<name>'", backend message).
+- Backend copy that still says "league"/"tutorials" for classrooms (asserted as-is by 05): the
+  Save Short Courses toast, "Tutorials updated for league '<name>'". Frontend copy is fully
+  terminology-aware — a teacher account calls tutorials **Short Courses**, and the student
+  signup toast reads "Signed up and joined classroom successfully!".
+- Stage 7 is subject to LLM nondeterminism: `hint_service._validate_hints` discards any hint
+  whose `quoted_line` doesn't match the line number it claims, so an off-target model response
+  turns into a 502 "LLM provider failed to generate a valid hint". Re-run before treating it as
+  a regression.
