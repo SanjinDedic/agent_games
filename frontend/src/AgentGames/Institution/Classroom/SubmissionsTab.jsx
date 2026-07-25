@@ -1,19 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { toast } from 'react-toastify';
 
 import { selectToken } from '../../../slices/authSlice';
 import { authFetch } from '../../../utils/authFetch';
 import { useTerms } from '../../Shared/terminology';
-import CodeHistoryViewer, {
+import StatusCell, { rankTone } from '../../Shared/Progress/StatusCell';
+import {
   formatDuration,
+  formatTimestamp,
 } from '../../Shared/Submission/CodeHistoryViewer';
-import PlagiarismReportModal from '../../Shared/PlagiarismReportModal';
+import AgentCodeModal from './AgentCodeModal';
+
+// Most teams submit fewer times than this; teams that submit more show only
+// their most recent GRID_COLUMNS, with ALL for the complete history.
+const GRID_COLUMNS = 15;
 
 /**
- * All agent submissions for the classroom: team picker on the right, a
- * read-only Monaco history viewer on the left, and the on-demand plagiarism
- * assessment. (Formerly the standalone InstitutionLeagueSubmissions page.)
+ * Agent submissions for the whole classroom at a glance: one row per team,
+ * the last 15 submissions as cells showing that submission's placement against
+ * the validation bots, coloured dark green (1st) through orange (back of the
+ * pack). Clicking a cell opens that submission; ALL opens the full history.
  */
 function SubmissionsTab({ league }) {
   const T = useTerms();
@@ -23,19 +29,15 @@ function SubmissionsTab({ league }) {
   // submissions: { teamName: [{ code, timestamp, id, duration_ms }, ...] }
   const [submissions, setSubmissions] = useState({});
   const [teamIds, setTeamIds] = useState({});
-  const [selectedTeam, setSelectedTeam] = useState('');
-  const [submissionIndex, setSubmissionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [assessing, setAssessing] = useState(false);
-  const [report, setReport] = useState(null);
+  // { teamName, initialIndex } while the code modal is open
+  const [modalTarget, setModalTarget] = useState(null);
 
   const teamList = useMemo(
     () => Object.keys(submissions).sort((a, b) => a.localeCompare(b)),
     [submissions]
   );
-
-  const teamSubmissions = submissions[selectedTeam] || [];
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -49,14 +51,8 @@ function SubmissionsTab({ league }) {
         );
         const data = await resp.json();
         if (resp.ok) {
-          const map = data.teams || {};
-          setSubmissions(map);
+          setSubmissions(data.teams || {});
           setTeamIds(data.team_ids || {});
-          const firstTeam = Object.keys(map).sort()[0] || '';
-          setSelectedTeam(firstTeam);
-          // Start at latest submission
-          const subs = map[firstTeam] || [];
-          setSubmissionIndex(subs.length > 0 ? subs.length - 1 : 0);
         } else {
           setError(data.detail || 'Failed to load submissions');
         }
@@ -69,123 +65,169 @@ function SubmissionsTab({ league }) {
     fetchSubmissions();
   }, [apiUrl, accessToken, league.id]);
 
-  const handleSelectTeam = (team) => {
-    setSelectedTeam(team);
-    const subs = submissions[team] || [];
-    setSubmissionIndex(subs.length > 0 ? subs.length - 1 : 0);
-  };
-
-  const handleAssessPlagiarism = async () => {
-    if (!selectedTeam || !league.id) return;
-    const teamId = teamIds[selectedTeam];
-    if (!teamId) {
-      toast.error(`${T.Team} id not found`);
-      return;
-    }
-    const proceed = window.confirm(
-      `This will send ${selectedTeam}'s code submissions to OpenAI for analysis. Continue?`
-    );
-    if (!proceed) return;
-
-    setAssessing(true);
-    setReport(null);
-    try {
-      const resp = await authFetch(`${apiUrl}/ai/assess-plagiarism`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          league_id: Number(league.id),
-          team_id: teamId,
-        }),
-      });
-      const data = await resp.json();
-      if (resp.ok) {
-        setReport(data);
-      } else {
-        toast.error(data.detail || 'Assessment failed');
-      }
-    } catch (e) {
-      toast.error('Network error running assessment');
-    } finally {
-      setAssessing(false);
-    }
-  };
-
   if (loading) {
-    return <div className="p-6 bg-white rounded-lg shadow">Loading submissions…</div>;
+    return (
+      <div className="p-6 bg-white rounded-lg shadow-lg text-ui">
+        Loading submissions…
+      </div>
+    );
   }
   if (error) {
-    return <div className="p-6 bg-white rounded-lg shadow text-danger">{error}</div>;
+    return <div className="p-6 bg-white rounded-lg shadow-lg text-danger">{error}</div>;
   }
   if (teamList.length === 0) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow">
-        {`No submissions found for this ${T.league}.`}
+      <div className="p-6 bg-white rounded-lg shadow-lg text-ui">
+        {`No ${T.teams} in this ${T.league} yet.`}
       </div>
     );
   }
 
-  return (
-    <>
-      <div className="flex flex-col lg:flex-row gap-4 h-[75vh]">
-        {/* Left: Monaco Editor + navigation */}
-        <CodeHistoryViewer
-          submissions={teamSubmissions}
-          index={submissionIndex}
-          onIndexChange={setSubmissionIndex}
-        />
+  const modalSubmissions = modalTarget
+    ? submissions[modalTarget.teamName] || []
+    : [];
 
-        {/* Right: Team list */}
-        <div className="w-full lg:w-1/2 bg-white rounded-lg shadow p-4 overflow-y-auto">
-          <h2 className="text-lg font-semibold text-ui-dark mb-3">{T.Teams}</h2>
-          {selectedTeam && (
-            <button
-              onClick={handleAssessPlagiarism}
-              disabled={assessing}
-              className="w-full mb-4 px-4 py-3 text-base font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
-            >
-              {assessing
-                ? 'Assessing...'
-                : `AI plagiarism assessment for ${selectedTeam}`}
-            </button>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-1">
+        <h2 className="text-xl font-semibold text-ui-dark">Agent submissions</h2>
+        <span className="text-sm text-ui">
+          {teamList.length} {teamList.length !== 1 ? T.teams : T.team}
+        </span>
+      </div>
+      <p className="text-sm text-ui mb-4 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span>Each cell is that submission's placement against the validation bots:</span>
+        {[1, 2, 3, 4, 5].map((rank) => (
+          <span
+            key={rank}
+            className={`inline-flex w-6 h-6 items-center justify-center rounded text-xs font-mono font-bold ${rankTone(
+              rank
+            )}`}
+          >
+            {rank}
+          </span>
+        ))}
+        <span
+          className={`inline-flex px-1.5 h-6 items-center justify-center rounded text-xs font-mono font-bold ${rankTone(
+            99
+          )}`}
+        >
+          6+
+        </span>
+        <span>
+          <span className="font-bold text-ui-light">·</span> = no submission.
+          Click a cell to read it, or ALL to step through the full history.
+        </span>
+      </p>
+
+      <div className="overflow-x-auto">
+        <table className="w-auto">
+          <thead>
+            <tr className="bg-ui-lighter">
+              <th className="px-4 py-2 text-left text-sm font-semibold text-ui-dark sticky left-0 bg-ui-lighter z-10">
+                {T.Team}
+              </th>
+              <th
+                colSpan={GRID_COLUMNS}
+                className="px-2 py-2 text-center text-sm font-semibold text-ui-dark"
+              >
+                {`Last ${GRID_COLUMNS} submissions (oldest → newest)`}
+              </th>
+              <th className="px-3 py-2 text-center text-sm font-semibold text-ui-dark">
+                Total
+              </th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
             {teamList.map((team) => {
               const subs = submissions[team] || [];
-              const latestDuration =
-                subs.length > 0 ? subs[subs.length - 1].duration_ms : null;
+              const windowed = subs.slice(-GRID_COLUMNS);
+              // Empty slots pad the left so the right-most column is always
+              // the newest submission, for every team.
+              const pad = GRID_COLUMNS - windowed.length;
+              const offset = subs.length - windowed.length;
+
               return (
-                <button
+                <tr
                   key={team}
-                  onClick={() => handleSelectTeam(team)}
-                  className={`text-left px-3 py-2 rounded border transition-colors text-sm ${
-                    team === selectedTeam
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-ui-lighter text-ui-dark border-ui-light hover:bg-ui-light'
-                  }`}
-                  title="View submissions"
+                  className="border-b border-ui-light hover:bg-ui-lighter/50"
                 >
-                  <div className="font-medium truncate">{team}</div>
-                  <div className="text-xs opacity-75">
-                    {subs.length} submission{subs.length !== 1 ? 's' : ''}
-                  </div>
-                  {subs.length > 0 && (
-                    <div className="text-xs opacity-75">
-                      Latest sim: {formatDuration(latestDuration)}
-                    </div>
-                  )}
-                </button>
+                  <td className="px-4 py-1.5 text-base font-medium text-ui-dark whitespace-nowrap sticky left-0 bg-white z-10">
+                    {team}
+                  </td>
+
+                  {Array.from({ length: GRID_COLUMNS }, (_, col) => {
+                    if (col < pad) {
+                      return (
+                        <td key={`empty-${col}`} className="px-1 py-1.5 text-center">
+                          <StatusCell status="untouched" />
+                        </td>
+                      );
+                    }
+                    const sub = windowed[col - pad];
+                    const number = offset + (col - pad) + 1;
+                    return (
+                      <td key={sub.id} className="px-1 py-1.5 text-center">
+                        <StatusCell
+                          status="passed"
+                          tone={rankTone(sub.ranking)}
+                          label={sub.ranking == null ? '?' : sub.ranking}
+                          highlight={col === GRID_COLUMNS - 1}
+                          title={`${team} — submission ${number} of ${subs.length} · ${
+                            sub.ranking == null
+                              ? 'no placement recorded'
+                              : `placed #${sub.ranking} against the validation bots`
+                          } · ${formatTimestamp(sub.timestamp)} · sim ${formatDuration(
+                            sub.duration_ms
+                          )} (click to view code)`}
+                          onClick={() =>
+                            setModalTarget({
+                              teamName: team,
+                              initialIndex: number - 1,
+                            })
+                          }
+                        />
+                      </td>
+                    );
+                  })}
+
+                  <td className="px-3 py-1.5 text-center text-sm font-mono text-ui-dark">
+                    {subs.length}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    <button
+                      onClick={() =>
+                        setModalTarget({
+                          teamName: team,
+                          initialIndex: subs.length - 1,
+                        })
+                      }
+                      disabled={subs.length === 0}
+                      title={`Step through all of ${team}'s submissions`}
+                      className="px-3 py-1 rounded text-xs font-semibold border border-primary text-primary hover:bg-primary hover:text-white transition-colors disabled:opacity-40 disabled:border-ui-light disabled:text-ui-light disabled:hover:bg-transparent"
+                    >
+                      ALL
+                    </button>
+                  </td>
+                </tr>
               );
             })}
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
 
-      <PlagiarismReportModal report={report} onClose={() => setReport(null)} />
-    </>
+      {modalTarget && (
+        <AgentCodeModal
+          teamName={modalTarget.teamName}
+          teamId={teamIds[modalTarget.teamName]}
+          leagueId={league.id}
+          submissions={modalSubmissions}
+          initialIndex={modalTarget.initialIndex}
+          onClose={() => setModalTarget(null)}
+        />
+      )}
+    </div>
   );
 }
 

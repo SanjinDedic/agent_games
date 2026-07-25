@@ -323,6 +323,9 @@ def get_all_submissions_for_league(
                 "timestamp": sub.timestamp.isoformat(),
                 "id": sub.id,
                 "duration_ms": meta.duration_ms,
+                # Rank against the validation bots (1 = best); the classroom
+                # submissions grid colours its cells by it.
+                "ranking": sub.ranking,
             }
             for sub, meta in rows
         ]
