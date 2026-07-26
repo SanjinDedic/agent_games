@@ -1,9 +1,9 @@
 """Admin lesson CRUD: list, create, update, delete, and the slug rules."""
 
 import pytest
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from backend.database.db_models import Lesson
+from backend.database.db_models import Concept, Lesson, LessonConcept
 
 
 @pytest.fixture
@@ -160,3 +160,27 @@ def test_delete_lesson(client, admin_headers, existing_lesson):
 def test_delete_unknown_lesson_404s(client, admin_headers):
     response = client.delete("/lesson/lesson/99999", headers=admin_headers)
     assert response.status_code == 404
+
+
+def test_delete_lesson_removes_concept_links(
+    client, admin_headers, db_session, existing_lesson
+):
+    """LessonConcept has an FK to lesson and no ORM cascade, so a tagged
+    lesson is only deletable once its links go first."""
+    concept = Concept(slug="functions", name="Functions")
+    db_session.add(concept)
+    db_session.flush()
+    db_session.add(
+        LessonConcept(lesson_id=existing_lesson.id, concept_id=concept.id)
+    )
+    db_session.commit()
+
+    response = client.delete(
+        f"/lesson/lesson/{existing_lesson.id}", headers=admin_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    assert db_session.exec(select(LessonConcept)).all() == []
+    # The vocabulary itself outlives the lesson that referenced it.
+    assert db_session.get(Concept, concept.id) is not None

@@ -500,3 +500,56 @@ class Lesson(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
+
+
+class Concept(SQLModel, table=True):
+    """One teachable idea (e.g. "while loops").
+
+    A flat, controlled vocabulary shared by lessons and exercises: an exercise
+    is tagged with the concepts it practises, a lesson with the concepts it
+    explains, and a tutorial's concepts are derived as the union over its
+    exercises (nothing is stored for tutorials). `category` only groups
+    concepts for display and carries no query semantics.
+
+    Authored in tutorial_data/concepts.json and synced like all other tutorial
+    content; the DB stays the runtime source of truth.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    slug: str = Field(unique=True, index=True)
+    name: str
+    description: str = Field(default="", sa_column=Column(Text(), nullable=False))
+    category: Optional[str] = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+
+class ExerciseConcept(SQLModel, table=True):
+    """Tags an exercise with a concept it teaches (many-to-many).
+
+    Like LeagueTutorial this carries no ORM relationships — it exists to be
+    joined against, so the rows must be cleared explicitly wherever an
+    exercise or concept is deleted.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exercise_id: int = Field(foreign_key="exercise.id", index=True)
+    concept_id: int = Field(foreign_key="concept.id", index=True)
+
+    __table_args__ = (UniqueConstraint("exercise_id", "concept_id"),)
+
+
+class LessonConcept(SQLModel, table=True):
+    """Tags a lesson with a concept it explains (many-to-many).
+
+    The first structural link between lessons and exercises: before this,
+    lessons were reachable only through `lesson://<slug>` strings embedded in
+    markdown.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    lesson_id: int = Field(foreign_key="lesson.id", index=True)
+    concept_id: int = Field(foreign_key="concept.id", index=True)
+
+    __table_args__ = (UniqueConstraint("lesson_id", "concept_id"),)

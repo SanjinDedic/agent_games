@@ -6,6 +6,7 @@ from sqlmodel import Session, func, select
 
 from backend.database.db_models import (
     Exercise,
+    ExerciseConcept,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
     LeagueTutorial,
@@ -439,6 +440,23 @@ def _delete_submission_history(session: Session, exercise_ids: list) -> None:
         session.delete(meta)
 
 
+def _delete_concept_links(session: Session, exercise_ids: list) -> None:
+    """Delete the concept tags of the given exercises. ExerciseConcept has an
+    FK to exercise and no ORM cascade, so the links must go first."""
+    if not exercise_ids:
+        return
+    for link in session.exec(
+        select(ExerciseConcept).where(
+            ExerciseConcept.exercise_id.in_(exercise_ids)
+        )
+    ).all():
+        session.delete(link)
+    # ExerciseConcept declares no relationship to Exercise, so SQLAlchemy has
+    # no dependency to order these deletes by — flush the links out first or
+    # the exercise DELETE can race ahead of them and trip the FK.
+    session.flush()
+
+
 def get_tutorial_admin_detail(session: Session, tutorial_id: int) -> dict:
     """One tutorial with full exercise definitions (admin only)."""
     tutorial = _get_tutorial_or_raise(session, tutorial_id)
@@ -481,12 +499,12 @@ def update_tutorial(
 
 
 def delete_tutorial(session: Session, tutorial_id: int) -> None:
-    """Delete a tutorial, its exercises, all their submission history, and
-    its league attachments."""
+    """Delete a tutorial, its exercises, all their submission history and
+    concept tags, and its league attachments."""
     tutorial = _get_tutorial_or_raise(session, tutorial_id)
-    _delete_submission_history(
-        session, [exercise.id for exercise in tutorial.exercises]
-    )
+    exercise_ids = [exercise.id for exercise in tutorial.exercises]
+    _delete_submission_history(session, exercise_ids)
+    _delete_concept_links(session, exercise_ids)
     for link in session.exec(
         select(LeagueTutorial).where(LeagueTutorial.tutorial_id == tutorial_id)
     ).all():
@@ -614,11 +632,12 @@ def update_exercise(
 
 
 def delete_exercise(session: Session, exercise_id: int) -> None:
-    """Delete one exercise and its submission history, then close the gap in
-    the remaining exercises' order_index values."""
+    """Delete one exercise, its submission history and its concept tags, then
+    close the gap in the remaining exercises' order_index values."""
     exercise = get_exercise_by_id(session, exercise_id)
     tutorial_id = exercise.tutorial_id
     _delete_submission_history(session, [exercise.id])
+    _delete_concept_links(session, [exercise.id])
     session.delete(exercise)
     session.flush()
 
