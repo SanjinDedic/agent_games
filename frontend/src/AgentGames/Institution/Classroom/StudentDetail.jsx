@@ -13,6 +13,7 @@ import StatusCell from '../../Shared/Progress/StatusCell';
 import CodeHistoryViewer from '../../Shared/Submission/CodeHistoryViewer';
 import PlagiarismReportModal from '../../Shared/PlagiarismReportModal';
 import ExerciseCodeModal from './ExerciseCodeModal';
+import StudentConceptCard from './StudentConceptCard';
 
 const Stat = ({ label, children, title }) => (
   <div title={title}>
@@ -205,6 +206,9 @@ function StudentDetail() {
             </div>
           )}
         </div>
+
+        {/* Concept mastery — what to actually work on with them */}
+        <StudentConceptCard leagueId={leagueId} teamId={teamId} />
 
         {/* Tutorial progress */}
         <div className="bg-white rounded-lg shadow-lg p-6">

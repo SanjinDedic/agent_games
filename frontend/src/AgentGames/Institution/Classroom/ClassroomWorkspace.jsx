@@ -11,9 +11,17 @@ import SimulationPanel from '../../Shared/League/SimulationPanel';
 import LeagueDetailsPanel from '../../Shared/League/LeagueDetailsPanel';
 import StudentsTab from './StudentsTab';
 import TutorialMatrixTab from './TutorialMatrixTab';
+import ConceptsTab from './ConceptsTab';
 import SubmissionsTab from './SubmissionsTab';
 
-const TAB_KEYS = ['students', 'tutorials', 'submissions', 'simulation', 'settings'];
+const TAB_KEYS = [
+  'students',
+  'tutorials',
+  'concepts',
+  'submissions',
+  'simulation',
+  'settings',
+];
 
 /**
  * The classroom workspace: everything about one classroom/league behind
@@ -74,6 +82,7 @@ function ClassroomWorkspace() {
   const tabs = [
     { key: 'students', label: T.Teams },
     { key: 'tutorials', label: `${T.Tutorial} Progress` },
+    { key: 'concepts', label: 'Concepts' },
     { key: 'submissions', label: 'Submissions' },
     { key: 'simulation', label: 'Simulation' },
     { key: 'settings', label: 'Settings' },
@@ -141,6 +150,7 @@ function ClassroomWorkspace() {
         {/* Tab content */}
         {activeTab === 'students' && <StudentsTab league={league} />}
         {activeTab === 'tutorials' && <TutorialMatrixTab league={league} />}
+        {activeTab === 'concepts' && <ConceptsTab league={league} />}
         {activeTab === 'submissions' && <SubmissionsTab league={league} />}
         {activeTab === 'simulation' && <SimulationPanel userRole="institution" />}
         {activeTab === 'settings' && (

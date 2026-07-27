@@ -12,6 +12,7 @@ from backend.routes.auth.auth_core import (
     verify_institution_role,
 )
 from backend.routes.institution.classroom_db import (
+    get_classroom_concept_matrix,
     get_classroom_progress,
     get_classroom_tutorial_matrix,
     get_student_agent_submissions,
@@ -194,6 +195,21 @@ async def classroom_tutorial_matrix_endpoint(
     institution_id, is_admin = _require_institution(current_user)
     league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
     return get_classroom_tutorial_matrix(session, league)
+
+
+@institution_router.get("/classroom/{league_id}/concept-matrix")
+@verify_admin_or_institution
+async def classroom_concept_matrix_endpoint(
+    league_id: int,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Student x concept mastery grid for the classroom: which concepts the
+    class has, and which students are struggling with each. Cells for concepts
+    a student hasn't reached are omitted from the payload."""
+    institution_id, is_admin = _require_institution(current_user)
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
+    return get_classroom_concept_matrix(session, league)
 
 
 @institution_router.get("/student/{team_id}/summary")

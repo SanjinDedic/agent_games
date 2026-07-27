@@ -64,7 +64,12 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
           <FeedbackDisplay
             instructions={exercise.problem_markdown}
             instructionsTitle="Problem Description"
-            hintsPanel={<ExerciseHints hints={exercise.exercise_hints} />}
+            hintsPanel={
+              <ExerciseHints
+                hints={exercise.exercise_hints}
+                exerciseId={exercise.id}
+              />
+            }
             hasResults={!!ws.output}
             isLoading={isSubmitting}
             collapseInstructions={ws.shouldCollapseInstructions}

@@ -483,6 +483,31 @@ class ExerciseSubmission(SQLModel, table=True):
     meta: ExerciseSubmissionMetadata = Relationship(back_populates="submission")
 
 
+class ExerciseHintReveal(SQLModel, table=True):
+    """One row the first time a student reveals a given hint of an exercise.
+
+    Exercise hints are static authored nudges (Exercise.exercise_hints) shown
+    one at a time in the browser; nothing about the reveal used to reach the
+    server. Concept mastery counts a revealed hint as extra effort, so the
+    reveal has to be recorded. The unique constraint makes re-opening the
+    panel idempotent, which is what keeps the counts honest.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    team_id: Optional[int] = Field(
+        default=None, foreign_key="team.id", nullable=True, index=True
+    )
+    exercise_id: int = Field(foreign_key="exercise.id", index=True)
+    # 0-based index into Exercise.exercise_hints
+    hint_index: int
+    revealed_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+    __table_args__ = (UniqueConstraint("team_id", "exercise_id", "hint_index"),)
+
+
 class Lesson(SQLModel, table=True):
     """A standalone markdown document explaining a concept.
 

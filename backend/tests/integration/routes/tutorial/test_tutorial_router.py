@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import (
     Exercise,
+    ExerciseHintReveal,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
     League,
@@ -702,3 +703,70 @@ def test_admin_can_open_unattached_tutorial(
     )
     assert response.status_code == 200
     assert response.json()["title"] == "Other League Tutorial"
+
+
+# -- hint reveals -----------------------------------------------------------
+
+
+def test_record_hint_reveal(
+    client, db_session, team_headers, word_counter_exercise
+):
+    """A revealed hint is recorded so concept mastery can count it as effort."""
+    response = client.post(
+        f"/tutorial/exercise/{word_counter_exercise.id}/hint-revealed",
+        json={"hint_index": 0},
+        headers=team_headers,
+    )
+    assert response.status_code == 200
+    assert response.json() == {"status": "success"}
+
+    reveals = db_session.exec(select(ExerciseHintReveal)).all()
+    assert len(reveals) == 1
+    assert reveals[0].exercise_id == word_counter_exercise.id
+    assert reveals[0].hint_index == 0
+    assert reveals[0].revealed_at is not None
+
+
+def test_record_hint_reveal_is_idempotent(
+    client, db_session, team_headers, word_counter_exercise
+):
+    """The client fires on every reveal, including after a reload — a repeat
+    must not inflate the count."""
+    url = f"/tutorial/exercise/{word_counter_exercise.id}/hint-revealed"
+    for _ in range(3):
+        assert client.post(
+            url, json={"hint_index": 0}, headers=team_headers
+        ).status_code == 200
+    assert client.post(
+        url, json={"hint_index": 1}, headers=team_headers
+    ).status_code == 200
+
+    reveals = db_session.exec(select(ExerciseHintReveal)).all()
+    assert sorted(reveal.hint_index for reveal in reveals) == [0, 1]
+
+
+def test_record_hint_reveal_rejects_negative_index(
+    client, team_headers, word_counter_exercise
+):
+    response = client.post(
+        f"/tutorial/exercise/{word_counter_exercise.id}/hint-revealed",
+        json={"hint_index": -1},
+        headers=team_headers,
+    )
+    assert response.status_code == 422
+
+
+def test_record_hint_reveal_outside_league_404s(
+    client, db_session, team_headers, unattached_tutorial
+):
+    """Same league gate as every other exercise endpoint."""
+    exercise = db_session.exec(
+        select(Exercise).where(Exercise.tutorial_id == unattached_tutorial.id)
+    ).first()
+    response = client.post(
+        f"/tutorial/exercise/{exercise.id}/hint-revealed",
+        json={"hint_index": 0},
+        headers=team_headers,
+    )
+    assert response.status_code == 404
+    assert db_session.exec(select(ExerciseHintReveal)).all() == []

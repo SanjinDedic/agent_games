@@ -14,10 +14,21 @@ import logging
 from sqlalchemy import case
 from sqlmodel import Session, func, select
 
-from backend.database.db_models import (Exercise, ExerciseSubmission,
+from backend.database.db_models import (Concept, Exercise, ExerciseConcept,
+                                        ExerciseHintReveal, ExerciseSubmission,
                                         ExerciseSubmissionMetadata, League,
-                                        LeagueTutorial, Submission,
-                                        SubmissionMetadata, Team, Tutorial)
+                                        LeagueTutorial, Lesson, LessonConcept,
+                                        Submission, SubmissionMetadata, Team,
+                                        Tutorial)
+from backend.routes.institution.concept_mastery import (
+    ATTENTION_BANDS,
+    MIN_ASSESSMENTS,
+    band_for,
+    concept_score,
+    confidence_for,
+    describe_mastery_model,
+    exercise_points,
+)
 from backend.routes.institution.institution_db import InstitutionAccessError, TeamNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -25,6 +36,10 @@ logger = logging.getLogger(__name__)
 # Payload bound for per-team ranking history. Enough for a trend line; the
 # full history stays in the DB if a longer view is ever needed.
 RANKING_HISTORY_LIMIT = 50
+
+# Worst confidence first when ranking who to help: a well-evidenced weak
+# reading outranks a one-exercise guess at the same band.
+_CONFIDENCE_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
 def get_team_by_id(
@@ -161,6 +176,161 @@ def _league_exercise_cells(
         ).all()
     )
     return attempts, passed_pairs
+
+
+def _league_exercise_effort(
+    session: Session, league_id: int, team_ids: list
+) -> dict:
+    """Per (team, exercise) effort detail for the league's exercises:
+    {(team_id, exercise_id): {attempts, attempts_to_pass, passed, crashes,
+    last_attempt_at}}.
+
+    _league_exercise_cells answers "did they pass, and how many goes in
+    total"; mastery needs "how many goes did it take *to* pass", which no
+    aggregate can give. So this walks the attempts in order instead. The join
+    to ExerciseSubmission is an OUTER join on purpose: metadata with no
+    submission child means the code never ran at all
+    (record_failed_exercise_submission), which is a struggle signal of its own
+    and would otherwise vanish from the counts.
+
+    Folding in Python rather than writing window functions keeps this readable
+    and costs little — a classroom is tens of students over tens of exercises.
+    """
+    if not team_ids:
+        return {}
+    rows = session.exec(
+        select(
+            ExerciseSubmissionMetadata.team_id,
+            ExerciseSubmissionMetadata.exercise_id,
+            ExerciseSubmissionMetadata.timestamp,
+            ExerciseSubmission.passed,
+        )
+        .join(
+            ExerciseSubmission,
+            ExerciseSubmission.metadata_id == ExerciseSubmissionMetadata.id,
+            isouter=True,
+        )
+        .join(Exercise, Exercise.id == ExerciseSubmissionMetadata.exercise_id)
+        .join(
+            LeagueTutorial, LeagueTutorial.tutorial_id == Exercise.tutorial_id
+        )
+        .where(LeagueTutorial.league_id == league_id)
+        .where(ExerciseSubmissionMetadata.team_id.in_(team_ids))
+        .order_by(
+            ExerciseSubmissionMetadata.team_id,
+            ExerciseSubmissionMetadata.exercise_id,
+            ExerciseSubmissionMetadata.timestamp,
+            ExerciseSubmissionMetadata.id,
+        )
+    ).all()
+
+    effort: dict = {}
+    for team_id, exercise_id, timestamp, passed in rows:
+        cell = effort.setdefault(
+            (team_id, exercise_id),
+            {
+                "attempts": 0,
+                "attempts_to_pass": None,
+                "passed": False,
+                "crashes": 0,
+                "last_attempt_at": None,
+            },
+        )
+        cell["attempts"] += 1
+        if passed is None:
+            cell["crashes"] += 1
+        elif passed and not cell["passed"]:
+            # Rows arrive oldest first, so the first pass we see is the first
+            # pass there was, and the running count is the goes it took.
+            cell["passed"] = True
+            cell["attempts_to_pass"] = cell["attempts"]
+        cell["last_attempt_at"] = timestamp
+    return effort
+
+
+def _league_hint_reveals(
+    session: Session, league_id: int, team_ids: list
+) -> dict:
+    """{(team_id, exercise_id): hints revealed} for the league's exercises."""
+    if not team_ids:
+        return {}
+    return {
+        (team_id, exercise_id): count
+        for team_id, exercise_id, count in session.exec(
+            select(
+                ExerciseHintReveal.team_id,
+                ExerciseHintReveal.exercise_id,
+                func.count(ExerciseHintReveal.id),
+            )
+            .join(Exercise, Exercise.id == ExerciseHintReveal.exercise_id)
+            .join(
+                LeagueTutorial,
+                LeagueTutorial.tutorial_id == Exercise.tutorial_id,
+            )
+            .where(LeagueTutorial.league_id == league_id)
+            .where(ExerciseHintReveal.team_id.in_(team_ids))
+            .group_by(
+                ExerciseHintReveal.team_id, ExerciseHintReveal.exercise_id
+            )
+        ).all()
+    }
+
+
+def _league_concept_tags(session: Session, league_id: int) -> tuple:
+    """Concepts tagged on the league's exercises: the Concept rows, and
+    {concept_id: [exercise ids]} in curriculum order.
+
+    `order_index` is only unique within a tutorial, so each exercise carries
+    its tutorial too — a league can have several tutorials attached, and
+    comparing bare order_index values across them would interleave the
+    curriculum.
+    """
+    rows = session.exec(
+        select(
+            Concept,
+            Exercise.id,
+            Exercise.title,
+            Exercise.order_index,
+            Exercise.tutorial_id,
+        )
+        .join(ExerciseConcept, ExerciseConcept.concept_id == Concept.id)
+        .join(Exercise, Exercise.id == ExerciseConcept.exercise_id)
+        .join(
+            LeagueTutorial, LeagueTutorial.tutorial_id == Exercise.tutorial_id
+        )
+        .where(LeagueTutorial.league_id == league_id)
+        .order_by(Exercise.tutorial_id, Exercise.order_index)
+    ).all()
+
+    concepts: dict = {}
+    exercises_by_concept: dict = {}
+    for concept, exercise_id, exercise_title, order_index, tutorial_id in rows:
+        concepts[concept.id] = concept
+        exercises_by_concept.setdefault(concept.id, []).append(
+            {
+                "id": exercise_id,
+                "title": exercise_title,
+                "order_index": order_index,
+                "tutorial_id": tutorial_id,
+            }
+        )
+    return concepts, exercises_by_concept
+
+
+def _lesson_slugs_by_concept(session: Session, concept_ids: list) -> dict:
+    """{concept_id: lesson slug} — the remediation link behind each concept.
+    A concept with several lessons keeps the first by slug, deterministically."""
+    if not concept_ids:
+        return {}
+    slugs: dict = {}
+    for concept_id, slug in session.exec(
+        select(LessonConcept.concept_id, Lesson.slug)
+        .join(Lesson, Lesson.id == LessonConcept.lesson_id)
+        .where(LessonConcept.concept_id.in_(concept_ids))
+        .order_by(Lesson.slug)
+    ).all():
+        slugs.setdefault(concept_id, slug)
+    return slugs
 
 
 def _latest_exercise_activity(session: Session, team_ids: list) -> dict:
@@ -316,6 +486,185 @@ def get_classroom_tutorial_matrix(session: Session, league: League) -> dict:
         "league": {"id": league.id, "name": league.name},
         "teams": [{"id": team.id, "name": team.name} for team in teams],
         "tutorials": tutorials,
+    }
+
+
+def get_classroom_concept_matrix(session: Session, league: League) -> dict:
+    """Student x concept mastery grid for one classroom.
+
+    Rolls every exercise attempt up to the concepts its exercise is tagged
+    with, so a teacher sees what to reteach rather than which exercise numbers
+    went badly. Scoring lives in concept_mastery.py and ships with the payload
+    (`scoring`) so the teacher-facing explanation cannot drift from it.
+
+    "Not reached" cells are omitted, as in the tutorial matrix — the client
+    renders absence. Two coverage figures are reported deliberately, because
+    an incomplete map must never read as a confident one: `untagged_exercises`
+    is how much of the classroom's content this map ignores, and each concept's
+    `under_assessed` flag marks the ones tested too few times for their cell to
+    mean much.
+    """
+    teams = session.exec(
+        select(Team).where(Team.league_id == league.id).order_by(Team.name)
+    ).all()
+    team_ids = [team.id for team in teams]
+
+    concepts, exercises_by_concept = _league_concept_tags(session, league.id)
+    lesson_slugs = _lesson_slugs_by_concept(session, list(concepts))
+    effort = _league_exercise_effort(session, league.id, team_ids)
+    hints = _league_hint_reveals(session, league.id, team_ids)
+
+    exercises_total = session.exec(
+        select(func.count(Exercise.id))
+        .join(LeagueTutorial, LeagueTutorial.tutorial_id == Exercise.tutorial_id)
+        .where(LeagueTutorial.league_id == league.id)
+    ).one()
+    tagged_exercise_ids = {
+        exercise["id"]
+        for exercises in exercises_by_concept.values()
+        for exercise in exercises
+    }
+
+    cells = []
+    # {concept_id: [score, ...]} over the students who reached it, for the
+    # class column beside the matrix.
+    class_scores: dict = {}
+    attention_counts: dict = {}
+    for concept_id, exercises in exercises_by_concept.items():
+        for team in teams:
+            points = []
+            passed_count = 0
+            attempts_total = 0
+            hints_total = 0
+            tries_to_pass = []
+            last_attempt = None
+            for exercise in exercises:
+                cell = effort.get((team.id, exercise["id"]))
+                if not cell:
+                    continue
+                exercise_hints = hints.get((team.id, exercise["id"]), 0)
+                points.append(
+                    exercise_points(
+                        cell["passed"],
+                        cell["attempts_to_pass"] or 0,
+                        exercise_hints,
+                    )
+                )
+                attempts_total += cell["attempts"]
+                hints_total += exercise_hints
+                if cell["passed"]:
+                    passed_count += 1
+                    tries_to_pass.append(cell["attempts_to_pass"])
+                if cell["last_attempt_at"] and (
+                    last_attempt is None
+                    or cell["last_attempt_at"] > last_attempt
+                ):
+                    last_attempt = cell["last_attempt_at"]
+
+            if not points:
+                continue  # not reached — the client renders absence
+
+            score = concept_score(points, passed_count, len(exercises))
+            band = band_for(score)
+            class_scores.setdefault(concept_id, []).append(score)
+            if band["band"] in ATTENTION_BANDS:
+                attention_counts[concept_id] = (
+                    attention_counts.get(concept_id, 0) + 1
+                )
+            cells.append(
+                {
+                    "team_id": team.id,
+                    "concept_id": concept_id,
+                    "band": band["band"],
+                    "band_key": band["key"],
+                    # Kept for ordering and for the drill-down's evidence line;
+                    # the grid itself deliberately shows the band, not this.
+                    "mastery": score,
+                    "confidence": confidence_for(len(points)),
+                    "exercises_passed": passed_count,
+                    "exercises_touched": len(points),
+                    "exercises_total": len(exercises),
+                    "attempts": attempts_total,
+                    "avg_attempts_to_pass": (
+                        round(sum(tries_to_pass) / len(tries_to_pass), 1)
+                        if tries_to_pass
+                        else None
+                    ),
+                    "hints_used": hints_total,
+                    "last_attempt_at": (
+                        last_attempt.isoformat() if last_attempt else None
+                    ),
+                }
+            )
+
+    concept_rows = []
+    # {concept_id: (tutorial_id, order_index)} of where the concept is first
+    # taught — order_index restarts per tutorial, so both halves are needed.
+    first_taught = {}
+    for concept_id, concept in concepts.items():
+        reached = class_scores.get(concept_id, [])
+        exercises = exercises_by_concept[concept_id]
+        class_mastery = round(sum(reached) / len(reached)) if reached else None
+        class_band = band_for(class_mastery) if reached else None
+        first_taught[concept_id] = min(
+            (exercise["tutorial_id"], exercise["order_index"])
+            for exercise in exercises
+        )
+        concept_rows.append(
+            {
+                "id": concept_id,
+                "slug": concept.slug,
+                "name": concept.name,
+                "description": concept.description,
+                "category": concept.category,
+                "lesson_slug": lesson_slugs.get(concept_id),
+                # Curriculum order: where this concept is first taught.
+                "order_index": first_taught[concept_id][1],
+                "exercises": exercises,
+                "exercises_total": len(exercises),
+                # Too few exercises for this row to be evidence rather than an
+                # anecdote — the tab says so rather than quietly implying otherwise.
+                "under_assessed": len(exercises) < MIN_ASSESSMENTS,
+                "class_mastery": class_mastery,
+                "band": class_band["band"] if class_band else None,
+                "band_key": class_band["key"] if class_band else None,
+                "reached": len(reached),
+                "needs_attention": attention_counts.get(concept_id, 0),
+            }
+        )
+    concept_rows.sort(
+        key=lambda row: (row["category"] or "", first_taught[row["id"]])
+    )
+
+    return {
+        "league": {"id": league.id, "name": league.name},
+        "teams": [{"id": team.id, "name": team.name} for team in teams],
+        "concepts": concept_rows,
+        "cells": cells,
+        # Who to help, worst first: band, then how well evidenced the reading
+        # is, then the raw score. The client turns this into sentences.
+        "attention": [
+            {
+                "team_id": cell["team_id"],
+                "concept_id": cell["concept_id"],
+                "band": cell["band"],
+                "confidence": cell["confidence"],
+            }
+            for cell in sorted(
+                (cell for cell in cells if cell["band"] in ATTENTION_BANDS),
+                key=lambda cell: (
+                    -cell["band"],
+                    _CONFIDENCE_RANK[cell["confidence"]],
+                    cell["mastery"],
+                ),
+            )
+        ],
+        "untagged_exercises": exercises_total - len(tagged_exercise_ids),
+        "exercises_total": exercises_total,
+        "under_assessed_concepts": sum(
+            1 for row in concept_rows if row["under_assessed"]
+        ),
+        "scoring": describe_mastery_model(),
     }
 
 

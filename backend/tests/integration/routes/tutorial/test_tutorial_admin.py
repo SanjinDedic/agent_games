@@ -7,6 +7,7 @@ from backend.database.db_models import (
     Concept,
     Exercise,
     ExerciseConcept,
+    ExerciseHintReveal,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
     Team,
@@ -212,6 +213,52 @@ def test_delete_exercise_removes_its_concept_links(
     db_session.expire_all()
     remaining = db_session.exec(select(ExerciseConcept.exercise_id)).all()
     assert sorted(remaining) == sorted(exercise_ids[1:])
+
+
+def test_delete_exercise_removes_hint_reveals(
+    client, auth_headers, db_session, tutorial_with_exercises
+):
+    """Hint reveals hold an FK to exercise and can exist without any
+    submission, so deletion must clear them explicitly."""
+    exercise_ids = exercise_ids_in_order(db_session, tutorial_with_exercises.id)
+    team = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
+    for exercise_id in exercise_ids[:2]:
+        db_session.add(
+            ExerciseHintReveal(
+                team_id=team.id, exercise_id=exercise_id, hint_index=0
+            )
+        )
+    db_session.commit()
+
+    response = client.delete(
+        f"/tutorial/exercise/{exercise_ids[0]}", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    remaining = db_session.exec(select(ExerciseHintReveal.exercise_id)).all()
+    assert remaining == [exercise_ids[1]]
+
+
+def test_delete_tutorial_removes_hint_reveals(
+    client, auth_headers, db_session, tutorial_with_exercises
+):
+    exercise_ids = exercise_ids_in_order(db_session, tutorial_with_exercises.id)
+    team = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
+    db_session.add(
+        ExerciseHintReveal(
+            team_id=team.id, exercise_id=exercise_ids[0], hint_index=0
+        )
+    )
+    db_session.commit()
+
+    response = client.delete(
+        f"/tutorial/tutorial/{tutorial_with_exercises.id}", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    assert db_session.exec(select(ExerciseHintReveal)).all() == []
 
 
 # -- admin detail -----------------------------------------------------------
