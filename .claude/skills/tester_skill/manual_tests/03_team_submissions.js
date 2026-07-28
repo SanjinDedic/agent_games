@@ -19,8 +19,10 @@
 //   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/03_team_submissions.js
 const {
   BASE, loadState, saveState, launchPage, waitForToast, dismissToasts,
-  setMonacoValue, getMonacoValue, submitCode, finish,
+  setMonacoValue, getMonacoValue, readTutorialOverview, submitCode, finish,
 } = require('./_helpers');
+
+const EXERCISE = 'Add Up the Scoreboard';
 
 // Names carry the run suffix so re-runs don't collide with existing teams.
 const teamDefs = (run) => [
@@ -29,9 +31,11 @@ const teamDefs = (run) => [
   { name: `charl${run}`, password: 'CharliePass1' },
 ];
 
-// 3.3 (Team 1 only) — one tutorial exercise per the manual, using seeded
-// exercise #4 "Add Up the Scoreboard" (total_banked over the banked_money
-// dict, 5 tests). Submission outcomes are asserted from the
+// 3.3 (Team 1 only) — one tutorial exercise per the manual, using the seeded
+// exercise "Add Up the Scoreboard" (total_banked over the banked_money dict,
+// 5 tests). Its position and the tutorial's exercise count are read off the
+// overview rather than hardcoded — the tutorial is authored content and grows.
+// Submission outcomes are asserted from the
 // /tutorial/submit-exercise response body (200 with passed/test_results;
 // 400 detail when the code never produces results), mirroring how agent
 // submissions are asserted from /user/submit-agent. There is deliberately
@@ -44,12 +48,17 @@ async function runTutorialExercise(page) {
   await page.click('nav a:has-text("Tutorial")');
   await page.waitForURL('**/Tutorial', { timeout: 20000 });
   await page.waitForSelector('h1:has-text("Python Foundations for Greedy Pig")', { timeout: 30000 });
-  await page.waitForSelector('text=0 of 10 exercises completed', { timeout: 15000 });
-  console.log('[3.3] overview loaded: 10 exercises, 0 of 10 completed');
+  const overview = await readTutorialOverview(page, EXERCISE);
+  if (overview.passed !== 0) {
+    throw new Error(`fresh team should start at 0 completed, overview says ${overview.passed}`);
+  }
+  if (!overview.position) throw new Error(`"${EXERCISE}" is already completed before this stage ran`);
+  console.log(`[3.3] overview loaded: ${overview.total} exercises, 0 of ${overview.total} completed ` +
+    `("${EXERCISE}" is #${overview.position})`);
 
-  await page.click('li button:has-text("Add Up the Scoreboard")');
+  await page.click(`li button:has-text("${EXERCISE}")`);
   await page.waitForSelector('button:has-text("Problem Description")', { timeout: 30000 });
-  await page.waitForSelector('text=4. Add Up the Scoreboard', { timeout: 15000 });
+  await page.waitForSelector(`text=${overview.position}. ${EXERCISE}`, { timeout: 15000 });
   await page.waitForSelector('text=TEAM:', { timeout: 15000 });
   if (await page.locator('button:has-text("Get Hint")').count()) {
     throw new Error('tutorial workspace unexpectedly shows a Get Hint button (hints are agent-submission only)');
@@ -94,16 +103,16 @@ async function runTutorialExercise(page) {
   }
   console.log(`[3.3] broken submission correctly rejected: "${detail}"`);
 
-  // Back to the overview: the exercise is Completed, progress 1 of 10 (a
+  // Back to the overview: the exercise is Completed, progress 1 of <total> (a
   // passed run counts even though a rejected attempt came after it). The
   // rejection toast overlaps the panel header in a headless browser —
   // dismiss it first.
   await dismissToasts(page);
   await page.click('button:has-text("All exercises")');
-  await page.waitForSelector('text=1 of 10 exercises completed', { timeout: 15000 });
-  await page.locator('li button:has-text("Add Up the Scoreboard")')
+  await page.waitForSelector(`text=1 of ${overview.total} exercises completed`, { timeout: 15000 });
+  await page.locator(`li button:has-text("${EXERCISE}")`)
     .locator('text=Completed').waitFor({ timeout: 15000 });
-  console.log('[3.3] overview shows Add Up the Scoreboard as Completed, 1 of 10');
+  console.log(`[3.3] overview shows ${EXERCISE} as Completed, 1 of ${overview.total}`);
 }
 
 async function runTeam(page, observed, signupUrl, team, { withTutorial = false } = {}) {

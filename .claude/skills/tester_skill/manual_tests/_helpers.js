@@ -105,6 +105,36 @@ async function getMonacoValue(page) {
   return page.evaluate(() => window.monaco.editor.getEditors()[0].getValue());
 }
 
+// Read the tutorial overview's progress line ("<passed> of <total> exercises
+// completed") and the list position of one exercise. Both numbers are content,
+// not behaviour: exercises get authored in and out of a tutorial, so pinning
+// them in a script turns every content edit into a false failure. Callers
+// assert the passed count they caused and carry `total`/`position` forward.
+// The position must be read BEFORE the exercise passes — the badge shows a ✓
+// instead of the number once it is completed.
+async function readTutorialOverview(page, exerciseTitle, timeout = 15000) {
+  const progress = page.locator('text=/^\\d+ of \\d+ exercises completed$/').first();
+  await progress.waitFor({ timeout });
+  const line = (await progress.innerText()).trim();
+  const counts = line.match(/^(\d+) of (\d+) exercises completed$/);
+  if (!counts) throw new Error(`unexpected tutorial progress line: "${line}"`);
+
+  const item = page.locator('li').filter({
+    has: page.locator(`button:has-text("${exerciseTitle}")`),
+  }).first();
+  if (!(await item.count())) {
+    throw new Error(`tutorial overview has no exercise titled "${exerciseTitle}"`);
+  }
+  // First span in the card is the status badge: the 1-based position, or ✓.
+  const badge = (await item.locator('button > span').first().innerText()).trim();
+
+  return {
+    passed: Number(counts[1]),
+    total: Number(counts[2]),
+    position: /^\d+$/.test(badge) ? Number(badge) : null,
+  };
+}
+
 // Click "Submit Code" and return {status, body} from the submit response.
 // Success = HTTP 200 with submission_id; validation failure = HTTP 400 with detail.
 // `endpoint` picks the response to assert on: agent submissions (default) or
@@ -137,5 +167,6 @@ async function finish(page, browser, observed, { name, failure } = {}) {
 
 module.exports = {
   BASE, STATE_FILE, loadState, saveState, launchPage, acceptDialogs,
-  collectToasts, waitForToast, dismissToasts, setMonacoValue, getMonacoValue, submitCode, finish,
+  collectToasts, waitForToast, dismissToasts, setMonacoValue, getMonacoValue,
+  readTutorialOverview, submitCode, finish,
 };
