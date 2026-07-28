@@ -99,7 +99,7 @@ services:
       retries: 3
       start_period: 30s
     volumes:
-      - ./backend:/agent_games/backend
+      - ./backend:/agent_games/backend:ro
     mem_limit: 500m
     # memswap_limit == mem_limit disables swap for the container. Without it,
     # docker grants an equal amount of swap on hosts that have any (GitHub
@@ -138,7 +138,7 @@ services:
       retries: 3
       start_period: 30s
     volumes:
-      - ./backend:/agent_games/backend
+      - ./backend:/agent_games/backend:ro
     mem_limit: 500m
     # Same no-swap guarantee as worker-validation: untrusted code must hit the
     # RAM cap and die, not spill into host swap.
