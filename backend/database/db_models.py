@@ -213,7 +213,8 @@ class SubmissionMetadata(SQLModel, table=True):
     and hint availability. A linked Submission row == passed validation."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    # nullable so an ORM Team delete can null it out rather than fail; deleting
+    # a Team still goes through delete_team_children(), which removes these rows
     team_id: Optional[int] = Field(
         default=None, foreign_key="team.id", nullable=True, index=True
     )
@@ -450,7 +451,8 @@ class ExerciseSubmissionMetadata(SQLModel, table=True):
     limiting. A linked ExerciseSubmission row == the code was safe and ran."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    # Team has no parent-side relationship to this table, so an ORM Team delete
+    # will NOT null this out — every Team delete must call delete_team_children()
     team_id: Optional[int] = Field(
         default=None, foreign_key="team.id", nullable=True, index=True
     )
@@ -494,7 +496,8 @@ class ExerciseHintReveal(SQLModel, table=True):
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    # Team has no parent-side relationship to this table, so an ORM Team delete
+    # will NOT null this out — every Team delete must call delete_team_children()
     team_id: Optional[int] = Field(
         default=None, foreign_key="team.id", nullable=True, index=True
     )

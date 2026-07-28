@@ -15,7 +15,8 @@ from backend.database.db_models import (Exercise, ExerciseSubmission,
                                         SimulationResultItem, Submission,
                                         SubmissionMetadata, Team, TeamType,
                                         Tutorial)
-from backend.database.submission_helpers import delete_submissions_for_teams
+from backend.database.submission_helpers import (delete_submissions_for_teams,
+                                                 delete_team_children)
 from backend.games.game_factory import GameFactory
 from backend.routes.institution.institution_models import LeagueSignUp
 from backend.schools.config import (GoogleSheetsSchoolsConfig,
@@ -249,13 +250,8 @@ def delete_team(session: Session, team_id: int, institution_id: int) -> str:
     if team.institution_id != institution_id:
         raise InstitutionAccessError("You don't have permission to delete this team")
 
-    # Delete associated submissions first
-    delete_submissions_for_teams(session, [team.id])
-
-    # Delete all result items
-    session.exec(
-        delete(SimulationResultItem).where(SimulationResultItem.team_id == team_id)
-    )
+    # Clear everything that references the team first
+    delete_team_children(session, [team.id])
 
     session.delete(team)
     session.commit()

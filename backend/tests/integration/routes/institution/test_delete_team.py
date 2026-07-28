@@ -3,8 +3,13 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import add_submission, build_institution
-from backend.database.db_models import Institution, League, Submission, SubmissionMetadata, Team
+from backend.tests.conftest import (add_exercise_work, add_submission,
+                                    build_institution)
+from backend.database.db_models import (ExerciseHintReveal,
+                                        ExerciseSubmission,
+                                        ExerciseSubmissionMetadata,
+                                        Institution, League, Submission,
+                                        SubmissionMetadata, Team)
 from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
 
@@ -110,6 +115,47 @@ def test_delete_team_success(client, institution_setup, db_session):
         )
     ).all()
     assert len(orphaned_code) == 0
+
+
+def test_delete_team_with_exercise_work(client, institution_setup, db_session):
+    """A student who has attempted exercises or revealed hints can be deleted.
+
+    Those rows FK-reference team.id with no ON DELETE CASCADE, so they have to
+    be cleared explicitly or the delete 500s.
+    """
+    _, team, _, headers = institution_setup
+    add_exercise_work(db_session, team.id, title="Delete Team Exercise")
+
+    response = client.post(
+        "/institution/delete-team",
+        headers=headers,
+        json={"id": team.id},
+    )
+    assert response.status_code == 200
+
+    assert db_session.exec(select(Team).where(Team.id == team.id)).first() is None
+    assert (
+        db_session.exec(
+            select(ExerciseSubmissionMetadata).where(
+                ExerciseSubmissionMetadata.team_id == team.id
+            )
+        ).all()
+        == []
+    )
+    assert (
+        db_session.exec(
+            select(ExerciseHintReveal).where(ExerciseHintReveal.team_id == team.id)
+        ).all()
+        == []
+    )
+    orphaned_code = db_session.exec(
+        select(ExerciseSubmission).where(
+            ~ExerciseSubmission.metadata_id.in_(
+                select(ExerciseSubmissionMetadata.id)
+            )
+        )
+    ).all()
+    assert orphaned_code == []
 
 
 def test_delete_team_failures(client, institution_setup, db_session):

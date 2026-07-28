@@ -25,7 +25,7 @@ from backend.database.db_models import (
     TeamType,
     get_password_hash,
 )
-from backend.database.submission_helpers import delete_submissions_for_teams
+from backend.database.submission_helpers import delete_team_children
 from backend.routes.admin.admin_models import (
     CreateAgentTeam,
     CreateInstitution,
@@ -246,13 +246,7 @@ def _purge_institution_data(
         session.exec(delete(SupportTicket).where(SupportTicket.id.in_(ticket_ids)))
 
     if team_ids:
-        delete_submissions_for_teams(session, team_ids)
-        session.exec(
-            delete(SimulationResultItem).where(
-                SimulationResultItem.team_id.in_(team_ids)
-            )
-        )
-        session.exec(delete(AgentAPIKey).where(AgentAPIKey.team_id.in_(team_ids)))
+        delete_team_children(session, team_ids)
         session.exec(delete(Team).where(Team.institution_id == institution_id))
 
     if league_ids:
@@ -550,12 +544,8 @@ def delete_all_demo_teams_and_subs(session):
 
     team_ids = [team.id for team in all_demo_teams]
 
-    # First, delete all submissions from these teams
-    delete_submissions_for_teams(session, team_ids)
-    # Delete any SimulationResultItems for these teams
-    session.exec(
-        delete(SimulationResultItem).where(SimulationResultItem.team_id.in_(team_ids))
-    )
+    # First, clear everything that references these teams
+    delete_team_children(session, team_ids)
     # Now delete the teams themselves
     session.exec(delete(Team).where(Team.id.in_(team_ids)))
 
