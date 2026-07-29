@@ -415,9 +415,12 @@ class Exercise(SQLModel, table=True):
     (backend/exercise_worker/tasks.py) exec'd into the same namespace as
     the student's code. It can test multiple functions and check print
     output. Authored by the seed script or through the admin exercise
-    editor; students never see it. `entry_function` still names the one
-    function every submission must define, so a wrong-name submission fails
-    fast with a clear message. `solution` is an optional reference solution
+    editor; students never see it. `entry_function` names the one function
+    every submission must define, so a wrong-name submission fails fast with
+    a clear message; empty string means a top-level-code exercise — no
+    function required, tests grade module-level variables and the
+    worker-injected `module_output` print capture instead.
+    `solution` is an optional reference solution
     for the admin editor's Run workflow — like test_code, it never reaches
     students. `exercise_hints` is an ordered list of Markdown strings shown
     to students separately from the problem text.

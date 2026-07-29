@@ -199,3 +199,78 @@ def test_check_output_accepts_the_capture_object_itself():
     )
     result = run_exercise(student, "greet", test_code)
     assert result["passed"] is True
+
+
+# --- top-level-code exercises (empty entry_function) ---
+
+PRINT_TEST = (
+    "def test_prints():\n"
+    "    check_output(module_output, 'Hello, world!')\n"
+)
+
+
+def test_no_function_exercise_passes_via_module_output():
+    result = run_exercise("print('Hello, world!')", "", PRINT_TEST)
+    assert result["status"] == "success"
+    assert result["passed"] is True
+    # The student still sees their print in the stdout panel.
+    assert result["stdout"] == "Hello, world!\n"
+
+
+def test_do_nothing_code_fails_tests_normally():
+    result = run_exercise("x = 1", "", PRINT_TEST)
+    assert result["status"] == "success"
+    assert result["passed"] is False
+    (row,) = result["test_results"]
+    assert row["actual"] == ""
+
+
+def test_top_level_variable_is_checked_by_bare_name():
+    test_code = "def test_var():\n    check(name, 'Ada')\n"
+    result = run_exercise("name = 'Ada'", "", test_code)
+    assert result["passed"] is True
+    # An undefined variable is a normal failing row, not an error.
+    result = run_exercise("other = 1", "", test_code)
+    assert result["status"] == "success"
+    assert result["passed"] is False
+    assert "NameError" in result["test_results"][0]["error"]
+
+
+def test_module_output_is_truncated_at_max_stdout_chars():
+    student = f"print('x' * {MAX_STDOUT_CHARS * 2})"
+    test_code = (
+        f"def test_len():\n    check(len(module_output), {MAX_STDOUT_CHARS})\n"
+    )
+    result = run_exercise(student, "", test_code)
+    assert result["passed"] is True
+
+
+def test_function_exercise_also_gets_module_output():
+    student = f"print('loaded')\n{ADD_CODE}"
+    test_code = (
+        "def test_all():\n"
+        "    check_output(module_output, 'loaded')\n"
+        "    check(add(1, 2), 3)\n"
+    )
+    result = run_exercise(student, "add", test_code)
+    assert result["passed"] is True
+    assert result["stdout"] == "loaded\n"
+
+
+def test_missing_function_still_errors_when_entry_is_set():
+    result = run_exercise("x = 1", "add", PRINT_TEST)
+    assert result["status"] == "error"
+    assert "must define a function named 'add'" in result["message"]
+
+
+def test_crash_after_print_keeps_partial_output_in_stdout_panel():
+    result = run_exercise("print('before')\nboom", "", PRINT_TEST)
+    assert result["status"] == "error"
+    assert result["stdout"].startswith("before\n")
+
+
+def test_student_defined_module_output_is_clobbered():
+    result = run_exercise(
+        "module_output = 'Hello, world!'", "", PRINT_TEST
+    )
+    assert result["passed"] is False

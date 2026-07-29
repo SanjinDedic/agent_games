@@ -301,6 +301,79 @@ def test_submit_print_exercise(
     assert response.json()["passed"] is True
 
 
+HELLO_TEST_CODE = '''\
+def test_prints_hello():
+    """prints the greeting"""
+    check_output(module_output, "Hello, world!")
+'''
+
+
+@pytest.fixture
+def hello_exercise(
+    db_session: Session, tutorial_with_exercise: Tutorial
+) -> Exercise:
+    """A top-level-code exercise (empty entry_function): no function needed,
+    tests grade the module_output print capture."""
+    exercise = Exercise(
+        tutorial_id=tutorial_with_exercise.id,
+        order_index=3,
+        title="Hello Exercise",
+        problem_markdown="Print Hello, world!",
+        starter_code="# print a greeting\n",
+        entry_function="",
+        test_code=HELLO_TEST_CODE,
+    )
+    db_session.add(exercise)
+    db_session.commit()
+    db_session.refresh(exercise)
+    return exercise
+
+
+def test_submit_top_level_code_exercise(
+    client, db_session, team_headers, hello_exercise, celery_workers
+):
+    """No function required: top-level prints are graded via module_output,
+    still reach the stdout panel, and a do-nothing submission fails the
+    tests normally instead of hitting the missing-function 400."""
+    response = client.post(
+        "/tutorial/submit-exercise",
+        json={
+            "exercise_id": hello_exercise.id,
+            "code": "print('Hello, world!')\n",
+        },
+        headers=team_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["passed"] is True
+    assert "Hello, world!" in data["stdout"]
+
+    # Wrong output: a normal failing row carrying the raw text, not a 400.
+    response = client.post(
+        "/tutorial/submit-exercise",
+        json={
+            "exercise_id": hello_exercise.id,
+            "code": "print('Goodbye')\n",
+        },
+        headers=team_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["passed"] is False
+    (row,) = data["test_results"]
+    assert row["expected"] == "Hello, world!"
+    assert row["actual"] == "Goodbye\n"
+
+    # Code that does nothing at all still runs the tests (no function gate).
+    response = client.post(
+        "/tutorial/submit-exercise",
+        json={"exercise_id": hello_exercise.id, "code": "x = 1\n"},
+        headers=team_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["passed"] is False
+
+
 def test_submit_exercise_has_no_ast_gate(
     client, db_session, team_headers, word_counter_exercise, celery_workers
 ):

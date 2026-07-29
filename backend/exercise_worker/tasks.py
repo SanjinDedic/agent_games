@@ -25,6 +25,13 @@ injected helpers:
 - check_output(text, expected, name=None) — whitespace-tolerant text compare
 - capture() — context manager capturing stdout, exposing ``.text``
 
+An empty ``entry_function`` means a top-level-code exercise: no function is
+required, and tests grade module-level state directly — variables by bare
+name, print output via the injected ``module_output`` string (everything the
+student's code printed while it was exec'd, truncated at MAX_STDOUT_CHARS).
+``module_output`` is injected on every run, so it is a reserved name in the
+student namespace.
+
 A failing check is a normal outcome ("status": "success", test not passed) —
 "status": "error" means the code never got as far as producing test results
 (syntax error, missing function, timeout).
@@ -300,8 +307,10 @@ def _execute_tests(
     """Exec the student's code, run the test script, return the raw result."""
     t0 = time.perf_counter()
     namespace: Dict[str, Any] = {"__name__": "exercise_submission"}
+    module_buf = io.StringIO()
     try:
-        exec(code, namespace)  # noqa: S102 - isolated one-task worker process
+        with contextlib.redirect_stdout(module_buf):
+            exec(code, namespace)  # noqa: S102 - isolated one-task worker process
     except SoftTimeLimitExceeded:
         raise
     except Exception:
@@ -310,13 +319,22 @@ def _execute_tests(
             "message": "Your code failed to run before any tests started.",
             "traceback": tb.format_exc(),
         }
+    finally:
+        # Re-emit into the run-level stdout panel so students still see what
+        # they printed, including partial output before a crash or timeout.
+        print(module_buf.getvalue(), end="")
 
-    func = namespace.get(entry_function)
-    if not callable(func):
-        return {
-            "status": "error",
-            "message": f"Your code must define a function named '{entry_function}'.",
-        }
+    # An empty entry_function marks a top-level-code exercise: no function
+    # required, tests grade module state and ``module_output`` instead.
+    if entry_function:
+        func = namespace.get(entry_function)
+        if not callable(func):
+            return {
+                "status": "error",
+                "message": f"Your code must define a function named '{entry_function}'.",
+            }
+
+    namespace["module_output"] = module_buf.getvalue()[:MAX_STDOUT_CHARS]
 
     test_results: list = []
     if test_code:

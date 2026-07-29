@@ -344,6 +344,22 @@ def test_create_exercise_rejects_bad_entry_function(client, auth_headers, tutori
     assert response.status_code == 422
 
 
+def test_create_exercise_accepts_blank_entry_function(
+    client, auth_headers, db_session, tutorial
+):
+    """Blank entry_function = top-level-code exercise (no function needed)."""
+    payload = {**EXERCISE_PAYLOAD, "entry_function": "  "}
+    response = client.post(
+        f"/tutorial/tutorial/{tutorial.id}/exercises",
+        json=payload,
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    db_session.expire_all()
+    exercise = db_session.get(Exercise, response.json()["id"])
+    assert exercise.entry_function == ""
+
+
 def test_update_exercise_replaces_all_fields(
     client, auth_headers, db_session, tutorial_with_exercises
 ):
@@ -454,6 +470,26 @@ def test_run_exercise_passes(client, auth_headers, celery_workers):
         "adds two numbers",
         "adds negatives",
     ]
+
+
+def test_run_exercise_top_level_code(client, auth_headers, celery_workers):
+    """The dry run works without an entry function: top-level prints are
+    graded through module_output."""
+    payload = {
+        "code": "print('Hello, world!')\n",
+        "entry_function": "",
+        "test_code": (
+            "def test_prints():\n"
+            "    check_output(module_output, 'Hello, world!')\n"
+        ),
+    }
+    response = client.post(
+        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["passed"] is True
 
 
 def test_run_exercise_failing_test(client, auth_headers, celery_workers):

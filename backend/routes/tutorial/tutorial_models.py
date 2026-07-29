@@ -47,7 +47,7 @@ class ExerciseRequest(BaseModel):
     title: str
     problem_markdown: str
     starter_code: str = ""
-    entry_function: str
+    entry_function: str = ""
     test_code: Optional[str] = None
     solution: Optional[str] = None
     exercise_hints: List[str] = []
@@ -74,8 +74,10 @@ class ExerciseRequest(BaseModel):
     @field_validator("entry_function")
     @classmethod
     def entry_function_is_identifier(cls, value: str) -> str:
+        # Empty means a top-level-code exercise: no function required, tests
+        # grade module-level state and the worker-injected ``module_output``.
         value = value.strip()
-        if not value.isidentifier():
+        if value and not value.isidentifier():
             raise ValueError(
                 "Entry function must be a valid Python function name"
             )
@@ -88,7 +90,7 @@ class ExerciseRunRequest(BaseModel):
     ever saved."""
 
     code: str
-    entry_function: str
+    entry_function: str = ""
     test_code: Optional[str] = None
 
 
