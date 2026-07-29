@@ -4,30 +4,31 @@ import { useNavigate } from 'react-router-dom';
 import { useLessonModal } from '../../Shared/Lesson/LessonModalContext';
 import { useTerms } from '../../Shared/terminology';
 import {
-  BAND_BARS,
   BAND_CHIPS,
-  confidenceWording,
-  isAttentionBand,
+  Meter,
+  exposureTone,
+  fluencyTone,
 } from '../../Shared/Progress/MasteryCell';
 
 /**
- * Drill-down for one concept: who is struggling with it, which exercises
- * teach it, and the lesson to send them to.
+ * Drill-down for one concept: how the class is doing on it, how one student is
+ * doing beside them, which exercises teach it, and the lesson to send them to.
  *
  * Everything here comes from the matrix payload the tab already holds — no
  * second request. Opened from a body cell it also gets `focusTeamId`, which
- * pins that student's figures at the top; opened from a concept row or the
- * reteach list it shows the class.
+ * pins that student's bars next to the class's; opened from a concept row or
+ * the reteach list it shows the class alone.
  *
- * This is the one place a raw score appears, and it appears labelled: the
- * bands are what the page means, the number is only how it sorts them.
+ * The class bars sit directly above the student's on purpose. "Slow on
+ * dictionaries" means one thing when the rest of the class sailed through and
+ * something completely different when nobody got it, and a teacher cannot tell
+ * those apart from a single student's bar.
  */
 function ConceptDetailModal({
   concept,
   teams,
   cells,
-  bands,
-  minAssessments,
+  scoring,
   leagueId,
   focusTeamId,
   onClose,
@@ -41,12 +42,18 @@ function ConceptDetailModal({
     [teams]
   );
 
-  // This concept's cells, weakest student first.
+  // This concept's cells, weakest student first. Students with nothing
+  // judgeable yet sort last: they are behind, not struggling.
   const conceptCells = useMemo(() => {
     if (!concept) return [];
     return cells
       .filter((cell) => cell.concept_id === concept.id)
-      .sort((a, b) => b.band - a.band || a.mastery - b.mastery);
+      .sort((a, b) => {
+        if (a.fluency == null && b.fluency == null) return 0;
+        if (a.fluency == null) return 1;
+        if (b.fluency == null) return -1;
+        return a.fluency - b.fluency;
+      });
   }, [cells, concept]);
 
   const focusCell = focusTeamId
@@ -56,9 +63,28 @@ function ConceptDetailModal({
   if (!concept) return null;
 
   const bandLabel = (key) =>
-    bands.find((band) => band.key === key)?.label || '';
-  const needHelp = conceptCells.filter((cell) => isAttentionBand(cell.band));
+    scoring.bands.find((band) => band.key === key)?.label || '';
+  const needHelp = conceptCells.filter((cell) => cell.needs_help);
   const notReached = teams.length - conceptCells.length;
+
+  /** The same two bars for the class and for one student, so they can be read
+      as a pair rather than as two unrelated readings. */
+  const pair = ({ exposure, fluency, exposureKey, fluencyKey, muted }) => (
+    <div className="grid grid-cols-2 gap-4">
+      <Meter
+        label="Exposure"
+        value={exposure}
+        tone={exposureTone(scoring, exposureKey)}
+        muted={muted}
+      />
+      <Meter
+        label="Fluency"
+        value={fluency}
+        tone={fluencyTone(scoring, fluencyKey)}
+        muted={muted}
+      />
+    </div>
+  );
 
   return (
     <div
@@ -66,7 +92,7 @@ function ConceptDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 flex flex-col"
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start mb-4">
@@ -98,86 +124,87 @@ function ConceptDetailModal({
             {`Only ${concept.exercises_total} exercise${
               concept.exercises_total !== 1 ? 's' : ''
             } in this ${T.league} practise this concept, so every reading below `}
-            {`rests on very little. ${minAssessments} or more would make it `}
-            {`something to act on.`}
+            {`rests on very little. ${scoring.min_assessments} or more would `}
+            {`make it something to act on.`}
           </p>
         )}
 
-        {/* Class band */}
-        <div className="mb-5">
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-sm text-ui">The class</span>
-            <span className="text-base font-semibold text-ui-dark">
-              {concept.band_key ? bandLabel(concept.band_key) : 'Not reached'}
-            </span>
-          </div>
-          <div className="h-2 w-full rounded-full bg-ui-lighter overflow-hidden">
-            <div
-              className={`h-full rounded-full ${
-                BAND_BARS[concept.band_key] || 'bg-ui-light'
-              }`}
-              style={{ width: `${concept.class_mastery ?? 0}%` }}
-            />
-          </div>
-          <p className="text-sm text-ui mt-2">
-            {concept.reached} of {teams.length} {T.teams} have reached it
-            {notReached > 0 && ` · ${notReached} not there yet`}
-            {needHelp.length > 0 && (
-              <span className="text-danger"> · {needHelp.length} need help</span>
-            )}
-          </p>
-        </div>
-
-        {/* The student this modal was opened from */}
-        {focusCell && (
-          <div className="mb-5 p-4 rounded-lg border border-primary/40 bg-primary/5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <button
-                onClick={() =>
-                  navigate(`/Classroom/${leagueId}/student/${focusCell.team_id}`)
-                }
-                className="text-base font-semibold text-primary hover:text-primary-hover transition-colors"
-              >
-                {teamNames.get(focusCell.team_id)} →
-              </button>
-              <span
-                className={`px-2 py-0.5 rounded border text-sm font-semibold ${
-                  BAND_CHIPS[focusCell.band_key]
-                }`}
-              >
-                {bandLabel(focusCell.band_key)}
+        {/* The class, then the student, on the same two scales */}
+        <div className="mb-5 space-y-4">
+          <div>
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-sm font-semibold text-ui-dark">
+                The class
+              </span>
+              <span className="text-xs text-ui">
+                {concept.reached} of {teams.length} {T.teams} have reached it
+                {notReached > 0 && ` · ${notReached} not there yet`}
+                {needHelp.length > 0 && (
+                  <span className="text-danger">
+                    {' '}
+                    · {needHelp.length} need help
+                  </span>
+                )}
               </span>
             </div>
-            {isAttentionBand(focusCell.band) && (
-              <p className="text-base text-ui-dark mt-1">
-                {teamNames.get(focusCell.team_id)}{' '}
-                {confidenceWording(focusCell.confidence)} struggling with{' '}
-                {concept.name}.
-              </p>
-            )}
-            <p className="text-sm text-ui mt-1">
-              Passed {focusCell.exercises_passed} of{' '}
-              {focusCell.exercises_touched} attempted exercises
-              {focusCell.avg_attempts_to_pass &&
-                ` · ${focusCell.avg_attempts_to_pass} tries to pass on average`}
-              {` · ${focusCell.attempts} attempt${
-                focusCell.attempts !== 1 ? 's' : ''
-              } in total`}
-              {focusCell.hints_used > 0 &&
-                ` · ${focusCell.hints_used} hint${
-                  focusCell.hints_used !== 1 ? 's' : ''
-                } revealed`}
-            </p>
-            <p className="text-xs text-ui mt-1">
-              score {focusCell.mastery}% — used for ordering only
-            </p>
+            {pair({
+              exposure: concept.class_exposure,
+              fluency: concept.class_fluency,
+              exposureKey: concept.exposure_band_key,
+              fluencyKey: concept.band_key,
+              muted: true,
+            })}
           </div>
-        )}
+
+          {focusCell && (
+            <div className="p-4 rounded-lg border border-primary/40 bg-primary/5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                <button
+                  onClick={() =>
+                    navigate(
+                      `/Classroom/${leagueId}/student/${focusCell.team_id}`
+                    )
+                  }
+                  className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors"
+                >
+                  {teamNames.get(focusCell.team_id)} →
+                </button>
+                {focusCell.band_key && (
+                  <span
+                    className={`px-2 py-0.5 rounded border text-xs font-semibold ${
+                      BAND_CHIPS[focusCell.band_key]
+                    }`}
+                  >
+                    {bandLabel(focusCell.band_key)}
+                  </span>
+                )}
+              </div>
+              {pair({
+                exposure: focusCell.exposure,
+                fluency: focusCell.fluency,
+                exposureKey: focusCell.exposure_band_key,
+                fluencyKey: focusCell.band_key,
+              })}
+              <p className="text-xs text-ui mt-3">
+                {`attempted ${focusCell.exercises_attempted}/${focusCell.exercises_total}`}
+                {` · completed ${focusCell.exercises_passed}/${focusCell.exercises_total}`}
+                {focusCell.avg_minutes_to_pass != null &&
+                  ` · ${focusCell.avg_minutes_to_pass} min to finish on average`}
+                {focusCell.avg_attempts_to_pass &&
+                  ` · ${focusCell.avg_attempts_to_pass} goes to finish on average`}
+                {focusCell.hints_used > 0 &&
+                  ` · ${focusCell.hints_used} hint${
+                    focusCell.hints_used !== 1 ? 's' : ''
+                  } revealed`}
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Everyone who has reached it, weakest first */}
         {conceptCells.length > 0 && (
           <div className="mb-5">
-            <h4 className="text-base font-semibold text-ui-dark mb-2">
+            <h4 className="text-sm font-semibold text-ui-dark mb-2">
               {T.Teams} — weakest first
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -187,19 +214,23 @@ function ConceptDetailModal({
                   onClick={() =>
                     navigate(`/Classroom/${leagueId}/student/${cell.team_id}`)
                   }
-                  className={`px-3 py-1 rounded-lg border text-sm transition-opacity hover:opacity-80 ${
-                    BAND_CHIPS[cell.band_key]
+                  className={`px-3 py-1 rounded-lg border text-xs transition-opacity hover:opacity-80 ${
+                    cell.band_key
+                      ? BAND_CHIPS[cell.band_key]
+                      : 'border-ui-light text-ui'
                   }`}
                   title={
-                    `${bandLabel(cell.band_key)} — passed ${
-                      cell.exercises_passed
-                    } of ${cell.exercises_touched} attempted` +
+                    (cell.band_key
+                      ? `${bandLabel(cell.band_key)} — `
+                      : 'Nothing judgeable yet — ') +
+                    `attempted ${cell.exercises_attempted}/${cell.exercises_total}, ` +
+                    `completed ${cell.exercises_passed}/${cell.exercises_total}` +
                     (cell.hints_used ? ` · ${cell.hints_used} hints` : '') +
-                    ` (score ${cell.mastery}%)\nOpen their progress`
+                    `\nOpen their progress`
                   }
                 >
                   {teamNames.get(cell.team_id)}{' '}
-                  <span className="font-mono">{cell.band}</span>
+                  <span className="font-mono">{cell.band || '·'}</span>
                 </button>
               ))}
             </div>
@@ -208,7 +239,7 @@ function ConceptDetailModal({
 
         {/* Where it is taught */}
         <div className="mb-5">
-          <h4 className="text-base font-semibold text-ui-dark mb-2">
+          <h4 className="text-sm font-semibold text-ui-dark mb-2">
             Exercises teaching this concept
           </h4>
           <ul className="space-y-1">

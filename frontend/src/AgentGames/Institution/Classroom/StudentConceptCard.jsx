@@ -3,8 +3,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import useClassroomAPI from '../../Shared/hooks/useClassroomAPI';
 import {
   BAND_CHIPS,
-  confidenceWording,
-  isAttentionBand,
+  Meter,
+  exposureTone,
+  fluencyTone,
 } from '../../Shared/Progress/MasteryCell';
 import MasteryInfoModal from '../../Shared/Progress/MasteryInfoModal';
 
@@ -12,13 +13,12 @@ import MasteryInfoModal from '../../Shared/Progress/MasteryInfoModal';
  * One student's concept profile — the "what is actually wrong here" panel on
  * the student drill-down.
  *
- * Leads with the sentences a teacher can act on ("Ava may be struggling with
- * dictionaries"), then the rest of their concepts as bands. Reads the
- * classroom's concept matrix and keeps this student's row rather than adding a
- * per-student endpoint: the payload is small, and one source for the numbers
- * means the tab and this card can never disagree. Renders nothing at all when
- * the classroom has no concept data, so an untagged course doesn't grow an
- * empty card.
+ * Leads with the concepts they have covered and still struggled with, then the
+ * rest as chips. Reads the classroom's concept matrix and keeps this student's
+ * row rather than adding a per-student endpoint: the payload is small, and one
+ * source for the numbers means the tab and this card can never disagree.
+ * Renders nothing at all when the classroom has no concept data, so an
+ * untagged course doesn't grow an empty card.
  */
 function StudentConceptCard({ leagueId, teamId }) {
   const { getConceptMatrix } = useClassroomAPI();
@@ -44,15 +44,20 @@ function StudentConceptCard({ leagueId, teamId }) {
       .filter((cell) => String(cell.team_id) === String(teamId))
       .map((cell) => ({ ...cell, concept: concepts.get(cell.concept_id) }))
       .filter((row) => row.concept)
-      .sort((a, b) => b.band - a.band || a.mastery - b.mastery);
+      .sort((a, b) => {
+        if (a.fluency == null && b.fluency == null) return 0;
+        if (a.fluency == null) return 1;
+        if (b.fluency == null) return -1;
+        return a.fluency - b.fluency;
+      });
   }, [data, teamId]);
 
   if (!data || data.concepts.length === 0) return null;
 
   const bandLabel = (key) =>
     data.scoring.bands.find((band) => band.key === key)?.label || '';
-  const needHelp = rows.filter((row) => isAttentionBand(row.band));
-  const doingWell = rows.filter((row) => !isAttentionBand(row.band));
+  const needHelp = rows.filter((row) => row.needs_help);
+  const rest = rows.filter((row) => !row.needs_help);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -71,23 +76,20 @@ function StudentConceptCard({ leagueId, teamId }) {
       ) : (
         <>
           {needHelp.length > 0 ? (
-            <div className="space-y-2 mb-5">
+            <div className="space-y-2 mb-5 max-w-3xl">
               {needHelp.map((row) => (
                 <div
                   key={row.concept_id}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 rounded-lg border border-ui-light"
+                  className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 rounded-lg border border-ui-light"
                 >
-                  <div>
-                    <p className="text-base text-ui-dark">
-                      {confidenceWording(row.confidence) === 'is'
-                        ? 'Struggling with'
-                        : 'May be struggling with'}{' '}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-ui-dark">
+                      Struggling with{' '}
                       <span className="font-semibold">{row.concept.name}</span>
                     </p>
-                    <p className="text-sm text-ui">
-                      {`passed ${row.exercises_passed} of ${row.exercises_touched} attempted · ${row.attempts} attempt${
-                        row.attempts !== 1 ? 's' : ''
-                      }`}
+                    <p className="text-xs text-ui mt-0.5">
+                      {`attempted ${row.exercises_attempted}/${row.exercises_total}`}
+                      {` · completed ${row.exercises_passed}/${row.exercises_total}`}
                       {row.hints_used > 0 &&
                         ` · ${row.hints_used} hint${
                           row.hints_used !== 1 ? 's' : ''
@@ -97,6 +99,23 @@ function StudentConceptCard({ leagueId, teamId }) {
                           row.concept.exercises_total !== 1 ? 's' : ''
                         } cover this`}
                     </p>
+                  </div>
+                  <div className="w-32 shrink-0">
+                    <Meter
+                      label="Exposure"
+                      value={row.exposure}
+                      tone={exposureTone(
+                        data.scoring,
+                        row.exposure_band_key
+                      )}
+                    />
+                  </div>
+                  <div className="w-32 shrink-0">
+                    <Meter
+                      label="Fluency"
+                      value={row.fluency}
+                      tone={fluencyTone(data.scoring, row.band_key)}
+                    />
                   </div>
                   <span
                     className={`shrink-0 px-2 py-0.5 rounded border text-xs font-semibold ${
@@ -110,27 +129,33 @@ function StudentConceptCard({ leagueId, teamId }) {
             </div>
           ) : (
             <p className="text-ui mb-5">
-              Nothing they have reached is in the bottom two bands.
+              Nothing they have worked through is going badly.
             </p>
           )}
 
-          {doingWell.length > 0 && (
+          {rest.length > 0 && (
             <>
               <p className="text-sm text-ui mb-2">
-                Everything else they have reached, weakest first:
+                Everything else they have touched, weakest first:
               </p>
               <div className="flex flex-wrap gap-2">
-                {doingWell.map((row) => (
+                {rest.map((row) => (
                   <div
                     key={row.concept_id}
                     className={`px-3 py-1.5 rounded-lg border ${
-                      BAND_CHIPS[row.band_key]
+                      row.band_key
+                        ? BAND_CHIPS[row.band_key]
+                        : 'border-ui-light text-ui'
                     }`}
                     title={
-                      `${row.concept.name} — ${bandLabel(row.band_key)}\n` +
-                      `passed ${row.exercises_passed} of ${row.exercises_touched} attempted exercises` +
-                      (row.avg_attempts_to_pass
-                        ? ` · ${row.avg_attempts_to_pass} tries to pass on average`
+                      `${row.concept.name} — ` +
+                      (row.band_key
+                        ? `${bandLabel(row.band_key)}\n`
+                        : 'nothing to judge yet\n') +
+                      `attempted ${row.exercises_attempted}/${row.exercises_total}, ` +
+                      `completed ${row.exercises_passed}/${row.exercises_total}` +
+                      (row.avg_minutes_to_pass != null
+                        ? ` · ${row.avg_minutes_to_pass} min to finish on average`
                         : '') +
                       (row.hints_used
                         ? ` · ${row.hints_used} hint${

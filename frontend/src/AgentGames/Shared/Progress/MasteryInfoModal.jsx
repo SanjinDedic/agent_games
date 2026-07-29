@@ -1,10 +1,10 @@
 import React from 'react';
 
-import { BAND_CHIPS } from './MasteryCell';
+import { BAND_CHIPS, EXPOSURE_CHIP } from './MasteryCell';
 
 /**
- * "How is mastery calculated?" — the whole scoring model, in the teacher's
- * words, with the actual numbers in use.
+ * "How is this worked out?" — the whole scoring model, in the teacher's words,
+ * with the actual numbers in use.
  *
  * Everything rendered here comes from the `scoring` block of the concept
  * matrix payload, which the backend builds from the constants in
@@ -14,10 +14,13 @@ import { BAND_CHIPS } from './MasteryCell';
 function MasteryInfoModal({ scoring, onClose }) {
   if (!scoring) return null;
 
-  const hintCap = Math.round(scoring.max_hint_effort / scoring.hint_effort_weight);
-  const floorBand = scoring.bands.find(
-    (band) => scoring.completion_floor >= band.minimum
+  const hintCap = Math.round(scoring.max_hint_penalty / scoring.hint_penalty);
+  const covered = scoring.exposure_bands.find(
+    (band) => band.band === scoring.covered_band
   );
+  const attentionLabels = scoring.bands
+    .filter((band) => scoring.attention_bands.includes(band.band))
+    .map((band) => band.label.toLowerCase());
 
   return (
     <div
@@ -30,7 +33,7 @@ function MasteryInfoModal({ scoring, onClose }) {
       >
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-xl font-bold text-ui-dark">
-            How mastery is worked out
+            How this is worked out
           </h3>
           <button
             onClick={onClose}
@@ -43,15 +46,39 @@ function MasteryInfoModal({ scoring, onClose }) {
 
         <p className="text-sm text-ui mb-5">
           Nothing here measures understanding directly — it measures what the
-          work cost. An exercise that took one go means something different
-          from the same exercise on the seventh go with every hint open, and
-          that difference is all this page claims to show.
+          work cost. Every concept gets two separate readings, because "hasn't
+          done it" and "did it the hard way" are different problems and need
+          different answers from you.
         </p>
 
-        {/* The bands */}
-        <h4 className="text-base font-semibold text-ui-dark mb-2">
-          The four bands
+        {/* The two scales */}
+        <h4 className="text-base font-semibold text-ui-dark mb-1">
+          Exposure — how much of it they have finished
         </h4>
+        <p className="text-sm text-ui mb-2">
+          The exercises they have completed, out of every exercise tagged with
+          the concept. Nothing about exposure is a judgement: a student who has
+          not got there yet is behind, not struggling.
+        </p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {scoring.exposure_bands.map((band) => (
+            <span
+              key={band.key}
+              className={`px-2 py-1 rounded border text-xs ${EXPOSURE_CHIP}`}
+              title={band.meaning}
+            >
+              <span className="font-semibold">{band.label}</span>
+            </span>
+          ))}
+        </div>
+
+        <h4 className="text-base font-semibold text-ui-dark mb-1">
+          Fluency — how the finished work went
+        </h4>
+        <p className="text-sm text-ui mb-2">
+          The average score of the exercises they have finished, plus a zero for
+          any they have really had a go at and never got through.
+        </p>
         <div className="space-y-2 mb-5">
           {scoring.bands.map((band) => (
             <div key={band.key} className="flex items-start gap-3">
@@ -65,9 +92,6 @@ function MasteryInfoModal({ scoring, onClose }) {
               <div>
                 <span className="text-sm font-semibold text-ui-dark">
                   {band.label}
-                </span>{' '}
-                <span className="text-xs font-mono text-ui">
-                  {band.minimum}–{band.maximum}
                 </span>
                 <p className="text-sm text-ui">{band.meaning}</p>
               </div>
@@ -77,88 +101,95 @@ function MasteryInfoModal({ scoring, onClose }) {
 
         {/* Step 1: one exercise */}
         <h4 className="text-base font-semibold text-ui-dark mb-2">
-          Step 1 — what one exercise scores
+          What one exercise scores
         </h4>
         <p className="text-sm text-ui mb-2">
-          Count the goes it took to pass. Each revealed hint adds{' '}
-          {scoring.hint_effort_weight} of a go, and hints stop counting after{' '}
-          {hintCap} of them — reading hints should cost a student something, but
-          never as much as failing.
+          An exercise finished within {scoring.free_minutes} minutes of the
+          first submission is worth {scoring.full_marks}, however it was
+          reached — a student who gets there that fast knew it, and charging
+          them for the hints they read on the way only teaches them to avoid
+          the hints. Past that, it starts at {scoring.full_marks} and pays:
         </p>
         <table className="w-full text-sm mb-2">
-          <thead>
-            <tr className="text-left text-ui border-b border-ui-light">
-              <th className="py-1 font-medium">Goes (including hints)</th>
-              <th className="py-1 font-medium text-right">Scores</th>
-            </tr>
-          </thead>
-          <tbody className="font-mono text-ui-dark">
-            {scoring.effort_points.map((row, index) => {
-              const previous =
-                index === 0 ? 0 : scoring.effort_points[index - 1].max_effort;
-              return (
-                <tr key={row.max_effort} className="border-b border-ui-lighter">
-                  <td className="py-1">
-                    {index === 0
-                      ? `first go, no hints`
-                      : `over ${previous}, up to ${row.max_effort}`}
-                  </td>
-                  <td className="py-1 text-right">{row.points}</td>
-                </tr>
-              );
-            })}
+          <tbody className="text-ui-dark">
             <tr className="border-b border-ui-lighter">
               <td className="py-1">
-                over{' '}
-                {
-                  scoring.effort_points[scoring.effort_points.length - 1]
-                    .max_effort
-                }
+                every further {scoring.minutes_per_step} minutes
               </td>
-              <td className="py-1 text-right">{scoring.effort_points_floor}</td>
+              <td className="py-1 text-right font-mono">
+                −{scoring.time_penalty_step}
+              </td>
+              <td className="py-1 text-right text-ui text-xs whitespace-nowrap">
+                stops at −{scoring.max_time_penalty}
+              </td>
+            </tr>
+            <tr className="border-b border-ui-lighter">
+              <td className="py-1">each hint revealed</td>
+              <td className="py-1 text-right font-mono">
+                −{scoring.hint_penalty}
+              </td>
+              <td className="py-1 text-right text-ui text-xs whitespace-nowrap">
+                stops after {hintCap}
+              </td>
+            </tr>
+            <tr className="border-b border-ui-lighter">
+              <td className="py-1">
+                more than {scoring.many_attempts} goes to get through it
+              </td>
+              <td className="py-1 text-right font-mono">
+                −{scoring.many_attempts_penalty}
+              </td>
+              <td className="py-1 text-right text-ui text-xs whitespace-nowrap">
+                once, not per go
+              </td>
             </tr>
             <tr>
-              <td className="py-1">attempted, never passed</td>
-              <td className="py-1 text-right">{scoring.not_passed_points}</td>
+              <td className="py-1">
+                had real goes at it and never got through
+              </td>
+              <td className="py-1 text-right font-mono">
+                {scoring.not_passed_points}
+              </td>
+              <td className="py-1 text-right text-ui text-xs whitespace-nowrap">
+                after {scoring.attempts_before_counted} goes
+              </td>
             </tr>
           </tbody>
         </table>
+        <p className="text-sm text-ui mb-5">
+          So a finished exercise can never score below{' '}
+          <strong>{scoring.completed_floor}</strong>, however long it took.
+          Finishing counts. The clock runs from their first submission, not from
+          opening the exercise — reading and thinking before the first go is
+          free.
+        </p>
 
-        {/* Step 2: one concept */}
-        <h4 className="text-base font-semibold text-ui-dark mb-2 mt-5">
-          Step 2 — from exercises to a concept
-        </h4>
-        <ul className="text-sm text-ui space-y-2 mb-5 list-disc pl-5">
-          <li>
-            The concept's score is the average over the exercises the student
-            has <strong>actually attempted</strong>. Exercises they haven't
-            reached yet are left out entirely — the cell stays blank rather than
-            counting as a zero, because not having got there is not the same as
-            not understanding it.
-          </li>
-          <li>
-            <strong>
-              Passing every exercise for a concept can never score below{' '}
-              {scoring.completion_floor}
-            </strong>
-            , so it always lands in band{' '}
-            {floorBand ? `${floorBand.band} or better` : 'two or better'} — no
-            matter how many goes or hints it took. Finishing the work counts.
-          </li>
-        </ul>
-
-        {/* How much to trust it */}
+        {/* The rule */}
         <h4 className="text-base font-semibold text-ui-dark mb-2">
-          How far to trust a cell
+          When someone is flagged
+        </h4>
+        <p className="text-sm text-ui mb-5">
+          Only when <strong>both</strong> are true: exposure is "
+          {covered ? covered.label.toLowerCase() : 'most or all'}", so there is
+          nothing left for them to simply get on with, and fluency is{' '}
+          {attentionLabels.join(' or ')}. Because a finished exercise cannot
+          score below {scoring.completed_floor}, falling under that line always
+          means work they had real goes at and never got through. A student
+          part-way into a concept is never flagged — there is nothing to
+          conclude yet, and flagging them is how a teacher learns to ignore the
+          page. The same test applied to the class as a whole is what puts a
+          concept on the reteach list.
+        </p>
+
+        <h4 className="text-base font-semibold text-ui-dark mb-2">
+          How far to trust it
         </h4>
         <p className="text-sm text-ui">
-          A concept practised on one exercise gives one data point. This page
-          only states plainly that a student <em>is</em> struggling once its
-          reading rests on {scoring.min_assessments} or more exercises;
-          below that it says they <em>may be</em>, and concepts your course
+          A concept practised on one exercise gives one data point, and its
+          exposure can only ever be nothing or everything. Concepts your course
           covers fewer than {scoring.min_assessments} times are flagged as
-          lightly assessed. If a concept matters, it is worth practising at
-          least {scoring.min_assessments} times.
+          lightly assessed throughout. If a concept matters, it is worth
+          practising at least {scoring.min_assessments} times.
         </p>
       </div>
     </div>

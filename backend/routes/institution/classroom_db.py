@@ -21,13 +21,14 @@ from backend.database.db_models import (Concept, Exercise, ExerciseConcept,
                                         Submission, SubmissionMetadata, Team,
                                         Tutorial)
 from backend.routes.institution.concept_mastery import (
-    ATTENTION_BANDS,
     MIN_ASSESSMENTS,
-    band_for,
-    concept_score,
-    confidence_for,
     describe_mastery_model,
     exercise_points,
+    exposure_band,
+    exposure_for,
+    fluency_band,
+    fluency_for,
+    needs_help,
 )
 from backend.routes.institution.institution_db import InstitutionAccessError, TeamNotFoundError
 
@@ -36,10 +37,6 @@ logger = logging.getLogger(__name__)
 # Payload bound for per-team ranking history. Enough for a trend line; the
 # full history stays in the DB if a longer view is ever needed.
 RANKING_HISTORY_LIMIT = 50
-
-# Worst confidence first when ranking who to help: a well-evidenced weak
-# reading outranks a one-exercise guess at the same band.
-_CONFIDENCE_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
 def get_team_by_id(
@@ -183,15 +180,21 @@ def _league_exercise_effort(
 ) -> dict:
     """Per (team, exercise) effort detail for the league's exercises:
     {(team_id, exercise_id): {attempts, attempts_to_pass, passed, crashes,
-    last_attempt_at}}.
+    minutes_to_pass, last_attempt_at}}.
 
     _league_exercise_cells answers "did they pass, and how many goes in
-    total"; mastery needs "how many goes did it take *to* pass", which no
-    aggregate can give. So this walks the attempts in order instead. The join
-    to ExerciseSubmission is an OUTER join on purpose: metadata with no
-    submission child means the code never ran at all
-    (record_failed_exercise_submission), which is a struggle signal of its own
-    and would otherwise vanish from the counts.
+    total"; mastery needs "how many goes did it take *to* pass" and "how long
+    did it take", neither of which an aggregate can give. So this walks the
+    attempts in order instead. The join to ExerciseSubmission is an OUTER join
+    on purpose: metadata with no submission child means the code never ran at
+    all (record_failed_exercise_submission), which is a struggle signal of its
+    own and would otherwise vanish from the counts.
+
+    `minutes_to_pass` runs from the first submission to the passing one, not
+    from opening the exercise — the server never sees the opening. Reading the
+    problem and thinking before the first go is therefore free, which is the
+    right bias: it is the flailing after a first attempt that this is trying to
+    measure.
 
     Folding in Python rather than writing window functions keeps this readable
     and costs little — a classroom is tens of students over tens of exercises.
@@ -233,6 +236,8 @@ def _league_exercise_effort(
                 "attempts_to_pass": None,
                 "passed": False,
                 "crashes": 0,
+                "first_attempt_at": timestamp,
+                "minutes_to_pass": None,
                 "last_attempt_at": None,
             },
         )
@@ -241,9 +246,13 @@ def _league_exercise_effort(
             cell["crashes"] += 1
         elif passed and not cell["passed"]:
             # Rows arrive oldest first, so the first pass we see is the first
-            # pass there was, and the running count is the goes it took.
+            # pass there was, the running count is the goes it took, and the
+            # gap back to the first row is how long it took.
             cell["passed"] = True
             cell["attempts_to_pass"] = cell["attempts"]
+            cell["minutes_to_pass"] = (
+                timestamp - cell["first_attempt_at"]
+            ).total_seconds() / 60
         cell["last_attempt_at"] = timestamp
     return effort
 
@@ -494,15 +503,22 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
 
     Rolls every exercise attempt up to the concepts its exercise is tagged
     with, so a teacher sees what to reteach rather than which exercise numbers
-    went badly. Scoring lives in concept_mastery.py and ships with the payload
-    (`scoring`) so the teacher-facing explanation cannot drift from it.
+    went badly. Every cell carries two numbers — `exposure`, how much of the
+    concept's work the student has finished, and `fluency`, how that finished
+    work went — plus the band each falls into. Scoring lives in
+    concept_mastery.py and ships with the payload (`scoring`) so the
+    teacher-facing explanation cannot drift from it.
 
     "Not reached" cells are omitted, as in the tutorial matrix — the client
-    renders absence. Two coverage figures are reported deliberately, because
-    an incomplete map must never read as a confident one: `untagged_exercises`
-    is how much of the classroom's content this map ignores, and each concept's
-    `under_assessed` flag marks the ones tested too few times for their cell to
-    mean much.
+    renders absence. A cell exists as soon as a student has attempted one of
+    the concept's exercises, but its `fluency` stays null until something they
+    did there can be judged, so an in-progress first attempt shows coverage
+    without pretending to a verdict.
+
+    Two coverage figures are reported deliberately, because an incomplete map
+    must never read as a confident one: `untagged_exercises` is how much of the
+    classroom's content this map ignores, and each concept's `under_assessed`
+    flag marks the ones tested too few times for their row to mean much.
     """
     teams = session.exec(
         select(Team).where(Team.league_id == league.id).order_by(Team.name)
@@ -526,28 +542,33 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
     }
 
     cells = []
-    # {concept_id: [score, ...]} over the students who reached it, for the
-    # class column beside the matrix.
-    class_scores: dict = {}
+    # {concept_id: [exposure, ...]} and {concept_id: [fluency, ...]} over the
+    # students who have touched it, for the class figures beside the matrix.
+    class_exposure: dict = {}
+    class_fluency: dict = {}
     attention_counts: dict = {}
     for concept_id, exercises in exercises_by_concept.items():
         for team in teams:
             points = []
+            attempted_count = 0
             passed_count = 0
             attempts_total = 0
             hints_total = 0
             tries_to_pass = []
+            minutes = []
             last_attempt = None
             for exercise in exercises:
                 cell = effort.get((team.id, exercise["id"]))
                 if not cell:
                     continue
+                attempted_count += 1
                 exercise_hints = hints.get((team.id, exercise["id"]), 0)
                 points.append(
                     exercise_points(
                         cell["passed"],
-                        cell["attempts_to_pass"] or 0,
+                        cell["attempts_to_pass"] or cell["attempts"],
                         exercise_hints,
+                        cell["minutes_to_pass"],
                     )
                 )
                 attempts_total += cell["attempts"]
@@ -555,19 +576,26 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
                 if cell["passed"]:
                     passed_count += 1
                     tries_to_pass.append(cell["attempts_to_pass"])
+                    if cell["minutes_to_pass"] is not None:
+                        minutes.append(cell["minutes_to_pass"])
                 if cell["last_attempt_at"] and (
                     last_attempt is None
                     or cell["last_attempt_at"] > last_attempt
                 ):
                     last_attempt = cell["last_attempt_at"]
 
-            if not points:
+            if not attempted_count:
                 continue  # not reached — the client renders absence
 
-            score = concept_score(points, passed_count, len(exercises))
-            band = band_for(score)
-            class_scores.setdefault(concept_id, []).append(score)
-            if band["band"] in ATTENTION_BANDS:
+            exposure = exposure_for(passed_count, len(exercises))
+            fluency = fluency_for(points)
+            exposure_row = exposure_band(exposure)
+            fluency_row = fluency_band(fluency)
+
+            class_exposure.setdefault(concept_id, []).append(exposure)
+            if fluency is not None:
+                class_fluency.setdefault(concept_id, []).append(fluency)
+            if needs_help(exposure, fluency):
                 attention_counts[concept_id] = (
                     attention_counts.get(concept_id, 0) + 1
                 )
@@ -575,20 +603,28 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
                 {
                     "team_id": team.id,
                     "concept_id": concept_id,
-                    "band": band["band"],
-                    "band_key": band["key"],
-                    # Kept for ordering and for the drill-down's evidence line;
-                    # the grid itself deliberately shows the band, not this.
-                    "mastery": score,
-                    "confidence": confidence_for(len(points)),
+                    # The two figures the whole tab is built on. They drive the
+                    # bar widths; the client never prints them as numbers.
+                    "exposure": exposure,
+                    "fluency": fluency,
+                    "exposure_band": exposure_row["band"],
+                    "exposure_band_key": exposure_row["key"],
+                    "band": fluency_row["band"] if fluency_row else None,
+                    "band_key": fluency_row["key"] if fluency_row else None,
+                    "needs_help": needs_help(exposure, fluency),
+                    # The evidence line on every card: what they have had a go
+                    # at, and what they have finished, out of the whole concept.
+                    "exercises_attempted": attempted_count,
                     "exercises_passed": passed_count,
-                    "exercises_touched": len(points),
                     "exercises_total": len(exercises),
                     "attempts": attempts_total,
                     "avg_attempts_to_pass": (
                         round(sum(tries_to_pass) / len(tries_to_pass), 1)
                         if tries_to_pass
                         else None
+                    ),
+                    "avg_minutes_to_pass": (
+                        round(sum(minutes) / len(minutes)) if minutes else None
                     ),
                     "hints_used": hints_total,
                     "last_attempt_at": (
@@ -602,10 +638,23 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
     # taught — order_index restarts per tutorial, so both halves are needed.
     first_taught = {}
     for concept_id, concept in concepts.items():
-        reached = class_scores.get(concept_id, [])
+        exposures = class_exposure.get(concept_id, [])
+        fluencies = class_fluency.get(concept_id, [])
         exercises = exercises_by_concept[concept_id]
-        class_mastery = round(sum(reached) / len(reached)) if reached else None
-        class_band = band_for(class_mastery) if reached else None
+        # The class is one average student: the mean of what everyone who has
+        # touched the concept has covered, and of how their work went. The
+        # reteach rule is then the same test applied to that student, so a
+        # teacher only has to learn the rule once.
+        avg_exposure = (
+            round(sum(exposures) / len(exposures)) if exposures else None
+        )
+        avg_fluency = (
+            round(sum(fluencies) / len(fluencies)) if fluencies else None
+        )
+        exposure_row = (
+            exposure_band(avg_exposure) if avg_exposure is not None else None
+        )
+        fluency_row = fluency_band(avg_fluency)
         first_taught[concept_id] = min(
             (exercise["tutorial_id"], exercise["order_index"])
             for exercise in exercises
@@ -625,10 +674,21 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
                 # Too few exercises for this row to be evidence rather than an
                 # anecdote — the tab says so rather than quietly implying otherwise.
                 "under_assessed": len(exercises) < MIN_ASSESSMENTS,
-                "class_mastery": class_mastery,
-                "band": class_band["band"] if class_band else None,
-                "band_key": class_band["key"] if class_band else None,
-                "reached": len(reached),
+                "class_exposure": avg_exposure,
+                "class_fluency": avg_fluency,
+                "exposure_band": exposure_row["band"] if exposure_row else None,
+                "exposure_band_key": (
+                    exposure_row["key"] if exposure_row else None
+                ),
+                "band": fluency_row["band"] if fluency_row else None,
+                "band_key": fluency_row["key"] if fluency_row else None,
+                # Covered by the class as a whole, and still going badly: the
+                # only thing on this page that asks a teacher to reteach.
+                "reteach": (
+                    avg_exposure is not None
+                    and needs_help(avg_exposure, avg_fluency)
+                ),
+                "reached": len(exposures),
                 "needs_attention": attention_counts.get(concept_id, 0),
             }
         )
@@ -641,22 +701,17 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
         "teams": [{"id": team.id, "name": team.name} for team in teams],
         "concepts": concept_rows,
         "cells": cells,
-        # Who to help, worst first: band, then how well evidenced the reading
-        # is, then the raw score. The client turns this into sentences.
+        # Who to help, worst first: the weakest fluency, then the most work
+        # covered to arrive at it. The client turns this into sentences.
         "attention": [
             {
                 "team_id": cell["team_id"],
                 "concept_id": cell["concept_id"],
                 "band": cell["band"],
-                "confidence": cell["confidence"],
             }
             for cell in sorted(
-                (cell for cell in cells if cell["band"] in ATTENTION_BANDS),
-                key=lambda cell: (
-                    -cell["band"],
-                    _CONFIDENCE_RANK[cell["confidence"]],
-                    cell["mastery"],
-                ),
+                (cell for cell in cells if cell["needs_help"]),
+                key=lambda cell: (cell["fluency"], -cell["exposure"]),
             )
         ],
         "untagged_exercises": exercises_total - len(tagged_exercise_ids),

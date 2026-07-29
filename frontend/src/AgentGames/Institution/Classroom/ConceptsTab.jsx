@@ -7,7 +7,9 @@ import StatChip from '../../Shared/Common/StatChip';
 import MasteryCell, {
   BAND_BARS,
   BAND_CHIPS,
-  confidenceWording,
+  Meter,
+  exposureTone,
+  fluencyTone,
 } from '../../Shared/Progress/MasteryCell';
 import MasteryInfoModal from '../../Shared/Progress/MasteryInfoModal';
 import ConceptDetailModal from './ConceptDetailModal';
@@ -17,21 +19,15 @@ import ConceptDetailModal from './ConceptDetailModal';
 // correctly the moment someone authors one.
 const prettyCategory = (category) => (category || 'other').replace(/-/g, ' ');
 
-// How many student-and-concept alerts to show before "show all". Enough to
-// plan a lesson around, short enough that the list stays a list.
-const ATTENTION_PREVIEW = 8;
+// How many student-and-concept alerts to show before "show all". The rule
+// behind them is strict enough that this is rarely reached — which is the
+// point of it.
+const ATTENTION_PREVIEW = 6;
 
-/** The evidence behind one cell, as a sentence. */
+/** The evidence behind one cell: what they have had a go at, and finished. */
 const evidenceLine = (cell) =>
-  [
-    `passed ${cell.exercises_passed} of ${cell.exercises_touched} attempted`,
-    `${cell.attempts} attempt${cell.attempts !== 1 ? 's' : ''}`,
-    cell.hints_used
-      ? `${cell.hints_used} hint${cell.hints_used !== 1 ? 's' : ''}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  `attempted ${cell.exercises_attempted}/${cell.exercises_total} · ` +
+  `completed ${cell.exercises_passed}/${cell.exercises_total}`;
 
 /**
  * Concept mastery for one classroom: who needs help with what, what the class
@@ -42,9 +38,10 @@ const evidenceLine = (cell) =>
  * the class-wide reteach list second, and the full matrix last, as the working
  * that backs them up.
  *
- * Cells are bands, never percentages: counting attempts cannot justify a
- * decimal place. The underlying score exists only to order things and shows up
- * in tooltips labelled as such. Scoring lives in
+ * Every concept carries two readings: **exposure**, how much of its work the
+ * student has finished, and **fluency**, how that finished work went. Both are
+ * shown as a named band and a bar, and neither is ever printed as a number —
+ * see the Meter component for why. Scoring lives in
  * backend/routes/institution/concept_mastery.py and travels with the payload,
  * so the "how is this worked out" modal always matches the arithmetic.
  */
@@ -94,14 +91,15 @@ function ConceptsTab({ league }) {
     [concepts]
   );
 
-  // Cell lookup plus each student's overall score, in one pass.
+  // Cell lookup plus each student's overall fluency, in one pass.
   const { cellMap, teamScores } = useMemo(() => {
     const map = new Map();
     const totals = new Map();
     (data?.cells || []).forEach((cell) => {
       map.set(`${cell.team_id}:${cell.concept_id}`, cell);
+      if (cell.fluency == null) return;
       const running = totals.get(cell.team_id) || { sum: 0, count: 0 };
-      running.sum += cell.mastery;
+      running.sum += cell.fluency;
       running.count += 1;
       totals.set(cell.team_id, running);
     });
@@ -127,16 +125,16 @@ function ConceptsTab({ league }) {
     });
   }, [teams, teamScores]);
 
-  // Concept rows: weakest class band first by default, curriculum order (and
-  // its category grouping) on request.
+  // Concept rows: weakest class fluency first by default, curriculum order
+  // (and its category grouping) on request.
   const conceptRows = useMemo(() => {
     if (byCurriculum) return concepts;
     return [...concepts].sort((a, b) => {
-      if (a.class_mastery == null && b.class_mastery == null) return 0;
-      if (a.class_mastery == null) return 1;
-      if (b.class_mastery == null) return -1;
+      if (a.class_fluency == null && b.class_fluency == null) return 0;
+      if (a.class_fluency == null) return 1;
+      if (b.class_fluency == null) return -1;
       return (
-        a.class_mastery - b.class_mastery ||
+        a.class_fluency - b.class_fluency ||
         b.needs_attention - a.needs_attention
       );
     });
@@ -155,7 +153,7 @@ function ConceptsTab({ league }) {
     return firstOfCategory;
   }, [conceptRows]);
 
-  // The student-and-concept alerts, richest first, with their evidence.
+  // The student-and-concept alerts, worst first, with their evidence.
   const attention = useMemo(
     () =>
       (data?.attention || [])
@@ -169,26 +167,26 @@ function ConceptsTab({ league }) {
     [data, conceptsById, teamNames, cellMap]
   );
 
-  // Class-wide: the concepts most students are stuck on, not just the lowest
-  // average — one weak student cannot put a concept on the reteach list.
+  // Class-wide: the concepts the class has covered and still not got. The
+  // backend applies the same test to the average student that it applies to
+  // each one, so this is a filter rather than a second opinion.
   const reteach = useMemo(
     () =>
       concepts
-        .filter((concept) => concept.needs_attention > 0)
+        .filter((concept) => concept.reteach)
         .sort(
           (a, b) =>
-            b.needs_attention - a.needs_attention ||
-            a.class_mastery - b.class_mastery
-        )
-        .slice(0, 4),
+            a.class_fluency - b.class_fluency ||
+            b.needs_attention - a.needs_attention
+        ),
     [concepts]
   );
 
-  const classScore = useMemo(() => {
-    const reached = concepts.filter((c) => c.class_mastery != null);
+  const classFluency = useMemo(() => {
+    const reached = concepts.filter((c) => c.class_fluency != null);
     if (!reached.length) return { band: null, reached: 0 };
     const score = Math.round(
-      reached.reduce((sum, c) => sum + c.class_mastery, 0) / reached.length
+      reached.reduce((sum, c) => sum + c.class_fluency, 0) / reached.length
     );
     return {
       band: data.scoring.bands.find((band) => score >= band.minimum),
@@ -232,96 +230,122 @@ function ConceptsTab({ league }) {
     <div className="space-y-6">
       {/* ---------------------------------------------------------------
           Who needs help. First on the page because it is the only thing
-          here a teacher can act on this afternoon.
+          here a teacher can act on this afternoon. Held to a readable
+          measure rather than stretched across the whole workspace: these
+          are sentences, and a sentence a metre wide is not a sentence.
       --------------------------------------------------------------- */}
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-1">
-          <h2 className="text-xl font-semibold text-ui-dark">Who needs help</h2>
-          <button
-            onClick={() => setShowScoring(true)}
-            className="text-sm text-primary hover:text-primary-hover transition-colors"
-          >
-            How is this worked out?
-          </button>
-        </div>
+        <div className="max-w-4xl">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-1">
+            <h2 className="text-xl font-semibold text-ui-dark">
+              Who needs help
+            </h2>
+            <button
+              onClick={() => setShowScoring(true)}
+              className="text-sm text-primary hover:text-primary-hover transition-colors"
+            >
+              How is this worked out?
+            </button>
+          </div>
 
-        {attention.length === 0 ? (
-          <p className="text-ui">
-            {`Nobody is in the bottom two bands on a concept they have reached. `}
-            {`Anything blank in the grid below is simply not reached yet.`}
-          </p>
-        ) : (
-          <>
-            <p className="text-sm text-ui mb-4">
-              {`${attention.length} ${T.team}-and-concept pair${
-                attention.length !== 1 ? 's' : ''
-              } worth a look, most serious first. "May be" means the reading `}
-              {`rests on fewer than ${data.scoring.min_assessments} exercises.`}
+          {attention.length === 0 ? (
+            <p className="text-sm text-ui">
+              {`Nobody has covered a concept and come out of it struggling. `}
+              {`Students still working through a concept are not flagged here — `}
+              {`the grid below shows how far along everyone is.`}
             </p>
-            {/* Two per row: each card is one short sentence, and stretching it
-                across a wide screen strands the band chip miles from the name
-                it belongs to. Reading order stays worst-first, left to right. */}
-            <div className="grid gap-2 lg:grid-cols-2">
-              {visibleAttention.map((item) => (
-                <div
-                  key={`${item.team_id}:${item.concept_id}`}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 rounded-lg border border-ui-light hover:border-primary/50 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-base text-ui-dark">
-                      <button
-                        onClick={() =>
-                          navigate(
-                            `/Classroom/${league.id}/student/${item.team_id}`
-                          )
-                        }
-                        className="font-semibold hover:text-primary transition-colors"
-                      >
-                        {item.name}
-                      </button>{' '}
-                      {confidenceWording(item.confidence)} struggling with{' '}
-                      <button
-                        onClick={() =>
-                          setModalTarget({
-                            conceptId: item.concept_id,
-                            teamId: item.team_id,
-                          })
-                        }
-                        className="font-semibold hover:text-primary transition-colors"
-                      >
-                        {item.concept.name}
-                      </button>
-                    </p>
-                    <p className="text-sm text-ui">
-                      {evidenceLine(item.cell)}
-                      {item.concept.under_assessed &&
-                        ` · only ${item.concept.exercises_total} exercise${
-                          item.concept.exercises_total !== 1 ? 's' : ''
-                        } cover this concept`}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 px-2 py-0.5 rounded border text-xs font-semibold ${
-                      BAND_CHIPS[item.cell.band_key]
-                    }`}
+          ) : (
+            <>
+              <p className="text-sm text-ui mb-4">
+                {`${attention.length} ${T.team}-and-concept pair${
+                  attention.length !== 1 ? 's' : ''
+                } worth a look, most serious first — ${T.teams} who have `}
+                {`finished most of a concept's exercises and still found it `}
+                {`costly.`}
+              </p>
+              <div className="space-y-2">
+                {visibleAttention.map((item) => (
+                  <div
+                    key={`${item.team_id}:${item.concept_id}`}
+                    className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 rounded-lg border border-ui-light hover:border-primary/50 transition-colors"
                   >
-                    {bandLabel(item.cell.band_key)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {attention.length > ATTENTION_PREVIEW && (
-              <button
-                onClick={() => setShowAllAttention(!showAllAttention)}
-                className="mt-3 text-sm text-primary hover:text-primary-hover transition-colors"
-              >
-                {showAllAttention
-                  ? 'Show fewer'
-                  : `Show all ${attention.length}`}
-              </button>
-            )}
-          </>
-        )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-ui-dark">
+                        <button
+                          onClick={() =>
+                            navigate(
+                              `/Classroom/${league.id}/student/${item.team_id}`
+                            )
+                          }
+                          className="font-semibold hover:text-primary transition-colors"
+                        >
+                          {item.name}
+                        </button>{' '}
+                        is struggling with{' '}
+                        <button
+                          onClick={() =>
+                            setModalTarget({
+                              conceptId: item.concept_id,
+                              teamId: item.team_id,
+                            })
+                          }
+                          className="font-semibold hover:text-primary transition-colors"
+                        >
+                          {item.concept.name}
+                        </button>
+                      </p>
+                      <p className="text-xs text-ui mt-0.5">
+                        {evidenceLine(item.cell)}
+                        {item.cell.hints_used > 0 &&
+                          ` · ${item.cell.hints_used} hint${
+                            item.cell.hints_used !== 1 ? 's' : ''
+                          }`}
+                        {item.concept.under_assessed &&
+                          ` · only ${item.concept.exercises_total} exercise${
+                            item.concept.exercises_total !== 1 ? 's' : ''
+                          } cover this concept`}
+                      </p>
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <Meter
+                        label="Exposure"
+                        value={item.cell.exposure}
+                        tone={exposureTone(
+                          data.scoring,
+                          item.cell.exposure_band_key
+                        )}
+                      />
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <Meter
+                        label="Fluency"
+                        value={item.cell.fluency}
+                        tone={fluencyTone(data.scoring, item.cell.band_key)}
+                      />
+                    </div>
+                    <span
+                      className={`shrink-0 px-2 py-0.5 rounded border text-xs font-semibold ${
+                        BAND_CHIPS[item.cell.band_key]
+                      }`}
+                    >
+                      {bandLabel(item.cell.band_key)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {attention.length > ATTENTION_PREVIEW && (
+                <button
+                  onClick={() => setShowAllAttention(!showAllAttention)}
+                  className="mt-3 text-sm text-primary hover:text-primary-hover transition-colors"
+                >
+                  {showAllAttention
+                    ? 'Show fewer'
+                    : `Show all ${attention.length}`}
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ---------------------------------------------------------------
@@ -329,52 +353,53 @@ function ConceptsTab({ league }) {
       --------------------------------------------------------------- */}
       {reteach.length > 0 && (
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-ui-dark mb-1">
-            Concepts to reteach
-          </h2>
-          <p className="text-sm text-ui mb-4">
-            {`Ranked by how many ${T.teams} are in the bottom two bands, not by `}
-            {`the average — one struggling ${T.team} is not a class problem. `}
-            {`Click one to see who and open its lesson.`}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {reteach.map((concept) => (
-              <button
-                key={concept.id}
-                onClick={() => setModalTarget({ conceptId: concept.id })}
-                className="px-4 py-3 rounded-lg border border-ui-light text-left hover:border-primary hover:bg-ui-lighter/60 transition-colors min-w-[13rem]"
-              >
-                <div className="text-base font-semibold text-ui-dark">
-                  {concept.name}
-                </div>
-                <div className="text-sm text-ui mt-0.5">
-                  <span className="text-danger font-medium">
-                    {concept.needs_attention} of {concept.reached}
-                  </span>{' '}
-                  {`${T.teams} who reached it need help`}
-                </div>
-                <div className="text-xs text-ui mt-0.5">
-                  Class overall: {bandLabel(concept.band_key)}
-                  {concept.under_assessed &&
-                    ` · lightly assessed (${concept.exercises_total} exercise${
-                      concept.exercises_total !== 1 ? 's' : ''
-                    })`}
-                </div>
-                {/* The share of the class needing help — the same figure the
-                    card is ranked by. A bar of the class average would run
-                    green here and quietly contradict the line above it. */}
-                <div className="mt-2 h-1.5 w-full rounded-full bg-ui-lighter overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-danger"
-                    style={{
-                      width: `${Math.round(
-                        (concept.needs_attention / concept.reached) * 100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </button>
-            ))}
+          <div className="max-w-4xl">
+            <h2 className="text-xl font-semibold text-ui-dark mb-1">
+              Concepts to reteach
+            </h2>
+            <p className="text-sm text-ui mb-4">
+              {`Concepts the class has worked through and still found hard — `}
+              {`most of the exercises finished, at a cost. Click one to see who `}
+              {`and open its lesson.`}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {reteach.map((concept) => (
+                <button
+                  key={concept.id}
+                  onClick={() => setModalTarget({ conceptId: concept.id })}
+                  className="px-4 py-3 rounded-lg border border-ui-light text-left hover:border-primary hover:bg-ui-lighter/60 transition-colors"
+                >
+                  <div className="text-sm font-semibold text-ui-dark">
+                    {concept.name}
+                  </div>
+                  <div className="text-xs text-ui mt-0.5 mb-2">
+                    <span className="text-danger font-medium">
+                      {concept.needs_attention} of {concept.reached}
+                    </span>{' '}
+                    {`${T.teams} who reached it need help`}
+                    {concept.under_assessed &&
+                      ` · only ${concept.exercises_total} exercise${
+                        concept.exercises_total !== 1 ? 's' : ''
+                      }`}
+                  </div>
+                  <div className="space-y-2">
+                    <Meter
+                      label="Exposure"
+                      value={concept.class_exposure}
+                      tone={exposureTone(
+                        data.scoring,
+                        concept.exposure_band_key
+                      )}
+                    />
+                    <Meter
+                      label="Fluency"
+                      value={concept.class_fluency}
+                      tone={fluencyTone(data.scoring, concept.band_key)}
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -384,23 +409,23 @@ function ConceptsTab({ league }) {
       --------------------------------------------------------------- */}
       <div className="flex flex-wrap gap-3">
         <StatChip
-          label="Class overall"
-          value={classScore.band ? classScore.band.label : '—'}
+          label="Class fluency"
+          value={classFluency.band ? classFluency.band.label : '—'}
           tone={
-            !classScore.band
+            !classFluency.band
               ? 'plain'
-              : classScore.band.band >= 3
+              : classFluency.band.band >= 3
                 ? 'danger'
-                : classScore.band.band === 2
+                : classFluency.band.band === 2
                   ? 'warning'
                   : 'success'
           }
-          title="The band the class average falls into, averaged over every concept the class has reached"
+          title="How the work the class has finished went, averaged over every concept they have reached"
         />
         <StatChip
           label="Concepts reached"
-          value={`${classScore.reached} of ${concepts.length}`}
-          title={`Concepts at least one ${T.team} has attempted an exercise for`}
+          value={`${classFluency.reached} of ${concepts.length}`}
+          title={`Concepts at least one ${T.team} has something judgeable on`}
         />
         {data.under_assessed_concepts > 0 && (
           <StatChip
@@ -454,6 +479,7 @@ function ConceptsTab({ league }) {
           </div>
         </div>
         <p className="text-sm text-ui mb-4">
+          Fluency:{' '}
           {data.scoring.bands.map((band, index) => (
             <span key={band.key}>
               {index > 0 && ' · '}
@@ -466,7 +492,7 @@ function ConceptsTab({ league }) {
             </span>
           ))}
           {' · '}
-          <span className="font-bold">·</span> not reached.{' '}
+          <span className="font-bold">·</span> nothing to judge yet.{' '}
           <button
             onClick={() => setShowScoring(true)}
             className="text-primary hover:text-primary-hover transition-colors"
@@ -558,12 +584,19 @@ function ConceptsTab({ league }) {
                             title={
                               cell
                                 ? `${team.name} — ${concept.name}\n` +
-                                  `Band ${cell.band}: ${bandLabel(cell.band_key)}\n` +
+                                  (cell.band_key
+                                    ? `Fluency: ${bandLabel(cell.band_key)}\n`
+                                    : 'Nothing judgeable yet\n') +
+                                  `Exposure: ${
+                                    exposureTone(
+                                      data.scoring,
+                                      cell.exposure_band_key
+                                    ).label
+                                  }\n` +
                                   `${evidenceLine(cell)}` +
-                                  (cell.avg_attempts_to_pass
-                                    ? `\n${cell.avg_attempts_to_pass} tries to pass on average`
-                                    : '') +
-                                  `\n(score ${cell.mastery}% — used for ordering only)`
+                                  (cell.avg_minutes_to_pass != null
+                                    ? `\n${cell.avg_minutes_to_pass} min to finish on average`
+                                    : '')
                                 : `${team.name} has not reached ${concept.name}`
                             }
                             onClick={() =>
@@ -583,12 +616,12 @@ function ConceptsTab({ league }) {
                         showValue={showBands}
                         title={
                           concept.band_key
-                            ? `${concept.name} — class: ${bandLabel(
+                            ? `${concept.name} — class fluency: ${bandLabel(
                                 concept.band_key
                               )}\n${concept.reached} of ${teams.length} ${
                                 T.teams
                               } reached it, ${concept.needs_attention} need help`
-                            : `No ${T.team} has reached ${concept.name} yet`
+                            : `No ${T.team} has anything judgeable on ${concept.name} yet`
                         }
                         onClick={() =>
                           setModalTarget({ conceptId: concept.id })
@@ -618,7 +651,7 @@ function ConceptsTab({ league }) {
                         title={
                           band
                             ? `${team.name} overall: ${band.label}`
-                            : `${team.name} has not reached any concept yet`
+                            : `${team.name} has nothing judgeable yet`
                         }
                       />
                     </td>
@@ -636,8 +669,7 @@ function ConceptsTab({ league }) {
           concept={conceptsById.get(modalTarget.conceptId)}
           teams={teams}
           cells={data.cells}
-          bands={data.scoring.bands}
-          minAssessments={data.scoring.min_assessments}
+          scoring={data.scoring}
           leagueId={league.id}
           focusTeamId={modalTarget.teamId}
           onClose={() => setModalTarget(null)}
