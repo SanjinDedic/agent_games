@@ -19,19 +19,21 @@ docker compose commands, or seed anything yourself.
 ./run_playwright_tests.sh all
 ```
 
-`all` = non-interactive: headless, every stage (01–08) in order, per-stage
+`all` = non-interactive: headless, every stage (01–09) in order, per-stage
 summary at the end, exit 1 if anything failed. Without `all` the script is an
 interactive menu (browser mode, per-stage picker) — for humans, not for you.
 
 Stage layout: 01 admin setup (institutions + teacher account), 02–04 the
 COMPETITION flow (institution/league/team wording), 05–06 the CLASSROOM flow
 (teacher/classroom/student wording — same routes, different labels), 07 the
-demo hint loop, 08 the one-time student password-reset link (classroom flow).
+demo hint loop, 08 the one-time student password-reset link, 09 the teacher's
+progress dashboards over the work stage 06 did (short-course grid, concept
+map, per-student page) — 08 and 09 are both classroom flow.
 
 **Warning before running:** every launch does `docker compose down -v` — wipes
 the local DB and MinIO volumes. Say so first unless the user explicitly asked
 for a reset/clean run. Expect the full run to take several minutes (stack
-reset + healthcheck wait + 8 stages).
+reset + healthcheck wait + 9 stages).
 
 ## 2. Analyze failures
 

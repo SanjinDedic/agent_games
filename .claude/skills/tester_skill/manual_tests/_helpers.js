@@ -135,6 +135,57 @@ async function readTutorialOverview(page, exerciseTitle, timeout = 15000) {
   };
 }
 
+// Read the agent-game panel on /TeamHome. The student landing page leads with
+// this panel (the tutorials sit under it): three stat tiles — best placement
+// with the size of the field, the recent placements, the valid submission
+// count — over one line of activity. Placements render as coloured squares,
+// so they are read off each square's title ("3rd against the validation
+// bots") rather than its colour, and the tiles a team with no ranked
+// submissions shows as "—" come back as null/[].
+//
+// Placement VALUES are content of a random game and must not be asserted:
+// where an agent lands against the bots moves between runs. What holds is the
+// shape — how many squares, the best being the best of them, the field size.
+async function readAgentPanel(page, timeout = 20000) {
+  const panel = page.locator('section').filter({
+    has: page.locator('h2:text-is("Agent Game")'),
+  });
+  await panel.waitFor({ timeout });
+
+  // Each tile is the div carrying its own label; the "Stuck on …" nudge box
+  // shares the tile background but has no label div, so it can't match.
+  const tile = (label) =>
+    panel
+      .locator('div.bg-ui-lighter')
+      .filter({ has: page.locator(`div:text-is("${label}")`) })
+      .first();
+  const placements = async (label) => {
+    const squares = tile(label).locator('span[title*="against the validation bots"]');
+    return (await squares.allInnerTexts()).map((t) => Number(t.trim()));
+  };
+
+  const best = await placements('Best placement');
+  const fieldSize = (await tile('Best placement').innerText()).match(/of (\d+)/);
+  const activity = panel
+    .locator('p')
+    .filter({ hasText: /^(Last submission|No submissions yet)/ })
+    .first();
+
+  return {
+    best: best.length ? best[0] : null,
+    fieldSize: fieldSize ? Number(fieldSize[1]) : null,
+    recent: await placements('Recent placements'),
+    validSubmissions: Number(
+      (await tile('Valid submissions').innerText()).trim().split('\n')[0]
+    ),
+    activity: (await activity.innerText()).trim(),
+    reachedFirst: (await panel.locator('text=REACHED 1ST').count()) > 0,
+    // The "Stuck on <game>?" nudge, shown once a team has many valid
+    // submissions and still no 1st place (STUCK_AFTER_VALID_SUBMISSIONS).
+    nudge: (await panel.locator('p:has-text("Stuck on")').count()) > 0,
+  };
+}
+
 // Click "Submit Code" and return {status, body} from the submit response.
 // Success = HTTP 200 with submission_id; validation failure = HTTP 400 with detail.
 // `endpoint` picks the response to assert on: agent submissions (default) or
@@ -168,5 +219,5 @@ async function finish(page, browser, observed, { name, failure } = {}) {
 module.exports = {
   BASE, STATE_FILE, loadState, saveState, launchPage, acceptDialogs,
   collectToasts, waitForToast, dismissToasts, setMonacoValue, getMonacoValue,
-  readTutorialOverview, submitCode, finish,
+  readTutorialOverview, readAgentPanel, submitCode, finish,
 };
