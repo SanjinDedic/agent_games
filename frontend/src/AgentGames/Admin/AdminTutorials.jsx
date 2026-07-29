@@ -31,9 +31,6 @@ const exerciseToForm = (exercise) => ({
  */
 const formToPayload = (form) => {
   if (!form.title.trim()) return { error: 'Exercise title is required' };
-  if (!form.entry_function.trim()) {
-    return { error: 'Entry function name is required' };
-  }
   if (!form.problem_markdown.trim()) {
     return { error: 'Problem markdown is required' };
   }
@@ -216,10 +213,6 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
   };
 
   const handleRun = async () => {
-    if (!form.entry_function.trim()) {
-      toast.error('Entry function name is required to run tests');
-      return;
-    }
     setRunning(true);
     setRunResult(null);
     const result = await onRun(
@@ -270,7 +263,7 @@ function ExerciseEditor({ initialForm, isNew, onSave, onRun, onCancel }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Entry function (the function name every submission must define)
+                Entry function (blank = top-level code, no function required)
               </label>
               <input
                 type="text"
@@ -779,7 +772,9 @@ function AdminTutorials() {
                             {exercise.title}
                           </p>
                           <p className="text-xs text-gray-500 font-mono truncate">
-                            {exercise.entry_function}()
+                            {exercise.entry_function
+                              ? `${exercise.entry_function}()`
+                              : 'top-level code'}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
