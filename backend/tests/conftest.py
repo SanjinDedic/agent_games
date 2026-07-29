@@ -12,6 +12,8 @@ from backend.database.db_config import get_database_url
 from backend.database.db_models import (
     Admin,
     DemoUser,
+    Exercise,
+    ExerciseHintReveal,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
     Institution,
@@ -22,6 +24,7 @@ from backend.database.db_models import (
     SubmissionMetadata,
     Team,
     TeamType,
+    Tutorial,
 )
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import create_access_token
@@ -457,6 +460,43 @@ def add_exercise_attempt(
                 metadata_id=meta.id,
             )
         )
+
+
+def build_exercise(session, title: str = "Helper Exercise") -> Exercise:
+    """Create a tutorial holding a single exercise and return that exercise.
+
+    For tests that only need something for exercise work to hang off. Commits so
+    the exercise has an id.
+    """
+    tutorial = Tutorial(title=f"{title} Tutorial", description="d")
+    session.add(tutorial)
+    session.commit()
+    exercise = Exercise(
+        tutorial_id=tutorial.id,
+        order_index=0,
+        title=title,
+        problem_markdown="p",
+        entry_function="solve",
+    )
+    session.add(exercise)
+    session.commit()
+    session.refresh(exercise)
+    return exercise
+
+
+def add_exercise_work(session, team_id: int, title: str = "Helper Exercise") -> Exercise:
+    """Give a team one attempt plus one revealed hint on a fresh exercise.
+
+    The shape that used to make Team deletes fail: rows in every exercise table
+    that FK-references team. Commits.
+    """
+    exercise = build_exercise(session, title=title)
+    add_exercise_attempt(session, team_id=team_id, exercise_id=exercise.id, passed=True)
+    session.add(
+        ExerciseHintReveal(team_id=team_id, exercise_id=exercise.id, hint_index=0)
+    )
+    session.commit()
+    return exercise
 
 
 @pytest.fixture

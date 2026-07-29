@@ -4,7 +4,10 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
+    Concept,
     Exercise,
+    ExerciseConcept,
+    ExerciseHintReveal,
     ExerciseSubmission,
     ExerciseSubmissionMetadata,
     Team,
@@ -163,6 +166,99 @@ def test_delete_tutorial_removes_exercises_and_history(
 def test_delete_missing_tutorial_404(client, auth_headers):
     response = client.delete("/tutorial/tutorial/9999", headers=auth_headers)
     assert response.status_code == 404
+
+
+@pytest.fixture
+def tagged_exercises(db_session: Session, tutorial_with_exercises: Tutorial) -> int:
+    """Tag every exercise of the tutorial with one concept; returns its id.
+
+    ExerciseConcept has an FK to exercise and no ORM cascade, so without an
+    explicit cleanup these links turn any exercise delete into a 500.
+    """
+    concept = Concept(slug="loops-basics", name="For Loops")
+    db_session.add(concept)
+    db_session.flush()
+    for exercise_id in exercise_ids_in_order(db_session, tutorial_with_exercises.id):
+        db_session.add(
+            ExerciseConcept(exercise_id=exercise_id, concept_id=concept.id)
+        )
+    db_session.commit()
+    return concept.id
+
+
+def test_delete_tutorial_removes_concept_links(
+    client, auth_headers, db_session, tutorial_with_exercises, tagged_exercises
+):
+    response = client.delete(
+        f"/tutorial/tutorial/{tutorial_with_exercises.id}", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    assert db_session.exec(select(ExerciseConcept)).all() == []
+    # The vocabulary itself outlives the content that referenced it.
+    assert db_session.get(Concept, tagged_exercises) is not None
+
+
+def test_delete_exercise_removes_its_concept_links(
+    client, auth_headers, db_session, tutorial_with_exercises, tagged_exercises
+):
+    exercise_ids = exercise_ids_in_order(db_session, tutorial_with_exercises.id)
+
+    response = client.delete(
+        f"/tutorial/exercise/{exercise_ids[0]}", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    remaining = db_session.exec(select(ExerciseConcept.exercise_id)).all()
+    assert sorted(remaining) == sorted(exercise_ids[1:])
+
+
+def test_delete_exercise_removes_hint_reveals(
+    client, auth_headers, db_session, tutorial_with_exercises
+):
+    """Hint reveals hold an FK to exercise and can exist without any
+    submission, so deletion must clear them explicitly."""
+    exercise_ids = exercise_ids_in_order(db_session, tutorial_with_exercises.id)
+    team = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
+    for exercise_id in exercise_ids[:2]:
+        db_session.add(
+            ExerciseHintReveal(
+                team_id=team.id, exercise_id=exercise_id, hint_index=0
+            )
+        )
+    db_session.commit()
+
+    response = client.delete(
+        f"/tutorial/exercise/{exercise_ids[0]}", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    remaining = db_session.exec(select(ExerciseHintReveal.exercise_id)).all()
+    assert remaining == [exercise_ids[1]]
+
+
+def test_delete_tutorial_removes_hint_reveals(
+    client, auth_headers, db_session, tutorial_with_exercises
+):
+    exercise_ids = exercise_ids_in_order(db_session, tutorial_with_exercises.id)
+    team = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
+    db_session.add(
+        ExerciseHintReveal(
+            team_id=team.id, exercise_id=exercise_ids[0], hint_index=0
+        )
+    )
+    db_session.commit()
+
+    response = client.delete(
+        f"/tutorial/tutorial/{tutorial_with_exercises.id}", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    assert db_session.exec(select(ExerciseHintReveal)).all() == []
 
 
 # -- admin detail -----------------------------------------------------------

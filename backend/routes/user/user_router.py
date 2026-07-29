@@ -104,6 +104,17 @@ def _validation_ranking(validation_result: dict, team_name: str) -> int | None:
     return 1 + sum(1 for points in total_points.values() if points > team_points)
 
 
+def _validation_field_size(game_name: str) -> int | None:
+    """How many agents a validation run ranks: the game's bots plus the
+    student. None for a game we can't resolve — the student page then shows
+    the placement without the "of N" rather than a wrong denominator."""
+    try:
+        return GameFactory.get_game_class(game_name).validation_player_count() + 1
+    except (ValueError, ModuleNotFoundError, AttributeError):
+        logger.warning("Could not size the validation field for game %s", game_name)
+        return None
+
+
 @user_router.post("/submit-agent")
 @verify_ai_agent_service_or_student
 async def submit_agent(
@@ -288,7 +299,9 @@ async def get_team_data(
         else get_team_tutorials_progress(session, team_id, league.id),
         "agent_game": None
         if unassigned
-        else get_team_agent_stats(session, team_id, league.id),
+        else get_team_agent_stats(
+            session, team_id, league.id, _validation_field_size(league.game)
+        ),
     }
 
 

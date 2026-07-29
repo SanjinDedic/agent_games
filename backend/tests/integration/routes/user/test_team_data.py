@@ -16,9 +16,14 @@ from backend.database.db_models import (
     Team,
     Tutorial,
 )
+from backend.games.greedy_pig.validation_players import players as greedy_pig_bots
 from backend.routes.auth.auth_db import mint_team_token
 from backend.tests.conftest import build_institution
 from backend.time_utils import utc_now
+
+# Every league in these tests plays greedy_pig, so the validation field is
+# always its bots plus the student.
+GREEDY_PIG_FIELD_SIZE = len(greedy_pig_bots) + 1
 
 
 @pytest.fixture
@@ -193,6 +198,8 @@ def test_team_data_classroom_full_payload(client, db_session, classroom_fixture)
     assert agent["total_attempts"] == 3
     assert agent["validated_submissions"] == 2
     assert agent["recent_rankings"] == [1, 3]  # oldest -> newest
+    assert agent["best_ranking"] == 1
+    assert agent["field_size"] == GREEDY_PIG_FIELD_SIZE
     assert agent["achieved_first"] is True
     assert agent["latest_submission"] is not None
 
@@ -220,6 +227,9 @@ def test_team_data_competition_institution(client, db_session):
     assert data["agent_game"]["total_attempts"] == 0
     assert data["agent_game"]["validated_submissions"] == 0
     assert data["agent_game"]["recent_rankings"] == []
+    # Nothing ranked yet: no best placement, but the field is still sizeable.
+    assert data["agent_game"]["best_ranking"] is None
+    assert data["agent_game"]["field_size"] == GREEDY_PIG_FIELD_SIZE
     assert data["agent_game"]["achieved_first"] is False
     assert data["agent_game"]["latest_submission"] is None
 
@@ -268,6 +278,8 @@ def test_team_data_stats_scoped_to_current_league(
     agent = resp.json()["agent_game"]
     assert agent["total_attempts"] == 1
     assert agent["recent_rankings"] == [2]
+    # The 1st place belongs to the other league and must not travel.
+    assert agent["best_ranking"] == 2
     assert agent["achieved_first"] is False
 
 

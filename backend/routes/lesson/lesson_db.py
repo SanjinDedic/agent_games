@@ -4,7 +4,7 @@ from typing import Optional
 import redis
 from sqlmodel import Session, select
 
-from backend.database.db_models import Lesson
+from backend.database.db_models import Lesson, LessonConcept
 # Reused so the existing 429 handler in api.py covers snippet rate limiting.
 from backend.routes.user.user_db import SubmissionLimitExceededError
 from backend.tasks.celery_app import celery_app
@@ -141,6 +141,16 @@ def update_lesson(
 
 
 def delete_lesson(session: Session, lesson_id: int) -> None:
+    """Delete a lesson and its concept tags. LessonConcept has an FK to lesson
+    and no ORM cascade, so the links must go first."""
     lesson = _get_lesson_or_raise(session, lesson_id)
+    for link in session.exec(
+        select(LessonConcept).where(LessonConcept.lesson_id == lesson_id)
+    ).all():
+        session.delete(link)
+    # LessonConcept declares no relationship to Lesson, so SQLAlchemy has no
+    # dependency to order these deletes by — flush the links out first or the
+    # lesson DELETE can race ahead of them and trip the FK.
+    session.flush()
     session.delete(lesson)
     session.commit()

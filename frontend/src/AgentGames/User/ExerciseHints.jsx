@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import LessonMarkdown from "../Shared/Lesson/LessonMarkdown";
+import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
 
 /**
  * Condensed hints panel for an exercise: a single collapsed bar until the
@@ -7,10 +8,24 @@ import LessonMarkdown from "../Shared/Lesson/LessonMarkdown";
  * so nobody gets spoiled past the nudge they asked for. Renders nothing
  * when the exercise has no hints. Hints are Markdown, rendered through
  * LessonMarkdown so they can carry lesson:// links too.
+ *
+ * Each reveal is reported to the server (fire-and-forget, repeats ignored)
+ * because the teacher's concept mastery view counts a revealed hint as extra
+ * effort. `exerciseId` is optional so the admin preview, which has no saved
+ * exercise to attribute a reveal to, can still render hints.
  */
-function ExerciseHints({ hints }) {
+function ExerciseHints({ hints, exerciseId }) {
     const [isOpen, setIsOpen] = useState(false);
     const [revealedCount, setRevealedCount] = useState(0);
+    const { recordHintReveal } = useTutorialAPI();
+
+    const revealNext = () => {
+        const hintIndex = revealedCount;
+        setRevealedCount(hintIndex + 1);
+        if (exerciseId != null) {
+            recordHintReveal(exerciseId, hintIndex);
+        }
+    };
 
     if (!hints || hints.length === 0) return null;
 
@@ -47,7 +62,7 @@ function ExerciseHints({ hints }) {
                     ))}
                     {revealedCount < hints.length && (
                         <button
-                            onClick={() => setRevealedCount(revealedCount + 1)}
+                            onClick={revealNext}
                             className="w-full py-2 px-3 text-sm rounded border border-dashed border-amber-500 text-amber-700 hover:bg-amber-50 transition-colors"
                         >
                             {revealedCount === 0

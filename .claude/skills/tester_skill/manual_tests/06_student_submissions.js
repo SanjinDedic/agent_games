@@ -6,14 +6,16 @@
 //       land on /TeamHome with the "You're in the ... classroom" copy
 //   6.2 three submissions: starter code (valid), threshold variant (valid),
 //       `import os` prepended (must fail the AST safety check)
-//       + My Submissions history check
+//       + My Submissions history check + the landing page reading the same
+//       three back (agent panel: 2 valid, 2 placement squares, 1 attempt that
+//       didn't get past validation)
 //   6.3 (Student 1 only) one tutorial exercise end-to-end, exactly as in
 //       Stage 3.3 but with the classroom wording (STUDENT: footer label, and
 //       the navbar link reading "Short Course" rather than "Tutorial"):
 //       starter fails 0/5 -> fix passes 5/5 -> broken code 400s -> overview
-//       Completed / 1 of 10. PREREQUISITES: tutorial seeded AND attached to
-//       the classroom (05 attaches it). Progress is per-student, so this
-//       classroom student starts at 0 of 10 even after Stage 3 ran.
+//       Completed / 1 of <total>. PREREQUISITES: tutorial seeded AND attached
+//       to the classroom (05 attaches it). Progress is per-student, so this
+//       classroom student starts at 0 completed even after Stage 3 ran.
 //   6.4 logout
 //
 // Terminology note: the signup toast follows the classroom terminology now
@@ -25,8 +27,12 @@
 //   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/06_student_submissions.js
 const {
   loadState, saveState, launchPage, waitForToast, dismissToasts,
-  setMonacoValue, getMonacoValue, submitCode, finish,
+  setMonacoValue, getMonacoValue, readTutorialOverview, readAgentPanel,
+  submitCode, finish,
 } = require('./_helpers');
+
+const EXERCISE = 'Add Up the Scoreboard';
+const TUTORIAL = 'Python Foundations for Greedy Pig';
 
 // Names carry the run suffix so re-runs don't collide with existing accounts
 // (and stay distinct from Stage 3's alpha/bravo/charl teams).
@@ -36,7 +42,8 @@ const studentDefs = (run) => [
 ];
 
 // 6.3 (Student 1 only) — same tutorial exercise as Stage 3.3 ("Add Up the
-// Scoreboard", #4 of 10) but asserting the classroom wording: the workspace
+// Scoreboard", position read off the overview) but asserting the classroom
+// wording: the workspace
 // footer label is STUDENT:, not TEAM:. Submission outcomes are asserted from
 // the /tutorial/submit-exercise response body exactly as in Stage 3.3.
 async function runTutorialExercise(page) {
@@ -49,13 +56,18 @@ async function runTutorialExercise(page) {
   }
   await page.click('nav a:has-text("Short Course")');
   await page.waitForURL('**/Tutorial', { timeout: 20000 });
-  await page.waitForSelector('h1:has-text("Python Foundations for Greedy Pig")', { timeout: 30000 });
-  await page.waitForSelector('text=0 of 10 exercises completed', { timeout: 15000 });
-  console.log('[6.3] overview loaded: 10 exercises, 0 of 10 completed');
+  await page.waitForSelector(`h1:has-text("${TUTORIAL}")`, { timeout: 30000 });
+  const overview = await readTutorialOverview(page, EXERCISE);
+  if (overview.passed !== 0) {
+    throw new Error(`per-student progress should start at 0 completed, overview says ${overview.passed}`);
+  }
+  if (!overview.position) throw new Error(`"${EXERCISE}" is already completed before this stage ran`);
+  console.log(`[6.3] overview loaded: ${overview.total} exercises, 0 of ${overview.total} completed ` +
+    `("${EXERCISE}" is #${overview.position})`);
 
-  await page.click('li button:has-text("Add Up the Scoreboard")');
+  await page.click(`li button:has-text("${EXERCISE}")`);
   await page.waitForSelector('button:has-text("Problem Description")', { timeout: 30000 });
-  await page.waitForSelector('text=4. Add Up the Scoreboard', { timeout: 15000 });
+  await page.waitForSelector(`text=${overview.position}. ${EXERCISE}`, { timeout: 15000 });
   await page.waitForSelector('text=STUDENT:', { timeout: 15000 });
   if (await page.locator('span:text-is("TEAM:")').count()) {
     throw new Error('classroom tutorial workspace shows a TEAM: footer label — terminology switch regressed');
@@ -102,13 +114,77 @@ async function runTutorialExercise(page) {
   }
   console.log(`[6.3] broken submission correctly rejected: "${detail}"`);
 
-  // Back to the overview: Completed, progress 1 of 10 (per-student progress).
+  // Back to the overview: Completed, 1 of <total> (per-student progress).
   await dismissToasts(page);
   await page.click('button:has-text("All exercises")');
-  await page.waitForSelector('text=1 of 10 exercises completed', { timeout: 15000 });
-  await page.locator('li button:has-text("Add Up the Scoreboard")')
+  await page.waitForSelector(`text=1 of ${overview.total} exercises completed`, { timeout: 15000 });
+  await page.locator(`li button:has-text("${EXERCISE}")`)
     .locator('text=Completed').waitFor({ timeout: 15000 });
-  console.log('[6.3] overview shows Add Up the Scoreboard as Completed, 1 of 10');
+  console.log(`[6.3] overview shows ${EXERCISE} as Completed, 1 of ${overview.total}`);
+
+  // The landing page counts the same pass on its course card, under the agent
+  // panel — same number, two places, one backend call (/user/team-data).
+  await page.click('nav a:has-text("Home")');
+  await page.waitForURL('**/TeamHome', { timeout: 20000 });
+  const courseCard = page.locator('section button').filter({ hasText: TUTORIAL }).first();
+  await courseCard.waitFor({ timeout: 15000 });
+  const cardText = (await courseCard.innerText()).replace(/\s+/g, ' ');
+  if (!cardText.includes(`1 of ${overview.total} exercises completed`)) {
+    throw new Error(`landing page course card reads "${cardText}", expected 1 of ${overview.total} completed`);
+  }
+  console.log(`[6.3] landing page course card agrees: 1 of ${overview.total} completed`);
+}
+
+// 6.2d — the landing page reports the submissions back. The tiles come from
+// GET /user/team-data and the placement squares are the same validation
+// placements (in the same colours) the teacher's submissions grid shows, so
+// this is where the two views are checked against each other.
+async function checkLandingPage(page) {
+  await page.click('nav a:has-text("Home")');
+  await page.waitForURL('**/TeamHome', { timeout: 20000 });
+
+  // readAgentPanel first: the page renders a loading state until
+  // /user/team-data resolves, so nothing else can be read before it.
+  const panel = await readAgentPanel(page);
+
+  // The agent game leads the page; the short courses sit under it.
+  const sections = await page.locator('section > h2').allInnerTexts();
+  if (sections[0] !== 'Agent Game') {
+    throw new Error(`landing page sections are ${JSON.stringify(sections)}, expected Agent Game first`);
+  }
+  // Teacher wording: a classroom student's tutorials are Short Courses.
+  if (!sections.includes('Short Courses')) {
+    throw new Error(`landing page sections are ${JSON.stringify(sections)}, expected a Short Courses section`);
+  }
+
+  if (panel.validSubmissions !== 2) {
+    throw new Error(`landing page shows ${panel.validSubmissions} valid submissions, expected 2`);
+  }
+  if (panel.recent.length !== 2) {
+    throw new Error(`landing page shows ${panel.recent.length} recent placements, expected 2 (one per valid submission)`);
+  }
+  if (panel.best !== Math.min(...panel.recent)) {
+    throw new Error(`best placement is ${panel.best} but the recent placements are ${JSON.stringify(panel.recent)}`);
+  }
+  if (!panel.fieldSize || panel.best > panel.fieldSize) {
+    throw new Error(`placement ${panel.best} of field size ${panel.fieldSize} is not a possible reading`);
+  }
+  if (panel.reachedFirst !== (panel.best === 1)) {
+    throw new Error(`REACHED 1ST badge ${panel.reachedFirst ? 'shown' : 'missing'} with a best placement of ${panel.best}`);
+  }
+  // The AST-rejected submission is metadata-only, so it never reaches the
+  // history modal — this line is the only place a student sees it.
+  if (!/^Last submission /.test(panel.activity)) {
+    throw new Error(`landing page activity line reads "${panel.activity}", expected a "Last submission …" line`);
+  }
+  if (!panel.activity.includes("1 attempt didn't get past validation")) {
+    throw new Error(`landing page activity line reads "${panel.activity}", expected the 1 failed attempt to be counted`);
+  }
+  if (panel.nudge) {
+    throw new Error('landing page shows the "Stuck on …" nudge after 2 valid submissions (it needs > 10)');
+  }
+  console.log(`[6.2d] landing page: 2 valid submissions, placements ${JSON.stringify(panel.recent)} ` +
+    `(best ${panel.best} of ${panel.fieldSize}), 1 failed attempt counted`);
 }
 
 async function runStudent(page, observed, state, student, { withTutorial = false } = {}) {
@@ -189,6 +265,9 @@ async function runStudent(page, observed, state, student, { withTutorial = false
   }
   await modal.locator('div.border-t button:has-text("Close")').click();
   await modal.waitFor({ state: 'detached', timeout: 10000 });
+
+  // 6.2d the same three submissions, read back off the landing page
+  await checkLandingPage(page);
 
   // 6.3 tutorial exercise — Student 1 only (progress is per-student)
   if (withTutorial) {

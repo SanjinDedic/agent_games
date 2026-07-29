@@ -41,6 +41,11 @@ export const useClassroomAPI = () => {
     [get]
   );
 
+  const getConceptMatrix = useCallback(
+    (leagueId) => get(`/institution/classroom/${leagueId}/concept-matrix`),
+    [get]
+  );
+
   const getStudentSummary = useCallback(
     (teamId) => get(`/institution/student/${teamId}/summary`),
     [get]
@@ -67,6 +72,7 @@ export const useClassroomAPI = () => {
     getSubscription,
     getClassroomProgress,
     getTutorialMatrix,
+    getConceptMatrix,
     getStudentSummary,
     getStudentAgentSubmissions,
     getStudentExerciseSubmissions,

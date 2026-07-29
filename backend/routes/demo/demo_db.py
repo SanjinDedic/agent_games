@@ -23,7 +23,7 @@ from backend.database.db_models import (
     Tutorial,
     get_password_hash,
 )
-from backend.database.submission_helpers import delete_submissions_for_teams
+from backend.database.submission_helpers import delete_team_children
 from backend.utils import get_games_names
 from backend.time_utils import utc_now
 
@@ -329,9 +329,10 @@ def cleanup_expired_demo_users(session: Session, age_minutes: int = DEMO_TOKEN_E
         select(Team).where(Team.is_demo == True).where(Team.created_at < cutoff_time)
     ).all()
 
-    # Delete their submissions explicitly; deleting Team via the ORM would only
-    # null out the metadata FK and strand orphaned rows
-    delete_submissions_for_teams(session, [user.id for user in expired_users])
+    # Clear child rows explicitly; deleting Team via the ORM would at best null
+    # out the FKs it knows about and strand orphans, and the exercise tables it
+    # doesn't know about would fail the delete outright
+    delete_team_children(session, [user.id for user in expired_users])
 
     # Delete expired users
     count = 0

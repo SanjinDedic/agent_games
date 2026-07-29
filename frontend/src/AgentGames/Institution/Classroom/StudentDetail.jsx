@@ -9,10 +9,11 @@ import { selectToken } from '../../../slices/authSlice';
 import useClassroomAPI from '../../Shared/hooks/useClassroomAPI';
 import { useTerms } from '../../Shared/terminology';
 import RankingSparkline from '../../Shared/Progress/RankingSparkline';
-import StatusCell from '../../Shared/Progress/StatusCell';
+import StatusCell, { STATUS_INKS } from '../../Shared/Progress/StatusCell';
 import CodeHistoryViewer from '../../Shared/Submission/CodeHistoryViewer';
 import PlagiarismReportModal from '../../Shared/PlagiarismReportModal';
 import ExerciseCodeModal from './ExerciseCodeModal';
+import StudentConceptCard from './StudentConceptCard';
 
 const Stat = ({ label, children, title }) => (
   <div title={title}>
@@ -206,14 +207,18 @@ function StudentDetail() {
           )}
         </div>
 
+        {/* Concept mastery — what to actually work on with them */}
+        <StudentConceptCard leagueId={leagueId} teamId={teamId} />
+
         {/* Tutorial progress */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-semibold text-ui-dark mb-1">
             {`${T.Tutorial} Progress`}
           </h2>
           <p className="text-sm text-ui mb-4">
-            <span className="text-green-700 font-bold">✓</span> passed ·{' '}
-            <span className="text-amber-700 font-bold">n</span> attempts without a
+            <span className={`${STATUS_INKS.passed} font-bold`}>✓</span> passed ·{' '}
+            <span className={`${STATUS_INKS.attempted} font-bold`}>n</span> attempts
+            without a
             pass · <span className="font-bold">·</span> untouched — click an
             exercise to read the code.
           </p>

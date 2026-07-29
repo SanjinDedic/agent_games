@@ -6,6 +6,18 @@ import useTeamAPI from "../Shared/hooks/useTeamAPI";
 import { getTerms } from "../Shared/terminology";
 import { getGame } from "../Feedback/games";
 import { imageUrl } from "../../config/assets";
+import { rankTone } from "../Shared/Progress/StatusCell";
+import {
+  PLACEMENT_STOPS,
+  PLACEMENT_TRAILING_STOP,
+  stopChip,
+  stopInk,
+  stopSolid,
+} from "../Shared/Progress/progressScale";
+
+// A student who has submitted working code this many times without ever
+// beating the bots is grinding, not learning, and gets pointed at the course.
+const STUCK_AFTER_VALID_SUBMISSIONS = 10;
 
 const ordinal = (n) => {
   const rem10 = n % 10;
@@ -16,18 +28,40 @@ const ordinal = (n) => {
   return `${n}th`;
 };
 
-function StatTile({ label, value }) {
+function StatTile({ label, value, children }) {
   return (
     <div className="bg-ui-lighter rounded-lg p-4 text-center">
-      <div className="text-2xl font-bold text-ui-dark">{value}</div>
+      <div className="h-9 flex items-center justify-center gap-1.5 text-2xl font-bold text-ui-dark">
+        {children ?? value}
+      </div>
       <div className="text-sm text-ui-dark/60 mt-1">{label}</div>
     </div>
   );
 }
 
 /**
+ * One validation placement, on the same ramp the teacher's submissions grid
+ * colours by — so a student and their teacher read the same number in the
+ * same colour.
+ */
+function PlacementSquare({ ranking }) {
+  return (
+    <span
+      title={`${ordinal(ranking)} against the validation bots`}
+      className={`inline-flex w-9 h-9 items-center justify-center rounded-md text-base font-mono font-bold ${rankTone(
+        ranking
+      )}`}
+    >
+      {ranking}
+    </span>
+  );
+}
+
+/**
  * Student landing page. One backend call (GET /user/team-data) provides
  * identity, the current league, per-tutorial progress, and agent-game stats.
+ * The agent game leads, because it is what students come back for; the
+ * tutorials sit under it as the thing to reach for when the agent stalls.
  * Wording follows the owning institution: classroom/student for teacher
  * accounts, league/team for competitions. Unassigned students are sent to
  * the league picker.
@@ -90,6 +124,23 @@ function TeamHome() {
   const tutorials = teamData.tutorials;
   const showTutorials = tutorials.length > 0 || teamData.is_classroom;
 
+  const validSubmissions = stats?.validated_submissions ?? 0;
+  const failedAttempts = (stats?.total_attempts ?? 0) - validSubmissions;
+
+  // Beating the bots means first place; anything less has not won yet.
+  const stuck =
+    !stats?.achieved_first && validSubmissions > STUCK_AFTER_VALID_SUBMISSIONS;
+  // The unfinished course with the most left to gain. A student who has
+  // finished everything gets no nudge — there is nowhere to send them.
+  const nudgeTutorial = tutorials
+    .filter((tutorial) => tutorial.passed_count < tutorial.exercise_count)
+    .sort(
+      (a, b) =>
+        a.passed_count / (a.exercise_count || 1) -
+        b.passed_count / (b.exercise_count || 1)
+    )[0];
+  const showNudge = stuck && Boolean(nudgeTutorial);
+
   return (
     <div className="min-h-screen pt-16 pb-12 bg-ui-lighter">
       <div className="max-w-4xl mx-auto px-4">
@@ -103,10 +154,138 @@ function TeamHome() {
           </h1>
           <p className="mt-2 text-ui-dark/70">
             {teamData.is_classroom
-              ? `You're in the ${teamData.league.name} ${T.league}. Work through your ${T.tutorials}, then improve your ${gameDisplayName} agent.`
+              ? `You're in the ${teamData.league.name} ${T.league}. Build your ${gameDisplayName} agent, and use your ${T.tutorials} whenever you need the Python behind it.`
               : `You're competing in ${teamData.league.name}. Keep improving your ${gameDisplayName} agent to climb the rankings.`}
           </p>
         </div>
+
+        {/* Agent game */}
+        <section className="mt-8">
+          <h2 className="text-xl font-bold text-ui-dark mb-1">Agent Game</h2>
+          <p className="text-ui-dark/60 mb-4">
+            {teamData.is_classroom
+              ? "Your coding challenge: build an agent that plays for you."
+              : "Your competition game: build the smartest agent in the field."}
+          </p>
+          <div className="bg-white rounded-lg shadow border border-ui-light/30 overflow-hidden">
+            <div className="flex flex-col sm:flex-row">
+              {game?.thumbnail && (
+                <img
+                  src={imageUrl(game.thumbnail)}
+                  alt={`${gameDisplayName} game`}
+                  className="w-full sm:w-56 h-40 sm:h-auto object-cover"
+                />
+              )}
+              <div className="flex-1 p-6">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-2xl font-bold text-ui-dark">
+                    {gameDisplayName}
+                  </h3>
+                  {stats?.achieved_first && (
+                    <span
+                      className={`text-xs font-bold border rounded-full px-2 py-1 ${stopChip(
+                        PLACEMENT_STOPS[1]
+                      )}`}
+                    >
+                      🏆 REACHED 1ST
+                    </span>
+                  )}
+                </div>
+                {game?.shortDescription && (
+                  <p className="mt-1 text-ui-dark/60">{game.shortDescription}</p>
+                )}
+
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <StatTile label="Best placement">
+                    {stats?.best_ranking ? (
+                      <>
+                        <PlacementSquare ranking={stats.best_ranking} />
+                        {stats.field_size && (
+                          <span className="text-base font-medium text-ui-dark/50">
+                            of {stats.field_size}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </StatTile>
+                  <StatTile label="Recent placements">
+                    {stats?.recent_rankings?.length
+                      ? stats.recent_rankings.map((ranking, i) => (
+                          <PlacementSquare key={i} ranking={ranking} />
+                        ))
+                      : "—"}
+                  </StatTile>
+                  <StatTile
+                    label="Valid submissions"
+                    value={validSubmissions}
+                  />
+                </div>
+                <p className="mt-3 text-sm text-ui-dark/50">
+                  {stats?.latest_submission
+                    ? `Last submission ${moment(stats.latest_submission).fromNow()}`
+                    : "No submissions yet — open the workspace to write your first agent."}
+                  {failedAttempts > 0 &&
+                    ` · ${failedAttempts} attempt${
+                      failedAttempts === 1 ? "" : "s"
+                    } didn't get past validation`}
+                </p>
+
+                {showNudge && (
+                  <div className="mt-4 flex gap-3 rounded-lg border border-ui-light bg-ui-lighter p-4">
+                    <span
+                      className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${stopSolid(
+                        PLACEMENT_TRAILING_STOP
+                      )}`}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p
+                        className={`font-semibold ${stopInk(
+                          PLACEMENT_TRAILING_STOP
+                        )}`}
+                      >
+                        Stuck on {gameDisplayName}?
+                      </p>
+                      <p className="mt-1 text-sm text-ui-dark/70">
+                        {validSubmissions} valid submissions and no 1st place
+                        yet. {nudgeTutorial.title} covers the Python you need —
+                        you're {nudgeTutorial.passed_count} of{" "}
+                        {nudgeTutorial.exercise_count} through it.
+                      </p>
+                      <button
+                        onClick={() =>
+                          navigate(`/Tutorial?tutorial=${nudgeTutorial.id}`)
+                        }
+                        className="mt-3 py-2 px-4 font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200"
+                      >
+                        Continue your {T.tutorial} →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    to="/AgentSubmission"
+                    className="text-center py-2.5 px-5 text-lg font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200"
+                  >
+                    Open Agent Workspace
+                  </Link>
+                  {!teamData.is_demo && (
+                    <Link
+                      to="/Leaderboards"
+                      className="text-center py-2.5 px-5 text-lg font-medium text-ui-dark bg-ui-lighter hover:bg-ui-light rounded-lg transition-colors duration-200"
+                    >
+                      Leaderboards
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Tutorials */}
         {showTutorials && (
@@ -173,83 +352,6 @@ function TeamHome() {
             )}
           </section>
         )}
-
-        {/* Agent game */}
-        <section className="mt-8">
-          <h2 className="text-xl font-bold text-ui-dark mb-1">Agent Game</h2>
-          <p className="text-ui-dark/60 mb-4">
-            {teamData.is_classroom
-              ? "Your coding challenge: build an agent that plays for you."
-              : "Your competition game: build the smartest agent in the field."}
-          </p>
-          <div className="bg-white rounded-lg shadow border border-ui-light/30 overflow-hidden">
-            <div className="flex flex-col sm:flex-row">
-              {game?.thumbnail && (
-                <img
-                  src={imageUrl(game.thumbnail)}
-                  alt={`${gameDisplayName} game`}
-                  className="w-full sm:w-56 h-40 sm:h-auto object-cover"
-                />
-              )}
-              <div className="flex-1 p-6">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h3 className="text-2xl font-bold text-ui-dark">
-                    {gameDisplayName}
-                  </h3>
-                  {stats?.achieved_first && (
-                    <span className="text-xs font-bold text-white bg-notice-orange rounded-full px-2 py-1">
-                      🏆 REACHED 1ST
-                    </span>
-                  )}
-                </div>
-                {game?.shortDescription && (
-                  <p className="mt-1 text-ui-dark/60">{game.shortDescription}</p>
-                )}
-
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <StatTile
-                    label="Valid submissions"
-                    value={stats?.validated_submissions ?? 0}
-                  />
-                  <StatTile
-                    label="Total attempts"
-                    value={stats?.total_attempts ?? 0}
-                  />
-                  <StatTile
-                    label="Recent placements"
-                    value={
-                      stats?.recent_rankings?.length
-                        ? stats.recent_rankings.map(ordinal).join(" → ")
-                        : "—"
-                    }
-                  />
-                </div>
-                <p className="mt-3 text-sm text-ui-dark/50">
-                  {stats?.latest_submission
-                    ? `Last submission ${moment(stats.latest_submission).fromNow()}`
-                    : "No submissions yet — open the workspace to write your first agent."}
-                </p>
-
-                <div className="mt-5 flex flex-col sm:flex-row gap-3">
-                  <Link
-                    to="/AgentSubmission"
-                    className="text-center py-2.5 px-5 text-lg font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors duration-200"
-                  >
-                    Open Agent Workspace
-                  </Link>
-                  {!teamData.is_demo && (
-                    <Link
-                      to="/Leaderboards"
-                      className="text-center py-2.5 px-5 text-lg font-medium text-ui-dark bg-ui-lighter hover:bg-ui-light rounded-lg transition-colors duration-200"
-                    >
-                      Leaderboards
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );

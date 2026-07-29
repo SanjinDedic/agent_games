@@ -213,7 +213,8 @@ class SubmissionMetadata(SQLModel, table=True):
     and hint availability. A linked Submission row == passed validation."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    # nullable so an ORM Team delete can null it out rather than fail; deleting
+    # a Team still goes through delete_team_children(), which removes these rows
     team_id: Optional[int] = Field(
         default=None, foreign_key="team.id", nullable=True, index=True
     )
@@ -450,7 +451,8 @@ class ExerciseSubmissionMetadata(SQLModel, table=True):
     limiting. A linked ExerciseSubmission row == the code was safe and ran."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable: cleanup_expired_demo_users deletes Teams via the ORM, which nulls child FKs
+    # Team has no parent-side relationship to this table, so an ORM Team delete
+    # will NOT null this out — every Team delete must call delete_team_children()
     team_id: Optional[int] = Field(
         default=None, foreign_key="team.id", nullable=True, index=True
     )
@@ -483,6 +485,32 @@ class ExerciseSubmission(SQLModel, table=True):
     meta: ExerciseSubmissionMetadata = Relationship(back_populates="submission")
 
 
+class ExerciseHintReveal(SQLModel, table=True):
+    """One row the first time a student reveals a given hint of an exercise.
+
+    Exercise hints are static authored nudges (Exercise.exercise_hints) shown
+    one at a time in the browser; nothing about the reveal used to reach the
+    server. Concept mastery counts a revealed hint as extra effort, so the
+    reveal has to be recorded. The unique constraint makes re-opening the
+    panel idempotent, which is what keeps the counts honest.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # Team has no parent-side relationship to this table, so an ORM Team delete
+    # will NOT null this out — every Team delete must call delete_team_children()
+    team_id: Optional[int] = Field(
+        default=None, foreign_key="team.id", nullable=True, index=True
+    )
+    exercise_id: int = Field(foreign_key="exercise.id", index=True)
+    # 0-based index into Exercise.exercise_hints
+    hint_index: int
+    revealed_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+    __table_args__ = (UniqueConstraint("team_id", "exercise_id", "hint_index"),)
+
+
 class Lesson(SQLModel, table=True):
     """A standalone markdown document explaining a concept.
 
@@ -500,3 +528,60 @@ class Lesson(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
+
+
+class Concept(SQLModel, table=True):
+    """One teachable idea (e.g. "while loops").
+
+    A flat, controlled vocabulary shared by lessons and exercises: an exercise
+    is tagged with the concepts it practises, a lesson with the concepts it
+    explains, and a tutorial's concepts are derived as the union over its
+    exercises (nothing is stored for tutorials). `category` only groups
+    concepts for display and carries no query semantics.
+
+    Authored in tutorial_data/concepts.json and synced like all other tutorial
+    content; the DB stays the runtime source of truth.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    slug: str = Field(unique=True, index=True)
+    name: str
+    # A few characters for column headings and other cramped places, where the
+    # full name would not fit ("Dictionaries" vs "Key-value mappings"). Null on
+    # concepts authored before shortnames existed; clients fall back to `name`.
+    shortname: Optional[str] = Field(default=None)
+    description: str = Field(default="", sa_column=Column(Text(), nullable=False))
+    category: Optional[str] = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+
+class ExerciseConcept(SQLModel, table=True):
+    """Tags an exercise with a concept it teaches (many-to-many).
+
+    Like LeagueTutorial this carries no ORM relationships — it exists to be
+    joined against, so the rows must be cleared explicitly wherever an
+    exercise or concept is deleted.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exercise_id: int = Field(foreign_key="exercise.id", index=True)
+    concept_id: int = Field(foreign_key="concept.id", index=True)
+
+    __table_args__ = (UniqueConstraint("exercise_id", "concept_id"),)
+
+
+class LessonConcept(SQLModel, table=True):
+    """Tags a lesson with a concept it explains (many-to-many).
+
+    The first structural link between lessons and exercises: before this,
+    lessons were reachable only through `lesson://<slug>` strings embedded in
+    markdown.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    lesson_id: int = Field(foreign_key="lesson.id", index=True)
+    concept_id: int = Field(foreign_key="concept.id", index=True)
+
+    __table_args__ = (UniqueConstraint("lesson_id", "concept_id"),)

@@ -29,6 +29,7 @@ from backend.routes.tutorial.tutorial_db import (
     get_tutorial_with_exercises,
     get_tutorials,
     record_failed_exercise_submission,
+    record_hint_reveal,
     reorder_exercises,
     save_exercise_submission,
     update_exercise,
@@ -39,6 +40,7 @@ from backend.routes.tutorial.tutorial_models import (
     ExerciseRequest,
     ExerciseRunRequest,
     ExerciseSubmissionRequest,
+    HintRevealRequest,
     TutorialCreateRequest,
     TutorialUpdateRequest,
 )
@@ -397,6 +399,27 @@ async def get_latest_exercise_submission_endpoint(
     exercise = get_exercise_by_id(session, exercise_id)
     assert_exercise_in_team_league(session, exercise, team_id)
     return get_latest_exercise_submission(session, team_id, exercise_id)
+
+
+@tutorial_router.post("/exercise/{exercise_id}/hint-revealed")
+@verify_ai_agent_service_or_student
+async def record_hint_reveal_endpoint(
+    exercise_id: int,
+    reveal: HintRevealRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Record that the current team revealed one hint of an exercise.
+
+    Feeds the concept mastery metric, which counts a revealed hint as extra
+    effort. Repeat reveals of the same hint are a no-op, so the client can
+    fire this unconditionally.
+    """
+    team_id = _require_team_id(current_user)
+    exercise = get_exercise_by_id(session, exercise_id)
+    assert_exercise_in_team_league(session, exercise, team_id)
+    record_hint_reveal(session, team_id, exercise_id, reveal.hint_index)
+    return {"status": "success"}
 
 
 @tutorial_router.get("/exercise/{exercise_id}/submissions")

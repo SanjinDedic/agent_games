@@ -96,3 +96,17 @@ class ExerciseReorderRequest(BaseModel):
     """The tutorial's complete exercise id list in the desired new order."""
 
     exercise_ids: List[int]
+
+
+class HintRevealRequest(BaseModel):
+    """Which hint of an exercise a student just revealed (0-based index into
+    Exercise.exercise_hints)."""
+
+    hint_index: int
+
+    @field_validator("hint_index")
+    @classmethod
+    def index_not_negative(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("hint_index cannot be negative")
+        return value

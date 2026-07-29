@@ -353,13 +353,22 @@ def get_team_submission(
     return {"code": submission.code if submission else None}
 
 
-def get_team_agent_stats(session: Session, team_id: int, league_id: int) -> dict:
+def get_team_agent_stats(
+    session: Session,
+    team_id: int,
+    league_id: int,
+    field_size: Optional[int] = None,
+) -> dict:
     """One team's agent-game stats scoped to one league: attempt/validated
     counts, latest attempt timestamp, the last 3 validation rankings
-    (oldest -> newest, so they read as a trend), and whether the team ever
-    ranked first. The per-league scope is what makes the numbers mean
-    "progress in this game" — a team moved between leagues starts its story
-    fresh."""
+    (oldest -> newest, so they read as a trend), the best placement ever
+    reached, and whether the team ever ranked first. The per-league scope is
+    what makes the numbers mean "progress in this game" — a team moved between
+    leagues starts its story fresh.
+
+    `field_size` is how many agents a validation run ranks (bots + the
+    student); it comes from the game rather than the DB, so the caller passes
+    it in and it may be None when the game can't be resolved."""
     total_attempts, latest = session.exec(
         select(
             func.count(SubmissionMetadata.id),
@@ -377,8 +386,9 @@ def get_team_agent_stats(session: Session, team_id: int, league_id: int) -> dict
     ).one()
 
     # Full ranked history newest-first: the window is the first 3 rows, but
-    # achieved_first must see everything. Pre-ranking submissions have NULL
-    # and are skipped (same convention as the institution progress view).
+    # best_ranking and achieved_first must see everything. Pre-ranking
+    # submissions have NULL and are skipped (same convention as the
+    # institution progress view).
     ranked = session.exec(
         select(Submission.ranking)
         .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
@@ -393,6 +403,8 @@ def get_team_agent_stats(session: Session, team_id: int, league_id: int) -> dict
         "validated_submissions": validated_submissions,
         "latest_submission": latest.isoformat() if latest else None,
         "recent_rankings": list(reversed(ranked[:3])),
+        "best_ranking": min(ranked) if ranked else None,
+        "field_size": field_size,
         "achieved_first": 1 in ranked,
     }
 

@@ -164,6 +164,31 @@ export const useTutorialAPI = () => {
   }, [apiUrl, accessToken]);
 
   /**
+   * Record that the student revealed one hint of an exercise.
+   *
+   * Fire-and-forget: this only feeds the teacher's concept mastery view, so a
+   * failure must never interrupt a student who is asking for help. The server
+   * ignores repeats, so the caller doesn't have to track what it already sent.
+   */
+  const recordHintReveal = useCallback(async (exerciseId, hintIndex) => {
+    try {
+      await authFetch(
+        `${apiUrl}/tutorial/exercise/${exerciseId}/hint-revealed`,
+        {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ hint_index: hintIndex }),
+        }
+      );
+    } catch (error) {
+      console.error("Error recording hint reveal:", error);
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
    * Submit exercise code and get per-test-case results.
    * Failing tests come back as a success whose output lists the failures;
    * a 400 means the code never produced test results (unsafe/crashed/timeout).
@@ -337,6 +362,7 @@ export const useTutorialAPI = () => {
     getTutorialProgress,
     getLatestExerciseSubmission,
     getExerciseSubmissions,
+    recordHintReveal,
     submitExercise,
     getTutorialAdmin,
     runExerciseTests,

@@ -206,7 +206,8 @@ services:
     entrypoint: /bin/sh
     command: >
       -c "mkdir -p /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/institution
-      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/user &&
+      /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}/support/user
+      /data/${AWS_S3_BUCKET:-agent-games-backups} &&
       exec minio server /data --console-address ':9001'"
     ports:
       - "9000:9000"
