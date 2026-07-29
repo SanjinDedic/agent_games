@@ -1,13 +1,15 @@
 import React from 'react';
 
+import { FLUENCY_STOPS, tonesFor } from './progressScale';
+
 /**
  * The two scales the concept views run on, and their colours.
  *
  * **Fluency** — how the finished work went — is the one with a verdict in it,
- * so it gets the heatmap: green → yellow → orange → red, deepening as the band
- * worsens, so the cells a teacher has to act on find their eye. The tones
- * differ in lightness as well as hue, so the grid still reads for someone who
- * cannot separate red from green.
+ * so it gets the ramp: dark green → light green → orange → red, off the shared
+ * stops in progressScale.js. The two green bands are the two the teacher does
+ * not have to act on, and reading them as one colour at two strengths is what
+ * lets the orange and red cells stand out of a class-sized grid at a glance.
  *
  * **Exposure** — how much of the work is finished — carries no verdict at all:
  * a student who has not got there yet is not failing, and colouring them red
@@ -18,28 +20,13 @@ import React from 'react';
  * backend/routes/institution/concept_mastery.py and travel with the matrix
  * payload — these are only their colours.
  */
-export const BAND_TONES = {
-  fluent: 'bg-success-light text-success hover:bg-success/25',
-  showing_understanding: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-  progressing_slowly: 'bg-orange-200 text-orange-900 hover:bg-orange-300',
-  needs_help: 'bg-red-300 text-red-900 hover:bg-red-400',
-};
+export const BAND_TONES = tonesFor(FLUENCY_STOPS, 'fill');
 
 /** Solid fills for bars and dots, where a tint would disappear. */
-export const BAND_BARS = {
-  fluent: 'bg-success',
-  showing_understanding: 'bg-yellow-400',
-  progressing_slowly: 'bg-orange-400',
-  needs_help: 'bg-danger',
-};
+export const BAND_BARS = tonesFor(FLUENCY_STOPS, 'solid');
 
 /** Bordered chip version, for lists rather than grid squares. */
-export const BAND_CHIPS = {
-  fluent: 'bg-success-light border-success/30 text-success',
-  showing_understanding: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-  progressing_slowly: 'bg-orange-100 border-orange-300 text-orange-800',
-  needs_help: 'bg-danger-light border-danger/30 text-danger',
-};
+export const BAND_CHIPS = tonesFor(FLUENCY_STOPS, 'chip');
 
 export const EXPOSURE_BAR = 'bg-primary-light';
 export const EXPOSURE_CHIP = 'bg-primary/10 border-primary/30 text-primary-dark';

@@ -6,6 +6,7 @@ import { useTerms } from '../../Shared/terminology';
 import StatChip from '../../Shared/Common/StatChip';
 import MasteryCell, {
   BAND_BARS,
+  BAND_CHIPS,
   Meter,
   exposureTone,
   fluencyTone,
@@ -442,14 +443,9 @@ function ConceptsTab({ league }) {
           <StatChip
             label="Class fluency"
             value={classFluency.band ? classFluency.band.label : '—'}
-            tone={
-              !classFluency.band
-                ? 'plain'
-                : classFluency.band.band >= 3
-                  ? 'danger'
-                  : classFluency.band.band === 2
-                    ? 'warning'
-                    : 'success'
+            /* The headline wears the same band colour as the cells under it. */
+            toneClass={
+              classFluency.band ? BAND_CHIPS[classFluency.band.key] : undefined
             }
             title="How the work the class has finished went, averaged over every concept they have reached"
           />

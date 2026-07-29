@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 import useClassroomAPI from '../../Shared/hooks/useClassroomAPI';
 import { useTerms } from '../../Shared/terminology';
-import StatusCell from '../../Shared/Progress/StatusCell';
+import StatusCell, { STATUS_INKS } from '../../Shared/Progress/StatusCell';
 import ExerciseCodeModal from './ExerciseCodeModal';
 
 /**
@@ -88,10 +88,10 @@ function TutorialMatrixTab({ league }) {
               </span>
             </div>
             <p className="text-sm text-ui mb-4">
-              <span className="text-green-700 font-bold">✓</span> passed ·{' '}
-              <span className="text-amber-700 font-bold">n</span> attempts without a
-              pass · <span className="font-bold">·</span> untouched — click a cell to
-              read that {T.team}'s code.
+              <span className={`${STATUS_INKS.passed} font-bold`}>✓</span> passed ·{' '}
+              <span className={`${STATUS_INKS.attempted} font-bold`}>n</span> attempts
+              without a pass · <span className="font-bold">·</span> untouched — click a
+              cell to read that {T.team}'s code.
             </p>
             <div className="overflow-x-auto">
               <table className="w-auto">
