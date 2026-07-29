@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { selectCurrentUser } from "../../slices/authSlice";
+import { selectCurrentUser, selectLeagueId } from "../../slices/authSlice";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
 import CodeEditor from "../Shared/Submission/CodeEditor";
 import CombinedFooter from "../Shared/Submission/CombinedFooter";
@@ -25,6 +25,7 @@ function AgentSubmission() {
   const dispatch = useDispatch();
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const currentUser = useSelector(selectCurrentUser);
+  const assignedLeagueId = useSelector(selectLeagueId);
 
   // Custom API hooks
   const {
@@ -53,27 +54,36 @@ function AgentSubmission() {
       // Load the latest submission into the editor
       const hadSubmission = await ws.loadLatestSubmission({ intoEditor: true });
 
-      // If currentLeague exists but is missing the game property, fetch league details
-      if (currentLeague && !currentLeague.game) {
+      // The workspace has to resolve its own league: students arrive here
+      // straight from /TeamHome or the navbar, and neither fills the leagues
+      // slice — only the league picker and the signup pages do. Without a
+      // league there is no game, and so no instructions and no starter code.
+      let game = currentLeague?.game || null;
+
+      if (!game) {
         setIsLoadingLeagueInfo(true);
         const leaguesResult = await fetchUserLeagues();
         setIsLoadingLeagueInfo(false);
 
         if (leaguesResult.success && leaguesResult.leagues?.length > 0) {
-          // Find our league and update current league in Redux if needed
-          const league = leaguesResult.leagues.find(
-            (l) => l.id === currentLeague.id || l.name === currentLeague.name
-          );
+          // Prefer the league the token says we're assigned to; fall back to
+          // whatever partial record Redux already held.
+          const league =
+            leaguesResult.leagues.find((l) => l.id === assignedLeagueId) ||
+            (currentLeague &&
+              leaguesResult.leagues.find(
+                (l) => l.id === currentLeague.id || l.name === currentLeague.name
+              ));
 
           if (league && league.game) {
             dispatch(setCurrentLeague(league.name));
-            await loadInstructions(league.game, hadSubmission);
+            game = league.game;
           }
         }
       }
-      // If we already have the game info, load instructions directly
-      else if (currentLeague && currentLeague.game) {
-        await loadInstructions(currentLeague.game, hadSubmission);
+
+      if (game) {
+        await loadInstructions(game, hadSubmission);
       }
     };
 
