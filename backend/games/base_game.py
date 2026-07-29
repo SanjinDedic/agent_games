@@ -117,6 +117,19 @@ class BaseGame(ABC):
                 self.players = []
                 self.scores = {}
 
+    @classmethod
+    def validation_player_count(cls):
+        """How many built-in bots a validation run fields, without building a
+        game instance. Same module convention as load_validation_players, so
+        callers that only need the size of the field (the student page tells
+        them "3rd of 8") don't pay for instantiating the game.
+        """
+        game_name = cls.__module__.split(".")[2]
+        module = importlib.import_module(
+            f"backend.games.{game_name}.validation_players"
+        )
+        return len(getattr(module, "players", []))
+
     def get_player_strategies(self):
         """Map player name -> strategy for players that declare one.
 
