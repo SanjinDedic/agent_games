@@ -664,6 +664,9 @@ def get_classroom_concept_matrix(session: Session, league: League) -> dict:
                 "id": concept_id,
                 "slug": concept.slug,
                 "name": concept.name,
+                # For column headings and other cramped places; null on
+                # concepts authored before shortnames, so clients fall back.
+                "shortname": concept.shortname,
                 "description": concept.description,
                 "category": concept.category,
                 "lesson_slug": lesson_slugs.get(concept_id),

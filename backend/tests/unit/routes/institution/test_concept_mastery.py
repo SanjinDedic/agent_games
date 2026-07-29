@@ -36,9 +36,9 @@ from backend.routes.institution.concept_mastery import (
         (5.5, 5),
         (10, 5),
         (12, 10),
+        (15, 10),
         (20, 15),
-        (25, 20),
-        (90, 20),    # the cap: an hour and a day read the same
+        (90, 15),    # the cap: an hour and a day read the same
     ],
 )
 def test_time_penalty(minutes, expected):
@@ -58,7 +58,7 @@ def test_missing_time_is_treated_as_fast():
         (8, 0, 1, 95),    # one block over
         (8, 2, 1, 85),    # ...and two hints
         (8, 2, 9, 75),    # ...and a long run of goes
-        (25, 3, 9, COMPLETED_FLOOR),
+        (20, 3, 9, COMPLETED_FLOOR),
         (60, 9, 40, COMPLETED_FLOOR),  # every penalty maxed is still the floor
     ],
 )
@@ -87,7 +87,7 @@ def test_hint_and_attempt_penalties_are_capped():
 
 def test_completing_an_exercise_can_never_score_below_the_floor():
     """Finishing is worth a lot, and the floor is what says so."""
-    assert COMPLETED_FLOOR == 55  # 100 - 20 time - 15 hints - 10 goes
+    assert COMPLETED_FLOOR == 60  # 100 - 15 time - 15 hints - 10 goes
     assert exercise_score(10_000, 99, 99) == COMPLETED_FLOOR
 
 
@@ -128,13 +128,13 @@ def test_exposure_is_finished_work_over_all_of_it():
 
 def test_bands_cover_every_value():
     assert [band["band"] for band in FLUENCY_BANDS] == [1, 2, 3, 4]
-    assert fluency_band(100)["key"] == "approaching_mastery"
-    assert fluency_band(85)["key"] == "approaching_mastery"
-    assert fluency_band(84)["key"] == "showing_understanding"
-    assert fluency_band(55)["key"] == "showing_understanding"
-    assert fluency_band(54)["key"] == "progressing_slowly"
-    assert fluency_band(27)["key"] == "progressing_slowly"
-    assert fluency_band(26)["key"] == "needs_help"
+    assert fluency_band(100)["key"] == "fluent"
+    assert fluency_band(80)["key"] == "fluent"
+    assert fluency_band(79)["key"] == "showing_understanding"
+    assert fluency_band(60)["key"] == "showing_understanding"
+    assert fluency_band(59)["key"] == "progressing_slowly"
+    assert fluency_band(30)["key"] == "progressing_slowly"
+    assert fluency_band(29)["key"] == "needs_help"
     assert fluency_band(0)["key"] == "needs_help"
     assert fluency_band(None) is None
 

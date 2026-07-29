@@ -35,7 +35,7 @@ FREE_MINUTES = 5
 # an hour and a day off the pace are the same message to a teacher.
 MINUTES_PER_STEP = 5
 TIME_PENALTY_STEP = 5
-MAX_TIME_PENALTY = 20
+MAX_TIME_PENALTY = 15
 
 # A revealed hint is a nudge, not a failure: it costs something, but the total
 # is capped so a habitual hint-reader who finishes cannot look like a student
@@ -135,9 +135,9 @@ def exposure_for(completed: int, exercises_total: int) -> int:
 FLUENCY_BANDS = (
     {
         "band": 1,
-        "key": "approaching_mastery",
-        "label": "Approaching mastery",
-        "minimum": 85,
+        "key": "fluent",
+        "label": "Fluent",
+        "minimum": 80,
         "meaning": "Finishing quickly and with little help.",
     },
     {

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLessonModal } from '../../Shared/Lesson/LessonModalContext';
 import { useTerms } from '../../Shared/terminology';
 import {
-  BAND_CHIPS,
   Meter,
   exposureTone,
   fluencyTone,
@@ -16,13 +15,13 @@ import {
  *
  * Everything here comes from the matrix payload the tab already holds — no
  * second request. Opened from a body cell it also gets `focusTeamId`, which
- * pins that student's bars next to the class's; opened from a concept row or
+ * puts that student's bars beside the class's; opened from a concept row or
  * the reteach list it shows the class alone.
  *
- * The class bars sit directly above the student's on purpose. "Slow on
- * dictionaries" means one thing when the rest of the class sailed through and
- * something completely different when nobody got it, and a teacher cannot tell
- * those apart from a single student's bar.
+ * Organised by scale rather than by subject — exposure, then fluency, each
+ * with the student on the left and the class on the right. The other way round
+ * makes a teacher hold one bar in their head while they look for its
+ * counterpart, and the comparison is the entire reason both are here.
  */
 function ConceptDetailModal({
   concept,
@@ -42,19 +41,13 @@ function ConceptDetailModal({
     [teams]
   );
 
-  // This concept's cells, weakest student first. Students with nothing
-  // judgeable yet sort last: they are behind, not struggling.
-  const conceptCells = useMemo(() => {
-    if (!concept) return [];
-    return cells
-      .filter((cell) => cell.concept_id === concept.id)
-      .sort((a, b) => {
-        if (a.fluency == null && b.fluency == null) return 0;
-        if (a.fluency == null) return 1;
-        if (b.fluency == null) return -1;
-        return a.fluency - b.fluency;
-      });
-  }, [cells, concept]);
+  // This concept's cells — the focused student's row, and the counts that say
+  // how much of the class the class bars actually rest on.
+  const conceptCells = useMemo(
+    () =>
+      concept ? cells.filter((cell) => cell.concept_id === concept.id) : [],
+    [cells, concept]
+  );
 
   const focusCell = focusTeamId
     ? conceptCells.find((cell) => cell.team_id === focusTeamId)
@@ -62,27 +55,31 @@ function ConceptDetailModal({
 
   if (!concept) return null;
 
-  const bandLabel = (key) =>
-    scoring.bands.find((band) => band.key === key)?.label || '';
   const needHelp = conceptCells.filter((cell) => cell.needs_help);
   const notReached = teams.length - conceptCells.length;
 
-  /** The same two bars for the class and for one student, so they can be read
-      as a pair rather than as two unrelated readings. */
-  const pair = ({ exposure, fluency, exposureKey, fluencyKey, muted }) => (
-    <div className="grid grid-cols-2 gap-4">
-      <Meter
-        label="Exposure"
-        value={exposure}
-        tone={exposureTone(scoring, exposureKey)}
-        muted={muted}
-      />
-      <Meter
-        label="Fluency"
-        value={fluency}
-        tone={fluencyTone(scoring, fluencyKey)}
-        muted={muted}
-      />
+  const studentName = focusCell ? teamNames.get(focusCell.team_id) : null;
+
+  /** One scale: the student on the left, the class on the right. Falls back to
+      the class alone when the modal was not opened from a student. */
+  const scale = (title, tone, studentValue, studentKey, classValue, classKey) => (
+    <div>
+      <h4 className="text-sm font-semibold text-ui-dark mb-2">{title}</h4>
+      <div className={focusCell ? 'grid grid-cols-2 gap-6' : ''}>
+        {focusCell && (
+          <Meter
+            label={studentName}
+            value={studentValue}
+            tone={tone(scoring, studentKey)}
+          />
+        )}
+        <Meter
+          label="Class"
+          value={classValue}
+          tone={tone(scoring, classKey)}
+          muted
+        />
+      </div>
     </div>
   );
 
@@ -129,113 +126,64 @@ function ConceptDetailModal({
           </p>
         )}
 
-        {/* The class, then the student, on the same two scales */}
-        <div className="mb-5 space-y-4">
-          <div>
-            <div className="flex items-baseline justify-between mb-2">
-              <span className="text-sm font-semibold text-ui-dark">
-                The class
-              </span>
-              <span className="text-xs text-ui">
-                {concept.reached} of {teams.length} {T.teams} have reached it
-                {notReached > 0 && ` · ${notReached} not there yet`}
-                {needHelp.length > 0 && (
-                  <span className="text-danger">
-                    {' '}
-                    · {needHelp.length} need help
-                  </span>
-                )}
-              </span>
-            </div>
-            {pair({
-              exposure: concept.class_exposure,
-              fluency: concept.class_fluency,
-              exposureKey: concept.exposure_band_key,
-              fluencyKey: concept.band_key,
-              muted: true,
-            })}
-          </div>
-
-          {focusCell && (
-            <div className="p-4 rounded-lg border border-primary/40 bg-primary/5">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-                <button
-                  onClick={() =>
-                    navigate(
-                      `/Classroom/${leagueId}/student/${focusCell.team_id}`
-                    )
-                  }
-                  className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors"
-                >
-                  {teamNames.get(focusCell.team_id)} →
-                </button>
-                {focusCell.band_key && (
-                  <span
-                    className={`px-2 py-0.5 rounded border text-xs font-semibold ${
-                      BAND_CHIPS[focusCell.band_key]
-                    }`}
-                  >
-                    {bandLabel(focusCell.band_key)}
-                  </span>
-                )}
-              </div>
-              {pair({
-                exposure: focusCell.exposure,
-                fluency: focusCell.fluency,
-                exposureKey: focusCell.exposure_band_key,
-                fluencyKey: focusCell.band_key,
-              })}
-              <p className="text-xs text-ui mt-3">
-                {`attempted ${focusCell.exercises_attempted}/${focusCell.exercises_total}`}
-                {` · completed ${focusCell.exercises_passed}/${focusCell.exercises_total}`}
-                {focusCell.avg_minutes_to_pass != null &&
-                  ` · ${focusCell.avg_minutes_to_pass} min to finish on average`}
-                {focusCell.avg_attempts_to_pass &&
-                  ` · ${focusCell.avg_attempts_to_pass} goes to finish on average`}
-                {focusCell.hints_used > 0 &&
-                  ` · ${focusCell.hints_used} hint${
-                    focusCell.hints_used !== 1 ? 's' : ''
-                  } revealed`}
-              </p>
-            </div>
+        {/* Who this reading is about, and how much of the class it rests on */}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
+          {focusCell ? (
+            <button
+              onClick={() =>
+                navigate(`/Classroom/${leagueId}/student/${focusCell.team_id}`)
+              }
+              className="text-sm font-semibold text-ui-dark hover:text-primary transition-colors"
+            >
+              {studentName} →
+            </button>
+          ) : (
+            <span className="text-sm font-semibold text-ui-dark">
+              The class
+            </span>
           )}
+          <span className="text-xs text-ui">
+            {concept.reached} of {teams.length} {T.teams} have reached it
+            {notReached > 0 && ` · ${notReached} not there yet`}
+            {needHelp.length > 0 && (
+              <span className="text-danger"> · {needHelp.length} need help</span>
+            )}
+          </span>
         </div>
 
-        {/* Everyone who has reached it, weakest first */}
-        {conceptCells.length > 0 && (
-          <div className="mb-5">
-            <h4 className="text-sm font-semibold text-ui-dark mb-2">
-              {T.Teams} — weakest first
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {conceptCells.map((cell) => (
-                <button
-                  key={cell.team_id}
-                  onClick={() =>
-                    navigate(`/Classroom/${leagueId}/student/${cell.team_id}`)
-                  }
-                  className={`px-3 py-1 rounded-lg border text-xs transition-opacity hover:opacity-80 ${
-                    cell.band_key
-                      ? BAND_CHIPS[cell.band_key]
-                      : 'border-ui-light text-ui'
-                  }`}
-                  title={
-                    (cell.band_key
-                      ? `${bandLabel(cell.band_key)} — `
-                      : 'Nothing judgeable yet — ') +
-                    `attempted ${cell.exercises_attempted}/${cell.exercises_total}, ` +
-                    `completed ${cell.exercises_passed}/${cell.exercises_total}` +
-                    (cell.hints_used ? ` · ${cell.hints_used} hints` : '') +
-                    `\nOpen their progress`
-                  }
-                >
-                  {teamNames.get(cell.team_id)}{' '}
-                  <span className="font-mono">{cell.band || '·'}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* One scale at a time, the student against the class on each */}
+        <div className="mb-5 space-y-4">
+          {scale(
+            'Exposure',
+            exposureTone,
+            focusCell?.exposure,
+            focusCell?.exposure_band_key,
+            concept.class_exposure,
+            concept.exposure_band_key
+          )}
+          {scale(
+            'Fluency',
+            fluencyTone,
+            focusCell?.fluency,
+            focusCell?.band_key,
+            concept.class_fluency,
+            concept.band_key
+          )}
+          {focusCell && (
+            <p className="text-xs text-ui">
+              {`attempted ${focusCell.exercises_attempted}/${focusCell.exercises_total}`}
+              {` · completed ${focusCell.exercises_passed}/${focusCell.exercises_total}`}
+              {focusCell.avg_minutes_to_pass != null &&
+                ` · ${focusCell.avg_minutes_to_pass} min to finish on average`}
+              {focusCell.avg_attempts_to_pass &&
+                ` · ${focusCell.avg_attempts_to_pass} goes to finish on average`}
+              {focusCell.hints_used > 0 &&
+                ` · ${focusCell.hints_used} hint${
+                  focusCell.hints_used !== 1 ? 's' : ''
+                } revealed`}
+            </p>
+          )}
+        </div>
 
         {/* Where it is taught */}
         <div className="mb-5">

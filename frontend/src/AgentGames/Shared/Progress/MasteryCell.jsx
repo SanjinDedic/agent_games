@@ -19,7 +19,7 @@ import React from 'react';
  * payload — these are only their colours.
  */
 export const BAND_TONES = {
-  approaching_mastery: 'bg-success-light text-success hover:bg-success/25',
+  fluent: 'bg-success-light text-success hover:bg-success/25',
   showing_understanding: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
   progressing_slowly: 'bg-orange-200 text-orange-900 hover:bg-orange-300',
   needs_help: 'bg-red-300 text-red-900 hover:bg-red-400',
@@ -27,7 +27,7 @@ export const BAND_TONES = {
 
 /** Solid fills for bars and dots, where a tint would disappear. */
 export const BAND_BARS = {
-  approaching_mastery: 'bg-success',
+  fluent: 'bg-success',
   showing_understanding: 'bg-yellow-400',
   progressing_slowly: 'bg-orange-400',
   needs_help: 'bg-danger',
@@ -35,7 +35,7 @@ export const BAND_BARS = {
 
 /** Bordered chip version, for lists rather than grid squares. */
 export const BAND_CHIPS = {
-  approaching_mastery: 'bg-success-light border-success/30 text-success',
+  fluent: 'bg-success-light border-success/30 text-success',
   showing_understanding: 'bg-yellow-100 border-yellow-300 text-yellow-800',
   progressing_slowly: 'bg-orange-100 border-orange-300 text-orange-800',
   needs_help: 'bg-danger-light border-danger/30 text-danger',

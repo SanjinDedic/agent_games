@@ -48,9 +48,11 @@ def concept_setup(db_session: Session, classroom_setup) -> SimpleNamespace:
     db_session.add(exercise_three)
 
     loops = Concept(
-        slug="loops", name="Loops", description="Repeating work.",
-        category="control-flow",
+        slug="loops", name="Loops", shortname="For Loops",
+        description="Repeating work.", category="control-flow",
     )
+    # No shortname: authored before they existed, so the payload carries null
+    # and the client falls back to the full name.
     dicts = Concept(
         slug="dicts", name="Dictionaries", description="Key-value pairs.",
         category="data-structures",
@@ -153,6 +155,9 @@ def test_concept_matrix_success(client, concept_setup):
     concepts = _by_id(data["concepts"])
     loops = concepts[s.loops.id]
     assert loops["name"] == "Loops"
+    # The column heading, and null when the concept has none of its own.
+    assert loops["shortname"] == "For Loops"
+    assert concepts[s.dicts.id]["shortname"] is None
     assert loops["category"] == "control-flow"
     assert loops["order_index"] == 0
     assert [e["title"] for e in loops["exercises"]] == [
@@ -180,7 +185,7 @@ def test_cells_carry_exposure_and_fluency(client, concept_setup):
     adam = cells[(s.adam.id, s.loops.id)]
     assert adam["fluency"] == 100
     assert adam["band"] == 1
-    assert adam["band_key"] == "approaching_mastery"
+    assert adam["band_key"] == "fluent"
     assert adam["exposure"] == 50
     assert adam["exposure_band"] == 2
     assert adam["exposure_band_key"] == "part_way"
@@ -437,7 +442,7 @@ def test_attention_lists_who_to_help_worst_first(client, wide_concept):
     assert adam["exercises_attempted"] == 5
     assert adam["exercises_passed"] == 4
     assert adam["exposure"] == 80  # four of five finished
-    assert adam["fluency"] == 44  # (55, 55, 55, 55, 0)
+    assert adam["fluency"] == 48  # (60, 60, 60, 60, 0)
     assert adam["needs_help"] is True
     assert cells[(s.zoe.id, s.wide.id)]["fluency"] == 52  # (65 x4, 0)
 
@@ -452,7 +457,7 @@ def test_reteach_wants_a_class_that_covered_it_and_still_struggled(
 
     wide = concepts[s.wide.id]
     assert wide["class_exposure"] == 80
-    assert wide["class_fluency"] == 48
+    assert wide["class_fluency"] == 50
     assert wide["needs_attention"] == 2
     assert wide["reteach"] is True
 

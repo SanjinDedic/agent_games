@@ -546,6 +546,10 @@ class Concept(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     slug: str = Field(unique=True, index=True)
     name: str
+    # A few characters for column headings and other cramped places, where the
+    # full name would not fit ("Dictionaries" vs "Key-value mappings"). Null on
+    # concepts authored before shortnames existed; clients fall back to `name`.
+    shortname: Optional[str] = Field(default=None)
     description: str = Field(default="", sa_column=Column(Text(), nullable=False))
     category: Optional[str] = Field(default=None)
     created_at: datetime = Field(
