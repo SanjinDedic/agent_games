@@ -8,8 +8,10 @@ const isMultiline = (value) =>
  * one row per test (name, expected vs actual, error), and any captured print
  * output. Multiline expected/got values (print-checking exercises) render in
  * a <pre> block so real newlines show instead of "\n" escapes.
+ * Pass showStdout={false} when the page already shows program output
+ * elsewhere (the exercise page's editor drawer).
  */
-function ExerciseResults({ data }) {
+function ExerciseResults({ data, showStdout = true }) {
     if (!data) return null;
 
     const tests = data.test_results || [];
@@ -88,7 +90,7 @@ function ExerciseResults({ data }) {
             </ul>
 
             {/* Captured print output */}
-            {data.stdout && (
+            {showStdout && data.stdout && (
                 <div>
                     <h3 className="font-medium text-ui-dark mb-1">Print output</h3>
                     <pre className="bg-[#1e1e1e] text-gray-100 rounded-lg p-3 text-sm overflow-x-auto">

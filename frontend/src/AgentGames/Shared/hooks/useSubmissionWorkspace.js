@@ -12,7 +12,8 @@ import { toast } from 'react-toastify';
  * @param {Function} options.getLatestSubmission - () => {success, hasSubmission, code}
  * @param {Function} options.getSubmissionHistory - () => {success, submissions, error}
  * @param {Function} options.submitCode - (code, {generateHint}) => {success, output,
- *   feedback, hint, hint_available, hint_cancelled, error}
+ *   feedback, hint, hint_available, hint_cancelled, error, stdout (error path only;
+ *   successful runs carry it inside output)}
  * @param {Function} [options.onResetUnavailable] - called when Reset Code is pressed
  *   but no starter code is loaded, so the page can retry loading it
  * @returns {Object} state, handlers, and per-component prop bundles
@@ -29,6 +30,10 @@ export const useSubmissionWorkspace = ({
   const [lastSubmission, setLastSubmission] = useState("");
   const [hasLastSubmission, setHasLastSubmission] = useState(false);
   const [output, setOutput] = useState("");
+  // Program output (print/stderr) from the last run, kept separate from
+  // `output` so failed runs can still surface their partial prints without
+  // faking a results object. undefined = no run yet, null = ran silently.
+  const [stdout, setStdout] = useState(undefined);
   const [feedback, setFeedback] = useState("");
   const [shouldCollapseInstructions, setShouldCollapseInstructions] =
     useState(false);
@@ -90,12 +95,14 @@ export const useSubmissionWorkspace = ({
     }
 
     setOutput("");
+    setStdout(undefined);
     setFeedback("");
     setShouldCollapseInstructions(true);
 
     const result = await submitCode(code);
     if (result.hint_available && !allowHint) toast.success("A hint is now available");
     setAllowHint(result.hint_available);
+    setStdout(result.success ? result.output?.stdout ?? null : result.stdout);
 
     if (result.success) {
       setOutput(result.output);
@@ -199,6 +206,7 @@ export const useSubmissionWorkspace = ({
     code,
     setCode,
     output,
+    stdout,
     feedback,
     shouldCollapseInstructions,
     hasLastSubmission,

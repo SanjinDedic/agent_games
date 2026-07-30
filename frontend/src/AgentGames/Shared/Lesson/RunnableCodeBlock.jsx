@@ -165,7 +165,7 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
           {result.status === 'success' &&
             (result.stdout == null || result.stdout === '') && (
               <div className="px-3 py-2 text-sm text-gray-500 bg-gray-50">
-                Ran without output — add a print() to see results.
+                No output add a print(), or call the function that contains the print().
               </div>
             )}
         </div>
