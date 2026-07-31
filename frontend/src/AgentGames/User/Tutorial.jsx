@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import ExerciseSubmission from "./ExerciseSubmission";
 import TutorialOverview from "./TutorialOverview";
 import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
+import { ensureRunner } from "../../pyodide/exerciseRunnerClient";
 import { useTerms } from "../Shared/terminology";
 
 /**
@@ -38,6 +39,13 @@ function Tutorial({ preview = false }) {
   const effectiveTutorialId =
     selectedTutorialId ??
     (tutorials && tutorials.length === 1 ? tutorials[0].id : null);
+
+  // Warm-boot the Pyodide runner as soon as the page mounts, so the first
+  // submit doesn't pay the runtime's load time. Failures are handled inside
+  // the runner (later submits fall back to Celery automatically).
+  useEffect(() => {
+    ensureRunner();
+  }, []);
 
   useEffect(() => {
     const loadList = async () => {

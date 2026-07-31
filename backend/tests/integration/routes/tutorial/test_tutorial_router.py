@@ -131,7 +131,8 @@ def test_get_tutorial_detail(client, team_headers, tutorial_with_exercise):
     titles = [e["title"] for e in data["exercises"]]
     assert titles == ["Word Counter", "Second Exercise"]
 
-    # The student sees the problem and hints, not the test definitions
+    # The test script and entry function ship to the browser (Pyodide runs
+    # exercises locally); only the reference solution stays server-side
     exercise = data["exercises"][0]
     assert exercise["problem_markdown"] == "Count the words"
     assert exercise["starter_code"].startswith("def count_words")
@@ -139,8 +140,8 @@ def test_get_tutorial_detail(client, team_headers, tutorial_with_exercise):
         "Split the sentence.",
         "Count the pieces.",
     ]
-    assert "test_code" not in exercise
-    assert "entry_function" not in exercise
+    assert exercise["entry_function"] == "count_words"
+    assert exercise["test_code"] == WORD_COUNTER_TEST_CODE
     assert "solution" not in exercise
 
     response = client.get("/tutorial/tutorial/99999", headers=team_headers)

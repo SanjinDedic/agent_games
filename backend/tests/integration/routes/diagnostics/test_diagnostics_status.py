@@ -22,14 +22,23 @@ async def test_status_success(client, auth_headers):
     statuses = data["statuses"]
     assert isinstance(statuses, dict)
 
-    # Should have the broker and both worker services
-    expected_services = ["valkey", "validation-worker", "simulation-worker"]
+    # Should have the broker and all three worker services
+    expected_services = [
+        "valkey",
+        "validation-worker",
+        "simulation-worker",
+        "exercises-worker",
+    ]
     for service in expected_services:
-        if service in statuses:
-            assert "name" in statuses[service]
-            assert "status" in statuses[service]
-            assert "health" in statuses[service]
-            assert "is_healthy" in statuses[service]
+        assert service in statuses
+        assert "name" in statuses[service]
+        assert "status" in statuses[service]
+        assert "health" in statuses[service]
+        assert "is_healthy" in statuses[service]
+
+    # The exercises worker is a separate slim Celery app; its presence here
+    # proves the backend app's broadcast ping reaches it across apps.
+    assert statuses["exercises-worker"]["is_healthy"] is True
 
 @pytest.mark.asyncio
 async def test_status_unauthorized(client):

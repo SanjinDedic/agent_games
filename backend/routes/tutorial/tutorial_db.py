@@ -150,9 +150,10 @@ def get_tutorials(session: Session, league_id: Optional[int] = None) -> dict:
 def get_tutorial_with_exercises(session: Session, tutorial_id: int) -> dict:
     """One tutorial with its exercises in order.
 
-    Test cases and the entry-function name stay server-side: the student sees
-    them through the problem markdown and the per-test feedback, not the raw
-    definition.
+    The test script and entry-function name ship to the browser so exercises
+    can run locally via Pyodide (frontend/src/pyodide/) — an accepted
+    trade-off, since exercises are practice, not assessment. The reference
+    `solution` stays server-side (admin detail endpoint only).
     """
     tutorial = session.get(Tutorial, tutorial_id)
     if not tutorial:
@@ -169,6 +170,8 @@ def get_tutorial_with_exercises(session: Session, tutorial_id: int) -> dict:
                 "order_index": exercise.order_index,
                 "problem_markdown": exercise.problem_markdown,
                 "starter_code": exercise.starter_code,
+                "entry_function": exercise.entry_function,
+                "test_code": exercise.test_code,
                 "exercise_hints": exercise.exercise_hints,
             }
             for exercise in tutorial.exercises
@@ -407,8 +410,8 @@ def get_latest_exercise_submission(
 
 
 # ---------------------------------------------------------------------------
-# Admin CRUD. Students never see entry_function/test_code; the admin detail
-# view below is the only read path that returns them.
+# Admin CRUD. Students never see `solution`; the admin detail view below is
+# the only read path that returns it.
 # ---------------------------------------------------------------------------
 
 

@@ -193,7 +193,11 @@ export const useTutorialAPI = () => {
    * Failing tests come back as a success whose output lists the failures;
    * a 400 means the code never produced test results (unsafe/crashed/timeout).
    */
-  const submitExercise = useCallback(async (exerciseId, code, { preview = false } = {}) => {
+  const submitExercise = useCallback(async (
+    exerciseId,
+    code,
+    { preview = false, executionSource = null, fallbackReason = null } = {}
+  ) => {
     if (!code || code.trim() === "") {
       toast.error("Please enter some code before submitting");
       return { success: false, error: "Empty code submission" };
@@ -207,6 +211,15 @@ export const useTutorialAPI = () => {
       ? '/tutorial/preview/submit-exercise'
       : '/tutorial/submit-exercise';
 
+    // Only Pyodide fallbacks send the extra fields ("pyodide_fallback"), so
+    // the server can log/count them; a plain Celery submission stays
+    // byte-identical to before the in-browser runner existed.
+    const body = { exercise_id: exerciseId, code };
+    if (executionSource) {
+      body.execution_source = executionSource;
+      body.fallback_reason = fallbackReason;
+    }
+
     try {
       const response = await authFetch(`${apiUrl}${path}`, {
         method: "POST",
@@ -214,7 +227,7 @@ export const useTutorialAPI = () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ exercise_id: exerciseId, code }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -249,6 +262,70 @@ export const useTutorialAPI = () => {
       console.error("Error during exercise submission:", error);
       toast.error("Network error during submission. Please try again.");
       return { success: false, error: "Network error during submission" };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken]);
+
+  /**
+   * Persist an exercise attempt the browser already ran via Pyodide.
+   * `envelope` is the harness's normalized result ({ status, message,
+   * passed, test_results, stdout, duration_ms, ... }). Returns the same
+   * workspace result shape as submitExercise, so the caller treats both
+   * paths identically.
+   */
+  const submitExerciseResult = useCallback(async (exerciseId, code, envelope) => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/tutorial/submit-exercise-result`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          exercise_id: exerciseId,
+          code,
+          status: envelope.status,
+          message: envelope.message,
+          passed: envelope.passed,
+          test_results: envelope.test_results,
+          stdout: envelope.stdout,
+          duration_ms: envelope.duration_ms,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return {
+          success: true,
+          output: {
+            passed: data.passed,
+            test_results: data.test_results,
+            stdout: data.stdout,
+            duration_ms: data.duration_ms,
+          },
+          feedback: null,
+          hint: null,
+          hint_available: false,
+          hint_cancelled: false,
+        };
+      }
+      toast.error(data.detail || "Error in submission");
+      return {
+        success: false,
+        error: data.detail,
+        stdout: data.stdout,
+        hint: null,
+        hint_available: false,
+        hint_cancelled: false,
+      };
+    } catch (error) {
+      console.error("Error persisting exercise result:", error);
+      // The run itself succeeded locally; the caller decides how to surface
+      // an unsaved result, so no toast here.
+      return { success: false, error: "network", networkError: true };
     } finally {
       setIsLoading(false);
     }
@@ -367,6 +444,7 @@ export const useTutorialAPI = () => {
     getExerciseSubmissions,
     recordHintReveal,
     submitExercise,
+    submitExerciseResult,
     getTutorialAdmin,
     runExerciseTests,
     createTutorial,
