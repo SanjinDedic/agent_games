@@ -6,6 +6,7 @@ import CombinedFooter from "../Shared/Submission/CombinedFooter";
 import ExerciseHints from "./ExerciseHints";
 import FeedbackDisplay from "../Shared/Submission/FeedbackDisplay";
 import MySubmissionsModal from "../Shared/Submission/MySubmissionsModal";
+import OutputDrawer from "../Shared/Submission/OutputDrawer";
 import SubmissionLayout from "../Shared/Submission/SubmissionLayout";
 import ExerciseResults from "./ExerciseResults";
 import useSubmissionWorkspace from "../Shared/hooks/useSubmissionWorkspace";
@@ -58,6 +59,7 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
   return (
     <SubmissionLayout
       editor={<CodeEditor {...ws.editorProps} />}
+      editorDrawer={<OutputDrawer stdout={ws.stdout} isLoading={isSubmitting} />}
       panel={
         <>
           {panelHeader}
@@ -76,7 +78,7 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
             emptyTitle="Submit your code to see the test results here"
             emptySubtitle="Each test case will show whether it passed"
           >
-            <ExerciseResults data={ws.output} />
+            <ExerciseResults data={ws.output} showStdout={false} />
           </FeedbackDisplay>
         </>
       }

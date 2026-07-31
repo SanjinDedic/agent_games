@@ -238,6 +238,9 @@ export const useTutorialAPI = () => {
       return {
         success: false,
         error: data.detail,
+        // Partial prints from a crashed/timed-out run — the worker preserves
+        // them and the 400 body carries them alongside the detail.
+        stdout: data.stdout,
         hint: null,
         hint_available: false,
         hint_cancelled: false,

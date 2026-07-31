@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import CodeEditor from '../Submission/CodeEditor';
 import useLessonAPI from '../hooks/useLessonAPI';
 
@@ -25,6 +25,18 @@ const normalizeOutput = (text) => {
   return lines.join('\n');
 };
 
+// Module-level so the object identity is stable: a fresh options object makes
+// @monaco-editor/react run updateOptions on every render of this block, and
+// these re-render on their own (auto-grow, run results).
+const EDITOR_OPTIONS = {
+  scrollbar: {
+    vertical: 'auto',
+    horizontal: 'auto',
+    // Small editors inside a scrollable modal must not trap the wheel.
+    alwaysConsumeMouseWheel: false,
+  },
+};
+
 /**
  * One ```python-run block from a lesson: a small editable Monaco editor with
  * Run / Reset buttons. Run executes the (possibly edited) code in the
@@ -39,24 +51,38 @@ const normalizeOutput = (text) => {
  */
 function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
   const { runSnippet } = useLessonAPI();
-  const [code, setCode] = useState(initialCode);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [running, setRunning] = useState(false);
+  // Only tracks whether Reset has anything to do — flipped on the first edit,
+  // not on every keystroke, so typing still costs no render of this block.
+  const [edited, setEdited] = useState(false);
+
+  // The editor is uncontrolled (see CodeEditor): Monaco owns the buffer, this
+  // ref shadows it for Run, and Reset writes back through the editor handle.
+  const codeRef = useRef(initialCode);
+  const editorRef = useRef(null);
 
   const [editorHeight, setEditorHeight] = useState(() =>
     estimateHeight(initialCode)
   );
 
+  const handleCodeChange = useCallback((value) => {
+    codeRef.current = value ?? '';
+    // React bails out when the value is unchanged, so this renders once.
+    setEdited(true);
+  }, []);
+
   // Auto-grow the editor to fit its content: Monaco fires this on every edit
   // (Enter, paste, delete), so the block expands as the student types and
   // shrinks back if lines are removed — no internal scrollbar until the cap.
-  const handleEditorMount = (editor) => {
+  const handleEditorMount = useCallback((editor) => {
+    editorRef.current = editor;
     const applyHeight = () =>
       setEditorHeight(clampHeight(editor.getContentHeight()));
     editor.onDidContentSizeChange(applyHeight);
     applyHeight();
-  };
+  }, []);
 
   const graded = expectedOutput != null;
   const targetText = graded ? normalizeOutput(expectedOutput) : '';
@@ -69,7 +95,7 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
     setRunning(true);
     setResult(null);
     setError(null);
-    const response = await runSnippet(code);
+    const response = await runSnippet(codeRef.current);
     setRunning(false);
     if (response.success) {
       setResult(response.data);
@@ -80,7 +106,9 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
   };
 
   const handleReset = () => {
-    setCode(initialCode);
+    codeRef.current = initialCode;
+    editorRef.current?.setValue(initialCode);
+    setEdited(false);
     setResult(null);
     setError(null);
   };
@@ -100,18 +128,11 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
         </div>
       )}
       <CodeEditor
-        code={code}
-        onCodeChange={(value) => setCode(value ?? '')}
+        defaultCode={initialCode}
+        onCodeChange={handleCodeChange}
         onMount={handleEditorMount}
         height={`${editorHeight}px`}
-        options={{
-          scrollbar: {
-            vertical: 'auto',
-            horizontal: 'auto',
-            // Small editors inside a scrollable modal must not trap the wheel.
-            alwaysConsumeMouseWheel: false,
-          },
-        }}
+        options={EDITOR_OPTIONS}
       />
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 border-t border-gray-300">
         <button
@@ -127,7 +148,7 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
         <button
           type="button"
           onClick={handleReset}
-          disabled={running || (code === initialCode && !result && !error)}
+          disabled={running || (!edited && !result && !error)}
           className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-200"
         >
           Reset
@@ -165,7 +186,7 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
           {result.status === 'success' &&
             (result.stdout == null || result.stdout === '') && (
               <div className="px-3 py-2 text-sm text-gray-500 bg-gray-50">
-                Ran without output — add a print() to see results.
+                No output add a print(), or call the function that contains the print().
               </div>
             )}
         </div>

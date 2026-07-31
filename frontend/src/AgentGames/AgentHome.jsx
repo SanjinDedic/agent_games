@@ -20,21 +20,25 @@ const SHOWCASE_HEADING =
 // Real product screenshots (hosted alongside the other assets on S3). All of
 // them are captured at the same 1700x1050, so the tiles line up without any
 // cropping and the click-to-zoom view shows them at their natural size.
+//
+// The objects are served with max-age=86400, so re-shooting them leaves anyone
+// who visited that day on a mix of old and new files — bump ?v when they are
+// replaced.
 const DASHBOARD_SHOTS = [
   {
-    src: "teacher/dashboard-roster.png",
+    src: "teacher/dashboard-concepts.png?v=2",
+    title: "Every student against every concept",
+    text: "One cell per student and concept, from fluent to needs help — plus the concepts the whole class is finding costly, and the individuals to sit with next.",
+  },
+  {
+    src: "teacher/dashboard-roster.png?v=2",
     title: "Class roster with progress at a glance",
     text: "Attempts, validated agents, hints used, ranking trend and exercise completion — one row per student.",
   },
   {
-    src: "teacher/dashboard-progress.png",
+    src: "teacher/dashboard-progress.png?v=2",
     title: "Exercise-by-exercise progress grid",
     text: "See who passed what and who is stuck where, with attempt counts on the exercises that need another look.",
-  },
-  {
-    src: "teacher/dashboard-submissions.png",
-    title: "Every agent submission",
-    text: "Read each student's code and how it evolved, submission by submission — with one-click plagiarism checks.",
   },
 ];
 
@@ -189,7 +193,12 @@ const Homepage = () => {
       <section className="py-6 bg-ui-lighter">
         <div className="container mx-auto px-6">
           <h2 className={SHOWCASE_HEADING}>
-            Teachers see who needs help and who needs extension
+            <span className="block">
+              Give targeted help to specific students on specific concepts
+            </span>
+            <span className="block">
+              Precise information about student learning, empowering teachers
+            </span>
           </h2>
           <ShotGrid shots={DASHBOARD_SHOTS} onZoom={setZoomed} />
         </div>
