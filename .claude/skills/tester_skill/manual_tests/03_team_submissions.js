@@ -8,9 +8,9 @@
 //       three back (agent panel: 2 valid, 2 placement squares, 1 attempt that
 //       didn't get past validation)
 //   3.3 (Team 1 only) one tutorial exercise end-to-end: overview -> "Add Up
-//       the Scoreboard" (#4 of 10) -> starter fails 0/5 -> fix passes 5/5 ->
-//       broken code (renamed entry function) 400s -> overview shows
-//       Completed / 1 of 10.
+//       the Scoreboard" (position read off the overview) -> starter fails
+//       0/5 -> fix passes 5/5 -> broken code (syntax error) 400s -> overview
+//       shows Completed / 1 of <total>.
 //       PREREQUISITES: the tutorial must be seeded
 //         (docker compose exec api python -m backend.scripts.seed_tutorial)
 //       AND attached to the league — Stage 2.3 attaches it.
@@ -36,16 +36,21 @@ const teamDefs = (run) => [
 ];
 
 // 3.3 (Team 1 only) — one tutorial exercise per the manual, using the seeded
-// exercise "Add Up the Scoreboard" (total_banked over the banked_money dict,
-// 5 tests). Its position and the tutorial's exercise count are read off the
+// exercise "Add Up the Scoreboard" (a top-level-code exercise: total/past_20
+// accumulated over the banked_money dict and printed, 5 tests, no entry
+// function). Its position and the tutorial's exercise count are read off the
 // overview rather than hardcoded — the tutorial is authored content and grows.
-// Submission outcomes are asserted from the
-// /tutorial/submit-exercise response body (200 with passed/test_results;
-// 400 detail when the code never produces results), mirroring how agent
-// submissions are asserted from /user/submit-agent. There is deliberately
-// NO AST safety gate on exercises any more — the slim exercise-worker
-// container is the sandbox — so the "rejected" case is code whose entry
-// function is missing, not an unauthorized import.
+// Submission outcomes are asserted from the submit response body (200 with
+// passed/test_results; 400 detail when the code never produces results),
+// mirroring how agent submissions are asserted from /user/submit-agent.
+// Exercises run Pyodide-first in the browser and persist via
+// /tutorial/submit-exercise-result (Celery is the automatic fallback via
+// /tutorial/submit-exercise) — both endpoints share the response contract and
+// the '/tutorial/submit-exercise' substring, so one waitForResponse covers
+// both paths. There is deliberately NO AST safety gate on exercises — the
+// sandbox is the Pyodide worker (or the slim exercise-worker container) — so
+// the "rejected" case is code that never produces results (a syntax error),
+// not an unauthorized import.
 async function runTutorialExercise(page) {
   console.log('\n=== Tutorial exercise (Team 1 only) ===');
 
@@ -70,15 +75,16 @@ async function runTutorialExercise(page) {
   console.log('[3.3] exercise workspace open (Problem Description, footer TEAM label, no Get Hint)');
 
   const starter = await getMonacoValue(page);
-  if (!starter.includes('def total_banked(banked_money):')) {
-    throw new Error('exercise starter code no longer defines total_banked(banked_money)');
+  if (!starter.includes('banked_money = {')) {
+    throw new Error('exercise starter code no longer sets up the banked_money scoreboard dict');
   }
-  const PASS_LINE = 'pass  # Replace this line with your code';
-  if (!starter.includes(PASS_LINE)) {
-    throw new Error(`exercise starter code no longer contains the line the manual says to replace: ${PASS_LINE}`);
+  const TODO_LINE = '# Your code goes here';
+  if (!starter.includes(TODO_LINE)) {
+    throw new Error(`exercise starter code no longer contains the line the student replaces: ${TODO_LINE}`);
   }
 
-  // Submission 1 — starter as-is: runs fine but every test must fail (returns None)
+  // Submission 1 — starter as-is: runs fine (just the dict and comments) but
+  // every test must fail (total/past_20 undefined, nothing printed)
   const sub1 = await submitCode(page, 120000, '/tutorial/submit-exercise');
   if (!sub1.ok || sub1.body.passed !== false || (sub1.body.test_results || []).length !== 5) {
     throw new Error(`starter submission should be 200 with 5 failing tests but got HTTP ${sub1.status}: ${JSON.stringify(sub1.body).slice(0, 300)}`);
@@ -87,7 +93,18 @@ async function runTutorialExercise(page) {
   console.log('[3.3] starter submission: 0 of 5 tests passed (as expected)');
 
   // Submission 2 — the fix: all tests must pass
-  await setMonacoValue(page, starter.replace(PASS_LINE, 'return sum(banked_money.values())'));
+  const FIX = [
+    'total = 0',
+    'past_20 = 0',
+    'for money in banked_money.values():',
+    '    total = total + money',
+    '    if money >= 20:',
+    '        past_20 = past_20 + 1',
+    '',
+    'print(f"Total banked: {total}")',
+    'print(f"Players past 20: {past_20}")',
+  ].join('\n');
+  await setMonacoValue(page, starter.replace(TODO_LINE, FIX));
   const sub2 = await submitCode(page, 120000, '/tutorial/submit-exercise');
   if (!sub2.ok || sub2.body.passed !== true) {
     throw new Error(`fixed submission should pass all tests but got HTTP ${sub2.status}: ${JSON.stringify(sub2.body).slice(0, 300)}`);
@@ -96,13 +113,15 @@ async function runTutorialExercise(page) {
   console.log('[3.3] fixed submission: all 5 tests passed');
 
   // Submission 3 — code that never produces test results must 400 with the
-  // worker's message (recorded without code, like failed agent validation).
-  // Renaming the entry function gives a deterministic message.
-  await setMonacoValue(page, starter.replace('def total_banked(', 'def total_banked_typo('));
+  // harness's message (recorded without code, like failed agent validation).
+  // The exercise is top-level code (no entry function), so a syntax error is
+  // the deterministic no-results case — same message from Pyodide and the
+  // Celery fallback (harness parity).
+  await setMonacoValue(page, starter + '\nthis is not python\n');
   const sub3 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (sub3.ok) throw new Error('broken exercise submission (renamed entry function) unexpectedly passed');
+  if (sub3.ok) throw new Error('broken exercise submission (syntax error) unexpectedly passed');
   const detail = sub3.body.detail || '';
-  if (!detail.includes("Your code must define a function named 'total_banked'")) {
+  if (!detail.includes('Your code failed to run before any tests started.')) {
     throw new Error(`unexpected exercise rejection message: HTTP ${sub3.status} "${detail}"`);
   }
   console.log(`[3.3] broken submission correctly rejected: "${detail}"`);
