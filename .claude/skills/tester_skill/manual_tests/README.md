@@ -34,7 +34,7 @@ attempts that never got past validation — and carries the tutorials/short cour
 | `04_institution_review_publish.js` | competition | manual Stage 4 — open the league workspace from Home, then its tabs: review submissions in the **Submissions** grid (one row per team, one cell per submission; a cell or **ALL** opens the code modal), plagiarism from inside that modal (OpenAI), 100-round simulation + publish (**Simulation**: runner → run summary → "Show results" modal), verify the public page |
 | `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; lands on `/InstitutionHome`, navbar "Students" + heading "Active Classrooms"), create greedy_pig classroom from the Home "Create New Classroom" card ("Classroom Created Successfully"), capture join URL, attach the seeded tutorial via the workspace **Settings** tab (a teacher sees it as **Short Courses**) |
 | `06_student_submissions.js` | classroom | mirror of 03 — two students: signup via the classroom join page ("Classroom · greedy_pig", "Student Name", "Sign Up & Join Classroom"), same 2-valid + 1-invalid submissions, history check and landing-page check (STUDENT:/CLASSROOM: footer, **Short Courses** section under the agent panel); Student 1 runs the same tutorial exercise, reached via the navbar's **Short Course** link (per-student progress, STUDENT: footer) |
-| `07_demo_hints.js` | demo | manual Stage 5 — per game ×7: demo user, invalid submission, Get Hint, fix, valid submission |
+| `07_demo_hints.js` | demo | manual Stage 5 — per game ×8: demo user, invalid submission, Get Hint, fix, valid submission |
 | `08_password_reset.js` | classroom | not in the manual yet — teacher opens the classroom workspace **Students** tab and generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
 | `09_teacher_progress.js` | classroom | not in the manual yet — the teacher-side readings of stages 05/06: the **Short Course Progress** grid (Student 1's single ✓ is the only pass, the Passed summary row agrees, a cell opens that student's exercise code), the **Concepts** map (Students × Concepts grid + Class row, coverage chips, "How is this worked out?", the concept modal from both a column heading and a student's cell, the two action lists), and the student page behind them (attempts run exactly one ahead of validated — the AST-rejected submission shows up nowhere else) |
 
@@ -85,10 +85,13 @@ Conventions (see `_helpers.js`):
 - Monaco is driven via `window.monaco.editor.getEditors()[0].setValue(...)`; submission outcomes
   are asserted from the `/user/submit-agent` response body (200 + `submission_id` = valid,
   400 + `detail` = failed validation), not from the UI. Tutorial exercise submissions are
-  asserted the same way from `/tutorial/submit-exercise` (200 + `passed`/`test_results`;
-  400 + `detail` when the code never produces results — a syntax error, a missing entry
-  function, or a timeout). Exercises have NO AST safety gate by design: the slim
-  exercise-worker container is the sandbox, so `import os` is allowed there.
+  asserted the same way: exercises run Pyodide-first in the browser and persist via
+  `/tutorial/submit-exercise-result`, with `/tutorial/submit-exercise` (Celery) as automatic
+  fallback — both share the response contract (200 + `passed`/`test_results`; 400 + `detail`
+  when the code never produces results — a syntax error, a missing entry function, or a
+  timeout) and the `/tutorial/submit-exercise` URL substring, so one waitForResponse covers
+  both. Exercises have NO AST safety gate by design: the Pyodide worker (or the slim
+  exercise-worker container) is the sandbox, so `import os` is allowed there.
 
 Known app-side deviations the scripts expect and document (full detail in
 `docs/test_findings/integration-manual-run-2026-07-11.md`):
