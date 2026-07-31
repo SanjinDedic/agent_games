@@ -9,6 +9,7 @@ import MySubmissionsModal from "../Shared/Submission/MySubmissionsModal";
 import OutputDrawer from "../Shared/Submission/OutputDrawer";
 import SubmissionLayout from "../Shared/Submission/SubmissionLayout";
 import ExerciseResults from "./ExerciseResults";
+import usePyodideExerciseSubmit from "../Shared/hooks/usePyodideExerciseSubmit";
 import useSubmissionWorkspace from "../Shared/hooks/useSubmissionWorkspace";
 import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
 import { useTerms } from "../Shared/terminology";
@@ -26,12 +27,15 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
   const currentUser = useSelector(selectCurrentUser);
   const T = useTerms();
 
-  const {
-    getLatestExerciseSubmission,
-    getExerciseSubmissions,
-    submitExercise,
-    isLoading: isSubmitting,
-  } = useTutorialAPI();
+  const { getLatestExerciseSubmission, getExerciseSubmissions } =
+    useTutorialAPI();
+
+  // Pyodide-first execution with automatic Celery fallback; same submitCode
+  // contract as submitExercise, so the workspace is unchanged.
+  const { submitCode, isLoading: isSubmitting } = usePyodideExerciseSubmit({
+    exercise,
+    preview,
+  });
 
   const ws = useSubmissionWorkspace({
     getLatestSubmission: preview
@@ -40,7 +44,7 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
     getSubmissionHistory: preview
       ? async () => ({ success: true, submissions: [] })
       : () => getExerciseSubmissions(exercise.id),
-    submitCode: (code) => submitExercise(exercise.id, code, { preview }),
+    submitCode,
   });
 
   useEffect(() => {

@@ -290,6 +290,9 @@ services:
       # `... run --rm --no-deps test-runner pytest tutorial_data/tests/`;
       # not part of the public suite/CI — the folder is gitignored)
       - ./tutorial_data:/agent_games/tutorial_data
+      # Browser exercise harness, for the CPython parity test
+      # (backend/tests/unit/test_exercise_harness_parity.py)
+      - ./frontend/src/pyodide:/agent_games/frontend/src/pyodide:ro
     command: pytest backend/tests/ -v
     scale: 0
 

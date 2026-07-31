@@ -1,13 +1,62 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
+from backend.exercise_worker.tasks import MAX_STDOUT_CHARS
+
 
 class ExerciseSubmissionRequest(BaseModel):
-    """Model for exercise code submissions from teams"""
+    """Model for exercise code submissions from teams.
+
+    ``execution_source`` distinguishes the default Celery-run submission from
+    a browser submission that fell back to Celery because Pyodide could not
+    run (frontend/src/pyodide/exerciseRunnerClient.js). Fallbacks are logged
+    and counted so the in-browser migration can prove when the Celery path
+    has become dead weight.
+    """
 
     exercise_id: int
     code: str
+    execution_source: Literal["celery", "pyodide_fallback"] = "celery"
+    fallback_reason: Optional[str] = None
+
+    @field_validator("fallback_reason")
+    @classmethod
+    def clean_fallback_reason(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()[:500]
+        return value or None
+
+
+class ExerciseResultSubmissionRequest(BaseModel):
+    """A finished in-browser (Pyodide) exercise run, submitted for storage.
+
+    The browser already executed the code and the test script
+    (frontend/src/pyodide/exercise_harness.py); this carries the normalized
+    envelope so the attempt is recorded exactly like a worker-run one.
+    Client results are trusted by design (exercises are practice, not
+    assessment), but the server rebuilds each row from its contract keys and
+    recomputes ``passed`` — see pyodide_support.normalize_client_rows.
+    """
+
+    exercise_id: int
+    code: str
+    status: Literal["success", "error"]
+    message: Optional[str] = None
+    passed: bool = False
+    test_results: List[dict] = []
+    stdout: Optional[str] = None
+    duration_ms: Optional[float] = None
+
+    @field_validator("stdout")
+    @classmethod
+    def truncate_stdout(cls, value: Optional[str]) -> Optional[str]:
+        # The harness truncates at the same bound; re-truncating here guards
+        # against a tampered client bloating the stored payload.
+        if value is None:
+            return None
+        return value[:MAX_STDOUT_CHARS]
 
 
 class TutorialCreateRequest(BaseModel):

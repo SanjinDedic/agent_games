@@ -35,9 +35,14 @@ from backend.routes.tutorial.tutorial_db import (
     update_exercise,
     update_tutorial,
 )
+from backend.routes.tutorial.pyodide_support import (
+    normalize_client_rows,
+    record_pyodide_fallback,
+)
 from backend.routes.tutorial.tutorial_models import (
     ExerciseReorderRequest,
     ExerciseRequest,
+    ExerciseResultSubmissionRequest,
     ExerciseRunRequest,
     ExerciseSubmissionRequest,
     HintRevealRequest,
@@ -92,6 +97,13 @@ async def submit_exercise(
     assert_exercise_in_team_league(session, exercise, team_id)
     allow_exercise_submission(session, team_id)
 
+    if submission.execution_source == "pyodide_fallback":
+        # The browser couldn't run this via Pyodide and fell back here;
+        # counted after the rate limit so spam can't inflate the telemetry.
+        record_pyodide_fallback(
+            team_id, submission.fallback_reason or "unspecified"
+        )
+
     logger.info(
         f"Enqueueing exercise run for team {team_id}, "
         f"exercise {exercise.id}"
@@ -119,6 +131,10 @@ async def submit_exercise(
 
     passed = run_result.get("passed", False)
     test_results = run_result.get("test_results", [])
+    if submission.execution_source == "pyodide_fallback":
+        # Stamp the stored rows so fallback runs stay identifiable in the
+        # submission history (the default Celery path stays untouched).
+        test_results = normalize_client_rows(test_results, "celery_fallback")
     submission_id = save_exercise_submission(
         session,
         submission.code,
@@ -156,6 +172,13 @@ async def preview_submit_exercise(
     """
     exercise = get_exercise_by_id(session, submission.exercise_id)
 
+    if submission.execution_source == "pyodide_fallback":
+        # Preview runs persist nothing, but a teacher's browser failing to
+        # run Pyodide is the same signal as a student's — count it.
+        record_pyodide_fallback(
+            None, submission.fallback_reason or "unspecified"
+        )
+
     async_result = enqueue_exercise_run(
         code=submission.code,
         entry_function=exercise.entry_function,
@@ -179,6 +202,67 @@ async def preview_submit_exercise(
         "test_results": run_result.get("test_results", []),
         "stdout": run_result.get("stdout"),
         "duration_ms": run_result.get("duration_ms"),
+    }
+
+
+@tutorial_router.post("/submit-exercise-result")
+@verify_ai_agent_service_or_student
+async def submit_exercise_result(
+    submission: ExerciseResultSubmissionRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Persist an exercise attempt the browser already ran via Pyodide.
+
+    The in-browser runner (frontend/src/pyodide/exercise_harness.py, kept in
+    lockstep with the Celery worker by test_exercise_harness_parity.py) runs
+    the code and test script locally, then reports the finished envelope here
+    so progress tracking and submission history stay identical to worker-run
+    attempts. Client results are trusted by design — exercises are practice,
+    not assessment — but each row is rebuilt from its contract keys, `passed`
+    is recomputed server-side, and every stored row is stamped
+    "source": "pyodide".
+
+    Same auth, league check, and 5/minute budget as /submit-exercise, and the
+    same response contract (400 with detail+stdout when the run produced no
+    test results) so the frontend shares one result path.
+    """
+    team_id = _require_team_id(current_user)
+    exercise = get_exercise_by_id(session, submission.exercise_id)
+    assert_exercise_in_team_league(session, exercise, team_id)
+    allow_exercise_submission(session, team_id)
+
+    test_results = normalize_client_rows(submission.test_results, "pyodide")
+
+    if submission.status == "error" or not test_results:
+        record_failed_exercise_submission(
+            session, team_id, exercise.id, duration_ms=submission.duration_ms
+        )
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": submission.message or "Exercise run failed",
+                "stdout": submission.stdout,
+            },
+        )
+
+    passed = all(row["passed"] for row in test_results)
+    submission_id = save_exercise_submission(
+        session,
+        submission.code,
+        team_id,
+        exercise.id,
+        passed=passed,
+        test_results=test_results,
+        duration_ms=submission.duration_ms,
+    )
+    return {
+        "submission_id": submission_id,
+        "exercise_id": exercise.id,
+        "passed": passed,
+        "test_results": test_results,
+        "stdout": submission.stdout,
+        "duration_ms": submission.duration_ms,
     }
 
 
@@ -244,8 +328,8 @@ async def get_tutorial_progress_endpoint(
 
 # ---------------------------------------------------------------------------
 # Admin content management. The admin detail endpoint is the only read path
-# exposing entry_function/test_code — the student endpoints above keep them
-# server-side.
+# exposing `solution`; entry_function/test_code also ship in the student
+# tutorial payload so the browser can run exercises via Pyodide.
 # ---------------------------------------------------------------------------
 
 

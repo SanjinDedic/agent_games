@@ -6,6 +6,7 @@ from backend.config import BENCHMARK_TOKEN
 from backend.routes.auth.auth_core import get_current_user, verify_admin_or_institution
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
+from backend.routes.tutorial.pyodide_support import get_pyodide_fallback_stats
 
 from backend.routes.user.code_validation import validate_code
 from backend.tasks.validation_task import (
@@ -28,6 +29,21 @@ async def get_status(
 ):
     """Get health status for the Celery broker and worker services"""
     return {"statuses": await get_all_services_status()}
+
+
+@diagnostics_router.get("/pyodide-fallbacks")
+@verify_admin_or_institution
+async def get_pyodide_fallbacks(
+    current_user: dict = Depends(get_current_user),
+):
+    """Per-day counts of browser exercise runs that fell back to Celery.
+
+    The migration-readiness dial for in-browser (Pyodide) exercise execution:
+    a sustained zero here means the Celery exercise path can be deleted.
+    Counters live in Valkey with a 30-day TTL (pyodide_support.py); each
+    occurrence is also logged by the API as a warning.
+    """
+    return get_pyodide_fallback_stats()
 
 
 @diagnostics_router.post("/benchmark-submit")
