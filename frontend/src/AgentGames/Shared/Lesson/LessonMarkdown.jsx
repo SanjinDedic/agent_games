@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -121,7 +121,9 @@ const parseOutputMark = (text) => {
 function LessonMarkdown({ content }) {
   const { openLesson } = useLessonModal();
 
-  const components = {
+  // Rebuilding this object re-renders every block in the document — including
+  // the Monaco instances inside RunnableCodeBlocks — so keep it stable.
+  const components = useMemo(() => ({
     a({ node, href, children, ...props }) {
       if (href?.startsWith(LESSON_LINK_PREFIX)) {
         const slug = href.slice(LESSON_LINK_PREFIX.length);
@@ -180,7 +182,7 @@ function LessonMarkdown({ content }) {
         </code>
       );
     },
-  };
+  }), [openLesson]);
 
   return (
     <>
@@ -198,4 +200,7 @@ function LessonMarkdown({ content }) {
   );
 }
 
-export default LessonMarkdown;
+// Memoised because re-parsing the markdown (react-markdown + rehypeRaw's
+// hast->HTML->hast round-trip + Prism) is expensive, and the pages that render
+// instructions re-render for reasons unrelated to their content.
+export default React.memo(LessonMarkdown);

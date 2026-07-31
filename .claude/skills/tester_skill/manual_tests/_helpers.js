@@ -88,8 +88,10 @@ async function dismissToasts(page) {
   await page.locator('.Toastify__toast').first().waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
 }
 
-// Monaco is React-controlled: setValue via the editor API is the only reliable way
-// to change code (DOM typing doesn't fire React's onChange consistently).
+// setValue via the editor API is the only reliable way to change code (DOM typing
+// doesn't fire Monaco's content-change event consistently). The submission editors
+// are uncontrolled — Monaco owns the buffer — so setValue is also what the app
+// itself uses, and it still fires the onChange the page listens to.
 async function setMonacoValue(page, code) {
   await page.waitForSelector('.monaco-editor', { timeout: 60000 });
   await page.waitForFunction(() => (window.monaco?.editor?.getEditors?.() ?? []).length > 0, { timeout: 60000 });

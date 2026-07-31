@@ -8,6 +8,11 @@ import { toast } from 'react-toastify';
  * ownership of its domain-specific data loading (league info, exercise
  * definitions, instructions).
  *
+ * The editor content is deliberately NOT React state — it lives in Monaco and
+ * is shadowed in a ref (`getCode()`), because nothing renders it and a render
+ * per keystroke is what let the library resync the model and throw the caret
+ * to the end of the file.
+ *
  * @param {Object} options
  * @param {Function} options.getLatestSubmission - () => {success, hasSubmission, code}
  * @param {Function} options.getSubmissionHistory - () => {success, submissions, error}
@@ -25,7 +30,6 @@ export const useSubmissionWorkspace = ({
   submitCode,
   onResetUnavailable,
 }) => {
-  const [code, setCode] = useState("");
   const [starterCode, setStarterCode] = useState("");
   const [lastSubmission, setLastSubmission] = useState("");
   const [hasLastSubmission, setHasLastSubmission] = useState(false);
@@ -46,9 +50,41 @@ export const useSubmissionWorkspace = ({
   const [allowHint, setAllowHint] = useState(false);
   const editorRef = useRef(null);
 
+  // The editor is uncontrolled: Monaco owns the buffer and this ref shadows it,
+  // so a keystroke costs zero renders and nothing ever writes the model back
+  // underneath the caret. See CodeEditor for why that matters.
+  const codeRef = useRef("");
+  // Content that arrived before Monaco mounted (the initial submission fetch
+  // resolves independently of mount), applied in handleEditorDidMount.
+  const pendingCodeRef = useRef(null);
+
+  // The single writer into the editor buffer — every deliberate replacement
+  // (starter code, reset, loading a submission) goes through here.
+  const setEditorCode = useCallback((value) => {
+    const text = value ?? "";
+    codeRef.current = text;
+    if (editorRef.current) {
+      editorRef.current.setValue(text);
+    } else {
+      pendingCodeRef.current = text;
+    }
+  }, []);
+
+  const getCode = useCallback(() => codeRef.current, []);
+
+  // Keep the shadow copy in step with the student's typing. Deliberately does
+  // no setState: this runs on every keystroke.
+  const handleCodeChange = useCallback((value) => {
+    codeRef.current = value ?? "";
+  }, []);
+
   // Update editor reference when mounted
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
+    if (pendingCodeRef.current !== null) {
+      editor.setValue(pendingCodeRef.current);
+      pendingCodeRef.current = null;
+    }
   }, []);
 
   /**
@@ -64,7 +100,7 @@ export const useSubmissionWorkspace = ({
         setLastSubmission(result.code);
         setHasLastSubmission(true);
         if (intoEditor) {
-          setCode(result.code);
+          setEditorCode(result.code);
         }
         return true;
       }
@@ -73,22 +109,26 @@ export const useSubmissionWorkspace = ({
       }
       return false;
     },
-    [getLatestSubmission]
+    [getLatestSubmission, setEditorCode]
   );
 
   /**
    * Register the starter code once the page has loaded it. With intoEditor
    * (no previous submission) it also becomes the editor content.
    */
-  const applyStarterCode = useCallback((starter, { intoEditor = false } = {}) => {
-    setStarterCode(starter);
-    if (intoEditor) {
-      setCode(starter);
-    }
-  }, []);
+  const applyStarterCode = useCallback(
+    (starter, { intoEditor = false } = {}) => {
+      setStarterCode(starter);
+      if (intoEditor) {
+        setEditorCode(starter);
+      }
+    },
+    [setEditorCode]
+  );
 
   // Submit code to the API
   const handleSubmit = useCallback(async () => {
+    const code = codeRef.current;
     if (!code || code.trim() === "") {
       toast.error("Please enter some code before submitting");
       return;
@@ -111,10 +151,11 @@ export const useSubmissionWorkspace = ({
       // Refresh the latest submission info
       await loadLatestSubmission();
     }
-  }, [code, allowHint, submitCode, loadLatestSubmission]);
+  }, [allowHint, submitCode, loadLatestSubmission]);
 
   // Request a hint for the current code (hits the same endpoint with generate_hint=true)
   const handleGetHint = useCallback(async () => {
+    const code = codeRef.current;
     if (!code || code.trim() === "") {
       toast.error("Please enter some code before requesting a hint");
       return;
@@ -152,18 +193,17 @@ export const useSubmissionWorkspace = ({
 
       await loadLatestSubmission();
     }
-  }, [code, allowHint, submitCode, loadLatestSubmission]);
+  }, [allowHint, submitCode, loadLatestSubmission]);
 
   // Load last submitted code
   const handleLoadLastSubmission = useCallback(() => {
-    if (hasLastSubmission && editorRef.current) {
-      editorRef.current.setValue(lastSubmission);
-      setCode(lastSubmission);
+    if (hasLastSubmission) {
+      setEditorCode(lastSubmission);
       toast.success("Loaded last submission");
     } else {
       toast.error("No previous submission found");
     }
-  }, [hasLastSubmission, lastSubmission]);
+  }, [hasLastSubmission, lastSubmission, setEditorCode]);
 
   // Open submissions modal and load history
   const handleShowSubmissions = useCallback(async () => {
@@ -180,31 +220,31 @@ export const useSubmissionWorkspace = ({
   }, [getSubmissionHistory]);
 
   // Load a specific past submission into the editor
-  const handleSelectSubmission = useCallback((sub) => {
-    if (editorRef.current && sub?.code != null) {
-      editorRef.current.setValue(sub.code);
-      setCode(sub.code);
-      setSubmissionsModalOpen(false);
-      toast.success("Submission loaded into editor");
-    }
-  }, []);
+  const handleSelectSubmission = useCallback(
+    (sub) => {
+      if (sub?.code != null) {
+        setEditorCode(sub.code);
+        setSubmissionsModalOpen(false);
+        toast.success("Submission loaded into editor");
+      }
+    },
+    [setEditorCode]
+  );
 
   // Reset code to starter template
   const handleReset = useCallback(() => {
-    if (starterCode && editorRef.current) {
-      editorRef.current.setValue(starterCode);
-      setCode(starterCode);
+    if (starterCode) {
+      setEditorCode(starterCode);
       toast.success("Code reset to starter template");
     } else {
       toast.error("Starter code template not available");
       onResetUnavailable?.();
     }
-  }, [starterCode, onResetUnavailable]);
+  }, [starterCode, onResetUnavailable, setEditorCode]);
 
   return {
     // state the page may need directly
-    code,
-    setCode,
+    getCode,
     output,
     stdout,
     feedback,
@@ -218,8 +258,8 @@ export const useSubmissionWorkspace = ({
 
     // prop bundles for the shared components
     editorProps: {
-      code,
-      onCodeChange: setCode,
+      defaultCode: "",
+      onCodeChange: handleCodeChange,
       onMount: handleEditorDidMount,
     },
     footerProps: {
