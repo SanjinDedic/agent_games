@@ -6,8 +6,15 @@ import usePyodideHealth from '../hooks/usePyodideHealth';
 // the Celery fallback (probe/boot failed, or Pyodide is switched off), grey
 // pulse while booting/probing. Hover explains. Same fixed-position tooltip
 // trick as StrategyTooltip so overflow wrappers can't clip it.
-const PyodideStatusDot = ({ className = '' }) => {
-    const { state, failureReason, pyodideEnabled } = usePyodideHealth();
+
+// Presentational half, shared with ValidationStatusDot (which feeds it the
+// validation runner's health instead of the exercise runner's).
+export const PyodideStatusDotView = ({
+    state,
+    failureReason,
+    pyodideEnabled,
+    className = '',
+}) => {
     const [pos, setPos] = useState(null);
 
     let color, label, explanation;
@@ -64,6 +71,18 @@ const PyodideStatusDot = ({ className = '' }) => {
                 </span>
             )}
         </span>
+    );
+};
+
+const PyodideStatusDot = ({ className = '' }) => {
+    const { state, failureReason, pyodideEnabled } = usePyodideHealth();
+    return (
+        <PyodideStatusDotView
+            state={state}
+            failureReason={failureReason}
+            pyodideEnabled={pyodideEnabled}
+            className={className}
+        />
     );
 };
 

@@ -132,8 +132,14 @@ export const useSubmissionAPI = () => {
    * @param {string} code - The agent code to submit
    * @param {Object} [options]
    * @param {boolean} [options.generateHint] - Ask the backend to also generate a hint
+   * @param {string} [options.executionSource] - 'pyodide_fallback' when the
+   *   in-browser runner couldn't run and this submission is the fallback
+   * @param {string} [options.fallbackReason] - why Pyodide couldn't run
    */
-  const submitCode = useCallback(async (code, { generateHint = false } = {}) => {
+  const submitCode = useCallback(async (
+    code,
+    { generateHint = false, executionSource, fallbackReason } = {}
+  ) => {
     if (!code || code.trim() === "") {
       toast.error("Please enter some code before submitting");
       return {
@@ -146,13 +152,21 @@ export const useSubmissionAPI = () => {
 
     try {
       const url = `${apiUrl}/user/submit-agent${generateHint ? "?generate_hint=true" : ""}`;
+      // The tagging fields are only added when present so the default
+      // Celery submission stays byte-identical to the pre-Pyodide one.
+      const body = {
+        code,
+        ...(executionSource
+          ? { execution_source: executionSource, fallback_reason: fallbackReason }
+          : {}),
+      };
       const response = await authFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -192,12 +206,74 @@ export const useSubmissionAPI = () => {
     }
   }, [apiUrl, accessToken]);
   
+  /**
+   * Persist an agent validation the browser already ran via Pyodide.
+   * @param {string} code - The validated agent code
+   * @param {Object} envelope - The 7-key ValidationResponse from the harness
+   * Result contract matches submitCode so the workspace consumes both paths
+   * identically; a network failure is flagged with networkError so the
+   * caller can show the local result without re-running through Celery.
+   */
+  const submitAgentResult = useCallback(async (code, envelope) => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/user/submit-agent-result`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          code,
+          status: envelope.status,
+          message: envelope.message,
+          feedback: envelope.feedback,
+          simulation_results: envelope.simulation_results,
+          duration_ms: envelope.duration_ms,
+          stdout: envelope.stdout,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return {
+          success: true,
+          output: data.results,
+          feedback: data.feedback,
+          hint: data.hint ?? null,
+          hint_available: data.hint_available ?? false,
+          hint_cancelled: data.hint_cancelled ?? false
+        };
+      } else {
+        toast.error(data.detail || "Error in submission");
+        return {
+          success: false,
+          error: data.detail,
+          hint: data.hint ?? null,
+          hint_available: data.hint_available ?? false,
+          hint_cancelled: false
+        };
+      }
+    } catch (error) {
+      console.error("Error saving validation result:", error);
+      return {
+        success: false,
+        error: "network",
+        networkError: true
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken]);
+
   return {
     isLoading,
     getLatestSubmission,
     getTeamSubmissions,
     getGameInstructions,
-    submitCode
+    submitCode,
+    submitAgentResult
   };
 };
 

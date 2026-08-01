@@ -1,0 +1,340 @@
+# games/prisoners_dilemma/prisoners_dilemma.py
+
+import itertools
+import logging
+import random
+
+from backend.games.base_game import BaseGame
+
+logger = logging.getLogger(__name__)
+
+
+class PrisonersDilemmaGame(BaseGame):
+    # Benchmarked: ~2ms per simulation keeps validation <1s.
+    validation_simulations = 300
+
+    starter_code = """
+from games.prisoners_dilemma.player import Player
+import random
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        my_opponent = game_state["opponent_name"]
+        opponent_history = game_state["opponent_history"]
+        my_history = game_state["my_history"]
+        
+        # Your code here
+        decision = 'collude'  # or 'defect'
+        
+        # Add custom feedback (will appear in game output)
+        self.add_feedback("Round number: " + str(game_state['round_number']))
+        self.add_feedback("| Opponent history: " + str(opponent_history))
+        
+        return decision
+"""
+
+    game_instructions = """### Prisoner's Dilemma Game Instructions
+
+Welcome to the Prisoner's Dilemma game! Your task is to implement the `make_decision` method in the `CustomPlayer` class.
+
+#### 1. Game Objective
+Maximize your score over multiple rounds by choosing to collude or defect against your opponents.
+
+#### 2. Your Task
+Implement the `make_decision` method to decide whether to 'collude' or 'defect' based on the game state.
+
+#### 3. Available Information
+The `game_state` parameter provides you with the following information:
+- `round_number`: The current round number
+- `player_name`: Your player's name
+- `opponent_name`: Your current opponent's name
+- `opponent_history`: A list of your opponent's past decisions against you
+- `scores`: A dictionary of current scores for all players
+
+#### 4. Scoring
+The scoring is determined by a reward matrix. The default matrix is:
+- Both collude: 4 points each
+- Both defect: 0 points each
+- One colludes, one defects: Defector gets 6 points, Colluder gets 0 points
+
+#### 5. Strategy Tips
+- Consider patterns in your opponent's history.
+- Balance between cooperation and self-interest.
+- Experiment with different strategies (e.g., tit-for-tat, always defect, etc.).
+- Adapt your strategy based on the current scores and round number.
+
+#### WARNING
+When you log out, navigate away, or refresh the page, your code will be lost. Please save it!
+
+Good luck and have fun!
+"""
+
+    reward_schema = {
+        "kind": "matrix",
+        "length": 4,
+        "labels": [
+            "Both Collude (C, C)",
+            "You Collude / Opp Defect (C, D)",
+            "You Defect / Opp Collude (D, C)",
+            "Both Defect (D, D)",
+        ],
+        "default": [4, 0, 6, 0],
+    }
+
+    reward_instructions = """## Custom Rewards — Prisoner's Dilemma
+
+Rewards form the **per-round payoff matrix** used in every pairwise round. The
+four entries map to the four possible outcomes of a single round:
+
+- `rewards[0]` — **Both Collude.** You get `rewards[0]`, opponent gets `rewards[0]`.
+- `rewards[1]` — **You Collude, Opp Defect.** You get `rewards[1]`, opponent gets `rewards[2]`.
+- `rewards[2]` — **You Defect, Opp Collude.** You get `rewards[2]`, opponent gets `rewards[1]`.
+- `rewards[3]` — **Both Defect.** You get `rewards[3]`, opponent gets `rewards[3]`.
+
+Your opponent's payoff is symmetric — swap entries `[1]` and `[2]`.
+
+**Default:** `[4, 0, 6, 0]` — the classic Prisoner's Dilemma incentive
+structure: mutual cooperation pays 4 each, defecting against a cooperator pays
+6, the cooperator gets 0, and mutual defection pays nothing.
+
+For the game to remain a true Prisoner's Dilemma you generally want
+`rewards[2] > rewards[0] > rewards[3] > rewards[1]` (Temptation > Reward >
+Punishment > Sucker).
+
+**Example tweaks:**
+
+- `[3, 0, 5, 1]` — softer punishment; mutual defection still beats being
+  exploited.
+- `[5, 1, 4, 2]` — no longer a true Prisoner's Dilemma (mutual cooperation
+  beats unilateral defection); cooperation should dominate.
+- `[2, 0, 3, 0]` — sharper temptation gap; defection is more attractive.
+"""
+
+    def __init__(
+        self,
+        league,
+        verbose=False,
+        reward_matrix=None,
+        rounds_per_pairing=5,
+        collect_player_feedback=True,
+    ):
+        super().__init__(
+            league, verbose
+        )  # This will load validation players automatically
+        self.reward_matrix = reward_matrix or {
+            "collude,collude": (4, 4),
+            "collude,defect": (0, 6),
+            "defect,collude": (6, 0),
+            "defect,defect": (0, 0),
+        }
+        self.rounds_per_pairing = rounds_per_pairing
+        self.game_feedback = {"game": "prisoners_dilemma", "pairings": []}
+        self.player_feedback = {}
+        self.collect_player_feedback = collect_player_feedback
+        self.initialize_histories_and_scores()  # Initialize histories here
+
+    def initialize_histories_and_scores(self):
+        """Initialize histories and scores after players are loaded"""
+        self.histories = {str(player.name): {} for player in self.players}
+        self.scores = {str(player.name): 0 for player in self.players}
+
+    def play_game(self, custom_rewards=None):
+        """Play a complete game between all players"""
+        if not self.players:
+            print("No players loaded for the game.")
+            return {"points": {}, "score_aggregate": {}}
+
+        # Add debug print
+        logger.info(f"Players loaded: {[p.name for p in self.players]}")
+
+        # Initialize histories and scores
+        self.initialize_histories_and_scores()
+
+        # Add debug print after initialization
+        logger.info(f"Players initialized: {[p.name for p in self.players]}")
+
+        if custom_rewards:
+            self.reward_matrix = {
+                "collude,collude": (custom_rewards[0], custom_rewards[0]),
+                "collude,defect": (custom_rewards[1], custom_rewards[2]),
+                "defect,collude": (custom_rewards[2], custom_rewards[1]),
+                "defect,defect": (custom_rewards[3], custom_rewards[3]),
+            }
+
+        self.game_feedback["game_info"] = {
+            "players": [str(player.name) for player in self.players],
+            "reward_matrix": self.reward_matrix,
+            "rounds_per_pairing": self.rounds_per_pairing,
+        }
+
+        player_pairs = list(itertools.combinations(self.players, 2))
+        random.shuffle(player_pairs)
+
+        for player1, player2 in player_pairs:
+            self.play_pairing(player1, player2)
+
+        self.game_feedback["final_scores"] = dict(self.scores)
+
+        return {"points": dict(self.scores), "score_aggregate": dict(self.scores)}
+
+    def get_game_state(self, player_name, opponent_name, round_number):
+        """Get the current game state for a player"""
+        histories_copy = {}
+        for p1, opponents in self.histories.items():
+            histories_copy[str(p1)] = {}
+            for p2, decisions in opponents.items():
+                histories_copy[str(p1)][str(p2)] = list(decisions)
+
+        state = {
+            "round_number": round_number,
+            "player_name": str(player_name),
+            "opponent_name": str(opponent_name),
+            "opponent_history": list(
+                self.histories[str(opponent_name)].get(str(player_name), [])
+            ),
+            "my_history": list(
+                self.histories[str(player_name)].get(str(opponent_name), [])
+            ),
+            "all_history": histories_copy,
+            "scores": dict(self.scores),
+        }
+        return state
+
+    def add_feedback(self, pairing_data):
+        """Add feedback for a pairing"""
+        if self.verbose:
+            self.game_feedback["pairings"].append(pairing_data)
+
+    def add_player_feedback(self, player, round_number, opponent_name):
+        """Add feedback from a player for a specific round"""
+        if self.collect_player_feedback and player.feedback:
+            player_name = str(player.name)
+            if player_name not in self.player_feedback:
+                self.player_feedback[player_name] = []
+
+            feedback_entry = {
+                "round": round_number,
+                "opponent": str(opponent_name),
+                "messages": list(player.feedback),
+                "scores": {
+                    "my_score": self.scores[player_name],
+                    "opponent_score": self.scores[str(opponent_name)],
+                },
+            }
+            self.player_feedback[player_name].append(feedback_entry)
+            player.feedback = []
+
+    def play_pairing(self, player1, player2):
+        """Play a series of rounds between two players"""
+        pairing_data = {
+            "player1": str(player1.name),
+            "player2": str(player2.name),
+            "rounds": [],
+        }
+
+        p1_name = str(player1.name)
+        p2_name = str(player2.name)
+
+        # Initialize histories for this pairing if needed
+        if p1_name not in self.histories[p2_name]:
+            self.histories[p2_name][p1_name] = []
+        if p2_name not in self.histories[p1_name]:
+            self.histories[p1_name][p2_name] = []
+
+        for round_number in range(1, self.rounds_per_pairing + 1):
+            game_state1 = self.get_game_state(player1.name, player2.name, round_number)
+            game_state2 = self.get_game_state(player2.name, player1.name, round_number)
+
+            random.seed()
+
+            try:
+                decision1 = player1.make_decision(game_state1)
+            except Exception as e:
+                raise ValueError(f"Invalid decision by {player1.name}: {e}")
+            if decision1 not in ["defect", "collude"]:
+                raise ValueError(
+                    f"Invalid decision by {player1.name}: {decision1!r} "
+                    "(must be 'defect' or 'collude')"
+                )
+
+            try:
+                decision2 = player2.make_decision(game_state2)
+            except Exception as e:
+                raise ValueError(f"Invalid decision by {player2.name}: {e}")
+            if decision2 not in ["defect", "collude"]:
+                raise ValueError(
+                    f"Invalid decision by {player2.name}: {decision2!r} "
+                    "(must be 'defect' or 'collude')"
+                )
+
+            # Update histories
+            self.histories[p1_name][p2_name].append(decision1)
+            self.histories[p2_name][p1_name].append(decision2)
+
+            # Calculate scores
+            key = f"{decision1},{decision2}"
+            score1, score2 = self.reward_matrix[key]
+            self.scores[p1_name] += score1
+            self.scores[p2_name] += score2
+
+            round_data = {
+                "round_number": round_number,
+                "actions": {p1_name: decision1, p2_name: decision2},
+                "scores": {
+                    p1_name: self.scores[p1_name],
+                    p2_name: self.scores[p2_name],
+                },
+            }
+            pairing_data["rounds"].append(round_data)
+
+            self.add_player_feedback(player1, round_number, player2.name)
+            self.add_player_feedback(player2, round_number, player1.name)
+
+        self.add_feedback(pairing_data)
+
+    def reset(self):
+        """Reset the game state"""
+        super().reset()
+        self.histories = {str(player.name): {} for player in self.players}
+        self.game_feedback = {"pairings": []}
+        self.player_feedback = {}
+        self.scores = {str(player.name): 0 for player in self.players}
+
+    def run_single_game_with_feedback(self, custom_rewards=None):
+        """Run a single game with feedback"""
+        # Enable feedback for this run
+        self.verbose = True
+        self.collect_player_feedback = True
+
+        # Run the game
+        results = self.play_game(custom_rewards)
+
+        return {
+            "results": results,
+            "feedback": self.game_feedback,
+            "player_feedback": self.player_feedback,
+        }
+
+    def run_simulations(self, num_simulations, league, custom_rewards=None):
+        """Run multiple simulations"""
+        total_points = {str(player.name): 0 for player in self.players}
+        defections = {str(player.name): 0 for player in self.players}
+        collusions = {str(player.name): 0 for player in self.players}
+
+        for _ in range(num_simulations):
+            self.reset()
+            results = self.play_game(custom_rewards)
+
+            for player, points in results["points"].items():
+                total_points[str(player)] += points
+
+            for player_name, opponents in self.histories.items():
+                for opponent_name, decisions in opponents.items():
+                    defections[str(player_name)] += decisions.count("defect")
+                    collusions[str(player_name)] += decisions.count("collude")
+
+        return {
+            "total_points": total_points,
+            "num_simulations": num_simulations,
+            "table": {"defections": defections, "collusions": collusions},
+        }

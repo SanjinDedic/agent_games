@@ -12,6 +12,8 @@ import FeedbackSelector from "../Feedback/FeedbackSelector";
 import GameResultsWrapper from "../Feedback/GameResultsWrapper";
 import useSubmissionWorkspace from "../Shared/hooks/useSubmissionWorkspace";
 import useSubmissionAPI from "../Shared/hooks/useSubmissionAPI";
+import usePyodideValidationSubmit from "../Shared/hooks/usePyodideValidationSubmit";
+import ValidationStatusDot from "../Shared/Utilities/ValidationStatusDot";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 import { useTerms } from "../Shared/terminology";
 
@@ -20,6 +22,10 @@ function AgentSubmission() {
   // Agent-specific state: game instructions and league resolution
   const [instructionData, setInstructionData] = useState("");
   const [isLoadingLeagueInfo, setIsLoadingLeagueInfo] = useState(false);
+  // Resolved separately from currentLeague: the league can arrive after
+  // mount (loadInitialData fetches it), and the Pyodide runner needs the
+  // game name to boot and probe.
+  const [gameName, setGameName] = useState(null);
 
   // Redux hooks
   const dispatch = useDispatch();
@@ -32,9 +38,14 @@ function AgentSubmission() {
     getLatestSubmission,
     getTeamSubmissions,
     getGameInstructions,
-    submitCode,
-    isLoading: isSubmitting,
   } = useSubmissionAPI();
+
+  // Pyodide-first submission with automatic Celery fallback; same contract
+  // as useSubmissionAPI.submitCode.
+  const { submitCode, isLoading: isSubmitting } = usePyodideValidationSubmit({
+    gameName,
+    teamName: currentUser.name,
+  });
 
   const { fetchUserLeagues, isLoading: isLeagueLoading } = useLeagueAPI();
 
@@ -83,6 +94,7 @@ function AgentSubmission() {
       }
 
       if (game) {
+        setGameName(game);
         await loadInstructions(game, hadSubmission);
       }
     };
@@ -131,7 +143,15 @@ function AgentSubmission() {
           isLoading={isLoading}
           statusItems={[
             { label: T.Team.toUpperCase(), value: currentUser.name },
-            { label: "GAME", value: currentLeague?.game },
+            {
+              label: "GAME",
+              value: currentLeague?.game && (
+                <span className="inline-flex items-center gap-2">
+                  {currentLeague.game}
+                  <ValidationStatusDot gameName={gameName} />
+                </span>
+              ),
+            },
             { label: T.League.toUpperCase(), value: currentLeague?.name },
           ]}
         />
