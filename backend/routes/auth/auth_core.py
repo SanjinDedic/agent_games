@@ -60,7 +60,6 @@ def verify_role(allowed_roles: Union[str, List[str]]):
 verify_admin_role = verify_role(ROLE_ADMIN)
 verify_student_role = verify_role(ROLE_STUDENT)
 verify_institution_role = verify_role(ROLE_INSTITUTION)
-verify_ai_agent_role = verify_role(ROLE_AI_AGENT)
 
 # Common multi-role verification decorators
 verify_admin_or_student = verify_role([ROLE_ADMIN, ROLE_STUDENT])

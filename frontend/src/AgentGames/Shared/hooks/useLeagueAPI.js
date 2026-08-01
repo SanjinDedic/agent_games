@@ -148,56 +148,59 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken, dispatch, T]);
 
   /**
-   * Run a simulation for the specified league
+   * Fetch the latest submission code for every team in a league — the input
+   * for an in-browser simulation run. No toasts: useSimulationRun owns the
+   * run lifecycle UX.
    */
-  const runSimulation = useCallback(async (params) => {
-    setIsLoading(true);
-    const toastId = toast.loading("Running simulation...");
-    
+  const fetchLeagueSubmissions = useCallback(async (leagueId) => {
     try {
-      // Both admin and institution use the same endpoint
-      const response = await authFetch(`${apiUrl}/institution/run-simulation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+      const response = await authFetch(
+        `${apiUrl}/user/get-league-submissions/${leagueId}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
         },
-        body: JSON.stringify(params),
-      });
-      
+      );
       const data = await response.json();
-
       if (response.ok) {
-        toast.update(toastId, {
-          render: "Simulation completed successfully",
-          type: "success",
-          isLoading: false,
-          autoClose: 2000
-        });
-        return { success: true, data };
-      } else {
-        toast.update(toastId, {
-          render: data.detail || 'Failed to run simulation',
-          type: "error",
-          isLoading: false,
-          autoClose: 2000
-        });
-        return { success: false, error: data.detail };
+        return { success: true, submissions: data };
       }
+      return { success: false, error: data.detail || 'Failed to fetch submissions' };
     } catch (error) {
-      console.error('Simulation error:', error);
-      toast.update(toastId, {
-        render: "Error running simulation",
-        type: "error",
-        isLoading: false,
-        autoClose: 2000
-      });
-      return { success: false, error: "Network error" };
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching league submissions:', error);
+      return { success: false, error: 'Network error' };
     }
-  }, [apiUrl, accessToken, T]);
-  
+  }, [apiUrl, accessToken]);
+
+  /**
+   * Persist results computed by the in-browser simulation runner. The
+   * response mirrors what the old run-simulation endpoint returned, so the
+   * caller can dispatch it straight into addSimulationResult.
+   */
+  const saveSimulationResults = useCallback(async (payload) => {
+    try {
+      const response = await authFetch(
+        `${apiUrl}/institution/save-simulation-results`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+      const data = await response.json();
+      if (response.ok) {
+        return { success: true, data };
+      }
+      return { success: false, error: data.detail || 'Failed to save results' };
+    } catch (error) {
+      console.error('Error saving simulation results:', error);
+      return { success: false, error: 'Network error' };
+    }
+  }, [apiUrl, accessToken]);
+
+
   /**
    * Create a new league
    */
@@ -585,7 +588,8 @@ export const useLeagueAPI = (userRole) => {
     fetchUserLeagues,
     fetchLeagueResults,
     assignToLeague,
-    runSimulation,
+    fetchLeagueSubmissions,
+    saveSimulationResults,
     createLeague,
     publishResults,
     updateExpiryDate,

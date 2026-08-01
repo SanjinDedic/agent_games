@@ -2,9 +2,9 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from backend.database.db_models import Institution, Tutorial
+from backend.database.db_models import Institution, Team, Tutorial
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import (
     get_current_user,
@@ -46,7 +46,7 @@ from backend.routes.institution.institution_models import (
     LeagueResults,
     LeagueSignUp,
     LeagueTutorialsUpdate,
-    SimulationConfig,
+    SimulationResultsSubmission,
     TeamDelete,
     TeamIdRef,
     TeamLeagueAssignment,
@@ -58,10 +58,6 @@ from backend.routes.tutorial.tutorial_db import (
     get_league_tutorial_ids,
     set_league_tutorials,
 )
-from backend.routes.user.user_db import get_latest_submissions_for_league
-from backend.tasks.celery_utils import poll_task_result
-from backend.tasks.simulation_task import run_simulation
-
 logger = logging.getLogger(__name__)
 
 institution_router = APIRouter()
@@ -324,63 +320,56 @@ async def get_home_endpoint(
     return data
 
 
-@institution_router.post("/run-simulation")
+@institution_router.post("/save-simulation-results")
 @verify_admin_or_institution
-async def run_simulation_endpoint(
-    simulation_config: SimulationConfig,
+async def save_simulation_results_endpoint(
+    submission: SimulationResultsSubmission,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    """Run a simulation for a league owned by the institution."""
+    """Persist simulation results computed by the in-browser (Pyodide) runner.
+
+    The browser runs the games — the admin/institution user triggering a run
+    already has access to every team's code — so the server only checks
+    ownership and shape before storing. The response mirrors what the old
+    worker-side run-simulation endpoint returned, so the frontend result flow
+    downstream of a run is unchanged. `player_feedback` is deliberately not
+    round-tripped: it was never persisted, the browser keeps its own copy.
+    """
     institution_id, is_admin = _require_institution(current_user)
 
-    # Get the league using the ID (admin bypasses ownership check)
     league = get_league_by_id(
-        session, simulation_config.league_id, institution_id, is_admin=is_admin
+        session, submission.league_id, institution_id, is_admin=is_admin
     )
 
     if league.name == "unassigned":
         raise ProtectedLeagueError(
-            "Cannot run simulations on the 'unassigned' league"
+            "Cannot save simulation results for the 'unassigned' league"
         )
 
-    # Read the submitted code here (the API holds the DB session) and pass it to
-    # the worker as a task arg, so the worker running untrusted agent code needs
-    # no database credential.
-    submissions = get_latest_submissions_for_league(
-        session, simulation_config.league_id
+    # save_simulation_results silently skips names it can't resolve; on a
+    # client bug that would store a run with missing rows, so reject instead.
+    league_team_names = set(
+        session.exec(select(Team.name).where(Team.league_id == league.id)).all()
     )
-
-    # Enqueue the simulation task and wait for the result
-    async_result = run_simulation.delay(
-        league_id=simulation_config.league_id,
-        game_name=league.game,
-        submissions=submissions,
-        num_simulations=simulation_config.num_simulations,
-        custom_rewards=simulation_config.custom_rewards,
-        player_feedback=True,
-    )
-    results = await poll_task_result(async_result, timeout=300)
-
-    # A failed run (e.g. no loadable players) must surface as an error, not be
-    # stored: saving it would leave an empty result in the history that renders
-    # as a rankings table with no rows and no explanation.
-    if results.get("status") == "error":
+    unknown = sorted(set(submission.total_points) - league_team_names)
+    if unknown:
         raise HTTPException(
             status_code=400,
-            detail=results.get("message", "Simulation failed"),
+            detail=f"Results reference unknown team(s): {', '.join(unknown)}",
         )
 
-    simulation_results = results.get("simulation_results")
-    feedback = results.get("feedback")
-    player_feedback = results.get("player_feedback")
-
+    feedback = submission.feedback
     sim_result = save_simulation_results(
         session,
         league.id,
         institution_id,
-        simulation_results,
-        simulation_config.custom_rewards,
+        {
+            "num_simulations": submission.num_simulations,
+            "total_points": submission.total_points,
+            "table": submission.table,
+        },
+        submission.custom_rewards,
         feedback_str=(feedback if isinstance(feedback, str) else None),
         feedback_json=(json.dumps(feedback) if isinstance(feedback, dict) else None),
         is_admin=is_admin,
@@ -388,25 +377,18 @@ async def run_simulation_endpoint(
 
     response_data = {
         "league_name": league.name,
-        "id": sim_result.id if sim_result else None,
-        "total_points": simulation_results["total_points"],
-        "num_simulations": simulation_results["num_simulations"],
-        # Present when the run hit the 10-minute cap: the count actually run
-        # (num_simulations) is below what was requested.
-        "requested_simulations": simulation_results.get(
-            "requested_simulations", simulation_results["num_simulations"]
-        ),
-        "capped": simulation_results.get("capped", False),
-        "timestamp": sim_result.timestamp if sim_result else None,
-        "rewards": simulation_config.custom_rewards,
-        "table": simulation_results.get("table", {}),
-        "strategies": simulation_results.get("strategies", {}),
+        "id": sim_result.id,
+        "total_points": submission.total_points,
+        "num_simulations": submission.num_simulations,
+        "requested_simulations": submission.requested_simulations,
+        "capped": submission.capped,
+        "timestamp": sim_result.timestamp,
+        "rewards": submission.custom_rewards,
+        "table": submission.table,
+        "strategies": submission.strategies,
     }
-
     if feedback is not None:
         response_data["feedback"] = feedback
-    if player_feedback is not None:
-        response_data["player_feedback"] = player_feedback
 
     return response_data
 

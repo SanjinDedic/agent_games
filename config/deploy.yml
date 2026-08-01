@@ -9,8 +9,8 @@ servers:
     # Secrets live on the web role ONLY — never at the top-level env. Kamal
     # unions a role's secret list with the root's (Env#merge: `secret_keys |
     # other.secret_keys`), so anything under the top-level env.secret would be
-    # injected into EVERY role, including worker-validation/worker-simulation,
-    # which run untrusted agent code and must hold nothing an attacker can
+    # injected into EVERY role, including worker-validation, which runs
+    # untrusted agent code and must hold nothing an attacker can
     # exfiltrate. Keeping the list here means the web app is the only process
     # with credentials; the workers receive only the top-level env.clear.
     env:
@@ -63,25 +63,6 @@ servers:
       # The droplet has a 6G NVMe swapfile, so this guarantee is load-bearing —
       # without it a bomb pages out and outlives the 6s hard kill window.
       memory-swap: 800m
-      pids-limit: 50
-
-  worker-simulation:
-    hosts:
-      - api.agentgames.io
-    cmd: "celery -A backend.tasks.celery_app worker -Q simulation -n simulation@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=2"
-    proxy: false
-    options:
-      hostname: worker-simulation
-      # Host budget: the droplet has ~1.9GiB RAM. The old 3g cap exceeded it,
-      # so it could never fire — a runaway simulation exhausted the HOST
-      # instead, pushing web/valkey into swap and ending in a global OOM kill
-      # of an arbitrary victim. 1g is a real in-cgroup limit (~500m per sim at
-      # concurrency=2, matching the 500m dev compose container) and leaves
-      # room for web + valkey + worker-validation within physical RAM.
-      memory: 1g
-      # Same no-swap guarantee as worker-validation: untrusted code must hit
-      # the RAM cap and die deterministically, not thrash in NVMe swap.
-      memory-swap: 1g
       pids-limit: 50
 
   worker-exercises:

@@ -8,7 +8,6 @@ Verifies that:
 """
 
 from datetime import timedelta
-from unittest.mock import patch
 
 import pytest
 from sqlmodel import Session, select
@@ -227,56 +226,75 @@ def test_get_all_leagues_scoped(client, two_institutions):
 
 
 def _mock_simulation_result(team_names):
-    """Helper to build a mock simulation task result."""
+    """Helper to build a browser-computed save-simulation-results payload."""
     return {
-        "status": "success",
-        "simulation_results": {
-            "total_points": {name: 100 for name in team_names},
-            "num_simulations": 10,
-            "table": {},
-        },
-        "feedback": "test",
-        "player_feedback": None,
+        "num_simulations": 10,
+        "requested_simulations": 10,
+        "total_points": {name: 100 for name in team_names},
+        "table": {},
     }
 
 
-def test_run_simulation_cross_institution(client, two_institutions):
-    """Institution A cannot simulate B's league; admin can simulate any."""
+def test_save_simulation_results_cross_institution(client, two_institutions):
+    """Institution A cannot save results to B's league; admin can save to any."""
     data = two_institutions
     team_names_b = ["perm_team_b_0", "perm_team_b_1"]
+    payload = {
+        "league_id": data["league_b"].id,
+        **_mock_simulation_result(team_names_b),
+    }
 
-    with patch("backend.routes.institution.institution_router.run_simulation") as mock_task:
-        # The router awaits poll_task_result, which reads ready()/successful()/.result
-        mock_async = mock_task.delay.return_value
-        mock_async.ready.return_value = True
-        mock_async.successful.return_value = True
-        mock_async.result = _mock_simulation_result(team_names_b)
+    # Institution A CANNOT save results to B's league
+    resp = client.post(
+        "/institution/save-simulation-results",
+        headers=data["headers_a"],
+        json=payload,
+    )
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
-        # Institution A CANNOT simulate B's league
-        resp = client.post(
-            "/institution/run-simulation",
-            headers=data["headers_a"],
-            json={"league_id": data["league_b"].id, "num_simulations": 10},
-        )
-        assert resp.status_code == 404
-        assert "not found" in resp.json()["detail"].lower()
+    # Admin CAN save results to B's league
+    resp = client.post(
+        "/institution/save-simulation-results",
+        headers=data["headers_admin"],
+        json=payload,
+    )
+    assert resp.status_code == 200
 
-        # Admin CAN simulate B's league
-        resp = client.post(
-            "/institution/run-simulation",
-            headers=data["headers_admin"],
-            json={"league_id": data["league_b"].id, "num_simulations": 10},
-        )
-        assert resp.status_code == 200
+    # Admin Institution is just another institution — cannot touch B's league
+    resp = client.post(
+        "/institution/save-simulation-results",
+        headers=data["headers_admin_inst"],
+        json=payload,
+    )
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
-        # Admin Institution is just another institution — cannot simulate B's league
-        resp = client.post(
-            "/institution/run-simulation",
-            headers=data["headers_admin_inst"],
-            json={"league_id": data["league_b"].id, "num_simulations": 10},
-        )
-        assert resp.status_code == 404
-        assert "not found" in resp.json()["detail"].lower()
+
+def test_get_league_submissions_cross_institution(client, two_institutions):
+    """The simulation payload fetch obeys the same ownership matrix."""
+    data = two_institutions
+
+    # Institution A CANNOT read B's league submissions
+    resp = client.get(
+        f"/user/get-league-submissions/{data['league_b'].id}",
+        headers=data["headers_a"],
+    )
+    assert resp.status_code == 404
+
+    # Admin CAN
+    resp = client.get(
+        f"/user/get-league-submissions/{data['league_b'].id}",
+        headers=data["headers_admin"],
+    )
+    assert resp.status_code == 200
+
+    # Admin Institution cannot
+    resp = client.get(
+        f"/user/get-league-submissions/{data['league_b'].id}",
+        headers=data["headers_admin_inst"],
+    )
+    assert resp.status_code == 404
 
 
 def test_publish_results_cross_institution(client, two_institutions, db_session):

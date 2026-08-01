@@ -99,8 +99,9 @@ Conventions (see `_helpers.js`):
 Known app-side deviations the scripts expect and document (full detail in
 `docs/test_findings/integration-manual-run-2026-07-11.md`):
 
-- Stage 4.5 first gets a 403 (simulation requires Docker access, manual says leave it unchecked);
-  the script enables the toggle via the admin UI and retries.
+- Stage 4.5 runs the simulation in the browser (Pyodide worker): the network only sees the
+  submissions fetch and the `/institution/save-simulation-results` save. The old
+  403-Docker-access retry is gone with the server-side run-simulation endpoint.
 - Stage 5 (script 07): greedy_pig / prisoners_dilemma / arena_champions strictly reject the
   manual's "invalid" return (asserted each run — acceptance is a failure), then a syntax error
   drives the hint flow; the failed submission's response must advertise the hint immediately

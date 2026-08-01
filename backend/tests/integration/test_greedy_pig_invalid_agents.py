@@ -3,22 +3,23 @@
 Seven teams join a greedy_pig league: two valid strategies and five invalid
 agents the validator rejects (recorded as a SubmissionMetadata attempt with NO
 linked Submission code row). The test passes only if exactly the two valid
-teams play against each other.
+teams reach the simulation payload — and play against each other when that
+payload runs through the in-browser simulation harness.
 
 The five invalid agents fall into two groups, on purpose:
 
 1. Security violations (unauthorized imports, unauthorized `eval`). These would
    *load and play fine in the simulator if they ever reached it* — the
-   simulator's add_player runs exec() with no AST security check. So the ONLY
+   harness's add_player runs exec() with no AST security check. So the ONLY
    thing keeping them out is that failed attempts never get a Submission code
-   row, so get_latest_submissions_for_league cannot see them. These make the
+   row, so get-league-submissions cannot see them. These make the
    test sensitive to the write path: store failed code in Submission and these
    agents leak into the run and show up in total_points.
 
 2. Runtime faults (infinite loop / timeout, divide-by-zero on construction).
    These are *also* caught downstream — the validator kills the runaway loop
-   agent after its hard timeout and reports failure, and the simulator's
-   add_player drops the div-by-zero agent when construction raises (the game
+   agent after its hard timeout and reports failure, and the harness's
+   add_player skips the div-by-zero agent when construction raises (the game
    swallows exceptions inside make_decision, so the fault must surface before
    the game loop). They don't exercise the filter, but they assert the whole
    pipeline rejects every flavor of bad agent.
@@ -33,6 +34,7 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import League, Submission, SubmissionMetadata, Team
 from backend.tests.conftest import make_student_token
+from backend.tests.integration.test_game_workflows import _run_browser_simulation
 
 
 # --- Agent code under test --------------------------------------------------
@@ -200,21 +202,27 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
             assert len(attempts) == 1, f"{name}: failed attempt should be recorded"
             assert len(code_rows) == 0, f"{name}: failed code must NOT be stored"
 
-    # 2. Run the simulation as admin (Admin Institution owns the seeded league).
-    sim_response = client.post(
-        "/institution/run-simulation",
+    # 2. Fetch the simulation payload the browser runner would use (as admin —
+    #    Admin Institution owns the seeded league). This is the filter under
+    #    test: only teams with a stored Submission code row appear.
+    submissions_response = client.get(
+        f"/user/get-league-submissions/{greedy_pig_league.id}",
         headers=auth_headers,
-        json={"league_id": greedy_pig_league.id, "num_simulations": 20},
     )
-    assert sim_response.status_code == 200, sim_response.text
-    sim_data = sim_response.json()
+    assert submissions_response.status_code == 200, submissions_response.text
+    submissions = submissions_response.json()
+    assert set(submissions.keys()) == set(valid_teams), (
+        f"Only validated teams should reach the simulation payload, "
+        f"got: {set(submissions.keys())}"
+    )
 
-    # 3. Only the two validated teams should have played. If failed code ever
-    #    gets a Submission row again, the rejected agents (which load and
-    #    play fine) leak in and this assertion fails.
-    total_points = sim_data["total_points"]
-    assert set(total_points.keys()) == set(valid_teams), (
-        f"Only validated teams should reach the simulation, got: {set(total_points.keys())}"
-    )
+    # 3. The payload plays cleanly through the in-browser harness: only the two
+    #    validated teams compete. If failed code ever gets a Submission row
+    #    again, the rejected agents (which load and play fine) leak in and the
+    #    payload assertion above fails first.
+    envelope = _run_browser_simulation("greedy_pig", submissions, 20)
+    assert envelope["status"] == "success"
+    total_points = envelope["simulation_results"]["total_points"]
+    assert set(total_points.keys()) == set(valid_teams)
     for invalid_name in invalid_teams:
         assert invalid_name not in total_points
