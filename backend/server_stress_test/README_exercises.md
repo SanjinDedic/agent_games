@@ -8,61 +8,65 @@ what latency — the exercises counterpart of the submission benchmark
 
 `locust_exercises.py` logs in as **admin** once per user (`on_start`) and then
 hammers `POST /tutorial/admin/run-exercise` — the admin editor's stateless
-"dry run". That endpoint runs the **real** exercise path:
+"dry run". That endpoint runs the **real** exercise fallback path:
 
 ```
-API → enqueue on the `exercises` queue → worker-exercises → await result
+API → backend/fallback_lambda/ (Lambda in prod, local subprocess in dev) → envelope
 ```
 
-`worker-exercises` is the slim sandbox (no secrets/DB/S3, ~96MB RAM, 50 pids,
-prefork concurrency 2, fresh process per task) under a **0.5s soft / 1.5s hard**
-time limit. run-exercise deliberately has **no DB write** and **no rate limit**,
-so it isolates the enqueue → run → await throughput — exactly what the
-submission benchmark's gated endpoint does, but exercises already ship one, so
-no benchmark token is needed; an admin login is.
+The runner is the sandbox (no secrets/DB/S3, fresh forked child per run,
+process-group SIGKILL) under a **0.5s soft / 1.5s hard** time limit.
+run-exercise deliberately has **no DB write** and **no rate limit**, so it
+isolates the run throughput — exactly what the submission benchmark's gated
+endpoint does, but exercises already ship one, so no benchmark token is
+needed; an admin login is.
 
 > **No AST safety gate.** Unlike agent submissions, exercise code is *not*
-> statically checked before it runs — the container is the sandbox. That is why
-> the timeout / kill path (`ex_timeout`) is the most important one to load: the
-> 1.5s hard `SIGKILL` reaping a spinner is the safety boundary.
+> statically checked before it runs — the isolated runner is the sandbox. That
+> is why the timeout / kill path (`ex_timeout`) is the most important one to
+> load: the 1.5s hard process-group `SIGKILL` reaping a spinner is the safety
+> boundary.
 
 ## Exercise mix
 
 The load is a weighted mix, each type recorded under its own summary row so the
-worker's distinct paths are all exercised:
+runner's distinct paths are all exercised:
 
 | Row (`name`)  | Exercise code                     | Path exercised                | Expected |
 |---------------|-----------------------------------|-------------------------------|----------|
 | `ex_valid`    | correct `solve`, passes checks    | full success                  | success, passed |
 | `ex_wrong`    | runs but returns wrong answer     | success path, failing checks  | success, not passed |
-| `ex_slow`     | heavy finite loop under 0.5s      | worker CPU pressure           | success  |
+| `ex_slow`     | heavy finite loop under 0.5s      | runner CPU pressure           | success  |
 | `ex_timeout`  | `while True: pass`                | 0.5s soft → 1.5s hard SIGKILL | error    |
 | `ex_error`    | module-level `x = k / 0`          | fast exec-failure path        | error    |
 
 **The "failures" on `ex_timeout` / `ex_error` are EXPECTED** — those runs are
-supposed to come back with an `error` status (the worker kills / rejects them).
+supposed to come back with an `error` status (the runner kills / rejects them).
 The locustfile counts the *opposite* (a spinner that returned `success`, i.e.
 was never killed) as the failure. Read `ex_valid` (and `ex_slow`) for clean
 throughput / latency.
 
-Each `ex_timeout` run holds one of the two worker slots for the full ~0.5s soft
-limit, so even a small `W_TIMEOUT` throttles everything behind it — realistic
-backpressure. Set `W_TIMEOUT=0` for a pure-legal run.
+In local-runner mode each `ex_timeout` run holds one of the client's bounded
+subprocess slots for the full hard-kill window, so even a small `W_TIMEOUT`
+throttles everything behind it — realistic backpressure. Set `W_TIMEOUT=0` for
+a pure-legal run.
 
 ## CPU / leak check (no core stuck at 100%)
 
 The throughput number won't tell you whether a killed exercise leaked a runaway
-process. The signature is **residual CPU after the load stops**. `monitor_cpu.sh`
-watches for exactly that — point it at the exercises worker:
+process. The signature is **residual CPU after the load stops**. In local-runner
+mode the runs execute inside the **api** container, so point `monitor_cpu.sh`
+there:
 
 ```bash
 cd backend/server_stress_test
-MATCH=worker-exercises ./monitor_cpu.sh   # Ctrl-C after the run for the verdict
+MATCH=api ./monitor_cpu.sh   # Ctrl-C after the run for the verdict
 ```
 
-Local stack only (it reads `docker stats`). A worker still above the idle
+Local stack only (it reads `docker stats`). A container still above the idle
 threshold once traffic stops ⇒ `FAIL` (likely a leaked spinner — confirm with
-`docker top <container>`).
+`docker top <container>`). Against prod (Lambda mode) check CloudWatch Duration
+/ Errors instead.
 
 ## Run it
 

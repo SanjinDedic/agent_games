@@ -1,6 +1,7 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import CodeEditor from '../Submission/CodeEditor';
-import useLessonAPI from '../hooks/useLessonAPI';
+import usePyodideSnippetRun from '../hooks/usePyodideSnippetRun';
+import { ensureRunner } from '../../../pyodide/exerciseRunnerClient';
 
 // The editor grows with its content instead of scrolling internally (bad UX
 // for a few added lines), up to a cap past which a genuinely large paste
@@ -39,9 +40,10 @@ const EDITOR_OPTIONS = {
 
 /**
  * One ```python-run block from a lesson: a small editable Monaco editor with
- * Run / Reset buttons. Run executes the (possibly edited) code in the
- * sandboxed exercise worker and shows its stdout — or its traceback, which
- * is just as instructive. Nothing is stored server-side.
+ * Run / Reset buttons. Run executes the (possibly edited) code Pyodide-first
+ * in the browser (falling back to the sandboxed Celery worker only when
+ * Pyodide can't run) and shows its stdout — or its traceback, which is just
+ * as instructive. Nothing is stored server-side.
  *
  * When `expectedOutput` is set (an ```output-mark block), the block is a
  * self-checking mini-task: the run's stdout is compared against the target
@@ -50,7 +52,7 @@ const EDITOR_OPTIONS = {
  * or hide; it is instant feedback, not assessment.
  */
 function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
-  const { runSnippet } = useLessonAPI();
+  const { runSnippet } = usePyodideSnippetRun();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [running, setRunning] = useState(false);
@@ -66,6 +68,13 @@ function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
   const [editorHeight, setEditorHeight] = useState(() =>
     estimateHeight(initialCode)
   );
+
+  // Warm-boot Pyodide as soon as a runnable block is on screen, so the
+  // first Run doesn't pay the runtime's load latency. Safe to call from
+  // every block — the runner is a shared singleton.
+  useEffect(() => {
+    ensureRunner();
+  }, []);
 
   const handleCodeChange = useCallback((value) => {
     codeRef.current = value ?? '';

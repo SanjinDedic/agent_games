@@ -54,10 +54,6 @@ celery_app.conf.update(
     accept_content=["json"],
     task_routes={
         "validation.*": {"queue": "validation"},
-        # No worker of THIS app consumes exercises — the queue belongs to the
-        # standalone slim worker (backend/exercise_worker/tasks.py); the API
-        # only produces onto it via send_task.
-        "exercises.*": {"queue": "exercises"},
     },
     # Fresh process per task: untrusted agent code can monkeypatch games.* or
     # leak module state — the process boundary is the isolation guarantee.

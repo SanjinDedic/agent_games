@@ -1,25 +1,23 @@
-"""Unit tests for the exercise task's in-process logic.
+"""Unit tests for the fallback executor's run logic and process isolation.
 
-run_exercise is called directly (not via .delay) so the test-runner process
-executes — and coverage measures — the task body; the enqueue-to-worker path
-is exercised end-to-end by the tutorial router integration tests. The test
-script helper semantics (check/check_output/capture) live in
-test_exercise_test_code.py; this file covers the task-level plumbing around
-them.
+run_exercise/run_snippet are called directly (in-process, no time limits) so
+the test-runner process executes — and coverage measures — the run body; the
+test script helper semantics (check/check_output/capture) live in
+test_exercise_test_code.py. The *_isolated variants are exercised for real:
+fresh forked child, armed soft timer, hard process-group kill — the tests
+that prove the SIGALRM + SIGKILL design actually reaps spinners.
 """
 
-from unittest.mock import MagicMock
+import time
 
-import pytest
-
-from backend.exercise_worker.tasks import (
+from backend.fallback_lambda.executor import (
     EXERCISE_TIMEOUT_MESSAGE,
     MAX_STDOUT_CHARS,
+    SNIPPET_TIMEOUT_MESSAGE,
     run_exercise,
-)
-from backend.tasks.exercise_task import (
-    await_exercise_result,
-    timeout_exercise_result,
+    run_exercise_isolated,
+    run_snippet,
+    run_snippet_isolated,
 )
 
 ADD_CODE = "def add(a, b):\n    return a + b"
@@ -29,6 +27,18 @@ ADD_TEST_CODE = (
     '    """adds two numbers"""\n'
     "    check(add(1, 2), 3)\n"
 )
+
+EXERCISE_KEYS = {
+    "status",
+    "message",
+    "passed",
+    "test_results",
+    "duration_ms",
+    "traceback",
+    "stdout",
+}
+
+SNIPPET_KEYS = {"status", "message", "stdout", "traceback", "duration_ms"}
 
 
 def test_passing_submission():
@@ -84,21 +94,21 @@ def test_stdout_is_captured_and_bounded():
     assert len(result["stdout"]) == MAX_STDOUT_CHARS
 
 
-def test_soft_time_limit_inside_function_maps_to_timeout_message():
+def test_execution_timeout_inside_function_maps_to_timeout_message():
     code = (
-        "from celery.exceptions import SoftTimeLimitExceeded\n"
+        "from backend.fallback_lambda.executor import ExecutionTimeout\n"
         "def add(a, b):\n"
-        "    raise SoftTimeLimitExceeded()"
+        "    raise ExecutionTimeout()"
     )
     result = run_exercise(code, "add", ADD_TEST_CODE)
     assert result["status"] == "error"
     assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
 
 
-def test_soft_time_limit_during_exec_maps_to_timeout_message():
+def test_execution_timeout_during_exec_maps_to_timeout_message():
     code = (
-        "from celery.exceptions import SoftTimeLimitExceeded\n"
-        "raise SoftTimeLimitExceeded()"
+        "from backend.fallback_lambda.executor import ExecutionTimeout\n"
+        "raise ExecutionTimeout()"
     )
     result = run_exercise(code, "add", ADD_TEST_CODE)
     assert result["status"] == "error"
@@ -111,55 +121,10 @@ def test_exercise_without_test_code_is_an_authoring_error():
     assert "defines no tests" in result["message"]
 
 
-def test_timeout_exercise_result_shape():
-    result = timeout_exercise_result()
-    assert result["status"] == "error"
-    assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
-    assert result["passed"] is False
-    assert result["test_results"] == []
-
-
-@pytest.mark.asyncio
-async def test_await_returns_task_result():
-    async_result = MagicMock()
-    async_result.ready.return_value = True
-    async_result.successful.return_value = True
-    async_result.result = {"status": "success", "passed": True}
-
-    result = await await_exercise_result(async_result, timeout=1)
-    assert result == {"status": "success", "passed": True}
-
-
-@pytest.mark.asyncio
-async def test_await_timeout_maps_to_timeout_result():
-    async_result = MagicMock()
-    async_result.ready.return_value = False
-    async_result.id = "test-task-id"
-
-    result = await await_exercise_result(async_result, timeout=0.05)
-    assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
-
-
-@pytest.mark.asyncio
-async def test_await_task_fault_becomes_clean_error():
-    async_result = MagicMock()
-    async_result.ready.side_effect = RuntimeError("worker fault")
-
-    result = await await_exercise_result(async_result, timeout=1)
-    assert result["status"] == "error"
-    assert "Error while running tests" in result["message"]
-
-
 # ---------------------------------------------------------------------------
 # run_snippet: lesson demo blocks — exec + captured output, no entry
 # function, no tests. Same direct-call rationale as run_exercise above.
 # ---------------------------------------------------------------------------
-
-from backend.exercise_worker.tasks import (  # noqa: E402
-    SNIPPET_TIMEOUT_MESSAGE,
-    run_snippet,
-)
-from backend.tasks.exercise_task import await_snippet_result  # noqa: E402
 
 
 def test_snippet_captures_stdout():
@@ -192,22 +157,68 @@ def test_snippet_stdout_is_bounded():
     assert len(result["stdout"]) == MAX_STDOUT_CHARS
 
 
-def test_snippet_soft_time_limit_maps_to_timeout_message():
+def test_snippet_execution_timeout_maps_to_timeout_message():
     code = (
-        "from celery.exceptions import SoftTimeLimitExceeded\n"
-        "raise SoftTimeLimitExceeded()"
+        "from backend.fallback_lambda.executor import ExecutionTimeout\n"
+        "raise ExecutionTimeout()"
     )
     result = run_snippet(code)
     assert result["status"] == "error"
     assert result["message"] == SNIPPET_TIMEOUT_MESSAGE
 
 
-@pytest.mark.asyncio
-async def test_await_snippet_timeout_maps_to_timeout_result():
-    async_result = MagicMock()
-    async_result.ready.return_value = False
-    async_result.id = "test-task-id"
+# ---------------------------------------------------------------------------
+# Isolated variants: the real fork / soft timer / hard kill machinery.
+# ---------------------------------------------------------------------------
 
-    result = await await_snippet_result(async_result, timeout=0.05)
+
+def test_isolated_passing_submission_round_trips():
+    result = run_exercise_isolated(ADD_CODE, "add", ADD_TEST_CODE)
+    assert set(result) == EXERCISE_KEYS
+    assert result["status"] == "success"
+    assert result["passed"] is True
+    assert result["test_results"][0]["actual"] == "3"
+
+
+def test_isolated_spinner_is_killed_with_timeout_message():
+    t0 = time.monotonic()
+    result = run_exercise_isolated("while True:\n    pass", "add", ADD_TEST_CODE)
+    elapsed = time.monotonic() - t0
+    assert set(result) == EXERCISE_KEYS
+    assert result["status"] == "error"
+    assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
+    assert elapsed < 4, f"hard kill took {elapsed:.1f}s"
+
+
+def test_isolated_soft_limit_swallower_still_dies():
+    # A bare `except Exception` swallows the soft ExecutionTimeout (exact
+    # parity with Celery's soft limit); only the hard process-group SIGKILL
+    # reaps it, mapping to the same timeout envelope.
+    code = (
+        "while True:\n"
+        "    try:\n"
+        "        while True:\n"
+        "            pass\n"
+        "    except Exception:\n"
+        "        pass\n"
+    )
+    t0 = time.monotonic()
+    result = run_exercise_isolated(code, "add", ADD_TEST_CODE)
+    elapsed = time.monotonic() - t0
+    assert result["status"] == "error"
+    assert result["message"] == EXERCISE_TIMEOUT_MESSAGE
+    assert elapsed < 4, f"hard kill took {elapsed:.1f}s"
+
+
+def test_isolated_snippet_spinner_gets_snippet_timeout_message():
+    result = run_snippet_isolated("while True:\n    pass")
+    assert set(result) == SNIPPET_KEYS
     assert result["status"] == "error"
     assert result["message"] == SNIPPET_TIMEOUT_MESSAGE
+
+
+def test_isolated_snippet_success_round_trips():
+    result = run_snippet_isolated("print('hello')")
+    assert set(result) == SNIPPET_KEYS
+    assert result["status"] == "success"
+    assert result["stdout"] == "hello\n"

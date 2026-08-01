@@ -25,12 +25,6 @@ async def test_status_success():
             "health": "Worker validation@host responded to ping",
             "is_healthy": True,
         },
-        "exercises-worker": {
-            "name": "exercises-worker",
-            "status": "running",
-            "health": "Worker exercises@host responded to ping",
-            "is_healthy": True,
-        },
     }
 
     with patch(

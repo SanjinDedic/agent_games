@@ -149,7 +149,7 @@ def test_get_tutorial_detail(client, team_headers, tutorial_with_exercise):
 
 
 def test_submit_exercise_all_tests_pass(
-    client, db_session, team_headers, word_counter_exercise, celery_workers
+    client, db_session, team_headers, word_counter_exercise
 ):
     response = client.post(
         "/tutorial/submit-exercise",
@@ -176,7 +176,7 @@ def test_submit_exercise_all_tests_pass(
 
 
 def test_submit_exercise_failing_tests_still_stored(
-    client, db_session, team_headers, word_counter_exercise, celery_workers
+    client, db_session, team_headers, word_counter_exercise
 ):
     """Failing test cases are a 200 with per-test results, and the code is
     stored so 'Last Submission' restores work in progress."""
@@ -246,7 +246,7 @@ def print_exercise(
 
 
 def test_submit_print_exercise(
-    client, db_session, team_headers, print_exercise, celery_workers
+    client, db_session, team_headers, print_exercise
 ):
     """check_output failures carry raw multiline text, prints outside the
     tests land in the stdout panel, and the rows are stored."""
@@ -331,7 +331,7 @@ def hello_exercise(
 
 
 def test_submit_top_level_code_exercise(
-    client, db_session, team_headers, hello_exercise, celery_workers
+    client, db_session, team_headers, hello_exercise
 ):
     """No function required: top-level prints are graded via module_output,
     still reach the stdout panel, and a do-nothing submission fails the
@@ -376,7 +376,7 @@ def test_submit_top_level_code_exercise(
 
 
 def test_submit_exercise_has_no_ast_gate(
-    client, db_session, team_headers, word_counter_exercise, celery_workers
+    client, db_session, team_headers, word_counter_exercise
 ):
     """Exercises skip the agent-submission AST safety check entirely: code
     that imports os (forbidden by the agent allowlist) runs on the sandboxed
@@ -405,7 +405,7 @@ def test_submit_exercise_has_no_ast_gate(
 
 
 def test_submit_exercise_error_paths(
-    client, team_headers, word_counter_exercise, celery_workers
+    client, team_headers, word_counter_exercise
 ):
     # Syntax error: no AST pre-check anymore, so it surfaces from the worker
     # when the exec of the student module fails
@@ -454,7 +454,7 @@ def test_submit_exercise_error_paths(
 
 
 def test_submit_exercise_timeout(
-    client, team_headers, word_counter_exercise, celery_workers
+    client, team_headers, word_counter_exercise
 ):
     """An infinite loop is killed by the exercise worker's time limit (0.5s
     soft, 1.5s hard SIGKILL backstop) and reported as a timeout failure."""

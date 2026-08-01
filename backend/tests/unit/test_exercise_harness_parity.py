@@ -1,13 +1,13 @@
-"""Parity contract between the Celery exercise worker and the browser harness.
+"""Parity contract between the fallback executor and the browser harness.
 
 The in-browser runner (frontend/src/pyodide/exercise_harness.py) is an
-extraction of backend/exercise_worker/tasks.py: same check semantics, same
+extraction of backend/fallback_lambda/executor.py: same check semantics, same
 row shapes, same normalized envelope. Students must get identical results
-whether their code runs in Pyodide or falls back to the worker, and stored
+whether their code runs in Pyodide or falls back to the server, and stored
 submissions from either path must satisfy the same frontend contract. These
 tests exec the exact file the browser ships under CPython and compare it
-against the worker on shared fixtures — any semantic drift fails here before
-it reaches students.
+against the executor on shared fixtures — any semantic drift fails here
+before it reaches students.
 
 The harness file reaches the test container through a dedicated read-only
 volume in docker-compose.yml (the test-runner otherwise mounts only
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.exercise_worker import tasks as worker
+from backend.fallback_lambda import executor as worker
 
 HARNESS_PATH = (
     Path(__file__).resolve().parents[3]
@@ -46,7 +46,7 @@ harness = _load_harness()
 def _normalize_traceback(traceback_text):
     """The comparable part of a traceback: the frames inside the student's
     exec'd code plus the final exception line. Frames pointing into
-    tasks.py vs exercise_harness.py legitimately differ."""
+    executor.py vs exercise_harness.py legitimately differ."""
     if traceback_text is None:
         return None
     lines = traceback_text.rstrip("\n").split("\n")
@@ -234,6 +234,81 @@ def test_capture_text_is_bounded():
     )
     result, _ = _run_both(code, "shout", test_code)
     assert result["passed"] is True
+
+
+def _run_both_snippet(code):
+    """Run one snippet fixture through the worker task body and the harness;
+    return comparable envelopes plus the raw pair for extra assertions."""
+    worker_result = worker.run_snippet(code)
+    harness_result = json.loads(harness.run_snippet_json(code))
+
+    for result in (worker_result, harness_result):
+        assert set(result) == {
+            "status",
+            "message",
+            "stdout",
+            "traceback",
+            "duration_ms",
+        }
+        if result["duration_ms"] is not None:
+            assert isinstance(result["duration_ms"], float)
+
+    def comparable(result):
+        out = dict(result)
+        out.pop("duration_ms")
+        out["traceback"] = _normalize_traceback(out["traceback"])
+        return out
+
+    assert comparable(worker_result) == comparable(harness_result)
+    return worker_result, harness_result
+
+
+def test_snippet_stdout_is_the_result():
+    result, _ = _run_both_snippet("print('hello')\nprint('world')")
+    assert result["status"] == "success"
+    assert result["stdout"] == "hello\nworld\n"
+    assert result["message"] is None
+    assert result["traceback"] is None
+
+
+def test_snippet_runs_under_main_guard():
+    code = (
+        "if __name__ == '__main__':\n"
+        "    print('guarded')\n"
+    )
+    result, _ = _run_both_snippet(code)
+    assert result["status"] == "success"
+    assert result["stdout"] == "guarded\n"
+
+
+def test_snippet_exception_keeps_partial_stdout_and_traceback():
+    result, _ = _run_both_snippet("print('before')\n1 / 0")
+    assert result["status"] == "error"
+    assert result["message"] == "ZeroDivisionError: division by zero"
+    assert "division by zero" in result["traceback"]
+    assert result["stdout"] == "before\n"
+
+
+def test_snippet_stdout_only_present_when_nonblank_and_bounded():
+    result, _ = _run_both_snippet(
+        f"print('x' * {worker.MAX_STDOUT_CHARS * 2})"
+    )
+    assert len(result["stdout"]) == worker.MAX_STDOUT_CHARS
+
+    quiet, _ = _run_both_snippet("x = 1")
+    assert quiet["status"] == "success"
+    assert quiet["stdout"] is None
+
+
+def test_snippet_captures_stderr_into_stdout():
+    code = (
+        "import sys\n"
+        "sys.stderr.write('warned\\n')\n"
+        "print('printed')\n"
+    )
+    result, _ = _run_both_snippet(code)
+    assert result["status"] == "success"
+    assert result["stdout"] == "warned\nprinted\n"
 
 
 def test_harness_has_no_celery_dependency():

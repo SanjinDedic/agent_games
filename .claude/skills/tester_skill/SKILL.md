@@ -42,9 +42,9 @@ For each FAIL in the summary:
 - **Screenshot**: `/tmp/agent_games_STAGE<N>_failure.png` — read it.
 - **Observed block**: each stage prints an `--- observed ---` JSON block
   (toasts, native dialogs, browser console errors) at the end of its output.
-- **Backend logs**: `docker logs agent_games-api-1 --since 10m` (workers:
-  `agent_games-worker-validation-1`, `agent_games-worker-simulation-1`,
-  `agent_games-worker-exercises-1`).
+- **Backend logs**: `docker logs agent_games-api-1 --since 10m` (worker:
+  `agent_games-worker-validation-1`; exercise/snippet fallbacks run inside
+  the api container via backend/fallback_lambda/ local subprocess mode).
 - **Known deviations** (expected, not regressions — full detail in
   `docs/test_findings/integration-manual-run-2026-07-11.md`):
   - Stage 1.5 needs `OPENAI_API_KEY` (script pulls it from `.env` or

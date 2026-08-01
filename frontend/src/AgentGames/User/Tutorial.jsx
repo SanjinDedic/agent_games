@@ -4,6 +4,7 @@ import ExerciseSubmission from "./ExerciseSubmission";
 import TutorialOverview from "./TutorialOverview";
 import useTutorialAPI from "../Shared/hooks/useTutorialAPI";
 import { ensureRunner } from "../../pyodide/exerciseRunnerClient";
+import PyodideStatusDot from "../Shared/Utilities/PyodideStatusDot";
 import { useTerms } from "../Shared/terminology";
 
 /**
@@ -281,6 +282,7 @@ function Tutorial({ preview = false }) {
             </span>
             <span className="text-ui-dark/50"> — {selectedIndex + 1} of {exercises.length}</span>
           </span>
+          <PyodideStatusDot />
           <button
             onClick={() => showExercise(previousExercise.id)}
             disabled={!previousExercise}

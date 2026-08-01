@@ -20,8 +20,8 @@ from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
-# The row keys the frontend renders (ExerciseResults.jsx) and the worker
-# emits (backend/exercise_worker/tasks.py _append_row); anything else a
+# The row keys the frontend renders (ExerciseResults.jsx) and the fallback
+# runner emits (backend/fallback_lambda/executor.py _append_row); anything else a
 # client sends is dropped before storage.
 ROW_KEYS = ("name", "call", "expected", "actual", "passed", "error")
 
@@ -67,10 +67,12 @@ def normalize_client_rows(test_results: list, source: str) -> list:
 def record_pyodide_fallback(team_id: Optional[int], reason: str) -> None:
     """Count one browser-to-Celery fallback.
 
-    The warning line is the durable per-occurrence record; the Valkey
-    counters give the aggregate view for /diagnostics/pyodide-fallbacks.
-    Fails open on a Valkey error — the submission itself must not suffer for
-    telemetry.
+    Shared by exercise submissions and lesson snippet runs — snippet
+    fallbacks arrive with a "snippet:" reason prefix (lesson_router), so one
+    counter answers when the whole exercises worker is dead weight. The
+    warning line is the durable per-occurrence record; the Valkey counters
+    give the aggregate view for /diagnostics/pyodide-fallbacks. Fails open
+    on a Valkey error — the submission itself must not suffer for telemetry.
     """
     logger.warning("Pyodide fallback: team=%s reason=%s", team_id, reason)
     day = utc_now().strftime("%Y-%m-%d")

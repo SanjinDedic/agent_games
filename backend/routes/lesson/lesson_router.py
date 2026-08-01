@@ -21,10 +21,8 @@ from backend.routes.lesson.lesson_models import (
     LessonRequest,
     SnippetRunRequest,
 )
-from backend.tasks.exercise_task import (
-    await_snippet_result,
-    enqueue_snippet_run,
-)
+from backend.fallback_lambda.client import run_snippet_fallback
+from backend.routes.tutorial.pyodide_support import record_pyodide_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -71,15 +69,26 @@ async def run_snippet_endpoint(
     """Run a lesson code block and return its output.
 
     Backs the Run button on ```python-run blocks (student modal and admin
-    editor preview alike). Every outcome is a 200 with the full run result —
+    editor preview alike) — but only when the browser could not run the code
+    itself: snippets execute Pyodide-first in the page, so this endpoint sees
+    fallback traffic (tagged execution_source="pyodide_fallback", counted in
+    the shared telemetry under "snippet:"-prefixed reasons) and kill-switch
+    builds. The 10/min rate limit therefore bounds fallback traffic, not
+    total snippet activity. Every outcome is a 200 with the full run result —
     a traceback is the learning content here, not a failure of the endpoint.
     Nothing is stored. Like exercise submissions there is no AST safety gate:
-    the sandboxed slim worker (backend/exercise_worker/tasks.py) is the
+    the sandboxed fallback runner (backend/fallback_lambda/) is the
     enforcement boundary.
     """
     allow_snippet_run(_snippet_identity(current_user))
-    async_result = enqueue_snippet_run(run.code)
-    return await await_snippet_result(async_result)
+    if run.execution_source == "pyodide_fallback":
+        # The browser couldn't run this via Pyodide and fell back here;
+        # counted after the rate limit so spam can't inflate the telemetry.
+        record_pyodide_fallback(
+            current_user.get("team_id"),
+            f"snippet:{run.fallback_reason or 'unspecified'}",
+        )
+    return await run_snippet_fallback(run.code)
 
 
 # ---------------------------------------------------------------------------

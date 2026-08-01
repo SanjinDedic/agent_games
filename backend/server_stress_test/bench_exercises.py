@@ -12,15 +12,15 @@ benchmark-submit) that skips the rate limit and the DB write. Exercises already
 have an endpoint with exactly those properties: POST /tutorial/admin/run-exercise
 is the admin editor's stateless "dry run" -- it drives the real path
 
-    API -> enqueue on the `exercises` queue -> worker-exercises (the slim
-    sandbox: no secrets/DB/S3, ~96MB RAM, 0.5s soft / 1.5s hard time limit,
-    fresh process per task) -> await result
+    API -> backend/fallback_lambda/ (Lambda in prod; local subprocess with
+    a scrubbed env in dev -- no secrets/DB/S3, 0.5s soft / 1.5s hard time
+    limit, fresh forked child per run) -> envelope
 
 with NO DB write and NO rate limit. So instead of adding a second gated
 endpoint, this benchmark just logs in as admin once (on_start) and hammers
 run-exercise. Unlike agent submissions, exercises have NO AST safety gate --
-the container is the sandbox -- which is why the timeout/kill path (ex_timeout
-below) is the most important one to exercise under load.
+the isolated runner is the sandbox -- which is why the timeout/kill path
+(ex_timeout below) is the most important one to exercise under load.
 """
 
 import os
@@ -30,9 +30,9 @@ ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 
 # How hard the "slow but legal" exercise works. The heavy loop must finish
-# inside the worker's 0.5s soft limit or it becomes a timeout (a false ex_slow
-# failure). Lower these if the worker host is slow / heavily loaded; raise them
-# to put more CPU pressure on the two worker-exercises slots.
+# inside the runner's 0.5s soft limit or it becomes a timeout (a false ex_slow
+# failure). Lower these if the executing host is slow / heavily loaded; raise
+# them to put more CPU pressure on the fallback runner.
 SLOW_ITERS = (int(os.environ.get("SLOW_ITERS_MIN", "200000")),
               int(os.environ.get("SLOW_ITERS_MAX", "400000")))
 
@@ -77,8 +77,8 @@ def wrong_exercise():
 
 def slow_exercise():
     """Heavy but *legal* finite loop that finishes under the 0.5s soft limit ->
-    status success. Puts real CPU pressure on the two worker-exercises slots
-    without tripping the timeout. Tune SLOW_ITERS_MIN/MAX if the host is much
+    status success. Puts real CPU pressure on the fallback runner without
+    tripping the timeout. Tune SLOW_ITERS_MIN/MAX if the host is much
     faster/slower."""
     iters = random.randint(*SLOW_ITERS)
     code = (
@@ -99,13 +99,13 @@ def slow_exercise():
 
 
 def timeout_exercise():
-    """Infinite loop -> the worker's 0.5s soft limit fires, and because a bare
+    """Infinite loop -> the runner's 0.5s soft limit fires, and because a bare
     `while True: pass` doesn't swallow it, the run ends in a timeout error
-    (SIGKILL backstop at 1.5s if it had). status error.
+    (process-group SIGKILL backstop at 1.5s if it had). status error.
 
     THIS is the leak hunter: if the hard kill fails to reap the child, a core
-    stays pegged at 100% after the load stops. Pair the run with
-    `MATCH=worker-exercises ./monitor_cpu.sh`. A status of "success" here would
+    stays pegged at 100% after the load stops. In local-runner mode pair the
+    run with `MATCH=api ./monitor_cpu.sh`. A status of "success" here would
     mean the spinner was never killed -- the bug."""
     code = (
         "def solve(n):\n"
@@ -207,8 +207,9 @@ def run_exercise(user, triple, name, expect, require_passed=None):
 # --- Summary footer ----------------------------------------------------------
 
 EX_CPU_FOOTER = (
-    " CPU/leak check: run  MATCH=worker-exercises ./monitor_cpu.sh  alongside\n"
-    " this (local stack only). After the load ends the worker-exercises CPU\n"
-    " should fall back to idle. If it stays hot, a timed-out (ex_timeout)\n"
-    " exercise leaked a runaway process the 1.5s hard SIGKILL failed to reap.\n"
+    " CPU/leak check: run  MATCH=api ./monitor_cpu.sh  alongside this (local\n"
+    " stack only -- local-runner mode executes inside the api container).\n"
+    " After the load ends the api CPU should fall back to idle. If it stays\n"
+    " hot, a timed-out (ex_timeout) exercise leaked a runaway process the\n"
+    " 1.5s hard process-group SIGKILL failed to reap.\n"
 )

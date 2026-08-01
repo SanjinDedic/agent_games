@@ -3,20 +3,20 @@ Tutorial *exercises* load benchmark (weighted mix).
 
 The exercises analogue of locust_greedy_pig.py. Drives POST
 /tutorial/admin/run-exercise (the admin editor's stateless dry-run), which runs
-the real exercise path -- enqueue on the `exercises` queue, execute in the slim
-worker-exercises sandbox (no secrets/DB/S3, ~96MB RAM, 0.5s soft / 1.5s hard
-time limit, fresh process per task), await the result -- with NO DB write and
-NO rate limit. It logs in as admin once (on_start) and hammers that endpoint.
+the real exercise fallback path -- backend/fallback_lambda/: the Lambda in
+prod, a scrubbed-env local subprocess in dev (no secrets/DB/S3, 0.5s soft /
+1.5s hard time limit, fresh forked child per run) -- with NO DB write and NO
+rate limit. It logs in as admin once (on_start) and hammers that endpoint.
 
 The load is a realistic mix: mostly valid exercises, plus wrong-answer (still a
-clean run), heavy-but-legal (CPU pressure on the two worker slots), infinite
-loop (the timeout/kill path), and a module-level error (fast error path). The
+clean run), heavy-but-legal (CPU pressure on the runner), infinite loop (the
+timeout/kill path), and a module-level error (fast error path). The
 ex_timeout row is the important one -- it exercises the hard-SIGKILL reap that,
-if broken, leaves worker-exercises spinning a core at 100% after the load
-stops. Pair the run with `MATCH=worker-exercises ./monitor_cpu.sh`.
+if broken, leaves a runner spinning a core at 100% after the load stops. In
+local-runner mode pair the run with `MATCH=api ./monitor_cpu.sh`.
 
 Unlike agent submissions there is NO AST safety gate for exercises; the
-container is the sandbox. So there is no "security reject" row here -- arbitrary
+isolated runner is the sandbox. So there is no "security reject" row here -- arbitrary
 code just runs, which is exactly why the timeout/OOM/kill paths matter.
 
 Run headless (example: 20 concurrent users, 2/s spawn, 1 min) against a LOCAL

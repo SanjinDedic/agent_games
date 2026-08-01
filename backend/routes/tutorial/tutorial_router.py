@@ -49,10 +49,7 @@ from backend.routes.tutorial.tutorial_models import (
     TutorialCreateRequest,
     TutorialUpdateRequest,
 )
-from backend.tasks.exercise_task import (
-    await_exercise_result,
-    enqueue_exercise_run,
-)
+from backend.fallback_lambda.client import run_exercise_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +86,7 @@ async def submit_exercise(
     failed agent validation.
 
     Unlike agent submission there is no AST safety gate: the code goes
-    straight to the sandboxed slim worker (backend/exercise_worker/tasks.py),
+    straight to the sandboxed fallback runner (backend/fallback_lambda/),
     which is the enforcement boundary.
     """
     team_id = _require_team_id(current_user)
@@ -105,15 +102,14 @@ async def submit_exercise(
         )
 
     logger.info(
-        f"Enqueueing exercise run for team {team_id}, "
+        f"Running exercise fallback for team {team_id}, "
         f"exercise {exercise.id}"
     )
-    async_result = enqueue_exercise_run(
+    run_result = await run_exercise_fallback(
         code=submission.code,
         entry_function=exercise.entry_function,
         test_code=exercise.test_code,
     )
-    run_result = await await_exercise_result(async_result)
 
     duration_ms = run_result.get("duration_ms")
 
@@ -179,12 +175,11 @@ async def preview_submit_exercise(
             None, submission.fallback_reason or "unspecified"
         )
 
-    async_result = enqueue_exercise_run(
+    run_result = await run_exercise_fallback(
         code=submission.code,
         entry_function=exercise.entry_function,
         test_code=exercise.test_code,
     )
-    run_result = await await_exercise_result(async_result)
 
     if run_result.get("status") == "error":
         return JSONResponse(
@@ -356,14 +351,13 @@ async def run_exercise_endpoint(
     every outcome is a 200 with the full run result — including `traceback`
     when the test script itself fails to exec, since the caller is the person
     debugging that script. Like student submissions, there is no AST safety
-    gate — the sandboxed slim worker is the enforcement boundary.
+    gate — the sandboxed fallback runner is the enforcement boundary.
     """
-    async_result = enqueue_exercise_run(
+    return await run_exercise_fallback(
         code=run.code,
         entry_function=run.entry_function,
         test_code=run.test_code,
     )
-    return await await_exercise_result(async_result)
 
 
 @tutorial_router.post("/tutorials")

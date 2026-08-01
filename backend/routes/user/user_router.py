@@ -22,6 +22,7 @@ from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.institution.institution_db import get_league_by_id
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
+from backend.routes.tutorial.pyodide_support import record_pyodide_fallback
 from backend.routes.tutorial.tutorial_db import get_team_tutorials_progress
 from backend.routes.user.code_validation import validate_code
 from backend.routes.user.signup_helpers import (
@@ -51,6 +52,7 @@ from backend.routes.user.user_db import (
     save_submission,
 )
 from backend.routes.user.user_models import (
+    AgentResultSubmissionRequest,
     DirectLeagueSignup,
     DirectSchoolLeagueSignup,
     GameName,
@@ -153,6 +155,14 @@ async def submit_agent(
     # hint button rate-limited exactly when the hint is offered.
     if not generate_hint:
         allow_submission(session, team.id)
+
+    # Counted after the rate limit so submission spam can't inflate the
+    # telemetry. The "validation:" prefix keeps agent-validation fallbacks
+    # distinguishable from exercise/snippet ones in the shared counters.
+    if submission.execution_source == "pyodide_fallback":
+        record_pyodide_fallback(
+            team.id, f"validation:{submission.fallback_reason or 'unspecified'}"
+        )
 
     # Computed on the attempts recorded so far — enough to gate hint REQUESTS
     # cheaply, before the (expensive) validation run. As a RESPONSE value it is
@@ -259,6 +269,89 @@ async def submit_agent(
         # never advertises one regardless of rationing.
         "hint_available": False,
         "hint_cancelled": hint_cancelled,
+    }
+
+
+@user_router.post("/submit-agent-result")
+@verify_ai_agent_service_or_student
+async def submit_agent_result(
+    submission: AgentResultSubmissionRequest,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """Persist an agent validation the browser already ran via Pyodide.
+
+    The trust posture mirrors /institution/save-simulation-results and
+    /tutorial/submit-exercise-result: the client-reported results only feed
+    the informational validation ranking (league standings come from
+    separate league simulations), but the code is re-gated by the AST check
+    because stored submissions are later executed in teachers' browsers by
+    the league simulation runner. Response bodies match /user/submit-agent
+    so the frontend consumes both paths identically; hints stay exclusive
+    to the Celery path (a hint request never runs in the browser).
+    """
+    team_name = current_user["team_name"]
+    team = get_team_by_id(session, current_user["team_id"])
+
+    if not team.league:
+        raise HTTPException(
+            status_code=400, detail="Team is not assigned to a league."
+        )
+    if team.league.name == "unassigned":
+        raise HTTPException(
+            status_code=400, detail="Team is not assigned to a valid league."
+        )
+
+    allow_submission(session, team.id)
+
+    def _failed(detail: str):
+        record_failed_submission(
+            session,
+            team.id,
+            league_id=team.league_id,
+            duration_ms=submission.duration_ms,
+        )
+        # Recomputed after recording, like submit_agent's failed path: the
+        # failure just made may be the one that crosses the rationing
+        # threshold.
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": detail,
+                "hint": None,
+                "hint_available": hint_available(session, team),
+            },
+        )
+
+    # The server-side gate wins over the client-claimed status. Same prefix
+    # contract as submit_agent — matched by hint_context.classify_outcome.
+    is_safe, error_message = validate_code(submission.code)
+    if not is_safe:
+        return _failed(f"Agent code is not safe: {error_message}")
+
+    if submission.status == "error":
+        return _failed(submission.message or "Code validation failed")
+
+    submission_id = save_submission(
+        session,
+        submission.code,
+        team.id,
+        league_id=team.league_id,
+        duration_ms=submission.duration_ms,
+        hint_included=False,
+        ranking=_validation_ranking(
+            {"simulation_results": submission.simulation_results}, team_name
+        ),
+    )
+    return {
+        "submission_id": submission_id,
+        "team_name": team_name,
+        "results": submission.simulation_results,
+        "feedback": submission.feedback,
+        "duration_ms": submission.duration_ms,
+        "hint": None,
+        "hint_available": False,
+        "hint_cancelled": False,
     }
 
 
