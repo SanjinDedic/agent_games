@@ -131,6 +131,10 @@ const {
     // 4.5 run the simulation (100 rounds) on the Simulation tab. The runner
     // names the target league inline ("<name> · <game> · every team's latest
     // agent competes") instead of the old "Selected League:" line.
+    // The games run IN THE BROWSER (Pyodide worker); the network only sees
+    // the code fetch up front and the results save at the end — so the wait
+    // is on /institution/save-simulation-results. First run pays the Pyodide
+    // boot (~15MB runtime) unless the panel prewarm already hid it.
     await page.click('button:text-is("Simulation")');
     const runner = page.locator('div.bg-white').filter({ has: page.locator('button:has-text("RUN SIMULATION")') }).first();
     await runner.waitFor({ timeout: 15000 });
@@ -140,37 +144,12 @@ const {
     }
     await page.fill('#simulation-game-count', '100');
 
-    const runSimulationOnce = async () => {
-      const [resp] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/institution/run-simulation'), { timeout: 300000 }),
-        page.click('button:has-text("RUN SIMULATION")'),
-      ]);
-      return { resp, body: await resp.json().catch(() => ({})) };
-    };
-
-    let { resp: simResp, body: simBody } = await runSimulationOnce();
-    if (simResp.status() === 403 && /Docker access/.test(simBody.detail || '')) {
-      // KNOWN MANUAL/APP MISMATCH: the manual says to create the institution with
-      // Docker access unchecked, but run-simulation requires it. Flip the toggle
-      // via the admin UI (which also exercises that toggle) and retry.
-      observed.notes = observed.notes || [];
-      observed.notes.push('run-simulation 403 without Docker access — manual says leave it unchecked; enabled via admin toggle to continue');
-      console.log('[4.5] FINDING: run-simulation requires Docker access; enabling it via admin UI and retrying');
-      const adminCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-      const adminPage = await adminCtx.newPage();
-      await adminPage.goto(`${BASE}/Admin`, { waitUntil: 'domcontentloaded' });
-      await adminPage.fill('#admin_name', 'admin');
-      await adminPage.fill('#admin_password', 'admin');
-      await adminPage.click('button:has-text("Login")');
-      await adminPage.waitForURL('**/AdminInstitutions', { timeout: 20000 });
-      const row = adminPage.locator(`tr:has-text("${state.institution.name}")`);
-      await row.waitFor({ timeout: 15000 });
-      await row.locator('button.rounded-full').click();
-      await row.locator('span:has-text("Enabled")').waitFor({ timeout: 15000 });
-      await adminCtx.close();
-      ({ resp: simResp, body: simBody } = await runSimulationOnce());
-    }
-    if (!simResp.ok()) throw new Error(`run-simulation HTTP ${simResp.status()}: ${JSON.stringify(simBody).slice(0, 400)}`);
+    const [simResp] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/institution/save-simulation-results'), { timeout: 300000 }),
+      page.click('button:has-text("RUN SIMULATION")'),
+    ]);
+    const simBody = await simResp.json().catch(() => ({}));
+    if (!simResp.ok()) throw new Error(`save-simulation-results HTTP ${simResp.status()}: ${JSON.stringify(simBody).slice(0, 400)}`);
     // The run summary replaces the old always-visible table: run picker +
     // headline chips. The leaderboard itself is behind "Show results".
     await page.waitForSelector('#simulation-run-picker', { timeout: 30000 });

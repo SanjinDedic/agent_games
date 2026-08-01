@@ -7,13 +7,12 @@ from backend.tasks.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 # Worker node-name prefixes (workers are launched with -n validation@%h /
-# -n simulation@%h / -n exercises@%h) mapped to the status entries the
-# frontend renders. The exercises worker runs a separate slim Celery app
+# -n exercises@%h) mapped to the status entries the frontend renders. The
+# exercises worker runs a separate slim Celery app
 # (backend/exercise_worker/tasks.py), but it shares the broker and the
 # default control exchange, so the same broadcast ping reaches it.
 WORKER_SERVICES = {
     "validation": "validation-worker",
-    "simulation": "simulation-worker",
     "exercises": "exercises-worker",
 }
 

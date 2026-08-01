@@ -22,11 +22,10 @@ async def test_status_success(client, auth_headers):
     statuses = data["statuses"]
     assert isinstance(statuses, dict)
 
-    # Should have the broker and all three worker services
+    # Should have the broker and both worker services
     expected_services = [
         "valkey",
         "validation-worker",
-        "simulation-worker",
         "exercises-worker",
     ]
     for service in expected_services:

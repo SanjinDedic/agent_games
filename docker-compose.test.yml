@@ -15,9 +15,6 @@ services:
       # Shorten the validation kill window (soft 2s, hard 3s) so tests that
       # wait out the hard time limit don't idle for the production 5s/6s.
       - VALIDATION_TIMEOUT_SECONDS=2
-  worker-simulation:
-    environment:
-      - DB_ENVIRONMENT=test
   frontend:
     profiles:
       - disabled

@@ -4,7 +4,6 @@ import pytest
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
-from backend.tasks.simulation_task import run_simulation
 from backend.tasks.validation_task import (
     run_validation,
     timeout_validation_result,
@@ -63,28 +62,6 @@ class CustomPlayer(Player):
     strategies = result["simulation_results"]["strategies"]
     assert strategies["TitForTat"]
     assert test_team.name not in strategies
-
-
-def test_simulation_workflow(celery_workers, test_league: League):
-    """Basic and custom-rewards simulations through the task."""
-    result = run_simulation.delay(
-        league_id=test_league.id,
-        game_name="prisoners_dilemma",
-        num_simulations=10,
-    ).get(timeout=60)
-    assert result["status"] == "success"
-    assert "simulation_results" in result
-    # No submissions in this league, so the validation players (and their
-    # strategies) are in play.
-    assert result["simulation_results"]["strategies"]["AlwaysDefect"]
-
-    result = run_simulation.delay(
-        league_id=test_league.id,
-        game_name="prisoners_dilemma",
-        num_simulations=10,
-        custom_rewards=[10, 5, 3, 0],
-    ).get(timeout=60)
-    assert result["status"] == "success"
 
 
 def test_validation_timeout(celery_workers):
@@ -166,18 +143,3 @@ class CustomPlayer(Player):
     assert result["status"] == "success"
     assert "CLEAN" in (result.get("stdout") or "")
     assert "CONTAMINATED" not in (result.get("stdout") or "")
-
-
-def test_concurrent_simulations(celery_workers, test_league: League):
-    """Multiple queued simulations all complete."""
-    async_results = [
-        run_simulation.delay(
-            league_id=test_league.id,
-            game_name="prisoners_dilemma",
-            num_simulations=10,
-        )
-        for _ in range(5)
-    ]
-    for async_result in async_results:
-        result = async_result.get(timeout=120)
-        assert result["status"] == "success"

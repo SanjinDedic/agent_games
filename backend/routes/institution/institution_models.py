@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -87,12 +87,36 @@ class TeamSignup(BaseModel):
         return v.strip()
 
 
-class SimulationConfig(BaseModel):
-    """Model for simulation configuration"""
+class SimulationResultsSubmission(BaseModel):
+    """Browser-computed simulation results to persist.
 
-    num_simulations: int = Field(gt=0, le=10000)
+    Produced by the in-browser (Pyodide) simulation runner; the server never
+    re-runs the games. `num_simulations` is the number of games actually
+    completed — fewer than `requested_simulations` when the run was cancelled
+    early (`capped`).
+    """
+
     league_id: int
+    num_simulations: int = Field(ge=1, le=10000)
+    requested_simulations: int = Field(ge=1, le=10000)
+    capped: bool = False
     custom_rewards: Optional[List[int]] = None
+    total_points: Dict[str, float]
+    table: Dict[str, Any] = Field(default_factory=dict)
+    # Echoed back in the response for UI parity; never stored.
+    strategies: Dict[str, str] = Field(default_factory=dict)
+    # dict → stored as feedback_json, str → feedback_str; any other shape
+    # (some games emit a list) is echoed back but not persisted, matching the
+    # old worker-path endpoint.
+    feedback: Union[Dict[str, Any], List[Any], str, None] = None
+
+    @model_validator(mode="after")
+    def completed_within_requested(self):
+        if self.num_simulations > self.requested_simulations:
+            raise ValueError(
+                "num_simulations cannot exceed requested_simulations"
+            )
+        return self
 
 
 class TeamDelete(BaseModel):
