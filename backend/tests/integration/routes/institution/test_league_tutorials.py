@@ -165,14 +165,14 @@ def test_league_tutorials_ownership(
         headers=institution_headers,
         json={"league_id": other_league.id},
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
 
     response = client.post(
         "/institution/update-league-tutorials",
         headers=institution_headers,
         json={"league_id": other_league.id, "tutorial_ids": [tutorials[0].id]},
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
     assert get_league_links(db_session, other_league.id) == []
 
     response = client.post(

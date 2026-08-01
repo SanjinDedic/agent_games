@@ -94,12 +94,6 @@ class SimulationConfig(BaseModel):
     league_id: int
     custom_rewards: Optional[List[int]] = None
 
-    @field_validator("num_simulations")
-    def validate_num_simulations(cls, v):
-        if v < 1 or v > 20000:
-            raise ValueError("Simulations must be between 1 and 20000")
-        return v
-
 
 class TeamDelete(BaseModel):
     """Model for team deletion request"""

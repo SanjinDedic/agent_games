@@ -258,8 +258,8 @@ def test_run_simulation_cross_institution(client, two_institutions):
             headers=data["headers_a"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
-        assert resp.status_code == 403
-        assert "permission" in resp.json()["detail"].lower()
+        assert resp.status_code == 404
+        assert "not found" in resp.json()["detail"].lower()
 
         # Admin CAN simulate B's league
         resp = client.post(
@@ -275,8 +275,8 @@ def test_run_simulation_cross_institution(client, two_institutions):
             headers=data["headers_admin_inst"],
             json={"league_id": data["league_b"].id, "num_simulations": 10},
         )
-        assert resp.status_code == 403
-        assert "permission" in resp.json()["detail"].lower()
+        assert resp.status_code == 404
+        assert "not found" in resp.json()["detail"].lower()
 
 
 def test_publish_results_cross_institution(client, two_institutions, db_session):

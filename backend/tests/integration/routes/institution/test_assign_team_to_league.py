@@ -170,8 +170,8 @@ def test_assign_team_to_league_failures(client, assignment_setup, db_session):
         headers=headers,
         json={"team_id": other_team.id, "league_id": target_league.id},
     )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 4: League from different institution
     response = client.post(
@@ -179,8 +179,8 @@ def test_assign_team_to_league_failures(client, assignment_setup, db_session):
         headers=headers,
         json={"team_id": team.id, "league_id": other_league.id},
     )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 5: Unauthorized access (no token)
     response = client.post(

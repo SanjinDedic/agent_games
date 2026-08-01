@@ -276,7 +276,7 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         f"/user/get-all-league-submissions/{b_league.id}",
         headers={"Authorization": f"Bearer {a_token}"},
     )
-    assert resp.status_code == 403
-    assert "permission" in resp.json()["detail"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
     # Critical: the secret code must NOT leak in the error response.
     assert "secret code" not in resp.text

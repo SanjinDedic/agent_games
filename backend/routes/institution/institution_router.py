@@ -17,7 +17,6 @@ from backend.routes.institution.classroom_db import (
     get_classroom_tutorial_matrix,
     get_student_agent_submissions,
     get_student_summary,
-    get_team_by_id,
 )
 from backend.routes.institution.institution_db import (
     ProtectedLeagueError,
@@ -32,6 +31,7 @@ from backend.routes.institution.institution_db import (
     get_all_teams,
     get_classroom_summaries,
     get_league_by_id,
+    get_team_by_id,
     publish_sim_results,
     save_simulation_results,
     unassign_team,
@@ -69,7 +69,8 @@ institution_router = APIRouter()
 # Business failures surface via the HTTP status line, not a masked 200 envelope.
 # League/team lookups and ownership checks raise domain exceptions mapped centrally
 # in api.py: LeagueNotFoundError / TeamNotFoundError / SimulationResultNotFoundError
-# -> 404, InstitutionAccessError -> 403, LeagueExistsError / TeamExistsError -> 409,
+# -> 404 (foreign resources 404 like missing ones, so responses never confirm
+# another institution's ids exist), LeagueExistsError / TeamExistsError -> 409,
 # SchoolsConfigError / ProtectedLeagueError -> 400. A token missing its institution_id
 # and a missing Docker grant are request problems the router owns, raised inline.
 # Anything unexpected surfaces as a 500 rather than a swallowed error. Each route

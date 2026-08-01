@@ -64,11 +64,6 @@ class TeamExistsError(TeamError):
     pass
 
 
-class InstitutionAccessError(Exception):
-    """Raised when an institution tries to access data it doesn't own (maps to HTTP 403)."""
-    pass
-
-
 class SchoolsConfigError(Exception):
     """Raised when a school league's schools_config is invalid or unreachable (maps to HTTP 400)."""
     pass
@@ -217,14 +212,7 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
 
 def delete_team(session: Session, team_id: int, institution_id: int) -> str:
     """Delete a team and its associated data"""
-    team = session.exec(select(Team).where(Team.id == team_id)).first()
-
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    # Verify the team belongs to this institution
-    if team.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to delete this team")
+    team = get_team_by_id(session, team_id, institution_id)
 
     # Clear everything that references the team first
     delete_team_children(session, [team.id])
@@ -306,17 +294,27 @@ def get_classroom_summaries(session: Session, institution_id: int) -> list:
 
 
 def get_league_by_id(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> League:
-    """Get a league by ID, ensuring it belongs to the institution (admin bypasses ownership check)"""
-    league = session.exec(select(League).where(League.id == league_id)).first()
+    """Get a league by ID, ensuring it belongs to the institution (admin bypasses ownership check).
 
-    if not league:
+    A foreign league raises the same 404 as a missing one, so a response never
+    confirms that another institution's league id exists."""
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Admin/Admin Institution can access any league
-    if not is_admin and league.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to access this league")
-
     return league
+
+
+def get_team_by_id(
+    session: Session, team_id: int, institution_id: int, is_admin: bool = False
+) -> Team:
+    """Get a team by ID, ensuring it belongs to the institution (admin bypasses ownership check).
+
+    A foreign team raises the same 404 as a missing one, so a response never
+    confirms that another institution's team id exists."""
+    team = session.get(Team, team_id)
+    if not team or (not is_admin and team.institution_id != institution_id):
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+    return team
 
 
 def save_simulation_results(
@@ -381,9 +379,7 @@ def save_simulation_results(
 
 def get_all_league_results(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> Dict:
     """Get all simulation results for a league"""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     results = []
     for sim in league.simulation_results:
@@ -402,16 +398,13 @@ def publish_sim_results(
     is_admin: bool = False,
 ) -> Tuple[str, Dict]:
     """Publish simulation results"""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
+    # A sim belonging to a different league 404s like a missing one, so the
+    # response never confirms a foreign simulation id exists.
     simulation = session.get(SimulationResult, sim_id)
-    if not simulation:
+    if not simulation or simulation.league_id != league.id:
         raise SimulationResultNotFoundError(f"Simulation result with ID {sim_id} not found")
-
-    if simulation.league_id != league.id:
-        raise InstitutionAccessError("You don't have permission to publish this simulation result")
 
     if not simulation.publish_link:
         simulation.publish_link = secrets.token_urlsafe(16)
@@ -449,9 +442,7 @@ def update_expiry_date(
     is capped at the subscription expiry and the message says so. Admins set
     dates freely.
     """
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     capped_at = None
     if not is_admin and league.institution_id is not None:
@@ -480,11 +471,7 @@ def update_league_info(
     is_admin: bool = False,
 ) -> str:
     """Update the per-league markdown info block."""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(
-            f"League with ID {league_id} not found in your institution"
-        )
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     league.info_markdown = info_markdown or ""
     session.add(league)
@@ -494,21 +481,8 @@ def update_league_info(
 
 def assign_team_to_league(session: Session, team_id: int, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Assign a team to a league within the same institution"""
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    # Verify the team belongs to this institution (admin bypasses)
-    if not is_admin and team.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to modify this team")
-
-    league = session.get(League, league_id)
-    if not league:
-        raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Verify the league belongs to this institution (admin bypasses)
-    if not is_admin and league.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to assign teams to this league")
+    team = get_team_by_id(session, team_id, institution_id, is_admin=is_admin)
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     team.league_id = league.id
     session.add(team)
@@ -547,12 +521,7 @@ def get_unassigned_league(session: Session, institution_id: int) -> League:
 
 def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
     """Move a team to the current institution's 'unassigned' league."""
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    if team.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to modify this team")
+    team = get_team_by_id(session, team_id, institution_id)
 
     unassigned_league = get_unassigned_league(session, institution_id)
     team.league_id = unassigned_league.id
@@ -563,15 +532,7 @@ def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
 
 def generate_signup_link(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> Dict:
     """Generate a new signup link for a league"""
-    league = session.get(League, league_id)
-    if not league:
-        raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Check if the league belongs to this institution (admin bypasses)
-    if not is_admin and league.institution_id != institution_id:
-        raise InstitutionAccessError(
-            "You don't have permission to access this league"
-        )
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     # Generate a new signup token
     signup_token = secrets.token_urlsafe(16)
@@ -595,14 +556,7 @@ def generate_team_password_reset(
     Regenerating replaces any previous token, so a mis-shared link can be
     invalidated by generating a fresh one.
     """
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    if team.institution_id != institution_id:
-        raise InstitutionAccessError(
-            "You don't have permission to reset this team's password"
-        )
+    team = get_team_by_id(session, team_id, institution_id)
 
     reset_token = secrets.token_urlsafe(16)
     team.password_reset_token = reset_token
@@ -617,11 +571,7 @@ def generate_team_password_reset(
 
 def delete_league(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Delete a league and move its teams to the unassigned league"""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(
-            f"League with ID {league_id} not found in your institution"
-        )
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     league_name = league.name
     if league_name.lower() == "unassigned":

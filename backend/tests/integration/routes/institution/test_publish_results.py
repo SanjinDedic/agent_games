@@ -211,7 +211,20 @@ def test_publish_results_failures(client, publish_setup, db_session):
     )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
-    
+
+    # Own league paired with a simulation id from another league: the
+    # mismatched sim 404s like a missing one, never confirming it exists
+    response = client.post(
+        "/institution/publish-results",
+        headers=headers,
+        json={
+            "league_id": league.id,
+            "id": other_result.id,
+        },
+    )
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
     # Test case 4: Unauthorized access (no token)
     response = client.post(
         "/institution/publish-results",

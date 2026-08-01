@@ -164,5 +164,5 @@ def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
         headers={"Authorization": f"Bearer {other_token}"},
         json={"team_id": unassign_setup["team"].id},
     )
-    assert resp.status_code == 403
-    assert "permission" in resp.json()["detail"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()

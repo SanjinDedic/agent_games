@@ -135,7 +135,7 @@ def test_student_endpoints_access_control(
     ]
     for url in urls:
         assert client.get(url).status_code == 401
-        assert client.get(url, headers=s.rival_headers).status_code == 403
+        assert client.get(url, headers=s.rival_headers).status_code == 404
         assert client.get(url, headers=team_headers).status_code == 403
 
     for suffix in (
