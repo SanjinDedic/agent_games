@@ -22,11 +22,11 @@ async def test_status_success(client, auth_headers):
     statuses = data["statuses"]
     assert isinstance(statuses, dict)
 
-    # Should have the broker and both worker services
+    # Should have the broker and the validation worker (exercise/snippet
+    # fallbacks run via backend/fallback_lambda/, not a worker).
     expected_services = [
         "valkey",
         "validation-worker",
-        "exercises-worker",
     ]
     for service in expected_services:
         assert service in statuses
@@ -35,9 +35,7 @@ async def test_status_success(client, auth_headers):
         assert "health" in statuses[service]
         assert "is_healthy" in statuses[service]
 
-    # The exercises worker is a separate slim Celery app; its presence here
-    # proves the backend app's broadcast ping reaches it across apps.
-    assert statuses["exercises-worker"]["is_healthy"] is True
+    assert "exercises-worker" not in statuses
 
 @pytest.mark.asyncio
 async def test_status_unauthorized(client):

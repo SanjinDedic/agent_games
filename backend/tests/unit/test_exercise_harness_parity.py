@@ -1,13 +1,13 @@
-"""Parity contract between the Celery exercise worker and the browser harness.
+"""Parity contract between the fallback executor and the browser harness.
 
 The in-browser runner (frontend/src/pyodide/exercise_harness.py) is an
-extraction of backend/exercise_worker/tasks.py: same check semantics, same
+extraction of backend/fallback_lambda/executor.py: same check semantics, same
 row shapes, same normalized envelope. Students must get identical results
-whether their code runs in Pyodide or falls back to the worker, and stored
+whether their code runs in Pyodide or falls back to the server, and stored
 submissions from either path must satisfy the same frontend contract. These
 tests exec the exact file the browser ships under CPython and compare it
-against the worker on shared fixtures — any semantic drift fails here before
-it reaches students.
+against the executor on shared fixtures — any semantic drift fails here
+before it reaches students.
 
 The harness file reaches the test container through a dedicated read-only
 volume in docker-compose.yml (the test-runner otherwise mounts only
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.exercise_worker import tasks as worker
+from backend.fallback_lambda import executor as worker
 
 HARNESS_PATH = (
     Path(__file__).resolve().parents[3]
@@ -46,7 +46,7 @@ harness = _load_harness()
 def _normalize_traceback(traceback_text):
     """The comparable part of a traceback: the frames inside the student's
     exec'd code plus the final exception line. Frames pointing into
-    tasks.py vs exercise_harness.py legitimately differ."""
+    executor.py vs exercise_harness.py legitimately differ."""
     if traceback_text is None:
         return None
     lines = traceback_text.rstrip("\n").split("\n")

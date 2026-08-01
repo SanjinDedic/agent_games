@@ -1,6 +1,6 @@
-"""Integration tests for the Pyodide-to-Celery fallback telemetry.
+"""Integration tests for the Pyodide-to-server fallback telemetry.
 
-When the browser can't run Pyodide it submits through the normal Celery
+When the browser can't run Pyodide it submits through the normal server
 path with execution_source="pyodide_fallback"; every such submission must be
 counted (Valkey) and its stored rows stamped, while the default path stays
 byte-identical to before the feature existed.
@@ -44,7 +44,7 @@ def _today() -> str:
 
 
 def test_fallback_submission_is_counted_and_stamped(
-    client, db_session, team_headers, word_counter_exercise, valkey, celery_workers
+    client, db_session, team_headers, word_counter_exercise, valkey
 ):
     response = client.post(
         "/tutorial/submit-exercise",
@@ -80,9 +80,9 @@ def test_fallback_submission_is_counted_and_stamped(
 
 
 def test_default_submission_rows_are_untouched(
-    client, db_session, team_headers, word_counter_exercise, valkey, celery_workers
+    client, db_session, team_headers, word_counter_exercise, valkey
 ):
-    """The pre-existing Celery path must stay byte-identical: no source key
+    """The pre-existing default path must stay byte-identical: no source key
     in the rows, no fallback counting."""
     response = client.post(
         "/tutorial/submit-exercise",
@@ -96,7 +96,7 @@ def test_default_submission_rows_are_untouched(
 
 
 def test_fallback_telemetry_failure_fails_open(
-    client, team_headers, word_counter_exercise, celery_workers, monkeypatch
+    client, team_headers, word_counter_exercise, monkeypatch
 ):
     """A dead Valkey must not break the submission itself."""
 
@@ -120,7 +120,7 @@ def test_fallback_telemetry_failure_fails_open(
 
 
 def test_preview_fallback_is_counted_but_not_persisted(
-    client, db_session, institution_headers, word_counter_exercise, valkey, celery_workers
+    client, db_session, institution_headers, word_counter_exercise, valkey
 ):
     response = client.post(
         "/tutorial/preview/submit-exercise",

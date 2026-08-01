@@ -2,7 +2,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
-from backend.exercise_worker.tasks import MAX_STDOUT_CHARS
+from backend.fallback_lambda.executor import MAX_STDOUT_CHARS
 
 
 class ExerciseSubmissionRequest(BaseModel):
@@ -87,9 +87,9 @@ class ExerciseRequest(BaseModel):
     """Full exercise definition, used for both create and update (PUT).
 
     `test_code` is the exercise's Python test script
-    (backend/exercise_worker/tasks.py); `solution` is an optional
+    (backend/fallback_lambda/executor.py); `solution` is an optional
     reference solution for the admin editor. Both are stored as NULL when
-    blank — for test_code so submitting hits the worker's loud "defines no
+    blank — for test_code so submitting hits the runner's loud "defines no
     tests" error instead of passing vacuously.
     """
 

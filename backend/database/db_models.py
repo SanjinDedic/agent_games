@@ -412,7 +412,7 @@ class Exercise(SQLModel, table=True):
     """One coding problem inside a tutorial.
 
     Tests live in `test_code`: an admin-trusted Python test script
-    (backend/exercise_worker/tasks.py) exec'd into the same namespace as
+    (backend/fallback_lambda/executor.py) exec'd into the same namespace as
     the student's code. It can test multiple functions and check print
     output. Authored by the seed script or through the admin exercise
     editor; students never see it. `entry_function` names the one function

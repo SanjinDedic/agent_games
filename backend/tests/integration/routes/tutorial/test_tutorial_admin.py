@@ -458,7 +458,7 @@ RUN_PAYLOAD = {
 }
 
 
-def test_run_exercise_passes(client, auth_headers, celery_workers):
+def test_run_exercise_passes(client, auth_headers):
     response = client.post(
         "/tutorial/admin/run-exercise", json=RUN_PAYLOAD, headers=auth_headers
     )
@@ -472,7 +472,7 @@ def test_run_exercise_passes(client, auth_headers, celery_workers):
     ]
 
 
-def test_run_exercise_top_level_code(client, auth_headers, celery_workers):
+def test_run_exercise_top_level_code(client, auth_headers):
     """The dry run works without an entry function: top-level prints are
     graded through module_output."""
     payload = {
@@ -492,7 +492,7 @@ def test_run_exercise_top_level_code(client, auth_headers, celery_workers):
     assert data["passed"] is True
 
 
-def test_run_exercise_failing_test(client, auth_headers, celery_workers):
+def test_run_exercise_failing_test(client, auth_headers):
     payload = {**RUN_PAYLOAD, "code": "def add(a, b):\n    return a - b\n"}
     response = client.post(
         "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
@@ -504,7 +504,7 @@ def test_run_exercise_failing_test(client, auth_headers, celery_workers):
 
 
 def test_run_exercise_broken_test_script_returns_traceback(
-    client, auth_headers, celery_workers
+    client, auth_headers
 ):
     """An admin debugging their own test script gets the traceback — unlike
     the student route, which hides it."""
@@ -520,7 +520,7 @@ def test_run_exercise_broken_test_script_returns_traceback(
 
 
 def test_run_exercise_without_tests_is_an_error(
-    client, auth_headers, celery_workers
+    client, auth_headers
 ):
     payload = {**RUN_PAYLOAD, "test_code": None}
     response = client.post(
@@ -532,7 +532,7 @@ def test_run_exercise_without_tests_is_an_error(
     assert data["message"] == "This exercise defines no tests."
 
 
-def test_run_exercise_has_no_ast_gate(client, auth_headers, celery_workers):
+def test_run_exercise_has_no_ast_gate(client, auth_headers):
     """Dry-runs skip the agent-submission AST check like student submissions
     do: starter/solution code may import freely — the sandboxed exercise
     worker is the enforcement boundary."""

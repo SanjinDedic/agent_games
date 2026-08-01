@@ -65,28 +65,6 @@ servers:
       memory-swap: 800m
       pids-limit: 50
 
-  worker-exercises:
-    hosts:
-      - api.agentgames.io
-    # The exercises queue is served by the standalone Celery app in
-    # backend/exercise_worker/tasks.py (dev compose runs it from a slim
-    # python+celery image; Kamal roles share the app image, so prod loads the
-    # same module from the fat image — backend/__init__.py is empty and the
-    # module is stdlib+celery only, so the process is equally lean).
-    # Exercises run with ZERO code validation, so like the other workers this
-    # role must hold no secrets; prefork (never solo — solo ignores time
-    # limits) with two slots and a 0.5s soft / 1.5s hard per-task budget.
-    cmd: "celery -A backend.exercise_worker.tasks worker -Q exercises -n exercises@%h --loglevel=warning --without-gossip --without-mingle --without-heartbeat --concurrency=2"
-    proxy: false
-    options:
-      hostname: worker-exercises
-      # Same measured budget as the dev compose service (see its comment).
-      memory: 160m
-      # Same no-swap guarantee as the other workers: a memory-bomb submission
-      # must be OOM-killed at the cap, not thrash in swap past the hard kill.
-      memory-swap: 160m
-      pids-limit: 50
-
 deploy_timeout: 120
 
 proxy:
@@ -133,6 +111,12 @@ env:
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
+    # Exercise/snippet fallback runs on this Lambda (backend/fallback_lambda/,
+    # deployed via its deploy.sh). A function name, not a secret. Unset it to
+    # fall back to local subprocess execution inside the API container
+    # (emergency degraded mode). The API's IAM user needs lambda:InvokeFunction
+    # on exactly this function.
+    EXERCISE_LAMBDA_FUNCTION: agent-games-exercise-fallback
     FRONTEND_URL: https://agentgames.io
   # NOTE: no top-level `secret:` block by design. Kamal unions each role's
   # secret list with the root's, so a secret listed here would reach the

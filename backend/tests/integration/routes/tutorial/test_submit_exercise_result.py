@@ -1,9 +1,9 @@
 """Integration tests for /tutorial/submit-exercise-result.
 
 The endpoint persists exercise attempts the browser already executed via
-Pyodide (frontend/src/pyodide/exercise_harness.py). No Celery worker is
-involved anywhere in this file — that is the point of the endpoint — so
-none of these tests need the celery_workers fixture.
+Pyodide (frontend/src/pyodide/exercise_harness.py). No server-side
+execution is involved anywhere in this file — that is the point of the
+endpoint.
 """
 
 from datetime import timedelta
@@ -19,7 +19,7 @@ from backend.database.db_models import (
     Team,
     Tutorial,
 )
-from backend.exercise_worker.tasks import MAX_STDOUT_CHARS
+from backend.fallback_lambda.executor import MAX_STDOUT_CHARS
 from backend.time_utils import utc_now
 
 PASSING_CODE = "def add(a, b):\n    return a + b\n"
@@ -174,7 +174,7 @@ def test_rows_are_rebuilt_from_contract_keys(
 def test_error_result_records_metadata_only(
     client, db_session, team_headers, pyodide_exercise
 ):
-    """A status:"error" run mirrors the Celery 400 contract: detail + stdout,
+    """A status:"error" run mirrors the fallback 400 contract: detail + stdout,
     metadata row for progress/rate-limiting, no code stored."""
     payload = make_payload(
         pyodide_exercise.id,

@@ -1,6 +1,6 @@
 """Student-facing lesson routes: read by slug, and run-snippet through the
-real broker and exercises worker (the celery_workers fixture fails fast when
-the workers are down)."""
+real fallback runner (backend/fallback_lambda/, local subprocess mode in
+tests)."""
 
 import pytest
 import redis
@@ -70,7 +70,7 @@ def test_admin_can_read_lesson_by_slug(client, admin_headers, loops_lesson):
     assert response.status_code == 200
 
 
-def test_run_snippet_returns_stdout(client, team_headers, celery_workers):
+def test_run_snippet_returns_stdout(client, team_headers):
     response = client.post(
         "/lesson/run-snippet",
         headers=team_headers,
@@ -85,7 +85,7 @@ def test_run_snippet_returns_stdout(client, team_headers, celery_workers):
 
 
 def test_run_snippet_error_returns_traceback(
-    client, team_headers, celery_workers
+    client, team_headers
 ):
     """A crash is still a 200 — the traceback is the learning content."""
     response = client.post(
@@ -100,7 +100,7 @@ def test_run_snippet_error_returns_traceback(
     assert data["stdout"] == "before\n"
 
 
-def test_run_snippet_timeout(client, team_headers, celery_workers):
+def test_run_snippet_timeout(client, team_headers):
     response = client.post(
         "/lesson/run-snippet",
         headers=team_headers,
@@ -120,7 +120,7 @@ def test_run_snippet_blank_code_422(client, team_headers):
 
 
 def test_run_snippet_rate_limit(
-    client, team_headers, celery_workers, monkeypatch
+    client, team_headers, monkeypatch
 ):
     """The budget is per identity in Valkey; shrink it so the test stays
     fast, and confirm the reused SubmissionLimitExceededError maps to 429."""
@@ -146,7 +146,7 @@ def _today() -> str:
 
 
 def test_run_snippet_fallback_is_counted(
-    client, team_headers, valkey, celery_workers  # noqa: F811 - fixture
+    client, team_headers, valkey  # noqa: F811 - fixture
 ):
     """A Pyodide fallback run is a normal snippet run plus telemetry, with
     the reason prefixed "snippet:" in the counters shared with exercises."""
@@ -172,9 +172,9 @@ def test_run_snippet_fallback_is_counted(
 
 
 def test_run_snippet_default_is_not_counted(
-    client, team_headers, valkey, celery_workers  # noqa: F811 - fixture
+    client, team_headers, valkey  # noqa: F811 - fixture
 ):
-    """The pre-existing Celery path must stay byte-identical: no counting."""
+    """The pre-existing default path must stay byte-identical: no counting."""
     response = client.post(
         "/lesson/run-snippet", headers=team_headers, json={"code": "x = 1"}
     )
@@ -183,7 +183,7 @@ def test_run_snippet_default_is_not_counted(
 
 
 def test_run_snippet_fallback_telemetry_fails_open(
-    client, team_headers, celery_workers, monkeypatch
+    client, team_headers, monkeypatch
 ):
     """A broken telemetry store must not break the run itself. (Only the
     telemetry client is patched — the rate limiter uses lesson_db's own.)"""

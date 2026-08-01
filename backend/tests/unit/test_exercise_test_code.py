@@ -1,5 +1,5 @@
 """Unit tests for the exercise test-script runner (run_test_code and its
-injected check/check_output/capture helpers in exercise_worker/tasks.py).
+injected check/check_output/capture helpers in fallback_lambda/executor.py).
 
 Everything goes through run_exercise so the rows tested here are exactly the
 rows the API returns and the frontend renders.
@@ -7,7 +7,7 @@ rows the API returns and the frontend renders.
 
 import json
 
-from backend.exercise_worker.tasks import (
+from backend.fallback_lambda.executor import (
     EXERCISE_TIMEOUT_MESSAGE,
     MAX_STDOUT_CHARS,
     run_exercise,
@@ -146,9 +146,9 @@ def test_student_predefined_name_cannot_shadow_a_script_test():
 
 def test_soft_time_limit_inside_a_test_function_propagates():
     test_code = (
-        "from celery.exceptions import SoftTimeLimitExceeded\n"
+        "from backend.fallback_lambda.executor import ExecutionTimeout\n"
         "def test_spin():\n"
-        "    raise SoftTimeLimitExceeded()\n"
+        "    raise ExecutionTimeout()\n"
     )
     result = run_exercise(ADD_CODE, "add", test_code)
     assert result["status"] == "error"

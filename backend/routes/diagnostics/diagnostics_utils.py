@@ -6,14 +6,12 @@ from backend.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
-# Worker node-name prefixes (workers are launched with -n validation@%h /
-# -n exercises@%h) mapped to the status entries the frontend renders. The
-# exercises worker runs a separate slim Celery app
-# (backend/exercise_worker/tasks.py), but it shares the broker and the
-# default control exchange, so the same broadcast ping reaches it.
+# Worker node-name prefixes (workers are launched with -n validation@%h)
+# mapped to the status entries the frontend renders. Exercise/snippet
+# fallbacks no longer run on a worker — they go to AWS Lambda (or a local
+# subprocess) via backend/fallback_lambda/.
 WORKER_SERVICES = {
     "validation": "validation-worker",
-    "exercises": "exercises-worker",
 }
 
 
@@ -69,7 +67,7 @@ def _collect_statuses() -> Dict[str, Dict]:
 
 
 async def get_all_services_status() -> Dict[str, Dict]:
-    """Get status for the Celery broker and both worker types.
+    """Get status for the Celery broker and the validation worker.
 
     Returns a dictionary mapping service names to their status information;
     each entry has the {name, status, health, is_healthy} shape the frontend

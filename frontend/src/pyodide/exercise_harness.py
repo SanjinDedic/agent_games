@@ -1,20 +1,19 @@
 """The in-browser exercise and snippet harness, run inside Pyodide.
 
-Extracted from backend/exercise_worker/tasks.py — the Celery worker that
-in-browser execution replaces — and kept in byte-parity with it: the check
-semantics, row shapes, and the normalized result envelopes (exercise and
-lesson snippet alike) must be identical whether a run happens in the worker
-or in the browser. That contract is enforced by
+Extracted from backend/fallback_lambda/executor.py — the server fallback
+that in-browser execution replaces — and kept in byte-parity with it: the
+check semantics, row shapes, and the normalized result envelopes (exercise
+and lesson snippet alike) must be identical whether a run happens on the
+server or in the browser. That contract is enforced by
 backend/tests/unit/test_exercise_harness_parity.py, which execs this exact
-file under CPython and compares it against the worker on shared fixtures.
-If you change semantics here or in the worker, change both.
+file under CPython and compares it against the executor on shared fixtures.
+If you change semantics here or in the executor, change both.
 
-Differences from the worker, by design:
+Differences from the executor, by design:
 
-- No Celery: no task decorators, no broker config, and no
-  ``SoftTimeLimitExceeded`` handling — the browser's time limit is the main
-  thread terminating the whole Web Worker (exerciseRunnerClient.js), never an
-  in-Python exception.
+- No process isolation and no ``ExecutionTimeout`` handling — the browser's
+  time limit is the main thread terminating the whole Web Worker
+  (exerciseRunnerClient.js), never an in-Python exception.
 - ``run_exercise_json`` / ``run_snippet_json`` are the bridge entry points:
   they JSON-serialize the envelope inside Python so only a plain ``str``
   crosses the JS bridge (no PyProxy/Map conversion issues), and the JS side

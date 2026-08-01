@@ -117,25 +117,26 @@ def create_test_institution(session, **kwargs):
 
 @pytest.fixture(scope="session")
 def celery_workers():
-    """Fail fast with a clear message when the Celery workers are not up.
+    """Fail fast with a clear message when the validation worker is not up.
 
-    Task-level tests enqueue to the real broker and need both queue workers
-    running (docker compose starts them; test-runner depends_on their
-    healthchecks). The exercises worker runs a separate Celery app, but ping
-    is a broadcast over the shared broker, so one inspect reaches it too.
+    Task-level tests enqueue to the real broker and need the validation
+    worker running (docker compose starts it; test-runner depends_on its
+    healthcheck). Exercise/snippet fallbacks no longer use Celery — they run
+    through backend/fallback_lambda/ (local subprocess mode in tests).
     """
     from backend.tasks.celery_app import celery_app
 
-    # limit=2 returns as soon as both workers reply (~10ms) instead of
+    # limit=1 returns as soon as the worker replies (~10ms) instead of
     # waiting out the full broadcast timeout.
-    replies = celery_app.control.inspect(timeout=5, limit=2).ping() or {}
-    for prefix in ("validation", "exercises"):
-        if not any(node.startswith(f"{prefix}@") for node in replies):
-            pytest.fail(
-                f"No {prefix} worker responded to ping — start the compose "
-                f"workers first (docker compose up -d worker-validation "
-                f"worker-exercises)"
-            )
+    replies = celery_app.control.inspect(timeout=5, limit=1).ping() or {}
+    if not any(node.startswith("validation@") for node in replies):
+        pytest.fail(
+            f"No validation worker responded to ping (got: {list(replies)}) — "
+            f"start the compose worker first (docker compose up -d "
+            f"worker-validation). If it IS up, an orphan worker on the shared "
+            f"broker may have starved the limit=1 ping — remove stale "
+            f"containers (docker compose down --remove-orphans)."
+        )
     return replies
 
 

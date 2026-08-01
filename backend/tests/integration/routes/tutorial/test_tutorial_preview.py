@@ -64,7 +64,7 @@ def _submission_row_counts(db_session: Session) -> tuple:
 
 
 def test_preview_run_writes_nothing(
-    client, db_session, institution_headers, preview_exercise, celery_workers
+    client, db_session, institution_headers, preview_exercise
 ):
     before = _submission_row_counts(db_session)
 
@@ -103,7 +103,7 @@ def test_preview_run_writes_nothing(
 
 
 def test_preview_run_admin_allowed(
-    client, auth_headers, preview_exercise, celery_workers
+    client, auth_headers, preview_exercise
 ):
     response = client.post(
         "/tutorial/preview/submit-exercise",

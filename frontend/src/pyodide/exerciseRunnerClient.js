@@ -16,7 +16,7 @@
  *     falls back: Celery would fail the same way.
  *   { kind: "fallback", reason }  — Pyodide itself couldn't run (boot
  *     failure, failed health probe, infra crash mid-run); the caller must
- *     submit through the Celery path with this reason so the fallback is
+ *     submit through the server fallback with this reason so the fallback is
  *     counted server-side.
  *
  * State machine: idle → booting → probing → ready ⇄ running, terminal
@@ -40,8 +40,8 @@ const PROBE_TIMEOUT_MS = 500;
 const PROBE_ATTEMPTS = 2;
 const PROBE_CODE = '1+1';
 
-// Same phrasing as the Celery worker's EXERCISE_TIMEOUT_MESSAGE /
-// SNIPPET_TIMEOUT_MESSAGE (backend/exercise_worker/tasks.py) with this
+// Same phrasing as the fallback executor's EXERCISE_TIMEOUT_MESSAGE /
+// SNIPPET_TIMEOUT_MESSAGE (backend/fallback_lambda/executor.py) with this
 // runtime's honest budget.
 const EXERCISE_TIMEOUT_MESSAGE =
   `Your code consumes too much time - the tests did not finish within ` +
@@ -52,7 +52,7 @@ const SNIPPET_TIMEOUT_MESSAGE =
   `It may be stuck in a loop.`;
 
 // Build-time kill switch: set VITE_PYODIDE_EXERCISES=false to force every
-// exercise submission AND lesson snippet run through the Celery path (no
+// exercise submission AND lesson snippet run through the server fallback (no
 // fallback tagging — it's not a fallback, it's the configured path).
 export const isPyodideEnabled = () =>
   import.meta.env.VITE_PYODIDE_EXERCISES !== 'false';

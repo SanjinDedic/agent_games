@@ -20,8 +20,8 @@ from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
-# The row keys the frontend renders (ExerciseResults.jsx) and the worker
-# emits (backend/exercise_worker/tasks.py _append_row); anything else a
+# The row keys the frontend renders (ExerciseResults.jsx) and the fallback
+# runner emits (backend/fallback_lambda/executor.py _append_row); anything else a
 # client sends is dropped before storage.
 ROW_KEYS = ("name", "call", "expected", "actual", "passed", "error")
 
