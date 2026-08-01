@@ -30,27 +30,11 @@ from backend.routes.institution.concept_mastery import (
     fluency_for,
     needs_help,
 )
-from backend.routes.institution.institution_db import InstitutionAccessError, TeamNotFoundError
-
 logger = logging.getLogger(__name__)
 
 # Payload bound for per-team ranking history. Enough for a trend line; the
 # full history stays in the DB if a longer view is ever needed.
 RANKING_HISTORY_LIMIT = 50
-
-
-def get_team_by_id(
-    session: Session, team_id: int, institution_id: int, is_admin: bool = False
-) -> Team:
-    """Get a team by ID, ensuring it belongs to the institution (admin bypasses)."""
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-    if not is_admin and team.institution_id != institution_id:
-        raise InstitutionAccessError(
-            "You don't have permission to access this team"
-        )
-    return team
 
 
 def _agent_attempt_stats(session: Session, team_ids: list) -> tuple:

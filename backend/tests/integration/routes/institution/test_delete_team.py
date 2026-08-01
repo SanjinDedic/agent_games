@@ -202,8 +202,8 @@ def test_delete_team_failures(client, institution_setup, db_session):
         headers=other_headers,
         json={"id": team.id},
     )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
     
     # Test case 3: Invalid team ID format
     response = client.post(

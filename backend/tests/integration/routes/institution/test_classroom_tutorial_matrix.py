@@ -68,7 +68,7 @@ def test_matrix_access_control(client, team_headers, classroom_setup):
     url = f"/institution/classroom/{s.league_a.id}/tutorial-matrix"
 
     assert client.get(url).status_code == 401
-    assert client.get(url, headers=s.rival_headers).status_code == 403
+    assert client.get(url, headers=s.rival_headers).status_code == 404
     assert client.get(url, headers=team_headers).status_code == 403
     assert (
         client.get(

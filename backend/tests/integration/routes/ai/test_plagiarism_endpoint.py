@@ -198,8 +198,8 @@ def test_assess_league_not_owned_by_institution(
         headers=headers_a,
         json={"league_id": other_league.id, "team_id": team_a.id},
     )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
 def test_assess_wrong_role_forbidden(client, institution_setup, stored_openai_key):

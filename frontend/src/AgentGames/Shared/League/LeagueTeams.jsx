@@ -3,9 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from 'react-toastify';
 import { useSelector, useDispatch } from 'react-redux';
 import { setTeams } from '../../../slices/teamsSlice';
-import { selectToken } from '../../../slices/authSlice';
 import useLeagueAPI from '../hooks/useLeagueAPI';
-import { authFetch } from '../../../utils/authFetch';
+import useTeamManagementAPI from '../hooks/useTeamManagementAPI';
 import { useTerms } from '../terminology';
 
 /**
@@ -20,8 +19,6 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
     const dispatch = useDispatch();
     const teams = useSelector((state) => state.teams.list);
     const leagues = useSelector((state) => state.leagues.list);
-    const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-    const accessToken = useSelector(selectToken);
 
     const [filteredTeams, setFilteredTeams] = useState([]);
     const [assignTeamId, setAssignTeamId] = useState("");
@@ -30,9 +27,10 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
     const [isLoadingTeams, setIsLoadingTeams] = useState(false);
     const [actingTeamId, setActingTeamId] = useState(null);
     
-    // Use shared API hook
+    // Use shared API hooks
   const { assignTeamToLeague, unassignTeam, isLoading } =
     useLeagueAPI(userRole);
+  const { getAllTeams } = useTeamManagementAPI();
 
   // Fetch fresh team data when component mounts
   useEffect(() => {
@@ -74,26 +72,12 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
   // Function to fetch all teams
   const fetchAllTeams = async () => {
     setIsLoadingTeams(true);
-    try {
-      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok && Array.isArray(data.teams)) {
-        // Update Redux with fresh team data
-        dispatch(setTeams(data.teams));
-      } else {
-        toast.error(data.detail || `Failed to load ${T.teams}`);
-      }
-    } catch (error) {
-      console.error("Error fetching teams:", error);
-    } finally {
-      setIsLoadingTeams(false);
+    const result = await getAllTeams();
+    if (result.success) {
+      // Update Redux with fresh team data — admin LeagueCardList reads it too
+      dispatch(setTeams(result.data.teams));
     }
+    setIsLoadingTeams(false);
   };
 
   const handleAssignTeam = async () => {
@@ -107,9 +91,11 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
       return;
     }
 
+    const chosen = unassignedTeams.find((t) => String(t.id) === assignTeamId);
     const result = await assignTeamToLeague(assignTeamId, selectedLeagueId);
 
     if (result.success) {
+      toast.success(`'${chosen?.name || T.team}' assigned to ${selected_league_name}`);
       setShowAssignForm(false);
       setAssignTeamId("");
       // Refresh teams list after assignment
@@ -127,7 +113,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
       setActingTeamId(team.id);
       const result = await unassignTeam(team.id);
       if (result.success) {
-        toast.success(`'${team.name}' moved to 'unassigned'`);
+        // unassignTeam already toasts the backend message
         fetchAllTeams();
       }
     } finally {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { authFetch } from '../../utils/authFetch';
-import { selectToken } from '../../slices/authSlice';
+import { copyToClipboard } from '../../utils/clipboard';
+import { joinUrl } from '../../utils/urls';
+import useClassroomAPI from '../Shared/hooks/useClassroomAPI';
+import useLeagueAPI from '../Shared/hooks/useLeagueAPI';
 import LeagueCreation from '../Shared/League/LeagueCreation';
 import UnassignedStudentsCard from './UnassignedStudentsCard';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
@@ -56,8 +57,8 @@ function InstitutionHome() {
   const T = useTerms();
   const navigate = useNavigate();
   const location = useLocation();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
+  const { getHome } = useClassroomAPI();
+  const { generateSignupLink } = useLeagueAPI('institution');
   const { getTutorials } = useTutorialAPI();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -75,23 +76,18 @@ function InstitutionHome() {
   // an inline action like assigning a student, where the page stays visible)
   const fetchHome = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setIsLoading(true);
-    try {
-      const response = await authFetch(`${apiUrl}/institution/home`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const json = await response.json();
-      if (response.ok) {
-        setData(json);
-      } else {
-        toast.error(json.detail || 'Could not load your home page');
-      }
-    } catch (error) {
-      console.error('Error fetching home data:', error);
-      toast.error('Could not reach the server. Please try again.');
-    } finally {
-      setIsLoading(false);
+    const result = await getHome();
+    if (result.success) {
+      setData(result.data);
+    } else {
+      toast.error(
+        result.error === 'Network error'
+          ? 'Could not reach the server. Please try again.'
+          : result.error
+      );
     }
-  }, [apiUrl, accessToken]);
+    setIsLoading(false);
+  }, [getHome]);
 
   useEffect(() => {
     fetchHome();
@@ -110,46 +106,24 @@ function InstitutionHome() {
     };
   }, [getTutorials]);
 
-  const loginUrlFor = (classroom) =>
-    `${window.location.origin}/join/${classroom.signup_link}`;
+  const loginUrlFor = (classroom) => joinUrl(classroom.signup_link);
 
-  const copyLoginLink = (classroom) => {
-    navigator.clipboard.writeText(loginUrlFor(classroom));
-    toast.success('Login link copied to clipboard!');
-  };
+  const copyLoginLink = (classroom) =>
+    copyToClipboard(loginUrlFor(classroom), 'Login link copied to clipboard!');
 
   const createLoginLink = async (classroom) => {
     setGeneratingFor(classroom.id);
-    try {
-      const response = await authFetch(
-        `${apiUrl}/institution/generate-signup-link`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ league_id: classroom.id }),
-        }
-      );
-      const json = await response.json();
-      if (response.ok && json.signup_token) {
-        setData((prev) => ({
-          ...prev,
-          classrooms: prev.classrooms.map((c) =>
-            c.id === classroom.id ? { ...c, signup_link: json.signup_token } : c
-          ),
-        }));
-        toast.success(`Login link created for ${classroom.name}`);
-      } else {
-        toast.error(json.detail || 'Failed to create the login link');
-      }
-    } catch (error) {
-      console.error('Error generating signup link:', error);
-      toast.error('Network error while creating the login link');
-    } finally {
-      setGeneratingFor(null);
+    const result = await generateSignupLink(classroom.id);
+    if (result.success) {
+      setData((prev) => ({
+        ...prev,
+        classrooms: prev.classrooms.map((c) =>
+          c.id === classroom.id ? { ...c, signup_link: result.signupToken } : c
+        ),
+      }));
+      toast.success(`Login link created for ${classroom.name}`);
     }
+    setGeneratingFor(null);
   };
 
   // Everything about a classroom lives in its workspace; the workspace loads

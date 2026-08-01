@@ -135,8 +135,8 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
         headers=headers,
         json={"league_id": other_league.id},
     )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 3: Missing league_id (Pydantic 422)
     response = client.post(

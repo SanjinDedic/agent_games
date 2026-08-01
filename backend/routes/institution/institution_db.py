@@ -4,16 +4,12 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple, Union
 
-from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select
 
-from backend.database.db_models import (Exercise, ExerciseSubmission,
-                                        ExerciseSubmissionMetadata,
-                                        Institution, League, LeagueType,
+from backend.database.db_models import (Institution, League, LeagueType,
                                         LeagueTutorial, SimulationResult,
-                                        SimulationResultItem, Submission,
-                                        SubmissionMetadata, Team, TeamType,
+                                        SimulationResultItem, Team, TeamType,
                                         Tutorial)
 from backend.database.submission_helpers import (delete_submissions_for_teams,
                                                  delete_team_children)
@@ -65,11 +61,6 @@ class TeamNotFoundError(TeamError):
 
 class TeamExistsError(TeamError):
     """Raised when a team name collides within the institution (maps to HTTP 409)."""
-    pass
-
-
-class InstitutionAccessError(Exception):
-    """Raised when an institution tries to access data it doesn't own (maps to HTTP 403)."""
     pass
 
 
@@ -192,27 +183,7 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
         if existing_team:
             raise TeamExistsError(f"Team with name '{team_data.name}' already exists in this institution")
 
-        # Get unassigned league for this institution
-        unassigned_league = session.exec(
-            select(League)
-            .where(League.name == "unassigned")
-            .where(League.institution_id == institution_id)
-        ).first()
-
-        if not unassigned_league:
-            # Create an unassigned league for this institution if it doesn't exist
-            unassigned_league = League(
-                name="unassigned",
-                created_date=utc_now(),
-                expiry_date=(
-                    utc_now() + timedelta(hours=24*7)
-                ),
-                game="greedy_pig",  # Default game
-                institution_id=institution_id,
-                league_type=LeagueType.INSTITUTION,
-            )
-            session.add(unassigned_league)
-            session.flush()
+        unassigned_league = get_unassigned_league(session, institution_id)
 
         team = Team(
             name=team_data.name,
@@ -241,14 +212,7 @@ def create_team(session: Session, team_data, institution_id: int) -> Dict:
 
 def delete_team(session: Session, team_id: int, institution_id: int) -> str:
     """Delete a team and its associated data"""
-    team = session.exec(select(Team).where(Team.id == team_id)).first()
-
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    # Verify the team belongs to this institution
-    if team.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to delete this team")
+    team = get_team_by_id(session, team_id, institution_id)
 
     # Clear everything that references the team first
     delete_team_children(session, [team.id])
@@ -329,208 +293,28 @@ def get_classroom_summaries(session: Session, institution_id: int) -> list:
     ]
 
 
-def get_teams_progress(session: Session, institution_id: int) -> list:
-    """Per-team agent submission stats: attempt/validated counts, hints used,
-    and the latest attempt timestamp."""
-    teams = session.exec(
-        select(Team).where(Team.institution_id == institution_id)
-    ).all()
-    team_ids = [team.id for team in teams]
-
-    attempt_stats = {}
-    validated_counts = {}
-    if team_ids:
-        attempt_stats = {
-            team_id: (attempts, hints, latest)
-            for team_id, attempts, hints, latest in session.exec(
-                select(
-                    SubmissionMetadata.team_id,
-                    func.count(SubmissionMetadata.id),
-                    func.sum(
-                        case((SubmissionMetadata.hint_included == True, 1), else_=0)  # noqa: E712
-                    ),
-                    func.max(SubmissionMetadata.timestamp),
-                )
-                .where(SubmissionMetadata.team_id.in_(team_ids))
-                .group_by(SubmissionMetadata.team_id)
-            ).all()
-        }
-        validated_counts = dict(
-            session.exec(
-                select(SubmissionMetadata.team_id, func.count(Submission.id))
-                .join(Submission, Submission.metadata_id == SubmissionMetadata.id)
-                .where(SubmissionMetadata.team_id.in_(team_ids))
-                .group_by(SubmissionMetadata.team_id)
-            ).all()
-        )
-
-    # One newest-first scan of ranked submissions gives both the last-3
-    # placements and the ever-hit-first flag (which must see full history,
-    # not just the window). Pre-ranking submissions have NULL and are skipped.
-    recent_rankings: dict = {}
-    achieved_first: set = set()
-    if team_ids:
-        ranked_rows = session.exec(
-            select(SubmissionMetadata.team_id, Submission.ranking)
-            .join(Submission, Submission.metadata_id == SubmissionMetadata.id)
-            .where(SubmissionMetadata.team_id.in_(team_ids))
-            .where(Submission.ranking.is_not(None))
-            .order_by(Submission.timestamp.desc(), Submission.id.desc())
-        ).all()
-        for team_id, ranking in ranked_rows:
-            if len(recent_rankings.setdefault(team_id, [])) < 3:
-                recent_rankings[team_id].append(ranking)
-            if ranking == 1:
-                achieved_first.add(team_id)
-
-    progress = []
-    for team in teams:
-        attempts, hints, latest = attempt_stats.get(team.id, (0, 0, None))
-        progress.append(
-            {
-                "id": team.id,
-                "name": team.name,
-                "school": team.school_name,
-                "league": team.league.name if team.league else None,
-                "total_attempts": attempts,
-                "validated_submissions": validated_counts.get(team.id, 0),
-                "hints_used": hints,
-                "latest_submission": latest.isoformat() if latest else None,
-                # oldest -> newest so the row reads as a trend
-                "recent_rankings": list(reversed(recent_rankings.get(team.id, []))),
-                "achieved_first": team.id in achieved_first,
-            }
-        )
-    return progress
-
-
-def get_tutorials_progress(session: Session, institution_id: int) -> list:
-    """Per-exercise attempted/passed team counts for every tutorial attached
-    to one of the institution's leagues.
-
-    A tutorial's eligible teams are the teams currently in the leagues it is
-    attached to; attempted/passed counts only include those teams, so a team
-    that submitted and then moved to a league without the tutorial drops out
-    of both sides of the rate.
-    """
-    league_names = dict(
-        session.exec(
-            select(League.id, League.name).where(
-                League.institution_id == institution_id
-            )
-        ).all()
-    )
-    if not league_names:
-        return []
-
-    leagues_by_tutorial: dict = {}
-    for link in session.exec(
-        select(LeagueTutorial).where(
-            LeagueTutorial.league_id.in_(league_names)
-        )
-    ).all():
-        leagues_by_tutorial.setdefault(link.tutorial_id, set()).add(link.league_id)
-    if not leagues_by_tutorial:
-        return []
-
-    tutorials = session.exec(
-        select(Tutorial)
-        .where(Tutorial.id.in_(leagues_by_tutorial))
-        .order_by(Tutorial.id)
-    ).all()
-
-    progress = []
-    for tutorial in tutorials:
-        tutorial_league_ids = leagues_by_tutorial[tutorial.id]
-        eligible_team_ids = set(
-            session.exec(
-                select(Team.id).where(Team.league_id.in_(tutorial_league_ids))
-            ).all()
-        )
-
-        attempted_counts = {}
-        passed_counts = {}
-        if eligible_team_ids:
-            attempted_counts = dict(
-                session.exec(
-                    select(
-                        ExerciseSubmissionMetadata.exercise_id,
-                        func.count(
-                            func.distinct(ExerciseSubmissionMetadata.team_id)
-                        ),
-                    )
-                    .join(
-                        Exercise,
-                        Exercise.id == ExerciseSubmissionMetadata.exercise_id,
-                    )
-                    .where(Exercise.tutorial_id == tutorial.id)
-                    .where(
-                        ExerciseSubmissionMetadata.team_id.in_(eligible_team_ids)
-                    )
-                    .group_by(ExerciseSubmissionMetadata.exercise_id)
-                ).all()
-            )
-            passed_counts = dict(
-                session.exec(
-                    select(
-                        ExerciseSubmissionMetadata.exercise_id,
-                        func.count(
-                            func.distinct(ExerciseSubmissionMetadata.team_id)
-                        ),
-                    )
-                    .join(
-                        ExerciseSubmission,
-                        ExerciseSubmission.metadata_id
-                        == ExerciseSubmissionMetadata.id,
-                    )
-                    .join(
-                        Exercise,
-                        Exercise.id == ExerciseSubmissionMetadata.exercise_id,
-                    )
-                    .where(Exercise.tutorial_id == tutorial.id)
-                    .where(
-                        ExerciseSubmissionMetadata.team_id.in_(eligible_team_ids)
-                    )
-                    .where(ExerciseSubmission.passed == True)  # noqa: E712
-                    .group_by(ExerciseSubmissionMetadata.exercise_id)
-                ).all()
-            )
-
-        progress.append(
-            {
-                "id": tutorial.id,
-                "title": tutorial.title,
-                "team_count": len(eligible_team_ids),
-                "league_names": sorted(
-                    league_names[league_id] for league_id in tutorial_league_ids
-                ),
-                "exercises": [
-                    {
-                        "id": exercise.id,
-                        "title": exercise.title,
-                        "order_index": exercise.order_index,
-                        "attempted_count": attempted_counts.get(exercise.id, 0),
-                        "passed_count": passed_counts.get(exercise.id, 0),
-                    }
-                    for exercise in tutorial.exercises
-                ],
-            }
-        )
-    return progress
-
-
 def get_league_by_id(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> League:
-    """Get a league by ID, ensuring it belongs to the institution (admin bypasses ownership check)"""
-    league = session.exec(select(League).where(League.id == league_id)).first()
+    """Get a league by ID, ensuring it belongs to the institution (admin bypasses ownership check).
 
-    if not league:
+    A foreign league raises the same 404 as a missing one, so a response never
+    confirms that another institution's league id exists."""
+    league = session.get(League, league_id)
+    if not league or (not is_admin and league.institution_id != institution_id):
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Admin/Admin Institution can access any league
-    if not is_admin and league.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to access this league")
-
     return league
+
+
+def get_team_by_id(
+    session: Session, team_id: int, institution_id: int, is_admin: bool = False
+) -> Team:
+    """Get a team by ID, ensuring it belongs to the institution (admin bypasses ownership check).
+
+    A foreign team raises the same 404 as a missing one, so a response never
+    confirms that another institution's team id exists."""
+    team = session.get(Team, team_id)
+    if not team or (not is_admin and team.institution_id != institution_id):
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+    return team
 
 
 def save_simulation_results(
@@ -595,9 +379,7 @@ def save_simulation_results(
 
 def get_all_league_results(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> Dict:
     """Get all simulation results for a league"""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     results = []
     for sim in league.simulation_results:
@@ -616,16 +398,13 @@ def publish_sim_results(
     is_admin: bool = False,
 ) -> Tuple[str, Dict]:
     """Publish simulation results"""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
+    # A sim belonging to a different league 404s like a missing one, so the
+    # response never confirms a foreign simulation id exists.
     simulation = session.get(SimulationResult, sim_id)
-    if not simulation:
+    if not simulation or simulation.league_id != league.id:
         raise SimulationResultNotFoundError(f"Simulation result with ID {sim_id} not found")
-
-    if simulation.league_id != league.id:
-        raise InstitutionAccessError("You don't have permission to publish this simulation result")
 
     if not simulation.publish_link:
         simulation.publish_link = secrets.token_urlsafe(16)
@@ -663,9 +442,7 @@ def update_expiry_date(
     is capped at the subscription expiry and the message says so. Admins set
     dates freely.
     """
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     capped_at = None
     if not is_admin and league.institution_id is not None:
@@ -694,11 +471,7 @@ def update_league_info(
     is_admin: bool = False,
 ) -> str:
     """Update the per-league markdown info block."""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(
-            f"League with ID {league_id} not found in your institution"
-        )
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     league.info_markdown = info_markdown or ""
     session.add(league)
@@ -708,21 +481,8 @@ def update_league_info(
 
 def assign_team_to_league(session: Session, team_id: int, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Assign a team to a league within the same institution"""
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    # Verify the team belongs to this institution (admin bypasses)
-    if not is_admin and team.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to modify this team")
-
-    league = session.get(League, league_id)
-    if not league:
-        raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Verify the league belongs to this institution (admin bypasses)
-    if not is_admin and league.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to assign teams to this league")
+    team = get_team_by_id(session, team_id, institution_id, is_admin=is_admin)
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     team.league_id = league.id
     session.add(team)
@@ -731,23 +491,37 @@ def assign_team_to_league(session: Session, team_id: int, league_id: int, instit
 
 
 def get_unassigned_league(session: Session, institution_id: int) -> League:
-    """Fetch the 'unassigned' league for an institution."""
+    """Fetch the 'unassigned' holding-pen league for an institution, creating
+    it if absent.
+
+    Creation must be lazy: students who join via a signup link go straight
+    into their classroom, so an institution can reach unassign/delete-league
+    without the holding pen ever having been created.
+    """
     unassigned_league = session.exec(
         select(League)
         .where(League.name == "unassigned")
         .where(League.institution_id == institution_id)
     ).first()
+
+    if not unassigned_league:
+        unassigned_league = League(
+            name="unassigned",
+            created_date=utc_now(),
+            expiry_date=utc_now() + timedelta(days=365),
+            game="greedy_pig",  # Default game
+            institution_id=institution_id,
+            league_type=LeagueType.INSTITUTION,
+        )
+        session.add(unassigned_league)
+        session.flush()  # callers need the ID before commit
+
     return unassigned_league
 
 
 def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
     """Move a team to the current institution's 'unassigned' league."""
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    if team.institution_id != institution_id:
-        raise InstitutionAccessError("You don't have permission to modify this team")
+    team = get_team_by_id(session, team_id, institution_id)
 
     unassigned_league = get_unassigned_league(session, institution_id)
     team.league_id = unassigned_league.id
@@ -758,15 +532,7 @@ def unassign_team(session: Session, team_id: int, institution_id: int) -> str:
 
 def generate_signup_link(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> Dict:
     """Generate a new signup link for a league"""
-    league = session.get(League, league_id)
-    if not league:
-        raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    # Check if the league belongs to this institution (admin bypasses)
-    if not is_admin and league.institution_id != institution_id:
-        raise InstitutionAccessError(
-            "You don't have permission to access this league"
-        )
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     # Generate a new signup token
     signup_token = secrets.token_urlsafe(16)
@@ -790,14 +556,7 @@ def generate_team_password_reset(
     Regenerating replaces any previous token, so a mis-shared link can be
     invalidated by generating a fresh one.
     """
-    team = session.get(Team, team_id)
-    if not team:
-        raise TeamNotFoundError(f"Team with ID {team_id} not found")
-
-    if team.institution_id != institution_id:
-        raise InstitutionAccessError(
-            "You don't have permission to reset this team's password"
-        )
+    team = get_team_by_id(session, team_id, institution_id)
 
     reset_token = secrets.token_urlsafe(16)
     team.password_reset_token = reset_token
@@ -812,37 +571,13 @@ def generate_team_password_reset(
 
 def delete_league(session: Session, league_id: int, institution_id: int, is_admin: bool = False) -> str:
     """Delete a league and move its teams to the unassigned league"""
-    league = session.get(League, league_id)
-    if not league or (not is_admin and league.institution_id != institution_id):
-        raise LeagueNotFoundError(
-            f"League with ID {league_id} not found in your institution"
-        )
+    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
 
     league_name = league.name
     if league_name.lower() == "unassigned":
         raise ProtectedLeagueError("Cannot delete the 'unassigned' league")
 
-    # Find the unassigned league for this institution
-    unassigned_league = session.exec(
-        select(League)
-        .where(League.name == "unassigned")
-        .where(League.institution_id == institution_id)
-    ).first()
-
-    if not unassigned_league:
-        # Create an unassigned league if it doesn't exist
-        unassigned_league = League(
-            name="unassigned",
-            created_date=utc_now(),
-            expiry_date=(
-                utc_now() + timedelta(days=365)  # Long expiry
-            ),
-            game="greedy_pig",  # Default game
-            institution_id=institution_id,
-            league_type=LeagueType.INSTITUTION,
-        )
-        session.add(unassigned_league)
-        session.flush()  # Get the ID for the new league
+    unassigned_league = get_unassigned_league(session, institution_id)
 
     # Get all teams in the league
     teams = session.exec(select(Team).where(Team.league_id == league.id)).all()

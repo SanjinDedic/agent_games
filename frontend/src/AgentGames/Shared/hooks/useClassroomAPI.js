@@ -68,8 +68,20 @@ export const useClassroomAPI = () => {
   // details. Used for the membership end date a classroom cannot outlive.
   const getSubscription = useCallback(() => get('/institution/subscription'), [get]);
 
+  // The institution home payload: active/expired classrooms + subscription.
+  const getHome = useCallback(() => get('/institution/home'), [get]);
+
+  // Lives under /user/ but is consumed here only by the classroom
+  // Submissions tab, so it belongs with the workspace reads.
+  const getLeagueSubmissions = useCallback(
+    (leagueId) => get(`/user/get-all-league-submissions/${leagueId}`),
+    [get]
+  );
+
   return {
     getSubscription,
+    getHome,
+    getLeagueSubmissions,
     getClassroomProgress,
     getTutorialMatrix,
     getConceptMatrix,

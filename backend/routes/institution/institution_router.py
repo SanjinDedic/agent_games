@@ -17,7 +17,6 @@ from backend.routes.institution.classroom_db import (
     get_classroom_tutorial_matrix,
     get_student_agent_submissions,
     get_student_summary,
-    get_team_by_id,
 )
 from backend.routes.institution.institution_db import (
     ProtectedLeagueError,
@@ -32,8 +31,7 @@ from backend.routes.institution.institution_db import (
     get_all_teams,
     get_classroom_summaries,
     get_league_by_id,
-    get_teams_progress,
-    get_tutorials_progress,
+    get_team_by_id,
     publish_sim_results,
     save_simulation_results,
     unassign_team,
@@ -71,7 +69,8 @@ institution_router = APIRouter()
 # Business failures surface via the HTTP status line, not a masked 200 envelope.
 # League/team lookups and ownership checks raise domain exceptions mapped centrally
 # in api.py: LeagueNotFoundError / TeamNotFoundError / SimulationResultNotFoundError
-# -> 404, InstitutionAccessError -> 403, LeagueExistsError / TeamExistsError -> 409,
+# -> 404 (foreign resources 404 like missing ones, so responses never confirm
+# another institution's ids exist), LeagueExistsError / TeamExistsError -> 409,
 # SchoolsConfigError / ProtectedLeagueError -> 400. A token missing its institution_id
 # and a missing Docker grant are request problems the router owns, raised inline.
 # Anything unexpected surfaces as a 500 rather than a swallowed error. Each route
@@ -150,22 +149,6 @@ async def get_teams_endpoint(
     """Get all teams for the institution."""
     institution_id, _ = _require_institution(current_user)
     return get_all_teams(session, institution_id)
-
-
-@institution_router.get("/team-progress")
-@verify_admin_or_institution
-async def team_progress_endpoint(
-    session: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Data backing the Team Progress tab: per-team agent submission stats
-    plus per-exercise completion counts for each tutorial attached to the
-    institution's leagues."""
-    institution_id, _ = _require_institution(current_user)
-    return {
-        "teams": get_teams_progress(session, institution_id),
-        "tutorials": get_tutorials_progress(session, institution_id),
-    }
 
 
 @institution_router.get("/classroom/{league_id}/progress")

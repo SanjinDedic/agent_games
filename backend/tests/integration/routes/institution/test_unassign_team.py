@@ -95,6 +95,39 @@ def test_unassign_team_success(client, unassign_setup, db_session):
     assert data["team"].league_id == data["unassigned"].id
 
 
+def test_unassign_team_creates_missing_unassigned_league(
+    client, unassign_setup, db_session
+):
+    """Unassign works even when the institution has no 'unassigned' league yet.
+
+    Students who join via signup link go straight into a classroom, so the
+    holding pen may never have been created; unassign must create it lazily
+    rather than 500."""
+    data = unassign_setup
+
+    # Remove the (empty) holding pen to simulate a link-signup-only institution.
+    unassigned_id = data["unassigned"].id
+    db_session.delete(data["unassigned"])
+    db_session.commit()
+
+    resp = client.post(
+        "/institution/unassign-team",
+        headers=data["headers"],
+        json={"team_id": data["team"].id},
+    )
+    assert resp.status_code == 200
+
+    recreated = db_session.exec(
+        select(League)
+        .where(League.name == "unassigned")
+        .where(League.institution_id == data["institution"].id)
+    ).first()
+    assert recreated is not None
+    assert recreated.id != unassigned_id
+    db_session.refresh(data["team"])
+    assert data["team"].league_id == recreated.id
+
+
 def test_unassign_team_not_found(client, unassign_setup):
     """Unassign non-existent team returns error."""
     resp = client.post(
@@ -131,5 +164,5 @@ def test_unassign_team_wrong_institution(client, unassign_setup, db_session):
         headers={"Authorization": f"Bearer {other_token}"},
         json={"team_id": unassign_setup["team"].id},
     )
-    assert resp.status_code == 403
-    assert "permission" in resp.json()["detail"].lower()
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()

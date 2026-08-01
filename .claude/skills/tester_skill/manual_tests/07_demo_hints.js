@@ -41,6 +41,8 @@ const GAMES = [
     find: 'return random.choice(legal_moves)  # fallback to random legal card', bad: "return 'ZZ'" },
   { game: 'thirteen', user: `t13${SALT}`,
     find: 'return random.choice(legal_moves)  # fallback: a random legal combo (or pass)', bad: "return ['ZZ']" },
+  { game: 'breakthrough', user: `bt${SALT}`,
+    find: 'def make_decision(self, game_state):', bad: 'def make_decision(self, game_state)' },
   { game: 'arena_champions', user: `arena${SALT}`,
     invalidReturn: { find: "return random.choice(['attack', 'big_attack', 'precise_attack'])", bad: "return 'flee'" },
     find: 'def make_combat_decision(self, opponent_stats, turn, your_role, last_opponent_action=None):',

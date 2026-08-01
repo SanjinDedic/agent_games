@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { useSelector } from 'react-redux';
-import { authFetch } from '../../utils/authFetch';
-import { selectToken } from '../../slices/authSlice';
+import useTeamManagementAPI from '../Shared/hooks/useTeamManagementAPI';
+import useLeagueAPI from '../Shared/hooks/useLeagueAPI';
 import { useTerms } from '../Shared/terminology';
 
 // How many students the card shows before the "show all" toggle.
@@ -15,8 +14,8 @@ const COLLAPSED_COUNT = 2;
  */
 function UnassignedStudentsCard({ classrooms, onAssigned }) {
   const T = useTerms();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
+  const { getUnassignedTeams } = useTeamManagementAPI();
+  const { assignTeamToLeague } = useLeagueAPI('institution');
 
   // null = still loading
   const [students, setStudents] = useState(null);
@@ -26,24 +25,9 @@ function UnassignedStudentsCard({ classrooms, onAssigned }) {
   const [assigningId, setAssigningId] = useState(null);
 
   const fetchUnassigned = useCallback(async () => {
-    try {
-      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data.teams)) {
-        setStudents(
-          data.teams.filter((t) => !t.league || t.league === 'unassigned')
-        );
-      } else {
-        setStudents([]);
-        toast.error(data.detail || `Failed to load unassigned ${T.teams}`);
-      }
-    } catch (error) {
-      console.error('Error fetching unassigned teams:', error);
-      setStudents([]);
-    }
-  }, [apiUrl, accessToken]);
+    const result = await getUnassignedTeams();
+    setStudents(result.success ? result.data.teams : []);
+  }, [getUnassignedTeams]);
 
   useEffect(() => {
     fetchUnassigned();
@@ -53,38 +37,16 @@ function UnassignedStudentsCard({ classrooms, onAssigned }) {
     const leagueId = selections[student.id] ?? classrooms[0]?.id;
     if (!leagueId) return;
     setAssigningId(student.id);
-    try {
-      const response = await authFetch(
-        `${apiUrl}/institution/assign-team-to-league`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            team_id: student.id,
-            league_id: Number(leagueId),
-          }),
-        }
+    const result = await assignTeamToLeague(student.id, Number(leagueId));
+    if (result.success) {
+      const classroom = classrooms.find((c) => c.id === Number(leagueId));
+      toast.success(
+        `${student.name} assigned to ${classroom ? classroom.name : `the ${T.league}`}`
       );
-      const data = await response.json();
-      if (response.ok) {
-        const classroom = classrooms.find((c) => c.id === Number(leagueId));
-        toast.success(
-          `${student.name} assigned to ${classroom ? classroom.name : `the ${T.league}`}`
-        );
-        setStudents((prev) => prev.filter((s) => s.id !== student.id));
-        if (onAssigned) onAssigned();
-      } else {
-        toast.error(data.detail || `Failed to assign ${T.team}`);
-      }
-    } catch (error) {
-      console.error('Error assigning team:', error);
-      toast.error(`Network error while assigning the ${T.team}`);
-    } finally {
-      setAssigningId(null);
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      if (onAssigned) onAssigned();
     }
+    setAssigningId(null);
   };
 
   const visible =

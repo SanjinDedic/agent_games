@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { toast } from 'react-toastify';
 
-import { selectToken } from '../../../slices/authSlice';
-import { authFetch } from '../../../utils/authFetch';
+import usePlagiarismAssessment from '../../Shared/hooks/usePlagiarismAssessment';
 import { useTerms } from '../../Shared/terminology';
 import CodeHistoryViewer, {
   formatDuration,
@@ -24,49 +21,8 @@ function AgentCodeModal({
   onClose,
 }) {
   const T = useTerms();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
-
   const [index, setIndex] = useState(initialIndex);
-  const [assessing, setAssessing] = useState(false);
-  const [report, setReport] = useState(null);
-
-  const handleAssessPlagiarism = async () => {
-    if (!teamId) {
-      toast.error(`${T.Team} id not found`);
-      return;
-    }
-    const proceed = window.confirm(
-      `This will send ${teamName}'s code submissions to OpenAI for analysis. Continue?`
-    );
-    if (!proceed) return;
-
-    setAssessing(true);
-    setReport(null);
-    try {
-      const resp = await authFetch(`${apiUrl}/ai/assess-plagiarism`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          league_id: Number(leagueId),
-          team_id: teamId,
-        }),
-      });
-      const data = await resp.json();
-      if (resp.ok) {
-        setReport(data);
-      } else {
-        toast.error(data.detail || 'Assessment failed');
-      }
-    } catch (e) {
-      toast.error('Network error running assessment');
-    } finally {
-      setAssessing(false);
-    }
-  };
+  const { assessing, report, clearReport, assess } = usePlagiarismAssessment();
 
   return (
     <>
@@ -84,7 +40,7 @@ function AgentCodeModal({
             </h3>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleAssessPlagiarism}
+                onClick={() => assess({ teamId, leagueId, teamName })}
                 disabled={assessing}
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
               >
@@ -125,7 +81,7 @@ function AgentCodeModal({
         </div>
       </div>
 
-      <PlagiarismReportModal report={report} onClose={() => setReport(null)} />
+      <PlagiarismReportModal report={report} onClose={clearReport} />
     </>
   );
 }

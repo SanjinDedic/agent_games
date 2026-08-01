@@ -74,7 +74,7 @@ user_router = APIRouter()
 # TeamNotFoundError / LeagueNotFoundError / ResultNotFoundError -> 404,
 # TeamExistsError -> 409, LeagueExpiredError -> 410, DemoLeagueError -> 403,
 # SubmissionLimitExceededError -> 429; institution_db's LeagueNotFoundError -> 404
-# and InstitutionAccessError -> 403 cover the league-ownership checks; the AI
+# covers the league-ownership checks (foreign leagues 404 like missing ones); the AI
 # client errors (LLMResponseError -> 502, AIRequestTimeoutError -> 504,
 # NoApiKeyError -> 400) cover hint generation. Request problems the router owns
 # (non-team token, unknown game, school not in list) are raised inline. Anything
@@ -430,7 +430,7 @@ async def get_all_league_submissions(
 
     Access is restricted to the institution that owns the league (admins
     bypass the ownership check). A league the caller does not own raises
-    InstitutionAccessError -> 403 — never leaks cross-institution data.
+    LeagueNotFoundError -> 404 — never leaks cross-institution data.
     """
     institution_id, is_admin = _resolve_institution(current_user)
     if not institution_id:

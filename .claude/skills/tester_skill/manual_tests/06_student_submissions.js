@@ -12,10 +12,11 @@
 //   6.3 (Student 1 only) one tutorial exercise end-to-end, exactly as in
 //       Stage 3.3 but with the classroom wording (STUDENT: footer label, and
 //       the navbar link reading "Short Course" rather than "Tutorial"):
-//       starter fails 0/5 -> fix passes 5/5 -> broken code 400s -> overview
-//       Completed / 1 of <total>. PREREQUISITES: tutorial seeded AND attached
-//       to the classroom (05 attaches it). Progress is per-student, so this
-//       classroom student starts at 0 completed even after Stage 3 ran.
+//       starter fails 0/5 -> fix passes 5/5 -> broken code (syntax error)
+//       400s -> overview Completed / 1 of <total>. PREREQUISITES: tutorial
+//       seeded AND attached to the classroom (05 attaches it). Progress is
+//       per-student, so this classroom student starts at 0 completed even
+//       after Stage 3 ran.
 //   6.4 logout
 //
 // Terminology note: the signup toast follows the classroom terminology now
@@ -42,10 +43,12 @@ const studentDefs = (run) => [
 ];
 
 // 6.3 (Student 1 only) — same tutorial exercise as Stage 3.3 ("Add Up the
-// Scoreboard", position read off the overview) but asserting the classroom
-// wording: the workspace
-// footer label is STUDENT:, not TEAM:. Submission outcomes are asserted from
-// the /tutorial/submit-exercise response body exactly as in Stage 3.3.
+// Scoreboard", a top-level-code exercise, position read off the overview)
+// but asserting the classroom wording: the workspace footer label is
+// STUDENT:, not TEAM:. Submission outcomes are asserted from the submit
+// response body exactly as in Stage 3.3 (Pyodide-first via
+// /tutorial/submit-exercise-result, Celery fallback via
+// /tutorial/submit-exercise — one waitForResponse substring covers both).
 async function runTutorialExercise(page) {
   console.log('\n=== Short Course exercise (Student 1 only) ===');
 
@@ -78,15 +81,16 @@ async function runTutorialExercise(page) {
   console.log('[6.3] exercise workspace open (Problem Description, footer STUDENT label, no Get Hint)');
 
   const starter = await getMonacoValue(page);
-  if (!starter.includes('def total_banked(banked_money):')) {
-    throw new Error('exercise starter code no longer defines total_banked(banked_money)');
+  if (!starter.includes('banked_money = {')) {
+    throw new Error('exercise starter code no longer sets up the banked_money scoreboard dict');
   }
-  const PASS_LINE = 'pass  # Replace this line with your code';
-  if (!starter.includes(PASS_LINE)) {
-    throw new Error(`exercise starter code no longer contains the line the manual says to replace: ${PASS_LINE}`);
+  const TODO_LINE = '# Your code goes here';
+  if (!starter.includes(TODO_LINE)) {
+    throw new Error(`exercise starter code no longer contains the line the student replaces: ${TODO_LINE}`);
   }
 
-  // Submission 1 — starter as-is: runs fine but every test must fail (returns None)
+  // Submission 1 — starter as-is: runs fine (just the dict and comments) but
+  // every test must fail (total/past_20 undefined, nothing printed)
   const sub1 = await submitCode(page, 120000, '/tutorial/submit-exercise');
   if (!sub1.ok || sub1.body.passed !== false || (sub1.body.test_results || []).length !== 5) {
     throw new Error(`starter submission should be 200 with 5 failing tests but got HTTP ${sub1.status}: ${JSON.stringify(sub1.body).slice(0, 300)}`);
@@ -95,7 +99,18 @@ async function runTutorialExercise(page) {
   console.log('[6.3] starter submission: 0 of 5 tests passed (as expected)');
 
   // Submission 2 — the fix: all tests must pass
-  await setMonacoValue(page, starter.replace(PASS_LINE, 'return sum(banked_money.values())'));
+  const FIX = [
+    'total = 0',
+    'past_20 = 0',
+    'for money in banked_money.values():',
+    '    total = total + money',
+    '    if money >= 20:',
+    '        past_20 = past_20 + 1',
+    '',
+    'print(f"Total banked: {total}")',
+    'print(f"Players past 20: {past_20}")',
+  ].join('\n');
+  await setMonacoValue(page, starter.replace(TODO_LINE, FIX));
   const sub2 = await submitCode(page, 120000, '/tutorial/submit-exercise');
   if (!sub2.ok || sub2.body.passed !== true) {
     throw new Error(`fixed submission should pass all tests but got HTTP ${sub2.status}: ${JSON.stringify(sub2.body).slice(0, 300)}`);
@@ -104,12 +119,14 @@ async function runTutorialExercise(page) {
   console.log('[6.3] fixed submission: all 5 tests passed');
 
   // Submission 3 — code that never produces test results must 400 with the
-  // worker's message (renamed entry function = deterministic message).
-  await setMonacoValue(page, starter.replace('def total_banked(', 'def total_banked_typo('));
+  // harness's message. The exercise is top-level code (no entry function),
+  // so a syntax error is the deterministic no-results case — same message
+  // from Pyodide and the Celery fallback (harness parity).
+  await setMonacoValue(page, starter + '\nthis is not python\n');
   const sub3 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (sub3.ok) throw new Error('broken exercise submission (renamed entry function) unexpectedly passed');
+  if (sub3.ok) throw new Error('broken exercise submission (syntax error) unexpectedly passed');
   const detail = sub3.body.detail || '';
-  if (!detail.includes("Your code must define a function named 'total_banked'")) {
+  if (!detail.includes('Your code failed to run before any tests started.')) {
     throw new Error(`unexpected exercise rejection message: HTTP ${sub3.status} "${detail}"`);
   }
   console.log(`[6.3] broken submission correctly rejected: "${detail}"`);

@@ -276,4 +276,4 @@ def test_run_simulation_rejects_other_institutions_league(
         headers={"Authorization": f"Bearer {outsider_token}"},
         json={"league_id": test_league.id, "num_simulations": 10},
     )
-    assert response.status_code == 403
+    assert response.status_code == 404

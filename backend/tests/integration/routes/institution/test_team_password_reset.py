@@ -99,7 +99,7 @@ def test_generate_reset_link(client, reset_setup, db_session):
 
 
 def test_generate_reset_link_failures(client, reset_setup, team_token):
-    """Missing team -> 404, foreign team -> 403, student token -> 403."""
+    """Missing team -> 404, foreign team -> 404, student token -> 403."""
     headers = reset_setup["headers"]
 
     response = client.post(
@@ -112,8 +112,8 @@ def test_generate_reset_link_failures(client, reset_setup, team_token):
         headers=headers,
         json={"team_id": reset_setup["other_team"].id},
     )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     response = client.post(
         "/institution/team-password-reset",

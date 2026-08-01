@@ -16,12 +16,15 @@
 #   08 student password-reset link (classroom flow; needs 01 + 05 + 06)
 #   09 teacher progress dashboards: short-course grid, concept map, student
 #      page (classroom flow; needs 01 + 05 + 06)
+#   10 teacher team management: /InstitutionTeam directory, unassigned card,
+#      Students-tab add/delete, plagiarism consent (classroom flow; needs
+#      01 + 05 + 06)
 #
 # Owns all setup: ensures the permanent Playwright install (outside the repo),
 # sources .env, pulls OPENAI_API_KEY from .kamal/secrets when .env doesn't
 # provide one (stage 1.5 validates it against OpenAI). Stages share state via
-# /tmp/agent_games_manual_state.json — run 01 before 02-09 (05 needs 01's
-# teacher account; 06 needs 05's classroom join URL; 08 and 09 need 06's
+# /tmp/agent_games_manual_state.json — run 01 before 02-10 (05 needs 01's
+# teacher account; 06 needs 05's classroom join URL; 08, 09 and 10 need 06's
 # students).
 #
 # Every launch resets the stack first: docker compose down -v, up -d --wait

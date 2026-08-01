@@ -26,7 +26,6 @@ from backend.routes.ai.plagiarism_service import (
     PayloadTooLargeError,
 )
 from backend.routes.institution.institution_db import (
-    InstitutionAccessError,
     LeagueExistsError,
     LeagueNotFoundError,
     ProtectedLeagueError,
@@ -172,11 +171,6 @@ async def support_error_handler(request: Request, exc: SupportError):
 @app.exception_handler(LeagueNotFoundError)
 async def league_not_found_handler(request: Request, exc: LeagueNotFoundError):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(InstitutionAccessError)
-async def institution_access_handler(request: Request, exc: InstitutionAccessError):
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
 @app.exception_handler(SimulationResultNotFoundError)

@@ -1,7 +1,8 @@
 // src/AgentGames/Shared/League/SimulationRunSummary.jsx
 import React, { useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
+
+import { copyToClipboard } from '../../../utils/clipboard';
 
 import LeaguePublish from './LeaguePublish';
 import StatChip from '../Common/StatChip';
@@ -117,10 +118,7 @@ const SimulationRunSummary = ({
     ? `${window.location.protocol}//${window.location.host}${resultsUrl}`
     : null;
 
-  const copy = (url) => {
-    navigator.clipboard.writeText(url);
-    toast.success('Link copied to clipboard!');
-  };
+  const copy = (url) => copyToClipboard(url, 'Link copied to clipboard!');
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 space-y-5">

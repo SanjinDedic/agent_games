@@ -128,7 +128,7 @@ def test_classroom_progress_access_control(client, classroom_setup):
 
     # Another institution's token
     response = client.get(url, headers=s.rival_headers)
-    assert response.status_code == 403
+    assert response.status_code == 404
 
     # Unknown league
     response = client.get(

@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 
-import { selectToken } from '../../../slices/authSlice';
-import { authFetch } from '../../../utils/authFetch';
+import useClassroomAPI from '../../Shared/hooks/useClassroomAPI';
 import { useTerms } from '../../Shared/terminology';
 import StatusCell, { rankTone } from '../../Shared/Progress/StatusCell';
 import {
@@ -23,8 +21,7 @@ const GRID_COLUMNS = 15;
  */
 function SubmissionsTab({ league }) {
   const T = useTerms();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
+  const { getLeagueSubmissions } = useClassroomAPI();
 
   // submissions: { teamName: [{ code, timestamp, id, duration_ms }, ...] }
   const [submissions, setSubmissions] = useState({});
@@ -41,29 +38,20 @@ function SubmissionsTab({ league }) {
 
   useEffect(() => {
     const fetchSubmissions = async () => {
-      if (!league.id || !accessToken) return;
-      try {
-        setLoading(true);
-        setError('');
-        const resp = await authFetch(
-          `${apiUrl}/user/get-all-league-submissions/${league.id}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        const data = await resp.json();
-        if (resp.ok) {
-          setSubmissions(data.teams || {});
-          setTeamIds(data.team_ids || {});
-        } else {
-          setError(data.detail || 'Failed to load submissions');
-        }
-      } catch (e) {
-        setError('Error fetching submissions');
-      } finally {
-        setLoading(false);
+      if (!league.id) return;
+      setLoading(true);
+      setError('');
+      const result = await getLeagueSubmissions(league.id);
+      if (result.success) {
+        setSubmissions(result.data.teams || {});
+        setTeamIds(result.data.team_ids || {});
+      } else {
+        setError(result.error);
       }
+      setLoading(false);
     };
     fetchSubmissions();
-  }, [apiUrl, accessToken, league.id]);
+  }, [getLeagueSubmissions, league.id]);
 
   if (loading) {
     return (

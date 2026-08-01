@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 
-import { authFetch } from '../../../utils/authFetch';
-import { selectToken } from '../../../slices/authSlice';
 import useClassroomAPI from '../../Shared/hooks/useClassroomAPI';
 import useLeagueAPI from '../../Shared/hooks/useLeagueAPI';
+import useTeamManagementAPI from '../../Shared/hooks/useTeamManagementAPI';
 import { useTerms } from '../../Shared/terminology';
+import ResetLinkModal from '../../Shared/ResetLinkModal';
 import RankingSparkline from '../../Shared/Progress/RankingSparkline';
 
 /**
@@ -20,16 +19,15 @@ import RankingSparkline from '../../Shared/Progress/RankingSparkline';
 function StudentsTab({ league }) {
   const T = useTerms();
   const navigate = useNavigate();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
   const { getClassroomProgress } = useClassroomAPI();
   const { assignTeamToLeague, unassignTeam } = useLeagueAPI('institution');
+  const { createTeam, deleteTeam, resetTeamPassword, getUnassignedTeams } = useTeamManagementAPI();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  // { teamName, url } while the share-this-reset-link modal is open
-  const [resetLink, setResetLink] = useState(null);
+  // { team_name, reset_token } while the share-this-reset-link modal is open
+  const [resetTarget, setResetTarget] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newStudent, setNewStudent] = useState({ name: '', password: '', school_name: '' });
   const [unassignedPool, setUnassignedPool] = useState([]);
@@ -47,20 +45,11 @@ function StudentsTab({ league }) {
   }, [getClassroomProgress, league.id]);
 
   const refreshUnassignedPool = useCallback(async () => {
-    try {
-      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const json = await response.json();
-      if (response.ok && Array.isArray(json.teams)) {
-        setUnassignedPool(
-          json.teams.filter((t) => !t.league || t.league === 'unassigned')
-        );
-      }
-    } catch (e) {
-      console.error('Error fetching teams:', e);
+    const result = await getUnassignedTeams();
+    if (result.success) {
+      setUnassignedPool(result.data.teams);
     }
-  }, [apiUrl, accessToken]);
+  }, [getUnassignedTeams]);
 
   useEffect(() => {
     setLoading(true);
@@ -71,41 +60,17 @@ function StudentsTab({ league }) {
   const teams = useMemo(() => data?.teams || [], [data]);
 
   const handleAddStudent = async () => {
-    if (!newStudent.name.trim() || !newStudent.password.trim()) {
-      toast.error(`${T.Team} name and password are required`);
-      return;
+    const created = await createTeam(newStudent);
+    if (!created.success) return;
+    // New students land in 'unassigned'; move them straight into this classroom.
+    const assigned = await assignTeamToLeague(created.data.team_id, league.id);
+    if (assigned.success) {
+      toast.success(`${T.Team} "${created.data.name}" added to ${league.name}`);
     }
-    try {
-      const response = await authFetch(`${apiUrl}/institution/team-create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          name: newStudent.name,
-          password: newStudent.password,
-          school_name: newStudent.school_name || 'Not Available',
-        }),
-      });
-      const json = await response.json();
-      if (!response.ok) {
-        toast.error(json.detail || `Failed to add ${T.team}`);
-        return;
-      }
-      // New students land in 'unassigned'; move them straight into this classroom.
-      const assigned = await assignTeamToLeague(json.team_id, league.id);
-      if (assigned.success) {
-        toast.success(`${T.Team} "${json.name}" added to ${league.name}`);
-      }
-      setNewStudent({ name: '', password: '', school_name: '' });
-      setShowAddForm(false);
-      refresh();
-      refreshUnassignedPool();
-    } catch (e) {
-      console.error('Error adding team:', e);
-      toast.error(`Failed to add ${T.team}`);
-    }
+    setNewStudent({ name: '', password: '', school_name: '' });
+    setShowAddForm(false);
+    refresh();
+    refreshUnassignedPool();
   };
 
   const handleAssignExisting = async () => {
@@ -113,8 +78,10 @@ function StudentsTab({ league }) {
       toast.error(`Please select a ${T.team} to assign`);
       return;
     }
+    const chosen = unassignedPool.find((t) => String(t.id) === assignTeamId);
     const result = await assignTeamToLeague(assignTeamId, league.id);
     if (result.success) {
+      toast.success(`'${chosen?.name || T.team}' assigned to ${league.name}`);
       setAssignTeamId('');
       refresh();
       refreshUnassignedPool();
@@ -132,50 +99,17 @@ function StudentsTab({ league }) {
 
   const handleDelete = async (team) => {
     if (!window.confirm(`Are you sure you want to delete ${T.team} "${team.name}"? All their submissions are deleted with them.`)) return;
-    try {
-      const response = await authFetch(`${apiUrl}/institution/delete-team`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ id: team.id }),
-      });
-      const json = await response.json();
-      if (response.ok) {
-        toast.success(json.message);
-        refresh();
-      } else {
-        toast.error(json.detail || `Failed to delete ${T.team}`);
-      }
-    } catch (e) {
-      console.error('Error deleting team:', e);
-      toast.error(`Failed to delete ${T.team}`);
+    const result = await deleteTeam(team.id);
+    if (result.success) {
+      toast.success(result.data.message);
+      refresh();
     }
   };
 
   const handleResetPassword = async (team) => {
-    try {
-      const response = await authFetch(`${apiUrl}/institution/team-password-reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ team_id: team.id }),
-      });
-      const json = await response.json();
-      if (response.ok) {
-        setResetLink({
-          teamName: json.team_name,
-          url: `${window.location.origin}/reset/${json.reset_token}`,
-        });
-      } else {
-        toast.error(json.detail || 'Failed to generate reset link');
-      }
-    } catch (e) {
-      console.error('Error generating reset link:', e);
-      toast.error('Failed to generate reset link');
+    const result = await resetTeamPassword(team.id);
+    if (result.success) {
+      setResetTarget(result.data);
     }
   };
 
@@ -355,49 +289,11 @@ function StudentsTab({ league }) {
         )}
       </div>
 
-      {resetLink && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={() => setResetLink(null)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold text-ui-dark">
-              {`Password reset link for ${resetLink.teamName}`}
-            </h2>
-            <p className="text-ui-dark/70">
-              {`Share this link with the ${T.team}. It opens a page showing their name where they set a new password and are logged straight back into their account — all their work is kept. The link works once and expires in 48 hours.`}
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={resetLink.url}
-                readOnly
-                onFocus={(e) => e.target.select()}
-                className="flex-1 p-3 border border-ui-light rounded-lg text-sm bg-ui-lighter"
-              />
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(resetLink.url);
-                  toast.success('Password reset link copied to clipboard!');
-                }}
-                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium"
-                title="Copy to clipboard"
-              >
-                Copy
-              </button>
-            </div>
-            <button
-              onClick={() => setResetLink(null)}
-              className="w-full py-2 bg-ui-lighter hover:bg-ui-light text-ui-dark rounded-lg font-medium"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <ResetLinkModal
+        teamName={resetTarget?.team_name}
+        resetToken={resetTarget?.reset_token}
+        onClose={() => setResetTarget(null)}
+      />
     </div>
   );
 }

@@ -240,7 +240,15 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
         json={"league_id": league.id, "num_simulations": -1},
     )
     assert response.status_code == 422
-    
+
+    # Over the Field(le=10000) cap
+    response = client.post(
+        "/institution/run-simulation",
+        headers=headers,
+        json={"league_id": league.id, "num_simulations": 10001},
+    )
+    assert response.status_code == 422
+
     # Test case 3: Unauthorized access (no token)
     response = client.post(
         "/institution/run-simulation",

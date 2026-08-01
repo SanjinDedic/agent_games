@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 ai_router = APIRouter()
 
 # Business failures raise domain exceptions, mapped centrally by the handlers in
-# api.py: LeagueNotFoundError -> 404, InstitutionAccessError -> 403,
+# api.py: LeagueNotFoundError -> 404 (foreign leagues 404 like missing ones),
 # UnknownProviderError / NoApiKeyError / NoSubmissionsError -> 400,
 # PayloadTooLargeError -> 413, LLMResponseError -> 502, AIRequestTimeoutError -> 504.
 # Missing resources and bad tokens raise HTTPException directly. Anything unexpected
@@ -103,7 +103,7 @@ async def assess_plagiarism_endpoint(
         raise HTTPException(status_code=400, detail="Institution ID not found in token")
 
     # Verify caller owns this league (admin bypasses ownership check).
-    # LeagueNotFoundError -> 404, InstitutionAccessError -> 403.
+    # Missing and foreign leagues both raise LeagueNotFoundError -> 404.
     league = get_league_by_id(
         session, request.league_id, institution_id, is_admin=is_admin
     )
