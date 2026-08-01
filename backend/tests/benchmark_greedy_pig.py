@@ -102,10 +102,10 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         unbanked = game_state["unbanked_money"][self.name]
         banked = game_state["banked_money"][self.name]
-        rank = self.my_rank(game_state)
         if banked + unbanked >= 100:
             return "bank"
-        threshold = 16 if rank == 1 else 24
+        leading = banked >= max(game_state["banked_money"].values())
+        threshold = 16 if leading else 24
         if unbanked > threshold:
             return "bank"
         return "continue"
@@ -148,13 +148,12 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         unbanked = game_state["unbanked_money"][self.name]
         banked = game_state["banked_money"][self.name]
-        rank = self.my_rank(game_state)
         if banked + unbanked >= 100:
             return "bank"
         leader_banked = max(game_state["banked_money"].values())
         deficit = leader_banked - banked
         threshold = 18
-        if rank == 1:
+        if banked >= leader_banked:
             threshold = 15
         elif deficit > 20:
             threshold = 26
@@ -199,12 +198,11 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         unbanked = game_state["unbanked_money"][self.name]
         banked = game_state["banked_money"][self.name]
-        rank = self.my_rank(game_state)
         if banked + unbanked >= 100:
             return "bank"
         leader_banked = max(game_state["banked_money"].values())
         deficit = leader_banked - banked
-        if rank == 1:
+        if banked >= leader_banked:
             threshold = 17
         elif deficit > 25:
             threshold = 28

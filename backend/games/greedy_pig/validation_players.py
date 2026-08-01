@@ -88,17 +88,19 @@ class StopAt20Win100(Player):
         return "continue"
 
 
-class AdaptiveRankStop(Player):
-    """Player that banks over 15 points when ranked 1st, over 25 otherwise"""
+class AdaptiveLeaderStop(Player):
+    """Player that banks over 15 points when leading on banked money, over 25 otherwise"""
 
     strategy = (
         "Plays it safe in the lead and greedy when behind — banks once "
-        "unbanked money goes over 15 points while ranked 1st, but holds "
-        "out past 25 points when not in 1st place."
+        "unbanked money goes over 15 points while holding the highest "
+        "banked total, but holds out past 25 points otherwise."
     )
 
     def make_decision(self, game_state):
-        threshold = 15 if self.my_rank(game_state) == 1 else 25
+        my_banked = game_state["banked_money"][self.name]
+        leading = my_banked >= max(game_state["banked_money"].values())
+        threshold = 15 if leading else 25
         if game_state["unbanked_money"][self.name] > threshold:
             return "bank"
         return "continue"
@@ -111,5 +113,5 @@ players = [
     BankRoll4(),
     StopAt21(),
     StopAt20Win100(),
-    AdaptiveRankStop(),
+    AdaptiveLeaderStop(),
 ]
