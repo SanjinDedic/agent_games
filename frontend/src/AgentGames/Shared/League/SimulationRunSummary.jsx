@@ -209,7 +209,7 @@ const SimulationRunSummary = ({
         />
         {current?.capped && (
           <StatChip
-            label="Hit the time cap"
+            label="Stopped early"
             value={`${(current.num_simulations || 0).toLocaleString()} of ${(
               current.requested_simulations || 0
             ).toLocaleString()} games`}

@@ -25,10 +25,10 @@ async def test_status_success():
             "health": "Worker validation@host responded to ping",
             "is_healthy": True,
         },
-        "simulation-worker": {
-            "name": "simulation-worker",
+        "exercises-worker": {
+            "name": "exercises-worker",
             "status": "running",
-            "health": "Worker simulation@host responded to ping",
+            "health": "Worker exercises@host responded to ping",
             "is_healthy": True,
         },
     }

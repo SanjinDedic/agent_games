@@ -1,30 +1,32 @@
 // src/AgentGames/Shared/League/SimulationRunner.jsx
 import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { addSimulationResult } from '../../../slices/leaguesSlice';
+import { useSelector } from 'react-redux';
 import CustomRewards from '../Common/CustomRewards';
-import useLeagueAPI from '../hooks/useLeagueAPI';
+import useSimulationRun from '../hooks/useSimulationRun';
+import { isSimulationSupported } from '../../../pyodide/games/index';
 import { useTerms } from '../terminology';
 
 /**
- * Component for running league simulations
- * 
+ * Component for running league simulations in the browser (Pyodide).
+ *
  * @param {Object} props - Component props
  * @param {Object} props.league - The current league object
  * @param {string} props.userRole - User role ('admin' or 'institution')
  */
 const SimulationRunner = ({ league, userRole }) => {
   const T = useTerms();
-  const dispatch = useDispatch();
   const rewards = useSelector((state) => state.leagues.currentRewards);
   const [simulationNumber, setSimulationNumber] = useState(1);
 
-  // Use the shared API hook
-  const { isLoading, runSimulation } = useLeagueAPI(userRole);
+  const { isRunning, progress, runSimulation, cancelRun } =
+    useSimulationRun(userRole);
 
   // The auto-created "unassigned" league is a placeholder and cannot be simulated
   const isPlaceholder = league?.name?.toLowerCase() === "unassigned";
-  const isDisabled = isLoading || !league?.id || isPlaceholder;
+  // Games are ported to the in-browser runner one at a time; the rest are
+  // disabled until their engine ships in frontend/src/pyodide/games/.
+  const isUnsupportedGame = Boolean(league?.game) && !isSimulationSupported(league.game);
+  const isDisabled = isRunning || !league?.id || isPlaceholder || isUnsupportedGame;
 
   // Input validation
   const handleNumberChange = (event) => {
@@ -35,19 +37,15 @@ const SimulationRunner = ({ league, userRole }) => {
   };
 
   const handleSimulation = async () => {
-    if (!league?.id || isPlaceholder) {
+    if (!league?.id || isPlaceholder || isUnsupportedGame) {
       return;
     }
 
-    const result = await runSimulation({
-      num_simulations: simulationNumber,
-      league_id: league.id,
-      custom_rewards: rewards,
+    await runSimulation({
+      league,
+      numSimulations: simulationNumber,
+      customRewards: rewards,
     });
-
-    if (result.success) {
-      dispatch(addSimulationResult(result.data));
-    }
   };
 
   return (
@@ -67,7 +65,7 @@ const SimulationRunner = ({ league, userRole }) => {
             onChange={handleNumberChange}
             min="1"
             max="10000"
-            disabled={isLoading || isPlaceholder}
+            disabled={isRunning || isPlaceholder || isUnsupportedGame}
             className="w-32 p-3 border border-ui-light rounded-lg text-lg shadow-sm
                      focus:ring-2 focus:ring-primary focus:border-primary outline-none
                      disabled:bg-ui-light disabled:cursor-not-allowed"
@@ -85,14 +83,29 @@ const SimulationRunner = ({ league, userRole }) => {
               : "bg-notice-orange hover:bg-notice-orange/90 text-white"}
           `}
         >
-          {isLoading ? "RUNNING..." : "RUN SIMULATION"}
+          {isRunning ? "RUNNING..." : "RUN SIMULATION"}
         </button>
+
+        {isRunning && (
+          <button
+            onClick={cancelRun}
+            className="px-4 py-3 rounded-lg font-semibold text-lg transition-colors
+                     border border-ui-light text-ui hover:text-ui-dark hover:border-ui
+                     focus:ring-2 focus:ring-offset-2 outline-none"
+          >
+            CANCEL
+          </button>
+        )}
 
         {league && (
           <div className="flex-1 text-sm text-ui lg:pb-3">
             {isPlaceholder ? (
               <>
                 {`The "unassigned" ${T.league} is a placeholder for ${T.teams} without a ${T.league} — simulations cannot be run on it.`}
+              </>
+            ) : isUnsupportedGame ? (
+              <>
+                {`Simulations for ${league.game} haven't been migrated to the in-browser runner yet.`}
               </>
             ) : (
               <>
@@ -104,19 +117,36 @@ const SimulationRunner = ({ league, userRole }) => {
         )}
       </div>
 
-      {/* Rewards are a run parameter, so they live with the run controls */}
-      {!isPlaceholder && <CustomRewards />}
+      {isRunning && progress && (
+        <div className="mt-4">
+          <div className="flex justify-between text-xs text-ui mb-1">
+            <span>
+              {`${progress.completed.toLocaleString()} / ${progress.requested.toLocaleString()} games`}
+            </span>
+          </div>
+          <div className="w-full bg-ui-light rounded-full h-2">
+            <div
+              className="bg-notice-orange h-2 rounded-full transition-all"
+              style={{
+                width: `${Math.round((100 * progress.completed) / progress.requested)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
-      {!isPlaceholder && (
+      {/* Rewards are a run parameter, so they live with the run controls */}
+      {!isPlaceholder && !isUnsupportedGame && <CustomRewards />}
+
+      {!isPlaceholder && !isUnsupportedGame && (
         <details className="mt-3 text-sm text-ui">
           <summary className="cursor-pointer hover:text-ui-dark">
             Why a run can return fewer games than requested
           </summary>
           <p className="mt-2 text-xs bg-ui-light/60 rounded-md px-3 py-2">
-            Simulation runs are capped at 10 minutes. If the requested number of
-            games would take longer, we run as many complete games as fit in the
-            time limit and report the actual count — a run never stops
-            mid-game, so the results stay fair.
+            Games run in your browser. Cancelling a run keeps the complete
+            games already played and reports the actual count — a run never
+            stops mid-game, so the results stay fair.
           </p>
         </details>
       )}

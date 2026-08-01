@@ -10,6 +10,8 @@ import RunResultsModal from "./RunResultsModal";
 
 import useClassroomAPI from "../hooks/useClassroomAPI";
 import useLeagueAPI from "../hooks/useLeagueAPI";
+import { ensureSimulationRunner } from "../../../pyodide/simulationRunnerClient";
+import { isSimulationSupported } from "../../../pyodide/games/index";
 import { useTerms } from "../terminology";
 
 /**
@@ -54,6 +56,14 @@ const SimulationPanel = ({ userRole }) => {
       api.fetchRewardMeta(currentLeague.game);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLeague?.game]);
+
+  // Boot the Pyodide simulation worker in the background so the first run
+  // doesn't pay the runtime-load latency (same prewarm as the tutorial page).
+  useEffect(() => {
+    if (currentLeague?.game && isSimulationSupported(currentLeague.game)) {
+      ensureSimulationRunner();
+    }
   }, [currentLeague?.game]);
 
   useEffect(() => {

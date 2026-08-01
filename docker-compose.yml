@@ -110,42 +110,6 @@ services:
     mem_reservation: 200m
     pids_limit: 50
 
-  worker-simulation:
-    build:
-      context: .
-      dockerfile: ./backend/Dockerfile
-    command: celery -A backend.tasks.celery_app worker -Q simulation -n simulation@%h --loglevel=info --concurrency=1
-    # No env_file / secrets by design: this worker runs untrusted agent code and
-    # must hold NOTHING an attacker could exfiltrate. Submissions arrive as a task
-    # arg (the API reads them from the DB before enqueue), so the worker opens no
-    # DB connection and needs no DATABASE_URL, SECRET_KEY, or AWS key.
-    environment:
-      - PYTHONDONTWRITEBYTECODE=1
-      - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/agent_games
-      - CELERY_BROKER_URL=redis://valkey:6379/0
-      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-    depends_on:
-      valkey:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A backend.tasks.celery_app inspect ping -d simulation@$$HOSTNAME -t 10 | grep -q pong"]
-      interval: 30s
-      timeout: 15s
-      retries: 3
-      start_period: 30s
-    volumes:
-      - ./backend:/agent_games/backend
-    mem_limit: 500m
-    # Same no-swap guarantee as worker-validation: untrusted code must hit the
-    # RAM cap and die, not spill into host swap.
-    memswap_limit: 500m
-    mem_reservation: 200m
-    pids_limit: 50
-
   # Dedicated slim worker for tutorial exercises: its own Celery app and image
   # (python:alpine + celery + one tasks.py — see backend/exercise_worker/), so
   # a flood of 0.5s exercise runs can never queue behind agent validations,
@@ -278,8 +242,6 @@ services:
         condition: service_healthy
       worker-validation:
         condition: service_healthy
-      worker-simulation:
-        condition: service_healthy
       worker-exercises:
         condition: service_healthy
       postgres:
@@ -290,8 +252,9 @@ services:
       # `... run --rm --no-deps test-runner pytest tutorial_data/tests/`;
       # not part of the public suite/CI — the folder is gitignored)
       - ./tutorial_data:/agent_games/tutorial_data
-      # Browser exercise harness, for the CPython parity test
-      # (backend/tests/unit/test_exercise_harness_parity.py)
+      # Browser exercise + simulation harnesses, for the CPython parity tests
+      # (backend/tests/unit/test_exercise_harness_parity.py,
+      # test_simulation_harness_parity.py, test_simulation_engine_copies.py)
       - ./frontend/src/pyodide:/agent_games/frontend/src/pyodide:ro
     command: pytest backend/tests/ -v
     scale: 0

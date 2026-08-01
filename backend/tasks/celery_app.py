@@ -45,7 +45,6 @@ celery_app = Celery(
     backend=result_backend,
     include=[
         "backend.tasks.validation_task",
-        "backend.tasks.simulation_task",
     ],
 )
 
@@ -55,7 +54,6 @@ celery_app.conf.update(
     accept_content=["json"],
     task_routes={
         "validation.*": {"queue": "validation"},
-        "simulation.*": {"queue": "simulation"},
         # No worker of THIS app consumes exercises — the queue belongs to the
         # standalone slim worker (backend/exercise_worker/tasks.py); the API
         # only produces onto it via send_task.

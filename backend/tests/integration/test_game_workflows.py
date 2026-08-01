@@ -1,6 +1,9 @@
 # tests/integration/test_game_workflows.py
 
+import importlib.util
+import json
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +13,35 @@ from backend.tests.conftest import add_submission, build_institution, make_stude
 from backend.database.db_models import League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
+
+# The in-browser simulation harness, run here under CPython — the same file
+# the Pyodide worker executes (see test_simulation_harness_parity.py).
+HARNESS_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "frontend"
+    / "src"
+    / "pyodide"
+    / "simulation_harness.py"
+)
+
+
+def _run_browser_simulation(game_name, submissions, num_simulations):
+    """What the browser does between fetch-submissions and save-results."""
+    spec = importlib.util.spec_from_file_location(
+        "simulation_harness", HARNESS_PATH
+    )
+    harness = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(harness)
+
+    setup = json.loads(
+        harness.setup_run_json(
+            game_name, json.dumps(submissions), "", num_simulations
+        )
+    )
+    assert setup["status"] == "ok", setup
+    chunk = json.loads(harness.run_chunk_json(num_simulations))
+    assert chunk["status"] == "ok", chunk
+    return json.loads(harness.finalize_json(False))
 
 
 @pytest.fixture
@@ -150,19 +182,39 @@ class CustomPlayer(Player):
     assert submit_response.status_code == 200
     assert submit_response.json()["submission_id"] is not None
 
-    # 4. Run simulation
+    # 4. Run the simulation the way the browser does: fetch every team's
+    # latest code, run the games through the shipped harness, save the results
+    submissions_response = client.get(
+        f"/user/get-league-submissions/{league_id}",
+        headers=auth_headers,
+    )
+    assert submissions_response.status_code == 200
+    submissions = submissions_response.json()
+    assert set(submissions) == {"integration_team"}
+
+    envelope = _run_browser_simulation("prisoners_dilemma", submissions, 10)
+    assert envelope["status"] == "success"
+    results = envelope["simulation_results"]
+
     sim_response = client.post(
-        "/institution/run-simulation",  # Changed from /admin to /institution
+        "/institution/save-simulation-results",
         headers=auth_headers,
         json={
             "league_id": league_id,
-            "num_simulations": 10,
+            "num_simulations": results["num_simulations"],
+            "requested_simulations": results["requested_simulations"],
+            "capped": results["capped"],
             "custom_rewards": [4, 0, 6, 2],
+            "total_points": results["total_points"],
+            "table": results["table"],
+            "strategies": results["strategies"],
+            "feedback": envelope["feedback"],
         },
     )
     assert sim_response.status_code == 200
     sim_data = sim_response.json()
     sim_id = sim_data["id"]
+    assert "integration_team" in sim_data["total_points"]
 
     # 5. Publish results
     publish_response = client.post(
@@ -220,38 +272,47 @@ def test_league_assign_keeps_team_in_original_league_on_failure(
     assert setup_integration_team.league_id == test_league.id
 
 
-def test_run_simulation_unknown_league(client: TestClient, auth_headers: dict):
-    """Simulating a league that doesn't exist is a 404 (never reaches the worker)."""
+def _save_results_payload(league_id: int) -> dict:
+    return {
+        "league_id": league_id,
+        "num_simulations": 10,
+        "requested_simulations": 10,
+        "total_points": {},
+    }
+
+
+def test_save_results_unknown_league(client: TestClient, auth_headers: dict):
+    """Saving results for a league that doesn't exist is a 404."""
     response = client.post(
-        "/institution/run-simulation",
+        "/institution/save-simulation-results",
         headers=auth_headers,
-        json={"league_id": 999999, "num_simulations": 10},
+        json=_save_results_payload(999999),
     )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_run_simulation_rejected_on_unassigned_league(
+def test_save_results_rejected_on_unassigned_league(
     client: TestClient, db_session: Session, auth_headers: dict
 ):
-    """The 'unassigned' holding league is protected from simulation runs."""
+    """The 'unassigned' holding league is protected from simulation results."""
     unassigned = db_session.exec(
         select(League).where(League.name == "unassigned")
     ).one()
 
     response = client.post(
-        "/institution/run-simulation",
+        "/institution/save-simulation-results",
         headers=auth_headers,
-        json={"league_id": unassigned.id, "num_simulations": 10},
+        json=_save_results_payload(unassigned.id),
     )
     assert response.status_code == 400
     assert "unassigned" in response.json()["detail"].lower()
 
 
-def test_run_simulation_rejects_other_institutions_league(
+def test_save_results_rejects_other_institutions_league(
     client: TestClient, db_session: Session, test_league: League
 ):
-    """An institution cannot simulate a league it doesn't own."""
+    """An institution cannot save simulation results to a league it doesn't own."""
     outsider = build_institution(
         name="outsider_institution",
         contact_email="outsider@example.com",
@@ -272,8 +333,8 @@ def test_run_simulation_rejects_other_institutions_league(
     )
 
     response = client.post(
-        "/institution/run-simulation",
+        "/institution/save-simulation-results",
         headers={"Authorization": f"Bearer {outsider_token}"},
-        json={"league_id": test_league.id, "num_simulations": 10},
+        json=_save_results_payload(test_league.id),
     )
     assert response.status_code == 404
