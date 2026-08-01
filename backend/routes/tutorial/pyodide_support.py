@@ -67,10 +67,12 @@ def normalize_client_rows(test_results: list, source: str) -> list:
 def record_pyodide_fallback(team_id: Optional[int], reason: str) -> None:
     """Count one browser-to-Celery fallback.
 
-    The warning line is the durable per-occurrence record; the Valkey
-    counters give the aggregate view for /diagnostics/pyodide-fallbacks.
-    Fails open on a Valkey error — the submission itself must not suffer for
-    telemetry.
+    Shared by exercise submissions and lesson snippet runs — snippet
+    fallbacks arrive with a "snippet:" reason prefix (lesson_router), so one
+    counter answers when the whole exercises worker is dead weight. The
+    warning line is the durable per-occurrence record; the Valkey counters
+    give the aggregate view for /diagnostics/pyodide-fallbacks. Fails open
+    on a Valkey error — the submission itself must not suffer for telemetry.
     """
     logger.warning("Pyodide fallback: team=%s reason=%s", team_id, reason)
     day = utc_now().strftime("%Y-%m-%d")

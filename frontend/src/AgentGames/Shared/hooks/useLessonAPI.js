@@ -51,13 +51,24 @@ export const useLessonAPI = () => {
   );
 
   /**
-   * Run one lesson code block. Always resolves with the full run result —
-   * { status, message, stdout, traceback, duration_ms } — so tracebacks
-   * render in the output panel, never toast. A 429 (rate limit) surfaces as
-   * { success: false, error }.
+   * Run one lesson code block on the server. Always resolves with the full
+   * run result — { status, message, stdout, traceback, duration_ms } — so
+   * tracebacks render in the output panel, never toast. A 429 (rate limit)
+   * surfaces as { success: false, error }.
+   *
+   * Only Pyodide fallbacks send the extra fields ("pyodide_fallback"), so
+   * the server can log/count them; a plain Celery run stays byte-identical
+   * to before the in-browser runner existed.
    */
   const runSnippet = useCallback(
-    (code) => request('/run-snippet', 'POST', { code }),
+    (code, { executionSource = null, fallbackReason = null } = {}) => {
+      const body = { code };
+      if (executionSource) {
+        body.execution_source = executionSource;
+        body.fallback_reason = fallbackReason;
+      }
+      return request('/run-snippet', 'POST', body);
+    },
     [request]
   );
 

@@ -13,6 +13,7 @@
  * Protocol (all messages carry plain JSON-able values, never proxies):
  *   in:  { type: "init" }
  *   in:  { type: "run", runId, code, entryFunction, testCode }
+ *   in:  { type: "run-snippet", runId, code }
  *   out: { type: "ready" }
  *   out: { type: "init-error", error }
  *   out: { type: "result", runId, resultJson }   // normalized envelope JSON
@@ -21,6 +22,7 @@
 import harnessSource from './exercise_harness.py?raw';
 
 let runExerciseJson = null;
+let runSnippetJson = null;
 
 async function boot() {
   const base = self.location.origin;
@@ -31,6 +33,7 @@ async function boot() {
   });
   await pyodide.runPythonAsync(harnessSource);
   runExerciseJson = pyodide.globals.get('run_exercise_json');
+  runSnippetJson = pyodide.globals.get('run_snippet_json');
 }
 
 self.onmessage = async (event) => {
@@ -56,6 +59,17 @@ self.onmessage = async (event) => {
         entryFunction ?? '',
         testCode ?? null
       );
+      self.postMessage({ type: 'result', runId, resultJson });
+    } catch (error) {
+      self.postMessage({ type: 'run-error', runId, error: String(error) });
+    }
+    return;
+  }
+
+  if (message.type === 'run-snippet') {
+    const { runId, code } = message;
+    try {
+      const resultJson = runSnippetJson(code);
       self.postMessage({ type: 'result', runId, resultJson });
     } catch (error) {
       self.postMessage({ type: 'run-error', runId, error: String(error) });

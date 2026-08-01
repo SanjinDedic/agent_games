@@ -1,12 +1,13 @@
-"""The in-browser exercise harness, run inside Pyodide.
+"""The in-browser exercise and snippet harness, run inside Pyodide.
 
 Extracted from backend/exercise_worker/tasks.py — the Celery worker that
 in-browser execution replaces — and kept in byte-parity with it: the check
-semantics, row shapes, and the normalized result envelope must be identical
-whether an exercise runs in the worker or in the browser. That contract is
-enforced by backend/tests/unit/test_exercise_harness_parity.py, which execs
-this exact file under CPython and compares it against the worker on shared
-fixtures. If you change semantics here or in the worker, change both.
+semantics, row shapes, and the normalized result envelopes (exercise and
+lesson snippet alike) must be identical whether a run happens in the worker
+or in the browser. That contract is enforced by
+backend/tests/unit/test_exercise_harness_parity.py, which execs this exact
+file under CPython and compares it against the worker on shared fixtures.
+If you change semantics here or in the worker, change both.
 
 Differences from the worker, by design:
 
@@ -14,9 +15,10 @@ Differences from the worker, by design:
   ``SoftTimeLimitExceeded`` handling — the browser's time limit is the main
   thread terminating the whole Web Worker (exerciseRunnerClient.js), never an
   in-Python exception.
-- ``run_exercise_json`` is the bridge entry point: it JSON-serializes the
-  envelope inside Python so only a plain ``str`` crosses the JS bridge (no
-  PyProxy/Map conversion issues), and the JS side ships it verbatim.
+- ``run_exercise_json`` / ``run_snippet_json`` are the bridge entry points:
+  they JSON-serialize the envelope inside Python so only a plain ``str``
+  crosses the JS bridge (no PyProxy/Map conversion issues), and the JS side
+  ships it verbatim.
 
 Must stay stdlib-only: Pyodide loads no wheels for exercises.
 """
@@ -279,3 +281,48 @@ def run_exercise_json(
 ) -> str:
     """Bridge entry point: the envelope as a JSON string for the JS side."""
     return json.dumps(run_exercise(code, entry_function, test_code or None))
+
+
+def normalize_snippet_result(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the full SnippetRunResponse shape consumers expect."""
+    return {
+        "status": result.get("status", "error"),
+        "message": result.get("message"),
+        "stdout": result.get("stdout"),
+        "traceback": result.get("traceback"),
+        "duration_ms": result.get("duration_ms"),
+    }
+
+
+def run_snippet(code: str) -> Dict[str, Any]:
+    """Run a lesson demo snippet: exec the code, return its output.
+
+    Unlike ``run_exercise`` there is no entry function and no test script —
+    the captured stdout (or the traceback) IS the result. ``__name__`` is
+    ``"__main__"`` so demo code behind a main guard runs.
+    """
+    buf = io.StringIO()
+    result: Dict[str, Any]
+    t0 = time.perf_counter()
+    try:
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            exec(code, {"__name__": "__main__"})  # noqa: S102 - sandboxed runtime
+        result = {
+            "status": "success",
+            "duration_ms": (time.perf_counter() - t0) * 1000,
+        }
+    except Exception as e:  # noqa: BLE001 - the run boundary is the catch-all
+        result = {
+            "status": "error",
+            "message": _error_text(e),
+            "traceback": tb.format_exc(),
+        }
+    captured = buf.getvalue()
+    if captured.strip():
+        result["stdout"] = captured[:MAX_STDOUT_CHARS]
+    return normalize_snippet_result(result)
+
+
+def run_snippet_json(code: str) -> str:
+    """Bridge entry point: the envelope as a JSON string for the JS side."""
+    return json.dumps(run_snippet(code))

@@ -236,6 +236,81 @@ def test_capture_text_is_bounded():
     assert result["passed"] is True
 
 
+def _run_both_snippet(code):
+    """Run one snippet fixture through the worker task body and the harness;
+    return comparable envelopes plus the raw pair for extra assertions."""
+    worker_result = worker.run_snippet(code)
+    harness_result = json.loads(harness.run_snippet_json(code))
+
+    for result in (worker_result, harness_result):
+        assert set(result) == {
+            "status",
+            "message",
+            "stdout",
+            "traceback",
+            "duration_ms",
+        }
+        if result["duration_ms"] is not None:
+            assert isinstance(result["duration_ms"], float)
+
+    def comparable(result):
+        out = dict(result)
+        out.pop("duration_ms")
+        out["traceback"] = _normalize_traceback(out["traceback"])
+        return out
+
+    assert comparable(worker_result) == comparable(harness_result)
+    return worker_result, harness_result
+
+
+def test_snippet_stdout_is_the_result():
+    result, _ = _run_both_snippet("print('hello')\nprint('world')")
+    assert result["status"] == "success"
+    assert result["stdout"] == "hello\nworld\n"
+    assert result["message"] is None
+    assert result["traceback"] is None
+
+
+def test_snippet_runs_under_main_guard():
+    code = (
+        "if __name__ == '__main__':\n"
+        "    print('guarded')\n"
+    )
+    result, _ = _run_both_snippet(code)
+    assert result["status"] == "success"
+    assert result["stdout"] == "guarded\n"
+
+
+def test_snippet_exception_keeps_partial_stdout_and_traceback():
+    result, _ = _run_both_snippet("print('before')\n1 / 0")
+    assert result["status"] == "error"
+    assert result["message"] == "ZeroDivisionError: division by zero"
+    assert "division by zero" in result["traceback"]
+    assert result["stdout"] == "before\n"
+
+
+def test_snippet_stdout_only_present_when_nonblank_and_bounded():
+    result, _ = _run_both_snippet(
+        f"print('x' * {worker.MAX_STDOUT_CHARS * 2})"
+    )
+    assert len(result["stdout"]) == worker.MAX_STDOUT_CHARS
+
+    quiet, _ = _run_both_snippet("x = 1")
+    assert quiet["status"] == "success"
+    assert quiet["stdout"] is None
+
+
+def test_snippet_captures_stderr_into_stdout():
+    code = (
+        "import sys\n"
+        "sys.stderr.write('warned\\n')\n"
+        "print('printed')\n"
+    )
+    result, _ = _run_both_snippet(code)
+    assert result["status"] == "success"
+    assert result["stdout"] == "warned\nprinted\n"
+
+
 def test_harness_has_no_celery_dependency():
     """The harness must stay stdlib-only (Pyodide ships no wheels), and the
     file must actually be present — a missing docker-compose volume mount

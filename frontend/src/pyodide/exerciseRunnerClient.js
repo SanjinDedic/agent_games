@@ -1,12 +1,15 @@
 /**
- * Singleton client for in-browser (Pyodide) exercise execution.
+ * Singleton client for in-browser (Pyodide) exercise and snippet execution.
  *
  * Owns one pyodideExercise.worker.js instance per page load and acts as its
  * watchdog: Pyodide has no in-run interrupt without SharedArrayBuffer (the
  * app serves no COOP/COEP headers), so a stuck run is ended by terminating
- * the worker and booting a fresh one.
+ * the worker and booting a fresh one. Exercise submissions and lesson
+ * snippet runs share the worker, the FIFO queue, and the watchdog — they
+ * differ only in the run message and the timeout envelope shape.
  *
- * The contract with usePyodideExerciseSubmit is the resolution kind:
+ * The contract with usePyodideExerciseSubmit / usePyodideSnippetRun is the
+ * resolution kind:
  *   { kind: "local", envelope }   — Pyodide ran; envelope is the normalized
  *     result (identical shape to the Celery worker's), including
  *     status:"error" outcomes like a crash or the watchdog timeout. Never
@@ -24,26 +27,39 @@
 const BOOT_TIMEOUT_MS = 15000;
 const RUN_TIMEOUT_MS = 5000;
 
-// Same phrasing as the Celery worker's EXERCISE_TIMEOUT_MESSAGE
-// (backend/exercise_worker/tasks.py) with this runtime's honest budget.
-const TIMEOUT_MESSAGE =
+// Same phrasing as the Celery worker's EXERCISE_TIMEOUT_MESSAGE /
+// SNIPPET_TIMEOUT_MESSAGE (backend/exercise_worker/tasks.py) with this
+// runtime's honest budget.
+const EXERCISE_TIMEOUT_MESSAGE =
   `Your code consumes too much time - the tests did not finish within ` +
   `${RUN_TIMEOUT_MS / 1000} seconds. It may be stuck in a loop.`;
 
+const SNIPPET_TIMEOUT_MESSAGE =
+  `Your code did not finish within ${RUN_TIMEOUT_MS / 1000} seconds. ` +
+  `It may be stuck in a loop.`;
+
 // Build-time kill switch: set VITE_PYODIDE_EXERCISES=false to force every
-// exercise through the Celery path (no fallback tagging — it's not a
-// fallback, it's the configured path).
+// exercise submission AND lesson snippet run through the Celery path (no
+// fallback tagging — it's not a fallback, it's the configured path).
 export const isPyodideEnabled = () =>
   import.meta.env.VITE_PYODIDE_EXERCISES !== 'false';
 
-const timeoutEnvelope = () => ({
+const exerciseTimeoutEnvelope = () => ({
   status: 'error',
-  message: TIMEOUT_MESSAGE,
+  message: EXERCISE_TIMEOUT_MESSAGE,
   passed: false,
   test_results: [],
   duration_ms: null,
   traceback: null,
   stdout: null,
+});
+
+const snippetTimeoutEnvelope = () => ({
+  status: 'error',
+  message: SNIPPET_TIMEOUT_MESSAGE,
+  stdout: null,
+  traceback: null,
+  duration_ms: null,
 });
 
 const runner = {
@@ -128,7 +144,7 @@ function rebootWorker() {
   ensureRunner();
 }
 
-function runOnWorker({ code, entryFunction, testCode }) {
+function runOnWorker(payload, timeoutEnvelope) {
   const runId = runner.nextRunId++;
   runner.state = 'running';
   const worker = runner.worker;
@@ -179,16 +195,12 @@ function runOnWorker({ code, entryFunction, testCode }) {
       );
     };
 
-    worker.postMessage({ type: 'run', runId, code, entryFunction, testCode });
+    worker.postMessage({ ...payload, runId });
   });
 }
 
-/**
- * Run one exercise submission in the browser.
- * Resolves { kind: "local", envelope } or { kind: "fallback", reason } —
- * see the module docstring. Submissions are serialized FIFO.
- */
-export function runExercise({ code, entryFunction, testCode }) {
+/** Queue one run behind any in-flight one; fall back if the runner is down. */
+function enqueueRun(payload, timeoutEnvelope) {
   const task = runner.queue.then(async () => {
     const ready = await ensureRunner();
     if (!ready) {
@@ -197,9 +209,30 @@ export function runExercise({ code, entryFunction, testCode }) {
         reason: runner.failureReason || 'runner-unavailable',
       };
     }
-    return runOnWorker({ code, entryFunction, testCode });
+    return runOnWorker(payload, timeoutEnvelope);
   });
   // Keep the queue alive even if a task rejects unexpectedly.
   runner.queue = task.catch(() => {});
   return task;
+}
+
+/**
+ * Run one exercise submission in the browser.
+ * Resolves { kind: "local", envelope } or { kind: "fallback", reason } —
+ * see the module docstring. Runs are serialized FIFO.
+ */
+export function runExercise({ code, entryFunction, testCode }) {
+  return enqueueRun(
+    { type: 'run', code, entryFunction, testCode },
+    exerciseTimeoutEnvelope
+  );
+}
+
+/**
+ * Run one lesson snippet in the browser. Same contract and FIFO queue as
+ * runExercise; the envelope is the snippet shape
+ * { status, message, stdout, traceback, duration_ms }.
+ */
+export function runSnippet({ code }) {
+  return enqueueRun({ type: 'run-snippet', code }, snippetTimeoutEnvelope);
 }
