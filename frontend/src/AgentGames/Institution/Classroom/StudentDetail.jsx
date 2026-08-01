@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 
-import { authFetch } from '../../../utils/authFetch';
-import { selectToken } from '../../../slices/authSlice';
 import useClassroomAPI from '../../Shared/hooks/useClassroomAPI';
+import usePlagiarismAssessment from '../../Shared/hooks/usePlagiarismAssessment';
 import { useTerms } from '../../Shared/terminology';
 import RankingSparkline from '../../Shared/Progress/RankingSparkline';
 import StatusCell, { STATUS_INKS } from '../../Shared/Progress/StatusCell';
@@ -30,17 +27,14 @@ const Stat = ({ label, children, title }) => (
 function StudentDetail() {
   const T = useTerms();
   const { leagueId, teamId } = useParams();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
   const { getStudentSummary, getStudentAgentSubmissions } = useClassroomAPI();
+  const { assessing, report, clearReport, assess } = usePlagiarismAssessment();
 
   const [summary, setSummary] = useState(null);
   const [agentSubmissions, setAgentSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submissionIndex, setSubmissionIndex] = useState(0);
-  const [assessing, setAssessing] = useState(false);
-  const [report, setReport] = useState(null);
   // exerciseId while the exercise code modal is open
   const [modalExerciseId, setModalExerciseId] = useState(null);
 
@@ -69,39 +63,10 @@ function StudentDetail() {
     };
   }, [getStudentSummary, getStudentAgentSubmissions, teamId]);
 
-  const handleAssessPlagiarism = async () => {
+  const handleAssessPlagiarism = () => {
     const team = summary?.team;
     if (!team?.league_id) return;
-    const proceed = window.confirm(
-      `This will send ${team.name}'s code submissions to OpenAI for analysis. Continue?`
-    );
-    if (!proceed) return;
-
-    setAssessing(true);
-    setReport(null);
-    try {
-      const resp = await authFetch(`${apiUrl}/ai/assess-plagiarism`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          league_id: team.league_id,
-          team_id: team.id,
-        }),
-      });
-      const data = await resp.json();
-      if (resp.ok) {
-        setReport(data);
-      } else {
-        toast.error(data.detail || 'Assessment failed');
-      }
-    } catch (e) {
-      toast.error('Network error running assessment');
-    } finally {
-      setAssessing(false);
-    }
+    assess({ teamId: team.id, leagueId: team.league_id, teamName: team.name });
   };
 
   if (loading) {
@@ -267,7 +232,7 @@ function StudentDetail() {
         </div>
       </div>
 
-      <PlagiarismReportModal report={report} onClose={() => setReport(null)} />
+      <PlagiarismReportModal report={report} onClose={clearReport} />
 
       {modalExerciseId && (
         <ExerciseCodeModal

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
+import { copyToClipboard } from "../../../utils/clipboard";
 import { setPublishLink as setPublishLinkAction } from "../../../slices/leaguesSlice";
 import useLeagueAPI from "../hooks/useLeagueAPI";
 
@@ -65,9 +66,8 @@ const LeaguePublish = ({ simulation_id, selected_league_id, selected_league_name
     const resultsUrl = `/results/${publishLink}`;
     const fullUrl = `${baseUrl}${resultsUrl}`;
 
-    navigator.clipboard.writeText(fullUrl);
+    copyToClipboard(fullUrl, "Link copied to clipboard!");
     setCopied(true);
-    toast.success("Link copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
 

@@ -28,7 +28,9 @@ function getNavLinks(T) {
     ],
     // Everything about one league/classroom lives in the /Classroom/:id
     // workspace, entered from the Home cards; the navbar only keeps Home and
-    // the institution-wide directory (the sole surface for unassigned members).
+    // the institution-wide directory (the only page listing every member
+    // across classrooms, and the only one that can delete or reset an
+    // unassigned member — Home's unassigned card can only assign them).
     // Teacher and competition institutions share these routes — `T.Teams`
     // renders "Students" vs "Teams" from the account's own terminology.
     institution: [

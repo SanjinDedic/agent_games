@@ -1,150 +1,108 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { setTeams } from '../../slices/teamsSlice';
-import { authFetch } from '../../utils/authFetch';
-import { selectToken } from '../../slices/authSlice';
+import { useSelector } from 'react-redux';
+import useTeamManagementAPI from '../Shared/hooks/useTeamManagementAPI';
+import useLeagueAPI from '../Shared/hooks/useLeagueAPI';
 import { useTerms } from '../Shared/terminology';
+import ResetLinkModal from '../Shared/ResetLinkModal';
 
+/**
+ * The institution-wide roster: every team regardless of classroom, with the
+ * actions the per-classroom Students tab can't cover — managing unassigned or
+ * cross-classroom teams, and creating a team without assigning it anywhere.
+ * Unassigned teams sort first so the ones needing attention lead.
+ */
 function InstitutionTeam() {
   const T = useTerms();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const teams = useSelector((state) => state.teams.list);
-  const accessToken = useSelector(selectToken);
+  const leagues = useSelector((state) => state.leagues.list);
+  const { getAllTeams, createTeam, deleteTeam, resetTeamPassword } = useTeamManagementAPI();
+  const { fetchUserLeagues, assignTeamToLeague } = useLeagueAPI('institution');
 
-  const [isLoading, setIsLoading] = useState(false);
+  // null = still loading
+  const [teams, setTeams] = useState(null);
   const [team, setTeam] = useState({ name: '', password: '', school_name: '' });
   const [showAddTeamForm, setShowAddTeamForm] = useState(false);
-  // { teamName, url } while the share-this-reset-link modal is open
-  const [resetLink, setResetLink] = useState(null);
+  // team id -> chosen league id string (uncommitted dropdown state)
+  const [selections, setSelections] = useState({});
+  const [actingTeamId, setActingTeamId] = useState(null);
+  // { team_name, reset_token } while the share-this-reset-link modal is open
+  const [resetTarget, setResetTarget] = useState(null);
 
-  const fetchAllTeams = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const data = await response.json();
-      if (response.ok && Array.isArray(data.teams)) {
-        dispatch(setTeams(data.teams));
-      } else {
-        toast.error(data.detail || `Failed to load ${T.teams}`);
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiUrl, accessToken, dispatch, navigate]);
+  const load = useCallback(async () => {
+    const result = await getAllTeams();
+    setTeams(result.success ? result.data.teams : []);
+  }, [getAllTeams]);
 
   useEffect(() => {
-    fetchAllTeams();
-  }, [fetchAllTeams]);
+    load();
+    fetchUserLeagues();
+  }, [load, fetchUserLeagues]);
+
+  const classrooms = useMemo(
+    () => leagues.filter((l) => l.name !== 'unassigned'),
+    [leagues]
+  );
+  // get-all-teams reports each team's league by name; the assign call needs ids
+  const classroomIdByName = useMemo(
+    () => new Map(classrooms.map((l) => [l.name, l.id])),
+    [classrooms]
+  );
+
+  const sortedTeams = useMemo(() => {
+    if (!teams) return [];
+    const unassigned = (t) => (!t.league || t.league === 'unassigned' ? 0 : 1);
+    return [...teams].sort(
+      (a, b) => unassigned(a) - unassigned(b) || a.name.localeCompare(b.name)
+    );
+  }, [teams]);
 
   const handleChange = (e) => {
-    setTeam(prev => ({
+    setTeam((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
   };
 
   const handleAddTeam = async () => {
-    if (!team.name.trim() || !team.password.trim()) {
-      toast.error(`${T.Team} name and password are required`);
-      return;
-    }
-
-    try {
-      const response = await authFetch(`${apiUrl}/institution/team-create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          name: team.name,
-          password: team.password,
-          school_name: team.school_name || 'Not Available',
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setTeam({ name: '', password: '', school_name: '' });
-        setShowAddTeamForm(false);
-        toast.success(`${T.Team} created successfully`);
-        await fetchAllTeams();
-      } else {
-        toast.error(data.detail || `Failed to add ${T.team}`);
-      }
-    } catch (error) {
-      console.error('Error adding team:', error);
-      toast.error(`Failed to add ${T.team}`);
+    const result = await createTeam(team);
+    if (result.success) {
+      setTeam({ name: '', password: '', school_name: '' });
+      setShowAddTeamForm(false);
+      toast.success(`${T.Team} created successfully`);
+      load();
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete ${T.team} "${name}"?`)) return;
-    try {
-      const response = await authFetch(`${apiUrl}/institution/delete-team`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ id }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success(data.message);
-        await fetchAllTeams();
-      } else {
-        toast.error(data.detail || `Failed to delete ${T.team}`);
-      }
-    } catch (error) {
-      console.error('Error deleting team:', error);
-      toast.error(`Failed to delete ${T.team}`);
+  const handleAssign = async (row) => {
+    const pending = selections[row.id];
+    if (!pending) return;
+    setActingTeamId(row.id);
+    const result = await assignTeamToLeague(row.id, Number(pending));
+    if (result.success) {
+      const leagueName = classrooms.find((l) => l.id === Number(pending))?.name;
+      toast.success(`'${row.name}' assigned to ${leagueName || `the ${T.league}`}`);
+      setSelections((prev) => ({ ...prev, [row.id]: undefined }));
+      await load();
     }
+    setActingTeamId(null);
   };
 
-  const handleResetPassword = async (id) => {
-    try {
-      const response = await authFetch(`${apiUrl}/institution/team-password-reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ team_id: id }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setResetLink({
-          teamName: data.team_name,
-          url: `${window.location.origin}/reset/${data.reset_token}`,
-        });
-      } else {
-        toast.error(data.detail || 'Failed to generate reset link');
-      }
-    } catch (error) {
-      console.error('Error generating reset link:', error);
-      toast.error('Failed to generate reset link');
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Are you sure you want to delete ${T.team} "${row.name}"? All their submissions are deleted with them.`)) return;
+    setActingTeamId(row.id);
+    const result = await deleteTeam(row.id);
+    if (result.success) {
+      toast.success(result.data.message);
+      await load();
     }
+    setActingTeamId(null);
   };
 
-  const copyResetLink = () => {
-    navigator.clipboard.writeText(resetLink.url);
-    toast.success('Password reset link copied to clipboard!');
-  };
-
-  const groupTeamsIntoRows = () => {
-    const rows = [];
-    for (let i = 0; i < teams.length; i += 4) {
-      rows.push(teams.slice(i, i + 4));
+  const handleResetPassword = async (row) => {
+    const result = await resetTeamPassword(row.id);
+    if (result.success) {
+      setResetTarget(result.data);
     }
-    return rows;
   };
 
   return (
@@ -153,60 +111,92 @@ function InstitutionTeam() {
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h1 className="text-2xl font-bold text-ui-dark mb-6">{`${T.Team} Management`}</h1>
 
-          {isLoading ? (
+          {teams === null ? (
             <div className="flex justify-center items-center h-32">
               <div className="text-lg text-ui-dark">{`Loading ${T.teams}...`}</div>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      {Array(4).fill(null).map((_, index) => (
-                        <th key={index} className="px-4 py-3 text-left text-lg font-semibold text-ui-dark bg-ui-lighter">
-                          {`${T.Team} Name`}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groupTeamsIntoRows().map((row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {row.map((team, colIndex) => (
-                          <td key={colIndex} className="p-2">
-                            <div className="flex items-center justify-between gap-2 bg-ui-lighter p-3 rounded-lg">
-                              <div className="flex flex-col">
-                                <span className="text-base font-medium text-ui-dark">{team.name}</span>
-                                <span className="text-sm text-ui">{team.school}</span>
-                              </div>
-                              <div className="flex gap-2">
+              {teams.length === 0 ? (
+                <p className="text-ui">{`No ${T.teams} yet — add one below.`}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-ui-lighter">
+                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">Name</th>
+                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">School</th>
+                        <th className="px-4 py-3 text-left text-base font-semibold text-ui-dark">{T.League}</th>
+                        <th className="px-4 py-3 text-right text-base font-semibold text-ui-dark">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedTeams.map((row) => {
+                        const currentId = classroomIdByName.get(row.league);
+                        const value = selections[row.id] ?? String(currentId ?? '');
+                        const canAssign =
+                          selections[row.id] != null &&
+                          selections[row.id] !== '' &&
+                          selections[row.id] !== String(currentId ?? '');
+                        return (
+                          <tr key={row.id} className="border-b border-ui-light hover:bg-ui-lighter/50">
+                            <td className="px-4 py-3 text-base font-medium text-ui-dark">{row.name}</td>
+                            <td className="px-4 py-3 text-base text-ui">{row.school || '—'}</td>
+                            <td className="px-4 py-3">
+                              <select
+                                value={value}
+                                onChange={(e) =>
+                                  setSelections((prev) => ({
+                                    ...prev,
+                                    [row.id]: e.target.value,
+                                  }))
+                                }
+                                className="p-1.5 border border-ui-light rounded text-sm bg-white"
+                                title={`Choose a ${T.league}`}
+                              >
+                                <option value="">unassigned</option>
+                                {classrooms.map((classroom) => (
+                                  <option key={classroom.id} value={classroom.id}>
+                                    {classroom.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2 justify-end">
                                 <button
-                                  onClick={() => handleResetPassword(team.id)}
+                                  onClick={() => handleAssign(row)}
+                                  disabled={!canAssign || actingTeamId === row.id}
+                                  className="p-1.5 text-xs bg-success hover:bg-success-hover text-white rounded disabled:bg-ui-light disabled:cursor-not-allowed"
+                                  title={`Move to the selected ${T.league}`}
+                                >
+                                  {actingTeamId === row.id ? 'Working…' : 'Assign'}
+                                </button>
+                                <button
+                                  onClick={() => handleResetPassword(row)}
+                                  disabled={actingTeamId === row.id}
                                   className="p-1.5 text-xs bg-primary hover:bg-primary-hover text-white rounded"
                                   title="Generate a password reset link"
                                 >
                                   Reset
                                 </button>
                                 <button
-                                  onClick={() => handleDelete(team.id, team.name)}
+                                  onClick={() => handleDelete(row)}
+                                  disabled={actingTeamId === row.id}
                                   className="p-1.5 text-xs bg-danger hover:bg-danger-hover text-white rounded"
                                   title={`Delete ${T.team}`}
                                 >
                                   X
                                 </button>
                               </div>
-                            </div>
-                          </td>
-                        ))}
-                        {row.length < 4 && Array(4 - row.length).fill(null).map((_, index) => (
-                          <td key={`empty-${index}`} className="p-2"></td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               <div className="space-y-4">
                 <button
@@ -259,46 +249,11 @@ function InstitutionTeam() {
         </div>
       </div>
 
-      {resetLink && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={() => setResetLink(null)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold text-ui-dark">
-              {`Password reset link for ${resetLink.teamName}`}
-            </h2>
-            <p className="text-ui-dark/70">
-              {`Share this link with the ${T.team}. It opens a page showing their name where they set a new password and are logged straight back into their account — all their work is kept. The link works once and expires in 48 hours.`}
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={resetLink.url}
-                readOnly
-                onFocus={(e) => e.target.select()}
-                className="flex-1 p-3 border border-ui-light rounded-lg text-sm bg-ui-lighter"
-              />
-              <button
-                onClick={copyResetLink}
-                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium"
-                title="Copy to clipboard"
-              >
-                Copy
-              </button>
-            </div>
-            <button
-              onClick={() => setResetLink(null)}
-              className="w-full py-2 bg-ui-lighter hover:bg-ui-light text-ui-dark rounded-lg font-medium"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <ResetLinkModal
+        teamName={resetTarget?.team_name}
+        resetToken={resetTarget?.reset_token}
+        onClose={() => setResetTarget(null)}
+      />
     </div>
   );
 }

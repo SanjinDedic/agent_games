@@ -9,8 +9,8 @@ import Editor from '@monaco-editor/react';
 
 // Import Redux actions
 import { updateExpiryDate } from "../../../slices/leaguesSlice";
-import { selectToken } from '../../../slices/authSlice';
-import { authFetch } from '../../../utils/authFetch';
+import { copyToClipboard } from '../../../utils/clipboard';
+import { joinUrl } from '../../../utils/urls';
 
 // Import shared components
 import LeagueTeams from './LeagueTeams';
@@ -38,8 +38,6 @@ const EXPIRY_TONES = {
 const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
   const T = useTerms();
   const dispatch = useDispatch();
-  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const accessToken = useSelector(selectToken);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
 
   const [signupLink, setSignupLink] = useState("");
@@ -51,6 +49,7 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     updateExpiryDate: updateLeagueExpiry,
     updateLeagueInfo,
     deleteLeague,
+    generateSignupLink: requestSignupLink,
   } = useLeagueAPI(userRole);
 
   const { getClassroomProgress, getSubscription } = useClassroomAPI();
@@ -106,9 +105,7 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
   // Check for existing signup links when currentLeague changes
   useEffect(() => {
     if (currentLeague && currentLeague.signup_link) {
-      const baseUrl = `${window.location.protocol}//${window.location.host}`;
-      const signupPath = `/join/${currentLeague.signup_link}`;
-      setSignupLink(`${baseUrl}${signupPath}`);
+      setSignupLink(joinUrl(currentLeague.signup_link));
       setShowSignupLink(true);
     } else {
       setShowSignupLink(false);
@@ -121,39 +118,13 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     if (!leagueId) return;
 
     setIsLoadingSignupLink(true);
-    try {
-      const response = await authFetch(
-        `${apiUrl}/institution/generate-signup-link`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ league_id: leagueId }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.signup_token) {
-        const baseUrl = `${window.location.protocol}//${window.location.host}`;
-        const signupPath = `/join/${data.signup_token}`;
-        const fullUrl = `${baseUrl}${signupPath}`;
-
-        setSignupLink(fullUrl);
-        setShowSignupLink(true);
-
-        toast.success(`Login page created for ${leagueName}`);
-      } else {
-        toast.error(data.detail || "Failed to generate the login page link");
-      }
-    } catch (error) {
-      console.error("Error generating signup link:", error);
-      toast.error("Network error while generating signup link");
-    } finally {
-      setIsLoadingSignupLink(false);
+    const result = await requestSignupLink(leagueId);
+    if (result.success) {
+      setSignupLink(joinUrl(result.signupToken));
+      setShowSignupLink(true);
+      toast.success(`Login page created for ${leagueName}`);
     }
+    setIsLoadingSignupLink(false);
   };
 
   // Handle league deletion
@@ -218,10 +189,8 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     (currentLeague.info_markdown ?? '') !== infoMarkdownDraft;
 
   // Copy signup link to clipboard
-  const copySignupLink = () => {
-    navigator.clipboard.writeText(signupLink);
-    toast.success("Login page link copied to clipboard!");
-  };
+  const copySignupLink = () =>
+    copyToClipboard(signupLink, "Login page link copied to clipboard!");
 
   const isActive =
     currentLeague != null &&

@@ -5,6 +5,8 @@ import { toast } from 'react-toastify';
 import moment from 'moment-timezone';
 
 import { setCurrentLeagueById } from '../../../slices/leaguesSlice';
+import { copyToClipboard } from '../../../utils/clipboard';
+import { joinUrl } from '../../../utils/urls';
 import useLeagueAPI from '../../Shared/hooks/useLeagueAPI';
 import { useTerms } from '../../Shared/terminology';
 import SimulationPanel from '../../Shared/League/SimulationPanel';
@@ -88,12 +90,8 @@ function ClassroomWorkspace() {
     { key: 'settings', label: 'Settings' },
   ];
 
-  const copyLoginLink = () => {
-    navigator.clipboard.writeText(
-      `${window.location.origin}/join/${league.signup_link}`
-    );
-    toast.success('Login link copied to clipboard!');
-  };
+  const copyLoginLink = () =>
+    copyToClipboard(joinUrl(league.signup_link), 'Login link copied to clipboard!');
 
   return (
     <div className="min-h-screen bg-ui-lighter pt-20 px-6 pb-8">

@@ -37,6 +37,7 @@ attempts that never got past validation — and carries the tutorials/short cour
 | `07_demo_hints.js` | demo | manual Stage 5 — per game ×8: demo user, invalid submission, Get Hint, fix, valid submission |
 | `08_password_reset.js` | classroom | not in the manual yet — teacher opens the classroom workspace **Students** tab and generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
 | `09_teacher_progress.js` | classroom | not in the manual yet — the teacher-side readings of stages 05/06: the **Short Course Progress** grid (Student 1's single ✓ is the only pass, the Passed summary row agrees, a cell opens that student's exercise code), the **Concepts** map (Students × Concepts grid + Class row, coverage chips, "How is this worked out?", the concept modal from both a column heading and a student's cell, the two action lists), and the student page behind them (attempts run exactly one ahead of validated — the AST-rejected submission shows up nowhere else) |
+| `10_team_management.js` | classroom | not in the manual yet — the roster-management surfaces: the `/InstitutionTeam` directory (navbar "Students"; Name/School/Classroom/Actions table; create-**without**-assign; assign from a row; the shared reset-link modal from its second caller), the Home **Unassigned Students** card (classroom preselected, Assign clears the row), the workspace **Students** tab's add (asserts create **and** assign both fire — the one-step semantics) and delete (confirm warns "All their submissions are deleted with them."; cleans up its own TM* students), and the student page's plagiarism consent (dismissing it must issue no `/ai/assess-plagiarism` request) |
 
 ```bash
 # stack must be up (docker compose up -d); a wiped DB gives the cleanest run
@@ -47,7 +48,7 @@ export OPENAI_API_KEY=sk-...
 for s in 01_admin_setup 02_institution_league 03_team_submissions \
          04_institution_review_publish 05_teacher_classroom \
          06_student_submissions 07_demo_hints 08_password_reset \
-         09_teacher_progress; do
+         09_teacher_progress 10_team_management; do
   NODE_PATH="$HOME/.agent-games-playwright/node_modules" \
     node .claude/skills/tester_skill/manual_tests/$s.js || break
 done
@@ -58,7 +59,9 @@ State-file dependencies: 02–04 need 01 (institution) and each other in order; 
 (teacher account, classroom name, student credentials — it rewrites Student 1's password in
 the state file after the reset); 09 needs 01 + 05 + 06 (it reads the classroom as the teacher
 and asserts the work stage 6 did, so it must run after 06 — before or after 08 is immaterial,
-it never logs in as a student).
+it never logs in as a student); 10 needs 01 + 05 + 06 (teacher account, classroom name, the
+stage-06 roster) — its order relative to 08/09 is immaterial too: it never logs in as a
+student, creates only its own TM*-suffixed students and deletes them again before finishing.
 
 Conventions (see `_helpers.js`):
 

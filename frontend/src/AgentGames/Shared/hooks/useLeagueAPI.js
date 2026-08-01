@@ -429,8 +429,10 @@ export const useLeagueAPI = (userRole) => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(data.message);
-        return { success: true };
+        // Success toasts are the caller's job: the four call sites each
+        // want their own wording, and the backend message uses league/team
+        // terms that read wrong for teacher accounts.
+        return { success: true, message: data.message };
       } else {
         toast.error(data.detail || `Failed to assign ${T.team} to ${T.league}`);
         return { success: false, error: data.detail };
@@ -476,6 +478,38 @@ export const useLeagueAPI = (userRole) => {
       setIsLoading(false);
     }
   }, [apiUrl, accessToken, T]);
+
+  /**
+   * Create (or refresh) the signup link for a league. Success toast is
+   * the caller's job — the two call sites word it differently.
+   */
+  const generateSignupLink = useCallback(async (leagueId) => {
+    setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/institution/generate-signup-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ league_id: leagueId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.signup_token) {
+        return { success: true, signupToken: data.signup_token };
+      }
+      toast.error(data.detail || 'Failed to generate signup link');
+      return { success: false, error: data.detail };
+    } catch (error) {
+      console.error('Error generating signup link:', error);
+      toast.error('Network error while generating signup link');
+      return { success: false, error: 'Network error' };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken]);
 
   /**
    * Delete a league
@@ -560,6 +594,7 @@ export const useLeagueAPI = (userRole) => {
     updateLeagueTutorials,
     assignTeamToLeague,
     unassignTeam,
+    generateSignupLink,
     deleteLeague,
     fetchRewardMeta,
   };

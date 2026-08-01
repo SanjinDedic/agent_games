@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
+import { copyToClipboard } from "../../../utils/clipboard";
 import { authFetch } from "../../../utils/authFetch";
 import { selectToken } from '../../../slices/authSlice';
 import LeagueTutorialSelector from "./LeagueTutorialSelector";
@@ -281,10 +282,7 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
                     className="flex-1 p-2 border border-ui-light rounded-lg text-sm bg-white"
                   />
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(signupUrl);
-                      toast.success("Signup URL copied to clipboard!");
-                    }}
+                    onClick={() => copyToClipboard(signupUrl, "Signup URL copied to clipboard!")}
                     className="ml-2 p-2 bg-primary hover:bg-primary-hover text-white rounded-lg"
                     title="Copy to clipboard"
                   >
