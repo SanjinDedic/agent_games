@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import LessonMarkdown from './LessonMarkdown';
 import { useLessonModal } from './LessonModalContext';
 import useLessonAPI from '../hooks/useLessonAPI';
+import PyodideStatusDot from '../Utilities/PyodideStatusDot';
 
 /**
  * The single lesson-modal host, rendered once by LessonModalProvider.
@@ -68,6 +69,7 @@ function LessonModal() {
           <h2 className="text-xl font-bold text-ui-dark truncate flex-1">
             {lesson?.title ?? 'Lesson'}
           </h2>
+          <PyodideStatusDot />
           <button
             type="button"
             onClick={close}
