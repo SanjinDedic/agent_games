@@ -38,8 +38,10 @@ An empty ``entry_function`` means a top-level-code exercise: no function is
 required, and tests grade module-level state directly — variables by bare
 name, print output via the injected ``module_output`` string (everything the
 student's code printed while it was exec'd, truncated at MAX_STDOUT_CHARS).
-``module_output`` is injected on every run, so it is a reserved name in the
-student namespace.
+The student's own source is injected alongside it as ``module_source``, so a
+test can grade *how* an answer was reached (e.g. that the expected value was
+worked out rather than typed in as a literal). Both names are injected on
+every run, so both are reserved in the student namespace.
 
 A failing check is a normal outcome ("status": "success", test not passed) —
 "status": "error" means the code never got as far as producing test results
@@ -296,6 +298,7 @@ def _execute_tests(
             }
 
     namespace["module_output"] = module_buf.getvalue()[:MAX_STDOUT_CHARS]
+    namespace["module_source"] = code
 
     test_results: list = []
     if test_code:

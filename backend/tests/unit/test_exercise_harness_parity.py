@@ -209,6 +209,31 @@ def test_top_level_exercise_uses_module_output():
     assert result["passed"] is True
 
 
+def test_top_level_exercise_uses_module_source():
+    """Both runners hand the student's own source to the test script, so a
+    test can grade how an answer was reached (here: worked out, not typed in)
+    — untruncated, unlike module_output."""
+    code = "total = 2 + 3\nprint('total is', total)"
+    test_code = (
+        "def test_not_typed_in():\n"
+        "    check(module_source.count('5'), 0)\n"
+        "def test_is_the_whole_source():\n"
+        "    check(module_source, %r)\n" % code
+    )
+    result, _ = _run_both(code, "", test_code)
+    assert result["status"] == "success"
+    assert result["passed"] is True
+
+
+def test_student_defined_module_source_is_clobbered():
+    """A student assigning module_source cannot fake their way past a
+    source-grading test — injection happens after their code runs."""
+    code = "module_source = 'nothing to see here'"
+    test_code = "def test_src():\n    check(module_source, %r)\n" % code
+    result, _ = _run_both(code, "", test_code)
+    assert result["passed"] is True
+
+
 def test_stdout_only_present_when_nonblank_and_bounded():
     result, _ = _run_both(
         f"print('x' * {worker.MAX_STDOUT_CHARS * 2})\n{ADD_CODE}",

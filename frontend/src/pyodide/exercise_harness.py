@@ -231,6 +231,7 @@ def _execute_tests(
             }
 
     namespace["module_output"] = module_buf.getvalue()[:MAX_STDOUT_CHARS]
+    namespace["module_source"] = code
 
     test_results: list = []
     if test_code:
