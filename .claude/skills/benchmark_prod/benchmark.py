@@ -5,7 +5,8 @@ Runs one suite per environment:
 
   demo phase   - 2 x (launch demo -> list leagues -> join greedy_pig_demo -> submit agent)
                  submit-agent is the interesting one: AST check in the API, then a
-                 validation task on a Celery worker (enqueue -> execute -> poll).
+                 validation run via backend/validation_lambda/ (AWS Lambda in prod,
+                 local subprocess when VALIDATION_LAMBDA_FUNCTION is unset).
   auth phase   - admin login + institution login (bcrypt = a clean single-core CPU probe)
   institution  - 3 institution-token actions: get-all-teams (read), league-create
                  (write), team-progress (aggregate read across teams/tutorials)
@@ -446,8 +447,9 @@ def verdict(prod: dict, local: dict, num_sims: int):
         print("  VERDICT: UPGRADE. Prod is slow in absolute terms, not just relative to your laptop:")
         for b in breaches:
             print(f"    - {b}")
-        print("\n  Start with vCPU/RAM on the box running the Celery workers - validation and")
-        print("  simulation are the CPU-bound paths, and they're what users actually wait on.")
+        print("\n  Note: submit-agent now runs on AWS Lambda in prod, so a slow submit path")
+        print("  points at Lambda cold starts/sizing, not droplet vCPU. Droplet CPU still")
+        print("  governs auth (bcrypt) and the API itself.")
         if db_ratio > RATIO_WATCH:
             print(f"  Postgres is also {db_ratio:.1f}x slower than local - check storage/IOPS too.")
     elif cpu_ratio > RATIO_WATCH:
@@ -479,10 +481,10 @@ def main():
     parser.add_argument("--local-url", default=DEFAULT_LOCAL)
     parser.add_argument("--runs", type=int, default=3, help="passes per environment (default 3)")
     # 2000 is deliberate. Measured locally: ~2 ms of compute per game, against a
-    # fixed ~150-300 ms of overhead (task enqueue, worker process spawn - workers
-    # run max_tasks_per_child=1 - result polling, saving results). At 50 games the
-    # overhead IS the measurement and the agent-count normalization distorts; at
-    # 2000 games compute is ~95% of the time and the number means what it says.
+    # fixed ~150-300 ms of overhead (Lambda invoke or local subprocess spawn —
+    # validation forks a fresh child per run — plus saving results). At 50 games
+    # the overhead IS the measurement and the agent-count normalization distorts;
+    # at 2000 games compute is ~95% of the time and the number means what it says.
     parser.add_argument("--sims", type=int, default=2000, help="games per simulation (default 2000, max 10000)")
     parser.add_argument("--only", choices=["prod", "local", "both"], default="both")
     parser.add_argument("--json", help="also write raw results to this file")

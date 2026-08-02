@@ -16,13 +16,7 @@ async def test_status_success():
         "valkey": {
             "name": "valkey",
             "status": "running",
-            "health": "Broker connection OK",
-            "is_healthy": True,
-        },
-        "validation-worker": {
-            "name": "validation-worker",
-            "status": "running",
-            "health": "Worker validation@host responded to ping",
+            "health": "Valkey connection OK",
             "is_healthy": True,
         },
     }

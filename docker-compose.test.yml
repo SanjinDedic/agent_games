@@ -1,6 +1,6 @@
 # Override file for test runs.
 # Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
-# Points all services at the test database so tasks enqueued by tests hit the right data.
+# Points the api at the test database so requests made by tests hit the right data.
 services:
   api:
     environment:
@@ -9,12 +9,6 @@ services:
     # suite owns the test schema (built fresh from the models by conftest), so the
     # api must not run init_db/seed or migrations against agent_games_test.
     command: uvicorn backend.api:app --host 0.0.0.0 --port 8000
-  worker-validation:
-    environment:
-      - DB_ENVIRONMENT=test
-      # Shorten the validation kill window (soft 2s, hard 3s) so tests that
-      # wait out the hard time limit don't idle for the production 5s/6s.
-      - VALIDATION_TIMEOUT_SECONDS=2
   frontend:
     profiles:
       - disabled

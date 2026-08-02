@@ -40,7 +40,7 @@ function AgentSubmission() {
     getGameInstructions,
   } = useSubmissionAPI();
 
-  // Pyodide-first submission with automatic Celery fallback; same contract
+  // Pyodide-first submission with automatic server fallback; same contract
   // as useSubmissionAPI.submitCode.
   const { submitCode, isLoading: isSubmitting } = usePyodideValidationSubmit({
     gameName,

@@ -42,8 +42,9 @@ class LessonRequest(BaseModel):
 class SnippetRunRequest(BaseModel):
     """Run one lesson code block: execute the code, return its output.
 
-    ``execution_source`` distinguishes the default Celery run from a browser
-    run that fell back to Celery because Pyodide could not run
+    ``execution_source`` distinguishes the default server run (wire value
+    "celery", kept for contract stability after the Celery removal) from a
+    browser run that fell back to the server because Pyodide could not run
     (frontend/src/pyodide/exerciseRunnerClient.js) — the same contract as
     ExerciseSubmissionRequest, counted through the same fallback telemetry.
     """

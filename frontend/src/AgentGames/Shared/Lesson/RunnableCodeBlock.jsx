@@ -41,7 +41,7 @@ const EDITOR_OPTIONS = {
 /**
  * One ```python-run block from a lesson: a small editable Monaco editor with
  * Run / Reset buttons. Run executes the (possibly edited) code Pyodide-first
- * in the browser (falling back to the sandboxed Celery worker only when
+ * in the browser (falling back to the sandboxed server executor only when
  * Pyodide can't run) and shows its stdout — or its traceback, which is just
  * as instructive. Nothing is stored server-side.
  *

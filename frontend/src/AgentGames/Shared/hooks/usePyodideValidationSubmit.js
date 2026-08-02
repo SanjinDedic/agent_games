@@ -10,27 +10,27 @@ import useSubmissionAPI from './useSubmissionAPI';
 
 // Failed local runs are persisted too (metadata-only row, no code) so the
 // rate limit, teacher analytics, and hint accounting keep working exactly
-// as on the Celery path. Flip to false to keep failures fully local.
+// as on the server path. Flip to false to keep failures fully local.
 const PERSIST_LOCAL_FAILURES = true;
 
 /**
- * Pyodide-first agent submission, with automatic Celery fallback.
+ * Pyodide-first agent submission, with automatic server fallback.
  *
  * Returns { submitCode, isLoading } where submitCode has the exact contract
  * useSubmissionWorkspace expects from useSubmissionAPI.submitCode, so the
  * workspace and feedback components need no changes. The paths:
  *
- * 1. Hint requested: straight to the Celery path, untagged — hint
+ * 1. Hint requested: straight to the server path, untagged — hint
  *    generation needs the server anyway, and its validation run feeds the
  *    hint context.
  * 2. Kill switch off (VITE_PYODIDE_VALIDATION=false) or the league's game
- *    isn't in the browser engine registry: the pre-existing Celery
+ *    isn't in the browser engine registry: the pre-existing server
  *    submission, untagged.
  * 3. Pyodide ran (any outcome, including agent errors/timeouts): persist
  *    via /user/submit-agent-result — the server re-runs the AST gate,
  *    applies the shared rate limit, and owns the 400/429 contract.
  * 4. Pyodide itself couldn't run (boot/probe/infra failure): submit through
- *    Celery tagged execution_source="pyodide_fallback" so the server logs
+ *    the server tagged execution_source="pyodide_fallback" so the server logs
  *    and counts it (validation: reason prefix).
  */
 const usePyodideValidationSubmit = ({ gameName, teamName }) => {
@@ -82,7 +82,7 @@ const usePyodideValidationSubmit = ({ gameName, teamName }) => {
           return result;
         }
         // The run itself finished locally; show it, flag that it wasn't
-        // saved, and never re-run through Celery (double execution).
+        // saved, and never re-run on the server (double execution).
         toast.warn('Result shown but could not be saved');
       }
 

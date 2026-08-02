@@ -56,10 +56,11 @@ Say so before running it against prod if the user didn't explicitly ask for that
 ## Gotchas baked into the script
 
 - **Don't lower `--sims` to make the run faster** (default 2000). A simulation carries
-  ~150–300 ms of fixed overhead (enqueue, worker process spawn —
-  `worker_max_tasks_per_child=1` — polling, saving results) on top of ~2 ms of compute
-  per game. Below ~500 games the overhead *is* the measurement and the agent-count
-  normalization distorts it. You'd be benchmarking the queue, not the CPU.
+  ~150–300 ms of fixed overhead (per-run subprocess/Lambda invoke — validation runs
+  via backend/validation_lambda/, a fresh forked child per run — plus saving results)
+  on top of ~2 ms of compute per game. Below ~500 games the overhead *is* the
+  measurement and the agent-count normalization distorts it. Note: in prod,
+  submit-agent now measures the Lambda round-trip, not droplet CPU.
 - Each pass leaves 2 demo teams in `greedy_pig_demo`, so the league gets heavier run over
   run — and prod usually holds more demo agents than local. Simulation cost is therefore
   normalized **per run** to ms per (game × agent); raw wall-clock sim time is not

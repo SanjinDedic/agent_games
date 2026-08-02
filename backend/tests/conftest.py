@@ -115,29 +115,25 @@ def create_test_institution(session, **kwargs):
     session.refresh(institution)
     return institution
 
-@pytest.fixture(scope="session")
-def celery_workers():
-    """Fail fast with a clear message when the validation worker is not up.
+@pytest.fixture
+def valkey():
+    """A Valkey client on VALKEY_URL, with pyodide-fallback keys wiped before
+    and after so telemetry counts are deterministic. Shared by the exercise,
+    snippet, and agent-validation fallback tests."""
+    import redis
 
-    Task-level tests enqueue to the real broker and need the validation
-    worker running (docker compose starts it; test-runner depends_on its
-    healthcheck). Exercise/snippet fallbacks no longer use Celery — they run
-    through backend/fallback_lambda/ (local subprocess mode in tests).
-    """
-    from backend.tasks.celery_app import celery_app
+    from backend.config import VALKEY_URL
 
-    # limit=1 returns as soon as the worker replies (~10ms) instead of
-    # waiting out the full broadcast timeout.
-    replies = celery_app.control.inspect(timeout=5, limit=1).ping() or {}
-    if not any(node.startswith("validation@") for node in replies):
-        pytest.fail(
-            f"No validation worker responded to ping (got: {list(replies)}) — "
-            f"start the compose worker first (docker compose up -d "
-            f"worker-validation). If it IS up, an orphan worker on the shared "
-            f"broker may have starved the limit=1 ping — remove stale "
-            f"containers (docker compose down --remove-orphans)."
-        )
-    return replies
+    client = redis.Redis.from_url(VALKEY_URL, decode_responses=True)
+
+    def wipe():
+        keys = client.keys("pyodide-fallback:*")
+        if keys:
+            client.delete(*keys)
+
+    wipe()
+    yield client
+    wipe()
 
 
 _ENUM_TYPES = (

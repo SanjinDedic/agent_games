@@ -1,6 +1,6 @@
 """Builds the context string fed to the AI when generating a student hint.
 
-The validation task (``backend/tasks/validation_task.py``) runs a
+The validation executor (``backend/validation_lambda/executor.py``) runs a
 student submission and returns a ``ValidationResponse`` shaped like::
 
     {
@@ -37,10 +37,10 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 
 # --- Validator coupling -----------------------------------------------------
-# These mirror the literals produced in validation_task.py and
-# code_validation.py. We intentionally do NOT import validation_task: importing
-# it pulls in the Celery app and the game factory. If you change a message
-# there, change the matching prefix here.
+# These mirror the literals produced in backend/validation_lambda/executor.py
+# and code_validation.py. We intentionally do NOT import the executor:
+# importing it drags in the game factory. If you change a message there,
+# change the matching prefix here.
 # Each prefix is matched with str.startswith() against response.message.
 
 SYNTAX_ERROR_PREFIX = "Syntax error in code:"
@@ -50,7 +50,7 @@ INIT_ERROR_PREFIX = "Error initializing game:"
 CONSTRUCTION_ERROR_PREFIX = "Failed to create player"
 RUNTIME_ERROR_PREFIX = "Error during simulation:"
 
-# Hard cap the validator enforces (validation_task.VALIDATION_TIMEOUT_SECONDS).
+# Hard cap the validator enforces (executor.VALIDATION_TIMEOUT_SECONDS).
 # Kept here only for human-readable context; not used for control flow.
 VALIDATION_TIMEOUT_SECONDS = 5
 

@@ -1,11 +1,11 @@
 """One-off benchmark: derive each game's validation_simulations attribute.
 
-Mirrors the body of backend/tasks/validation_task.run_validation (feedback game
-+ run_simulations + get_player_strategies) using each game's starter_code as
-the submitted agent, then recommends a per-game pass count that keeps the whole
-validation load under one second. Re-run after adding a game or changing a
-game engine, and copy the recommendation into the game class. Run inside the
-worker image:
+Mirrors the body of backend/validation_lambda/executor.run_validation
+(feedback game + run_simulations + get_player_strategies) using each game's
+starter_code as the submitted agent, then recommends a per-game pass count
+that keeps the whole validation load under one second. Re-run after adding a
+game or changing a game engine, and copy the recommendation into the game
+class. Run inside the backend image:
 
 docker compose -f docker-compose.yml -f docker-compose.test.yml \
     run --rm --no-deps test-runner python backend/bench_validation.py

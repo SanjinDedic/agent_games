@@ -3,10 +3,10 @@
 The browser executes exercises locally via
 frontend/src/pyodide/exercise_harness.py and submits the finished envelope to
 /tutorial/submit-exercise-result; when Pyodide cannot run at all, the
-frontend falls back to the Celery path with
+frontend falls back to the server path with
 execution_source="pyodide_fallback". Every fallback is logged and counted in
-Valkey so the migration can prove when the Celery exercise path has become
-dead weight and can be deleted.
+Valkey so the migration can prove when the exercise fallback path
+(backend/fallback_lambda/) has become dead weight and can be deleted.
 """
 
 import logging
@@ -15,7 +15,7 @@ from typing import Optional
 
 import redis
 
-from backend.tasks.celery_app import celery_app
+from backend.config import VALKEY_URL
 from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
@@ -33,12 +33,7 @@ _valkey_client: Optional[redis.Redis] = None
 def _get_valkey_client() -> redis.Redis:
     global _valkey_client
     if _valkey_client is None:
-        # The Celery broker is Valkey; reuse its URL rather than configuring
-        # a second connection setting (same pattern as lesson_db's rate
-        # limiter).
-        _valkey_client = redis.Redis.from_url(
-            celery_app.conf.broker_url, decode_responses=True
-        )
+        _valkey_client = redis.Redis.from_url(VALKEY_URL, decode_responses=True)
     return _valkey_client
 
 
@@ -65,14 +60,15 @@ def normalize_client_rows(test_results: list, source: str) -> list:
 
 
 def record_pyodide_fallback(team_id: Optional[int], reason: str) -> None:
-    """Count one browser-to-Celery fallback.
+    """Count one browser-to-server fallback.
 
-    Shared by exercise submissions and lesson snippet runs — snippet
-    fallbacks arrive with a "snippet:" reason prefix (lesson_router), so one
-    counter answers when the whole exercises worker is dead weight. The
-    warning line is the durable per-occurrence record; the Valkey counters
-    give the aggregate view for /diagnostics/pyodide-fallbacks. Fails open
-    on a Valkey error — the submission itself must not suffer for telemetry.
+    Shared by exercise submissions, lesson snippet runs, and agent
+    validation — snippet fallbacks arrive with a "snippet:" reason prefix
+    (lesson_router) and validation ones with "validation:" (user_router), so
+    one counter answers for all three. The warning line is the durable
+    per-occurrence record; the Valkey counters give the aggregate view for
+    /diagnostics/pyodide-fallbacks. Fails open on a Valkey error — the
+    submission itself must not suffer for telemetry.
     """
     logger.warning("Pyodide fallback: team=%s reason=%s", team_id, reason)
     day = utc_now().strftime("%Y-%m-%d")

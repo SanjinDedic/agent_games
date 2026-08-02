@@ -8,19 +8,19 @@ import {
 import useTutorialAPI from './useTutorialAPI';
 
 /**
- * Pyodide-first submit for one exercise, with automatic Celery fallback.
+ * Pyodide-first submit for one exercise, with automatic server fallback.
  *
  * Returns { submitCode, isLoading } where submitCode has the exact contract
  * useSubmissionWorkspace expects from useTutorialAPI.submitExercise, so the
  * workspace and results components need no changes. The paths:
  *
  * 1. Kill switch off (VITE_PYODIDE_EXERCISES=false): the pre-existing
- *    Celery submission, untagged.
+ *    server submission, untagged.
  * 2. Pyodide ran (any outcome, including student-code errors/timeouts):
  *    - student: persist via /tutorial/submit-exercise-result (server stamps
  *      rows "source": "pyodide" and owns the 400/429 contract);
  *    - preview: build the result locally, zero network.
- * 3. Pyodide itself couldn't run: submit through Celery tagged
+ * 3. Pyodide itself couldn't run: submit through the server tagged
  *    execution_source="pyodide_fallback" so the server logs and counts it.
  */
 const usePyodideExerciseSubmit = ({ exercise, preview = false }) => {
@@ -67,7 +67,7 @@ const usePyodideExerciseSubmit = ({ exercise, preview = false }) => {
           return result;
         }
         // The run itself succeeded locally; show it, flag that it wasn't
-        // saved, and never re-run through Celery (double execution).
+        // saved, and never re-run on the server (double execution).
         toast.warn('Result shown but could not be saved');
       }
 

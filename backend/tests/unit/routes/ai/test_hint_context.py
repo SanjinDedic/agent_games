@@ -1,5 +1,5 @@
 """Unit tests for hint_context: outcome classification, game-source loading,
-and prompt rendering. Pure functions — no DB, no Celery."""
+and prompt rendering. Pure functions — no DB, no execution service."""
 
 import pytest
 

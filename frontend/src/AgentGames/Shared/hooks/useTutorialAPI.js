@@ -212,7 +212,7 @@ export const useTutorialAPI = () => {
       : '/tutorial/submit-exercise';
 
     // Only Pyodide fallbacks send the extra fields ("pyodide_fallback"), so
-    // the server can log/count them; a plain Celery submission stays
+    // the server can log/count them; a plain server submission stays
     // byte-identical to before the in-browser runner existed.
     const body = { exercise_id: exerciseId, code };
     if (executionSource) {

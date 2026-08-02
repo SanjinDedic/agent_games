@@ -6,37 +6,17 @@ counted (Valkey) and its stored rows stamped, while the default path stays
 byte-identical to before the feature existed.
 """
 
-import pytest
 import redis
 from sqlmodel import select
 
 import backend.routes.tutorial.pyodide_support as pyodide_support
 from backend.database.db_models import ExerciseSubmission
-from backend.tasks.celery_app import celery_app
 from backend.tests.integration.routes.tutorial.test_tutorial_router import (  # noqa: F401 - fixtures
     PASSING_CODE,
     tutorial_with_exercise,
     word_counter_exercise,
 )
 from backend.time_utils import utc_now
-
-
-@pytest.fixture
-def valkey():
-    """A Valkey client on the broker URL, with fallback keys wiped before and
-    after so counts are deterministic."""
-    client = redis.Redis.from_url(
-        celery_app.conf.broker_url, decode_responses=True
-    )
-
-    def wipe():
-        keys = client.keys("pyodide-fallback:*")
-        if keys:
-            client.delete(*keys)
-
-    wipe()
-    yield client
-    wipe()
 
 
 def _today() -> str:

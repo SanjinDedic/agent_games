@@ -153,7 +153,7 @@ export const useSubmissionAPI = () => {
     try {
       const url = `${apiUrl}/user/submit-agent${generateHint ? "?generate_hint=true" : ""}`;
       // The tagging fields are only added when present so the default
-      // Celery submission stays byte-identical to the pre-Pyodide one.
+      // server submission stays byte-identical to the pre-Pyodide one.
       const body = {
         code,
         ...(executionSource
@@ -212,7 +212,7 @@ export const useSubmissionAPI = () => {
    * @param {Object} envelope - The 7-key ValidationResponse from the harness
    * Result contract matches submitCode so the workspace consumes both paths
    * identically; a network failure is flagged with networkError so the
-   * caller can show the local result without re-running through Celery.
+   * caller can show the local result without re-running on the server.
    */
   const submitAgentResult = useCallback(async (code, envelope) => {
     setIsLoading(true);

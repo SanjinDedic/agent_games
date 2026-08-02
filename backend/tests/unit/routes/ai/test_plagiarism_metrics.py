@@ -376,7 +376,7 @@ def test_ast_greedy_pig_progression_detected():
         "        my_unbanked = game_state['unbanked_money'][self.name]\n"
         "        if my_unbanked > 20:\n"
         "            return 'bank'\n"
-        "        elif my_unbanked > 10 and self.my_rank(game_state) <= 2:\n"
+        "        elif my_unbanked > 10 and game_state['roll_no'] >= 3:\n"
         "            return 'bank'\n"
         "        return 'continue'\n"
     )

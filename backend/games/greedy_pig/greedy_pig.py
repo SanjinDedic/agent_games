@@ -22,7 +22,6 @@ class CustomPlayer(Player):
     def make_decision(self, game_state):
         my_unbanked = game_state["unbanked_money"][self.name]
         my_banked = game_state["banked_money"][self.name]
-        my_current_rank = self.my_rank(game_state) # based on total money (banked + unbanked)
 
         decision = random.choice(['continue', 'bank'])
 
@@ -63,7 +62,6 @@ class CustomPlayer(Player):
 <h2>4. Helpful Methods</h2>
 <p>You can use the following methods in your implementation:</p>
 <ul>
-    <li><code>self.my_rank(game_state)</code>: Returns your current rank based on total money (banked + unbanked)</li>
     <li><code>self.add_feedback(message)</code>: Adds a custom feedback message that will be displayed in the game output</li>
 </ul>
 
@@ -72,11 +70,10 @@ class CustomPlayer(Player):
 def make_decision(self, game_state):
     my_unbanked = game_state["unbanked_money"][self.name]
     my_banked = game_state["banked_money"][self.name]
-    my_current_rank = self.my_rank(game_state)
 
     if my_unbanked > 20 or (my_banked + my_unbanked >= 100):
         decision = 'bank'
-    elif my_current_rank > 2 and game_state["roll_no"] > 3:
+    elif game_state["roll_no"] > 3:
         decision = 'bank'
     else:
         decision = 'continue'
@@ -88,7 +85,7 @@ def make_decision(self, game_state):
 <h2>6. Strategy Tips</h2>
 <ul>
     <li>You must bank to win — unbanked money never counts toward the 100-point target</li>
-    <li>Consider your current rank when making decisions</li>
+    <li>Compare your banked total with the <code>banked_money</code> of other players to judge whether to play safe or push harder</li>
     <li>Be aware of how close you are to winning (100 banked points)</li>
     <li>Balance the risk of rolling again with the potential reward</li>
     <li>Winner takes all by default, and tied winners split the points — an edge over copycat strategies matters</li>

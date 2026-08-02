@@ -73,6 +73,18 @@ def _discover_games(games_dir):
 GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 
 
+# Valkey (Redis-compatible) connection, used by the snippet rate limiter
+# (lesson_db) and the pyodide-fallback telemetry counters (pyodide_support).
+# Same in-container/localhost switch as backend/database/db_config.py: inside
+# Docker the service name resolves, outside the published port does.
+VALKEY_URL = os.environ.get(
+    "VALKEY_URL",
+    "redis://valkey:6379/0"
+    if os.path.exists("/.dockerenv")
+    else "redis://localhost:6379/0",
+)
+
+
 # Set a default SECRET_KEY for tests if not available in environment
 # In production, this should always be overridden by the actual secret key
 # from environment vars

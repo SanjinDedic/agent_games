@@ -129,7 +129,8 @@ async def submit_exercise(
     test_results = run_result.get("test_results", [])
     if submission.execution_source == "pyodide_fallback":
         # Stamp the stored rows so fallback runs stay identifiable in the
-        # submission history (the default Celery path stays untouched).
+        # submission history (the default server path stays untouched; the
+        # stored "celery_fallback" value predates the Celery removal).
         test_results = normalize_client_rows(test_results, "celery_fallback")
     submission_id = save_exercise_submission(
         session,
@@ -210,7 +211,7 @@ async def submit_exercise_result(
     """Persist an exercise attempt the browser already ran via Pyodide.
 
     The in-browser runner (frontend/src/pyodide/exercise_harness.py, kept in
-    lockstep with the Celery worker by test_exercise_harness_parity.py) runs
+    lockstep with the server executor by test_exercise_harness_parity.py) runs
     the code and test script locally, then reports the finished envelope here
     so progress tracking and submission history stay identical to worker-run
     attempts. Client results are trusted by design — exercises are practice,
