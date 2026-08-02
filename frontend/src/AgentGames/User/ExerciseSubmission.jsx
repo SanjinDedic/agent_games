@@ -30,7 +30,7 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
   const { getLatestExerciseSubmission, getExerciseSubmissions } =
     useTutorialAPI();
 
-  // Pyodide-first execution with automatic Celery fallback; same submitCode
+  // Pyodide-first execution with automatic server fallback; same submitCode
   // contract as submitExercise, so the workspace is unchanged.
   const { submitCode, isLoading: isSubmitting } = usePyodideExerciseSubmit({
     exercise,

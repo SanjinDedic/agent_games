@@ -9,10 +9,7 @@ from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
 from backend.routes.tutorial.pyodide_support import get_pyodide_fallback_stats
 
 from backend.routes.user.code_validation import validate_code
-from backend.tasks.validation_task import (
-    await_validation_result,
-    enqueue_validation,
-)
+from backend.validation_lambda.client import run_validation_fallback
 
 diagnostics_router = APIRouter()
 
@@ -27,7 +24,7 @@ diagnostics_router = APIRouter()
 async def get_status(
     current_user: dict = Depends(get_current_user),
 ):
-    """Get health status for the Celery broker and worker services"""
+    """Get health status for backing services (currently just Valkey)."""
     return {"statuses": await get_all_services_status()}
 
 
@@ -36,10 +33,10 @@ async def get_status(
 async def get_pyodide_fallbacks(
     current_user: dict = Depends(get_current_user),
 ):
-    """Per-day counts of browser exercise runs that fell back to Celery.
+    """Per-day counts of browser runs that fell back to the server.
 
-    The migration-readiness dial for in-browser (Pyodide) exercise execution:
-    a sustained zero here means the Celery exercise path can be deleted.
+    The migration-readiness dial for in-browser (Pyodide) execution:
+    a sustained zero here means the exercise fallback path can be deleted.
     Counters live in Valkey with a 30-day TTL (pyodide_support.py); each
     occurrence is also logged by the API as a warning.
     """
@@ -75,12 +72,9 @@ async def benchmark_submit(
             "duration_ms": None,
         }
     else:
-        async_result = enqueue_validation(
-            code=submission.code,
-            game_name=submission.game_name,
-            team_name="benchmark",
+        result = await run_validation_fallback(
+            submission.code, submission.game_name, "benchmark"
         )
-        result = await await_validation_result(async_result)
     round_trip_ms = (time.perf_counter() - t0) * 1000
 
     return {

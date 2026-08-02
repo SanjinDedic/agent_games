@@ -57,7 +57,7 @@ export const useLessonAPI = () => {
    * surfaces as { success: false, error }.
    *
    * Only Pyodide fallbacks send the extra fields ("pyodide_fallback"), so
-   * the server can log/count them; a plain Celery run stays byte-identical
+   * the server can log/count them; a plain server run stays byte-identical
    * to before the in-browser runner existed.
    */
   const runSnippet = useCallback(

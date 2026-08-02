@@ -15,7 +15,7 @@ PlayerConstructionError -> "Failed to create player..." + traceback.
 import pytest
 
 from backend.routes.ai.hint_context import HintContext
-from backend.tasks.validation_task import run_validation
+from backend.validation_lambda.executor import run_validation
 
 
 def _crashing_agent(game: str, method: str = "make_decision") -> str:

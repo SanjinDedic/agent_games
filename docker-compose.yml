@@ -18,7 +18,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - CELERY_BROKER_URL=redis://valkey:6379/0
+      - VALKEY_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
       - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
@@ -54,9 +54,8 @@ services:
     mem_reservation: 200m
     pids_limit: 50
 
-  # Celery broker + result backend. Ephemeral by design: losing in-flight
-  # tasks on restart matches losing in-flight HTTP requests in the old setup.
-  # noeviction is mandatory for a broker.
+  # Snippet rate-limit counters + pyodide-fallback telemetry (VALKEY_URL).
+  # Ephemeral by design: the counters are short-TTL operational data.
   valkey:
     image: valkey/valkey:latest
     command: valkey-server --save '' --appendonly no --maxmemory 150mb --maxmemory-policy noeviction
@@ -70,45 +69,6 @@ services:
       start_period: 5s
     restart: unless-stopped
     mem_limit: 200m
-
-  worker-validation:
-    build:
-      context: .
-      dockerfile: ./backend/Dockerfile
-    command: celery -A backend.tasks.celery_app worker -Q validation -n validation@%h --loglevel=info --concurrency=4
-    # No env_file / secrets by design: this worker runs untrusted agent code and
-    # must hold NOTHING an attacker could exfiltrate. Validation/exercise tasks
-    # build an in-memory League and never open a DB or S3 connection — a breached
-    # worker leaks no SECRET_KEY, DB password, or AWS key because none is present.
-    environment:
-      - PYTHONDONTWRITEBYTECODE=1
-      - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/agent_games
-      - CELERY_BROKER_URL=redis://valkey:6379/0
-      - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-    depends_on:
-      valkey:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A backend.tasks.celery_app inspect ping -d validation@$$HOSTNAME -t 10 | grep -q pong"]
-      interval: 30s
-      timeout: 15s
-      retries: 3
-      start_period: 30s
-    volumes:
-      - ./backend:/agent_games/backend
-    mem_limit: 500m
-    # memswap_limit == mem_limit disables swap for the container. Without it,
-    # docker grants an equal amount of swap on hosts that have any (GitHub
-    # Actions runners carry a 4GB swapfile), and a memory-bomb agent thrashes
-    # in swap past the 6s hard task time limit instead of being OOM-killed —
-    # the resilience tests require the kernel OOM kill to be deterministic.
-    memswap_limit: 500m
-    mem_reservation: 200m
-    pids_limit: 50
 
   frontend:
     build:
@@ -185,23 +145,16 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/agent_games
-      - CELERY_BROKER_URL=redis://valkey:6379/0
+      - VALKEY_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=test
       - SECRET_KEY=test_secret_key_for_tests
       # Cheap bcrypt for runtime hashing in tests (route-created users, demo
       # users). Precomputed conftest hashes are cost 4 to match.
       - BCRYPT_ROUNDS=4
-      # Must match worker-validation's value in docker-compose.test.yml: the
-      # ENQUEUING process stamps soft/hard time limits into each task message
-      # (they override the worker-side task defaults), and tests enqueue from
-      # this container.
-      - VALIDATION_TIMEOUT_SECONDS=2
     depends_on:
       api:
         condition: service_healthy
       valkey:
-        condition: service_healthy
-      worker-validation:
         condition: service_healthy
       postgres:
         condition: service_healthy

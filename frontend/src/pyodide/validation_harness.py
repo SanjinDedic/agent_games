@@ -1,7 +1,7 @@
 """The in-browser agent-validation harness, run inside Pyodide.
 
-Replicates the semantics of the Celery validation task
-(backend/tasks/validation_task.py::run_validation): construct the game with
+Replicates the semantics of the server validation executor
+(backend/validation_lambda/executor.py::run_validation): construct the game with
 its validation bots, add the submitted player, one verbose feedback game,
 then the game's benchmarked ``validation_simulations`` pass, returning the
 same 7-key ValidationResponse dict. The error messages reuse the task's
@@ -24,7 +24,7 @@ Two deliberate deltas from the task:
 ``starter_code`` (read off the game class already on the filesystem — no
 network, nothing leaves the browser). A runtime that can't validate starter
 code can't be trusted with real submissions, so the client routes them to
-the Celery fallback.
+the server fallback.
 
 Each bridge function returns a JSON string serialized inside Python so only
 a plain ``str`` crosses the JS bridge (no PyProxy issues; same rule as the

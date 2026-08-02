@@ -204,14 +204,15 @@ class GameFactory:
 ```
 
 ## 5. Restart Services
-After adding files, restart the API and the validation worker so they pick up
-the new game module:
+After adding files, restart the API so it picks up the new game module:
 ```bash
-docker compose restart api worker-validation
+docker compose restart api
 ```
+In production, also redeploy the validation Lambda — its zip snapshots
+`backend/games/` (`./backend/validation_lambda/deploy.sh --smoke`).
 
 ## 6. Enable In-Browser Simulation (optional, per game)
-League simulations run in the browser via Pyodide, not on a Celery worker.
+League simulations run in the browser via Pyodide, not on the server.
 A new game's simulations stay disabled in the UI until you:
 1. Copy the engine files verbatim into `frontend/src/pyodide/games/engine/<name>/`
    (plus keep `base_game.py`/`game_factory.py` copies current).

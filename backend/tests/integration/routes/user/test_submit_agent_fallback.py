@@ -1,10 +1,11 @@
-"""Integration tests for the agent-validation Pyodide-to-Celery fallback.
+"""Integration tests for the agent-validation Pyodide-to-server fallback.
 
 When the browser can't run the validation Pyodide runner it submits through
-the normal Celery path with execution_source="pyodide_fallback"; every such
+the normal server path with execution_source="pyodide_fallback"; every such
 submission must be counted in the shared Valkey telemetry with the
 "validation:" reason prefix, while the default path stays byte-identical to
-before the feature existed.
+before the feature existed. Each submission here runs the real local
+subprocess executor (VALIDATION_LAMBDA_FUNCTION is unset in tests).
 """
 
 from datetime import timedelta
@@ -15,7 +16,6 @@ from sqlmodel import Session, select
 
 import backend.routes.tutorial.pyodide_support as pyodide_support
 from backend.database.db_models import League, Submission, Team
-from backend.tasks.celery_app import celery_app
 from backend.tests.conftest import make_student_token
 from backend.time_utils import utc_now
 
@@ -51,30 +51,12 @@ def fallback_headers(db_session: Session) -> dict:
     return {"Authorization": f"Bearer {make_student_token(team)}"}
 
 
-@pytest.fixture
-def valkey():
-    """A Valkey client on the broker URL, with fallback keys wiped before and
-    after so counts are deterministic."""
-    client = redis.Redis.from_url(
-        celery_app.conf.broker_url, decode_responses=True
-    )
-
-    def wipe():
-        keys = client.keys("pyodide-fallback:*")
-        if keys:
-            client.delete(*keys)
-
-    wipe()
-    yield client
-    wipe()
-
-
 def _today() -> str:
     return utc_now().strftime("%Y-%m-%d")
 
 
 def test_fallback_submission_is_counted_with_validation_prefix(
-    client, db_session, fallback_headers, valkey, celery_workers
+    client, db_session, fallback_headers, valkey
 ):
     response = client.post(
         "/user/submit-agent",
@@ -102,9 +84,9 @@ def test_fallback_submission_is_counted_with_validation_prefix(
 
 
 def test_default_submission_is_not_counted(
-    client, fallback_headers, valkey, celery_workers
+    client, fallback_headers, valkey
 ):
-    """The pre-existing Celery path must stay byte-identical: no counting."""
+    """The default server path must stay byte-identical: no counting."""
     response = client.post(
         "/user/submit-agent",
         json={"code": VALID_CODE},
@@ -115,7 +97,7 @@ def test_default_submission_is_not_counted(
 
 
 def test_missing_reason_counts_as_unspecified(
-    client, fallback_headers, valkey, celery_workers
+    client, fallback_headers, valkey
 ):
     response = client.post(
         "/user/submit-agent",
@@ -129,7 +111,7 @@ def test_missing_reason_counts_as_unspecified(
 
 
 def test_oversized_reason_is_truncated(
-    client, fallback_headers, valkey, celery_workers
+    client, fallback_headers, valkey
 ):
     response = client.post(
         "/user/submit-agent",
@@ -155,7 +137,7 @@ def test_unknown_execution_source_rejected(client, fallback_headers):
 
 
 def test_fallback_telemetry_failure_fails_open(
-    client, fallback_headers, celery_workers, monkeypatch
+    client, fallback_headers, monkeypatch
 ):
     """A dead Valkey must not break the submission itself."""
 

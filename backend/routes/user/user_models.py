@@ -2,7 +2,7 @@ from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, field_validator
 
-# The Celery path streams stdout back without truncation, but a client-run
+# The server path streams stdout back without truncation, but a client-run
 # result is attacker-controlled — bound what a tampered client can persist.
 MAX_RESULT_STDOUT_CHARS = 50_000
 
@@ -10,11 +10,11 @@ MAX_RESULT_STDOUT_CHARS = 50_000
 class SubmissionCode(BaseModel):
     """Model for code submissions from teams.
 
-    ``execution_source`` distinguishes the default Celery-run submission from
-    a browser submission that fell back to Celery because Pyodide could not
-    run (frontend/src/pyodide/validationRunnerClient.js). Fallbacks are
-    logged and counted so the in-browser migration can prove when the Celery
-    path has become dead weight.
+    ``execution_source`` distinguishes the default server-run submission
+    (wire value "celery", kept for contract stability after the Celery
+    removal) from a browser submission that fell back to the server because
+    Pyodide could not run (frontend/src/pyodide/validationRunnerClient.js).
+    Fallbacks are logged and counted in the shared telemetry.
     """
 
     code: str
@@ -35,12 +35,12 @@ class AgentResultSubmissionRequest(BaseModel):
 
     The browser already ran the full validation load
     (frontend/src/pyodide/validation_harness.py); this carries the resulting
-    envelope so the attempt is recorded exactly like a Celery-run one. The
+    envelope so the attempt is recorded exactly like a server-run one. The
     client-reported results only feed the informational validation ranking
     (league standings come from separate league simulations), but the code
     itself is re-gated by the server-side AST check before storage — stored
     submissions are later executed in teachers' browsers by the league
-    simulation runner. ``traceback`` is not accepted: the Celery path never
+    simulation runner. ``traceback`` is not accepted: the server path never
     persists it either.
     """
 

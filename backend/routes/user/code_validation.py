@@ -1,8 +1,8 @@
 """AST safety check for submitted agent code.
 
-Runs in the API process before enqueue — unsafe code never reaches a worker.
-The Celery task that actually executes the agent lives in
-backend/tasks/validation_task.py.
+Runs in the API process before execution — unsafe code never reaches the
+sandbox. The executor that actually runs the agent lives in
+backend/validation_lambda/executor.py.
 """
 
 import ast

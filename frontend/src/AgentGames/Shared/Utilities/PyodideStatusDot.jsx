@@ -3,7 +3,7 @@ import usePyodideHealth from '../hooks/usePyodideHealth';
 
 // Small execution-path indicator: green when the in-browser Python runtime
 // (Pyodide) booted AND passed its health probe, orange when runs go through
-// the Celery fallback (probe/boot failed, or Pyodide is switched off), grey
+// the server fallback (probe/boot failed, or Pyodide is switched off), grey
 // pulse while booting/probing. Hover explains. Same fixed-position tooltip
 // trick as StrategyTooltip so overflow wrappers can't clip it.
 

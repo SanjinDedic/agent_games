@@ -23,8 +23,8 @@
 # file and backend/check_schema_drift.sh in sync.
 #
 # POSIX sh (the Alpine runtime image has no bash). Invoked explicitly from the
-# api CMD / compose command, NOT as a baked-in ENTRYPOINT: the worker and
-# test-runner containers share this image and must NOT run this pre-start.
+# api CMD / compose command, NOT as a baked-in ENTRYPOINT: the test-runner
+# container shares this image and must NOT run this pre-start.
 set -eu
 
 # psql wants a libpq URL; strip the SQLAlchemy "+psycopg" driver suffix the

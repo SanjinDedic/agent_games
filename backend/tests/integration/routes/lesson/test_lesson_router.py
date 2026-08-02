@@ -9,9 +9,6 @@ from sqlmodel import Session
 import backend.routes.tutorial.pyodide_support as pyodide_support
 from backend.database.db_models import Lesson
 from backend.routes.lesson import lesson_db
-from backend.tests.integration.routes.tutorial.test_pyodide_fallback import (  # noqa: F401 - fixture
-    valkey,
-)
 from backend.time_utils import utc_now
 
 LESSON_CONTENT = (

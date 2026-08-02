@@ -8,11 +8,12 @@ from backend.fallback_lambda.executor import MAX_STDOUT_CHARS
 class ExerciseSubmissionRequest(BaseModel):
     """Model for exercise code submissions from teams.
 
-    ``execution_source`` distinguishes the default Celery-run submission from
-    a browser submission that fell back to Celery because Pyodide could not
-    run (frontend/src/pyodide/exerciseRunnerClient.js). Fallbacks are logged
-    and counted so the in-browser migration can prove when the Celery path
-    has become dead weight.
+    ``execution_source`` distinguishes the default server-run submission
+    (wire value "celery", kept for contract stability after the Celery
+    removal) from a browser submission that fell back to the server because
+    Pyodide could not run (frontend/src/pyodide/exerciseRunnerClient.js).
+    Fallbacks are logged and counted so the in-browser migration can prove
+    when the fallback path has become dead weight.
     """
 
     exercise_id: int

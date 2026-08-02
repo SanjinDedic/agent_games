@@ -11,9 +11,9 @@
  * The contract with usePyodideExerciseSubmit / usePyodideSnippetRun is the
  * resolution kind:
  *   { kind: "local", envelope }   — Pyodide ran; envelope is the normalized
- *     result (identical shape to the Celery worker's), including
+ *     result (identical shape to the server executor's), including
  *     status:"error" outcomes like a crash or the watchdog timeout. Never
- *     falls back: Celery would fail the same way.
+ *     falls back: the server would fail the same way.
  *   { kind: "fallback", reason }  — Pyodide itself couldn't run (boot
  *     failure, failed health probe, infra crash mid-run); the caller must
  *     submit through the server fallback with this reason so the fallback is
@@ -302,7 +302,7 @@ function runOnWorker(payload, timeoutEnvelope) {
       if (settled) return;
       settled = true;
       // Student code stuck in a loop: a local outcome, not a fallback —
-      // Celery would time the same code out too.
+      // the server would time the same code out too.
       rebootWorker();
       resolve({ kind: 'local', envelope: timeoutEnvelope() });
     }, RUN_TIMEOUT_MS);

@@ -8,12 +8,12 @@
  *
  * The contract with usePyodideValidationSubmit is the resolution kind:
  *   { kind: "local", envelope }   — Pyodide ran; envelope is the normalized
- *     7-key ValidationResponse (identical shape to the Celery task's),
+ *     7-key ValidationResponse (identical shape to the server executor's),
  *     including status:"error" outcomes like a crash or the watchdog
- *     timeout. Never falls back: Celery would fail the same way.
+ *     timeout. Never falls back: the server would fail the same way.
  *   { kind: "fallback", reason }  — Pyodide itself couldn't run (boot
  *     failure, failed health probe, infra crash mid-run); the caller must
- *     submit through the Celery path with this reason so the fallback is
+ *     submit through the server path with this reason so the fallback is
  *     counted server-side.
  *
  * The health probe is game-specific and heavyweight by design: it runs a
@@ -41,7 +41,7 @@ const PROBE_TIMEOUT_MS = 10000; // a probe IS a full starter validation
 const PROBE_ATTEMPTS = 2;
 const RUN_TIMEOUT_MS = 20000; // server soft limit is 5s; Pyodide is ~3-5x
 
-// Same phrasing as the Celery task's TIMEOUT_MESSAGE
+// Same phrasing as the server executor's TIMEOUT_MESSAGE
 // (backend/tasks/validation_task.py) with this runtime's honest budget —
 // the prefix is matched by hint_context.classify_outcome.
 const TIMEOUT_MESSAGE =
@@ -49,7 +49,7 @@ const TIMEOUT_MESSAGE =
   `${RUN_TIMEOUT_MS / 1000} seconds. The agent may be too slow or stuck in a loop.`;
 
 // Build-time kill switch: set VITE_PYODIDE_VALIDATION=false to force every
-// agent submission through the Celery path (no fallback tagging — it's not
+// agent submission through the server path (no fallback tagging — it's not
 // a fallback, it's the configured path).
 export const isPyodideValidationEnabled = () =>
   import.meta.env.VITE_PYODIDE_VALIDATION !== 'false';
@@ -266,7 +266,7 @@ async function ensureReadyForGame(gameName) {
     if (!probe.ok) {
       if (probe.gameOnly) {
         runner.probeResults.set(gameName, 'fail');
-        setState('ready'); // runner is healthy; this game routes to Celery
+        setState('ready'); // runner is healthy; this game routes to the server
         notify();
         return false;
       }
@@ -338,7 +338,7 @@ function runOnWorker(payload) {
     const runTimer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      // Agent stuck in a loop: a local outcome, not a fallback — Celery
+      // Agent stuck in a loop: a local outcome, not a fallback — the server
       // would time the same code out too (at its own 5s budget).
       rebootWorker();
       resolve({ kind: 'local', envelope: timeoutEnvelope() });

@@ -61,10 +61,7 @@ from backend.routes.user.user_models import (
     TeamPasswordReset,
 )
 from backend.schools.providers import SchoolsProviderError, get_schools_provider
-from backend.tasks.validation_task import (
-    await_validation_result,
-    enqueue_validation,
-)
+from backend.validation_lambda.client import run_validation_fallback
 from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
@@ -174,8 +171,8 @@ async def submit_agent(
             detail="You are not allowed to request a hint right now",
         )
 
-    # AST safety check runs here, before enqueue: cheap, and unsafe code
-    # never reaches a worker. The "Agent code is not safe: " prefix is
+    # AST safety check runs here, before execution: cheap, and unsafe code
+    # never reaches the sandbox. The "Agent code is not safe: " prefix is
     # matched by hint_context.classify_outcome — do not reword.
     is_safe, error_message = validate_code(submission.code)
     if not is_safe:
@@ -189,15 +186,12 @@ async def submit_agent(
             "stdout": None,
         }
     else:
-        logger.info(f"Enqueueing validation task for team {team_name}")
-        async_result = enqueue_validation(
-            code=submission.code,
-            game_name=team.league.game,
-            team_name=team_name,
+        logger.info(f"Running validation for team {team_name}")
+        # Lambda (or local-subprocess degraded mode); every kill/timeout/
+        # service fault comes back as a clean validation failure envelope.
+        validation_result = await run_validation_fallback(
+            submission.code, team.league.game, team_name
         )
-        # Polls the backend (no thread, no shared pubsub consumer) and maps
-        # every kill/timeout/worker-loss to a clean validation failure.
-        validation_result = await await_validation_result(async_result)
 
     duration_ms = validation_result.get("duration_ms")
     validation_failed = validation_result.get("status") == "error"
@@ -288,7 +282,7 @@ async def submit_agent_result(
     because stored submissions are later executed in teachers' browsers by
     the league simulation runner. Response bodies match /user/submit-agent
     so the frontend consumes both paths identically; hints stay exclusive
-    to the Celery path (a hint request never runs in the browser).
+    to the server path (a hint request never runs in the browser).
     """
     team_name = current_user["team_name"]
     team = get_team_by_id(session, current_user["team_id"])

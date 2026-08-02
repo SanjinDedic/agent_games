@@ -1,12 +1,13 @@
-"""Parity contract between the Celery validation task and the browser harness.
+"""Parity contract between the server validation executor and the browser
+harness.
 
 The in-browser validation runner (frontend/src/pyodide/validation_harness.py)
-is an extraction of backend/tasks/validation_task.py::run_validation: same
-game load, same envelope, same error phrasing (which hint_context
+is an extraction of backend/validation_lambda/executor.py::run_validation:
+same game load, same envelope, same error phrasing (which hint_context
 prefix-matches). Students must get identical results whether their agent
-validates in Pyodide or falls back to the worker. These tests exec the exact
+validates in Pyodide or falls back to the server. These tests exec the exact
 file the browser ships under CPython — where ``backend.games`` imports
-natively, no filesystem shim needed — and compare it against the task on
+natively, no filesystem shim needed — and compare it against the executor on
 shared fixtures.
 
 Games are stochastic (they reseed per roll/hand), so success parity is
@@ -17,7 +18,7 @@ inside the agent's exec'd code plus the final exception line.
 ``test_starter_code_validates_for_every_game`` is the server-side guarantee
 behind the browser health probe: the probe validates the game's own
 starter_code locally, so starter code that stops validating must fail CI,
-not silently push every student onto the Celery fallback.
+not silently push every student onto the server fallback.
 
 The harness file reaches the test container through the read-only
 frontend/src/pyodide volume in docker-compose.yml.
@@ -31,7 +32,7 @@ import pytest
 
 from backend.config import GAMES
 from backend.games.game_factory import GameFactory
-from backend.tasks import validation_task
+from backend.validation_lambda import executor as validation_executor
 
 HARNESS_PATH = (
     Path(__file__).resolve().parents[3]
@@ -67,7 +68,7 @@ harness = _load_harness()
 def _normalize_traceback(traceback_text):
     """The comparable part of a traceback: the frames inside the agent's
     exec'd code plus the final exception line. Frames pointing into
-    validation_task.py vs validation_harness.py legitimately differ."""
+    executor.py vs validation_harness.py legitimately differ."""
     if traceback_text is None:
         return None
     lines = traceback_text.rstrip("\n").split("\n")
@@ -77,9 +78,9 @@ def _normalize_traceback(traceback_text):
 
 
 def _run_both(code, game_name, team_name):
-    """Run one fixture through the task (called inline) and the harness;
+    """Run one fixture through the executor (called inline) and the harness;
     assert shared structure and return the pair."""
-    task_result = validation_task.run_validation(
+    task_result = validation_executor.run_validation(
         code=code, game_name=game_name, team_name=team_name
     )
     harness_result = json.loads(

@@ -22,11 +22,10 @@ async def test_status_success(client, auth_headers):
     statuses = data["statuses"]
     assert isinstance(statuses, dict)
 
-    # Should have the broker and the validation worker (exercise/snippet
-    # fallbacks run via backend/fallback_lambda/, not a worker).
+    # Only Valkey remains: validation runs via backend/validation_lambda/,
+    # exercise/snippet fallbacks via backend/fallback_lambda/ — no workers.
     expected_services = [
         "valkey",
-        "validation-worker",
     ]
     for service in expected_services:
         assert service in statuses
@@ -35,6 +34,7 @@ async def test_status_success(client, auth_headers):
         assert "health" in statuses[service]
         assert "is_healthy" in statuses[service]
 
+    assert "validation-worker" not in statuses
     assert "exercises-worker" not in statuses
 
 @pytest.mark.asyncio

@@ -7,7 +7,7 @@ import {
 import useLessonAPI from './useLessonAPI';
 
 /**
- * Pyodide-first run for one lesson snippet, with automatic Celery fallback.
+ * Pyodide-first run for one lesson snippet, with automatic server fallback.
  *
  * Returns { runSnippet } with the exact { success, data | error } contract
  * RunnableCodeBlock already consumes from useLessonAPI.runSnippet, so the

@@ -43,7 +43,7 @@ function Tutorial({ preview = false }) {
 
   // Warm-boot the Pyodide runner as soon as the page mounts, so the first
   // submit doesn't pay the runtime's load time. Failures are handled inside
-  // the runner (later submits fall back to Celery automatically).
+  // the runner (later submits fall back to the server automatically).
   useEffect(() => {
     ensureRunner();
   }, []);

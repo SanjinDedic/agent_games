@@ -4,10 +4,10 @@ from typing import Optional
 import redis
 from sqlmodel import Session, select
 
+from backend.config import VALKEY_URL
 from backend.database.db_models import Lesson, LessonConcept
 # Reused so the existing 429 handler in api.py covers snippet rate limiting.
 from backend.routes.user.user_db import SubmissionLimitExceededError
-from backend.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +36,15 @@ _rate_limit_client: Optional[redis.Redis] = None
 def _get_rate_limit_client() -> redis.Redis:
     global _rate_limit_client
     if _rate_limit_client is None:
-        # The Celery broker is Valkey; reuse its URL rather than configuring
-        # a second connection setting.
-        _rate_limit_client = redis.Redis.from_url(celery_app.conf.broker_url)
+        _rate_limit_client = redis.Redis.from_url(VALKEY_URL)
     return _rate_limit_client
 
 
 def allow_snippet_run(identity: str) -> bool:
     """Check the caller's snippet-run budget (fixed one-minute window).
 
-    Fails open on a Valkey error: if the broker is down the enqueue right
-    after this call will fail loudly anyway, so refusing here adds nothing.
+    Fails open on a Valkey error: rate limiting is protection, not a
+    feature — a snippet run must not fail because the counter store is down.
     """
     key = f"lesson-snippet-rate:{identity}"
     try:

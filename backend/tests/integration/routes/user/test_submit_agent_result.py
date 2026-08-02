@@ -1,9 +1,8 @@
 """Integration tests for /user/submit-agent-result.
 
 The endpoint persists agent validations the browser already ran via Pyodide
-(frontend/src/pyodide/validation_harness.py). No Celery worker is involved
-anywhere in this file — that is the point of the endpoint — so none of these
-tests need the celery_workers fixture.
+(frontend/src/pyodide/validation_harness.py). No server-side execution is
+involved anywhere in this file — that is the point of the endpoint.
 """
 
 from datetime import timedelta

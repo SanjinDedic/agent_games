@@ -2,17 +2,11 @@ import asyncio
 import logging
 from typing import Dict
 
-from backend.tasks.celery_app import celery_app
+import redis
+
+from backend.config import VALKEY_URL
 
 logger = logging.getLogger(__name__)
-
-# Worker node-name prefixes (workers are launched with -n validation@%h)
-# mapped to the status entries the frontend renders. Exercise/snippet
-# fallbacks no longer run on a worker — they go to AWS Lambda (or a local
-# subprocess) via backend/fallback_lambda/.
-WORKER_SERVICES = {
-    "validation": "validation-worker",
-}
 
 
 def _entry(name: str, is_healthy: bool, health: str) -> Dict:
@@ -25,49 +19,31 @@ def _entry(name: str, is_healthy: bool, health: str) -> Dict:
 
 
 def _collect_statuses() -> Dict[str, Dict]:
-    statuses: Dict[str, Dict] = {}
+    """Health of the backing services the API depends on.
 
-    # Broker reachability
+    Only Valkey remains: agent validation runs on AWS Lambda (or a local
+    subprocess) via backend/validation_lambda/, exercises/snippets via
+    backend/fallback_lambda/ — neither has a long-lived service to ping.
+    """
+    statuses: Dict[str, Dict] = {}
     try:
-        with celery_app.connection_for_read() as conn:
-            conn.ensure_connection(max_retries=1, timeout=2)
-        statuses["valkey"] = _entry("valkey", True, "Broker connection OK")
+        client = redis.Redis.from_url(
+            VALKEY_URL, socket_connect_timeout=2, socket_timeout=2
+        )
+        try:
+            client.ping()
+        finally:
+            client.close()
+        statuses["valkey"] = _entry("valkey", True, "Valkey connection OK")
     except Exception as e:
-        error_msg = f"Broker unreachable: {str(e)}"
+        error_msg = f"Valkey unreachable: {str(e)}"
         logger.error(error_msg)
         statuses["valkey"] = _entry("valkey", False, error_msg)
-        for service_name in WORKER_SERVICES.values():
-            statuses[service_name] = _entry(service_name, False, error_msg)
-        return statuses
-
-    # Worker pings
-    try:
-        # limit= lets the broadcast return as soon as every known worker has
-        # replied instead of always waiting out the full timeout.
-        replies = (
-            celery_app.control.inspect(timeout=2.0, limit=len(WORKER_SERVICES)).ping()
-            or {}
-        )
-    except Exception as e:
-        replies = {}
-        logger.error(f"Worker ping failed: {str(e)}")
-
-    for prefix, service_name in WORKER_SERVICES.items():
-        node = next((n for n in replies if n.startswith(f"{prefix}@")), None)
-        if node:
-            statuses[service_name] = _entry(
-                service_name, True, f"Worker {node} responded to ping"
-            )
-        else:
-            statuses[service_name] = _entry(
-                service_name, False, f"No {prefix} worker responded to ping"
-            )
-
     return statuses
 
 
 async def get_all_services_status() -> Dict[str, Dict]:
-    """Get status for the Celery broker and the validation worker.
+    """Get status for the backing services.
 
     Returns a dictionary mapping service names to their status information;
     each entry has the {name, status, health, is_healthy} shape the frontend

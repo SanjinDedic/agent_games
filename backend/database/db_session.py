@@ -21,7 +21,7 @@ def get_db_engine():
         kwargs = dict(pool_pre_ping=True, pool_recycle=300)
 
         # The smallest managed plan allows ~22 client connections for the whole
-        # cluster, shared by the gunicorn workers and every forked Celery child.
+        # cluster, shared by the gunicorn workers.
         # SQLAlchemy's default 5+10 per process can exhaust that, so prod sets
         # DB_POOL_SIZE/DB_MAX_OVERFLOW small (see config/deploy.yml). Unset (dev
         # and the test suite on a local cluster with no such cap) keeps the
