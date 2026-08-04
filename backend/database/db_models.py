@@ -588,3 +588,31 @@ class LessonConcept(SQLModel, table=True):
     concept_id: int = Field(foreign_key="concept.id", index=True)
 
     __table_args__ = (UniqueConstraint("lesson_id", "concept_id"),)
+
+
+class CodeEnvUsage(SQLModel, table=True):
+    """Per-user counters of where submitted code executed: browser Pyodide
+    (WASM) vs the server path (Lambda, or its local-subprocess degraded mode).
+
+    One row per (user, kind, environment); call_count grows by one per
+    submission. user_identifier is the team name as a plain string —
+    deliberately NOT a foreign key: demo teams and their submissions are
+    routinely deleted, and these counters must survive that cleanup to
+    capture all traffic. Aggregated by /admin/code-env-stats; nothing more
+    granular than users and call totals is stored by design.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_identifier: str = Field(index=True)
+    # "game" (agent validation) | "exercise" (tutorial exercise)
+    kind: str
+    # "pyodide" (ran in the browser) | "lambda" (ran on the server path)
+    environment: str
+    call_count: int = Field(default=0)
+    last_used: datetime = Field(
+        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_identifier", "kind", "environment"),
+    )

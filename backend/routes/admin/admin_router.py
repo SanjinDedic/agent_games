@@ -25,6 +25,7 @@ from backend.routes.admin.admin_models import (
     UpdateSupportTicket,
 )
 from backend.routes.auth.auth_core import get_current_user, verify_admin_role
+from backend.database.code_env import get_code_env_stats
 from backend.database.db_session import get_db
 from backend.database.db_models import (
     SupportTicketStatus,
@@ -159,6 +160,17 @@ async def delete_all_demo_teams_and_submissions(
     """Delete all demo teams and submissions."""
     delete_all_demo_teams_and_subs(session)
     return {"message": "All demo users deleted"}
+
+
+# Code environment usage (Pyodide vs Lambda submission counters)
+@admin_router.get("/code-env-stats")
+@verify_admin_role
+async def get_code_env_stats_endpoint(
+    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    """Users and call counts per (kind, environment) for all game and
+    exercise submissions, from the cleanup-proof CodeEnvUsage counters."""
+    return get_code_env_stats(session)
 
 
 # Database backup endpoints
