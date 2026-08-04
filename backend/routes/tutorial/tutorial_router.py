@@ -4,6 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
+from backend.database.code_env import (
+    ENV_LAMBDA,
+    ENV_PYODIDE,
+    KIND_EXERCISE,
+    record_code_env_call,
+)
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import (
     get_current_user,
@@ -100,6 +106,12 @@ async def submit_exercise(
         record_pyodide_fallback(
             team_id, submission.fallback_reason or "unspecified"
         )
+
+    # Environment counter (also post-rate-limit): everything through this
+    # endpoint runs on the server path, fallback traffic included.
+    record_code_env_call(
+        session, current_user["team_name"], KIND_EXERCISE, ENV_LAMBDA
+    )
 
     logger.info(
         f"Running exercise fallback for team {team_id}, "
@@ -227,6 +239,12 @@ async def submit_exercise_result(
     exercise = get_exercise_by_id(session, submission.exercise_id)
     assert_exercise_in_team_league(session, exercise, team_id)
     allow_exercise_submission(session, team_id)
+
+    # Post-rate-limit like submit_exercise's counter: this endpoint only ever
+    # persists runs the browser executed via Pyodide.
+    record_code_env_call(
+        session, current_user["team_name"], KIND_EXERCISE, ENV_PYODIDE
+    )
 
     test_results = normalize_client_rows(submission.test_results, "pyodide")
 

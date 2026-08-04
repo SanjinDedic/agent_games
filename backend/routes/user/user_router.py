@@ -6,6 +6,12 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
 from backend.config import GAMES
+from backend.database.code_env import (
+    ENV_LAMBDA,
+    ENV_PYODIDE,
+    KIND_GAME,
+    record_code_env_call,
+)
 from backend.database.db_models import Team
 from backend.database.db_session import get_db
 from backend.games.game_factory import GameFactory
@@ -161,6 +167,11 @@ async def submit_agent(
             team.id, f"validation:{submission.fallback_reason or 'unspecified'}"
         )
 
+    # Environment counter (also post-rate-limit): everything through this
+    # endpoint — including hint requests and fallback traffic — runs on the
+    # server path, so it counts as "lambda" regardless of execution_source.
+    record_code_env_call(session, team_name, KIND_GAME, ENV_LAMBDA)
+
     # Computed on the attempts recorded so far — enough to gate hint REQUESTS
     # cheaply, before the (expensive) validation run. As a RESPONSE value it is
     # stale by one attempt, so the failed path recomputes it after recording.
@@ -297,6 +308,10 @@ async def submit_agent_result(
         )
 
     allow_submission(session, team.id)
+
+    # Post-rate-limit like submit_agent's counter: this endpoint only ever
+    # persists runs the browser executed via Pyodide.
+    record_code_env_call(session, team_name, KIND_GAME, ENV_PYODIDE)
 
     def _failed(detail: str):
         record_failed_submission(

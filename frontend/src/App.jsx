@@ -24,6 +24,7 @@ import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import AdminTutorials from "./AgentGames/Admin/AdminTutorials";
 import AdminLessons from "./AgentGames/Admin/AdminLessons";
+import AdminCodeEnv from "./AgentGames/Admin/AdminCodeEnv";
 import LessonModalProvider from "./AgentGames/Shared/Lesson/LessonModalProvider";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
@@ -191,6 +192,14 @@ function App() {
             element={
               <AuthProtection requiredRole="admin" redirectTo="/Admin">
                 <AdminLessons />
+              </AuthProtection>
+            }
+          />
+          <Route
+            path="AdminCodeEnv"
+            element={
+              <AuthProtection requiredRole="admin" redirectTo="/Admin">
+                <AdminCodeEnv />
               </AuthProtection>
             }
           />

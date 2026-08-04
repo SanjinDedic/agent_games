@@ -1,0 +1,12 @@
+services:
+  api:
+    command:
+      - sh
+      - -c
+      - |
+        python -m ensurepip --upgrade && \
+        python -m pip install --no-cache-dir debugpy && \
+        python -m debugpy --listen 0.0.0.0:5678 -m uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+      - "5678:5678"

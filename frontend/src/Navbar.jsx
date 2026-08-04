@@ -25,6 +25,7 @@ function getNavLinks(T) {
       { to: "/AdminUserSupport", label: "User Support" },
       { to: "/AdminTutorials", label: "Tutorials" },
       { to: "/AdminLessons", label: "Lessons" },
+      { to: "/AdminCodeEnv", label: "Code Env" },
     ],
     // Everything about one league/classroom lives in the /Classroom/:id
     // workspace, entered from the Home cards; the navbar only keeps Home and
