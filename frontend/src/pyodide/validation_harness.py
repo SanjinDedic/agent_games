@@ -1,7 +1,7 @@
 """The in-browser agent-validation harness, run inside Pyodide.
 
 Replicates the semantics of the server validation executor
-(backend/validation_lambda/executor.py::run_validation): construct the game with
+(backend/lambda_fallback/validation/executor.py::run_validation): construct the game with
 its validation bots, add the submitted player, one verbose feedback game,
 then the game's benchmarked ``validation_simulations`` pass, returning the
 same 7-key ValidationResponse dict. The error messages reuse the task's

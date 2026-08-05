@@ -182,7 +182,7 @@ def test_build_hint_context_from_response_one_shot():
 # Envelope literals mirror what the validation runners (browser harness /
 # private Lambda executor) actually produce for a construction failure and a
 # runtime crash; the trace-capture behavior itself is pinned in the private
-# suite (backend/validation_lambda/tests/test_agent_error_traces.py).
+# suite (backend/lambda_fallback/validation/tests/test_agent_error_traces.py).
 
 
 def test_renders_trace_for_construction_error_envelope():

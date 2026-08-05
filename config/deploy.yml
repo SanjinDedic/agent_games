@@ -16,8 +16,8 @@ servers:
       secret:
         - SECRET_KEY
         # Signs /auth/execution-token; must match the EXEC_JWT_SECRET both
-        # Lambdas were deployed with (fallback_lambda/deploy.sh and
-        # validation_lambda/deploy.sh). Dedicated secret — student code can
+        # Lambdas were deployed with (backend/lambda_fallback/*/deploy.sh).
+        # Dedicated secret — student code can
         # read a Lambda's memory, so this must never be SECRET_KEY.
         - EXEC_JWT_SECRET
         # Managed Postgres (DigitalOcean), TLS-only:
@@ -90,8 +90,8 @@ env:
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
-    # Both Lambdas — the exercise/snippet fallback (backend/fallback_lambda/)
-    # and the agent-validation fallback (backend/validation_lambda/) — are
+    # Both Lambdas — the exercise/snippet fallback (backend/lambda_fallback/exercise_snippet/)
+    # and the agent-validation fallback (backend/lambda_fallback/validation/) — are
     # browser→Lambda-Function-URL direct: the API never invokes either, so no
     # function-name env vars and no IAM invoke permission. Only EXEC_JWT_SECRET
     # above must match what each Lambda was deployed with (their deploy.sh).

@@ -5,7 +5,7 @@ Runs one suite per environment:
 
   demo phase   - 2 x (launch demo -> list leagues -> join greedy_pig_demo -> submit agent)
                  submit-agent is the interesting one: AST check in the API, then a
-                 validation run via backend/validation_lambda/ (AWS Lambda in prod,
+                 validation run via backend/lambda_fallback/validation/ (AWS Lambda in prod,
                  local subprocess when VALIDATION_LAMBDA_FUNCTION is unset).
   auth phase   - admin login + institution login (bcrypt = a clean single-core CPU probe)
   institution  - 3 institution-token actions: get-all-teams (read), league-create

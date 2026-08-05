@@ -64,7 +64,7 @@ def create_service_token() -> str:
 def create_execution_token(sub: str, role: str) -> str:
     """Short-lived token the browser presents to the fallback Lambda's
     Function URL. Signed with EXEC_JWT_SECRET; the Lambda-side verifier
-    (backend/fallback_lambda/exec_token.py, stdlib-only) requires the
+    (backend/lambda_fallback/exercise_snippet/exec_token.py, stdlib-only) requires the
     ``scope: "exec"`` claim, so a stolen execution token opens nothing else.
     ``test_exec_token.py`` pins mint/verify parity."""
     if not EXEC_JWT_SECRET:

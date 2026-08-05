@@ -1,7 +1,7 @@
 """Student-facing lesson routes: read by slug. Snippet execution is
 Pyodide-first in the browser with a direct browser→Lambda fallback — the
 server never runs snippet code (the beacon endpoint is tested with the rest
-of the fallback suite in backend/fallback_lambda/tests/)."""
+of the fallback suite in backend/lambda_fallback/exercise_snippet/tests/)."""
 
 import pytest
 from sqlmodel import Session

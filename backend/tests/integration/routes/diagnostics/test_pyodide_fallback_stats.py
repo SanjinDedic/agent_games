@@ -1,6 +1,6 @@
 """GET /diagnostics/pyodide-fallbacks — the fallback-telemetry read side.
 
-This endpoint outlives backend/fallback_lambda/: validation fallbacks
+This endpoint outlives backend/lambda_fallback/exercise_snippet/: validation fallbacks
 (validation:-prefixed reasons from /user/submit-agent-result) keep feeding
 the same Valkey counters after the exercise fallback is deleted.
 """

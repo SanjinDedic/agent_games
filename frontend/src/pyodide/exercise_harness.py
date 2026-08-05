@@ -1,6 +1,6 @@
 """The in-browser exercise and snippet harness, run inside Pyodide.
 
-Extracted from backend/fallback_lambda/executor.py — the server fallback
+Extracted from backend/lambda_fallback/exercise_snippet/executor.py — the server fallback
 that in-browser execution replaces — and kept in byte-parity with it: the
 check semantics, row shapes, and the normalized result envelopes (exercise
 and lesson snippet alike) must be identical whether a run happens on the

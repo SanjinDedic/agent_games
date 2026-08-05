@@ -3,7 +3,7 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, field_validator
 
 # Mirrors the truncation bound in frontend/src/pyodide/exercise_harness.py
-# (and, while it exists, backend/fallback_lambda/executor.py — pinned equal by
+# (and, while it exists, backend/lambda_fallback/exercise_snippet/executor.py — pinned equal by
 # that folder's tests).
 MAX_STDOUT_CHARS = 10_000
 

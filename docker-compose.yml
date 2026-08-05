@@ -170,11 +170,11 @@ services:
       # test_exercise_harness_parity.py / test_validation_harness_parity.py
       # — see below)
       - ./frontend/src/pyodide:/agent_games/frontend/src/pyodide:ro
-    # backend/fallback_lambda/ and backend/validation_lambda/ are private
-    # nested repos (gitignored, like tutorial_data/). Their tests run on
-    # demand from a checkout that has them:
-    # `... run --rm test-runner pytest backend/fallback_lambda/tests/`
-    # `... run --rm test-runner pytest backend/validation_lambda/tests/`
+    # backend/lambda_fallback/ is a private nested repo (gitignored, like
+    # tutorial_data/) holding both Lambdas. Their tests run on demand from a
+    # checkout that has the folder:
+    # `... run --rm test-runner pytest backend/lambda_fallback/exercise_snippet/tests/`
+    # `... run --rm test-runner pytest backend/lambda_fallback/validation/tests/`
     command: pytest backend/tests/ -v
     scale: 0
 

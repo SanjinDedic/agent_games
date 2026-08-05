@@ -22,8 +22,8 @@ def _collect_statuses() -> Dict[str, Dict]:
     """Health of the backing services the API depends on.
 
     Only Valkey remains: all code execution happens in the browser (Pyodide)
-    or on Lambdas the browser calls directly (backend/validation_lambda/,
-    backend/fallback_lambda/) — neither has a long-lived service to ping.
+    or on Lambdas the browser calls directly (backend/lambda_fallback/validation/,
+    backend/lambda_fallback/exercise_snippet/) — neither has a long-lived service to ping.
     """
     statuses: Dict[str, Dict] = {}
     try:

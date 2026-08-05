@@ -7,7 +7,7 @@ calls the fallback Lambda's Function URL directly (the server never executes
 the code) and the persisted envelope carries
 execution_source="pyodide_fallback". Every fallback is logged and counted in
 Valkey so the migration can prove when the exercise fallback path
-(backend/fallback_lambda/) has become dead weight and can be deleted.
+(backend/lambda_fallback/exercise_snippet/) has become dead weight and can be deleted.
 """
 
 import logging
@@ -22,7 +22,7 @@ from backend.time_utils import utc_now
 logger = logging.getLogger(__name__)
 
 # The row keys the frontend renders (ExerciseResults.jsx) and the fallback
-# runner emits (backend/fallback_lambda/executor.py _append_row); anything else a
+# runner emits (backend/lambda_fallback/exercise_snippet/executor.py _append_row); anything else a
 # client sends is dropped before storage.
 ROW_KEYS = ("name", "call", "expected", "actual", "passed", "error")
 
