@@ -1,5 +1,5 @@
 import re
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -39,30 +39,16 @@ class LessonRequest(BaseModel):
         return value.strip()
 
 
-class SnippetRunRequest(BaseModel):
-    """Run one lesson code block: execute the code, return its output.
+class SnippetFallbackBeacon(BaseModel):
+    """Telemetry ping for a snippet the browser ran via the direct Lambda
+    Function URL (the server never executes snippet code) — keeps the
+    pyodide-fallback counters honest."""
 
-    ``execution_source`` distinguishes the default server run (wire value
-    "celery", kept for contract stability after the Celery removal) from a
-    browser run that fell back to the server because Pyodide could not run
-    (frontend/src/pyodide/exerciseRunnerClient.js) — the same contract as
-    ExerciseSubmissionRequest, counted through the same fallback telemetry.
-    """
+    reason: Optional[str] = None
 
-    code: str
-    execution_source: Literal["celery", "pyodide_fallback"] = "celery"
-    fallback_reason: Optional[str] = None
-
-    @field_validator("code")
+    @field_validator("reason")
     @classmethod
-    def code_not_blank(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("Code cannot be empty")
-        return value
-
-    @field_validator("fallback_reason")
-    @classmethod
-    def clean_fallback_reason(cls, value: Optional[str]) -> Optional[str]:
+    def clean_reason(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
         value = value.strip()[:500]

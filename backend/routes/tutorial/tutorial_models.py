@@ -2,32 +2,10 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
-from backend.fallback_lambda.executor import MAX_STDOUT_CHARS
-
-
-class ExerciseSubmissionRequest(BaseModel):
-    """Model for exercise code submissions from teams.
-
-    ``execution_source`` distinguishes the default server-run submission
-    (wire value "celery", kept for contract stability after the Celery
-    removal) from a browser submission that fell back to the server because
-    Pyodide could not run (frontend/src/pyodide/exerciseRunnerClient.js).
-    Fallbacks are logged and counted so the in-browser migration can prove
-    when the fallback path has become dead weight.
-    """
-
-    exercise_id: int
-    code: str
-    execution_source: Literal["celery", "pyodide_fallback"] = "celery"
-    fallback_reason: Optional[str] = None
-
-    @field_validator("fallback_reason")
-    @classmethod
-    def clean_fallback_reason(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
-        value = value.strip()[:500]
-        return value or None
+# Mirrors the truncation bound in frontend/src/pyodide/exercise_harness.py
+# (and, while it exists, backend/lambda_fallback/exercise_snippet/executor.py — pinned equal by
+# that folder's tests).
+MAX_STDOUT_CHARS = 10_000
 
 
 class ExerciseResultSubmissionRequest(BaseModel):
@@ -49,6 +27,12 @@ class ExerciseResultSubmissionRequest(BaseModel):
     test_results: List[dict] = []
     stdout: Optional[str] = None
     duration_ms: Optional[float] = None
+    # "pyodide" = the browser ran it locally (default). "pyodide_fallback" =
+    # Pyodide couldn't run and the browser called the fallback Lambda's
+    # Function URL directly — this envelope is that Lambda's result, and the
+    # submission doubles as the fallback-telemetry beacon.
+    execution_source: Literal["pyodide", "pyodide_fallback"] = "pyodide"
+    fallback_reason: Optional[str] = None
 
     @field_validator("stdout")
     @classmethod
@@ -88,7 +72,7 @@ class ExerciseRequest(BaseModel):
     """Full exercise definition, used for both create and update (PUT).
 
     `test_code` is the exercise's Python test script
-    (backend/fallback_lambda/executor.py); `solution` is an optional
+    (frontend/src/pyodide/exercise_harness.py); `solution` is an optional
     reference solution for the admin editor. Both are stored as NULL when
     blank — for test_code so submitting hits the runner's loud "defines no
     tests" error instead of passing vacuously.
@@ -132,16 +116,6 @@ class ExerciseRequest(BaseModel):
                 "Entry function must be a valid Python function name"
             )
         return value
-
-
-class ExerciseRunRequest(BaseModel):
-    """Admin dry run: execute a test script against code without touching the
-    DB. Stateless (no exercise id) so an exercise can be tested before it is
-    ever saved."""
-
-    code: str
-    entry_function: str = ""
-    test_code: Optional[str] = None
 
 
 class ExerciseReorderRequest(BaseModel):

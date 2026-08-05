@@ -51,28 +51,6 @@ export const useLessonAPI = () => {
   );
 
   /**
-   * Run one lesson code block on the server. Always resolves with the full
-   * run result — { status, message, stdout, traceback, duration_ms } — so
-   * tracebacks render in the output panel, never toast. A 429 (rate limit)
-   * surfaces as { success: false, error }.
-   *
-   * Only Pyodide fallbacks send the extra fields ("pyodide_fallback"), so
-   * the server can log/count them; a plain server run stays byte-identical
-   * to before the in-browser runner existed.
-   */
-  const runSnippet = useCallback(
-    (code, { executionSource = null, fallbackReason = null } = {}) => {
-      const body = { code };
-      if (executionSource) {
-        body.execution_source = executionSource;
-        body.fallback_reason = fallbackReason;
-      }
-      return request('/run-snippet', 'POST', body);
-    },
-    [request]
-  );
-
-  /**
    * Telemetry ping for a snippet the browser ran via the direct Lambda
    * Function URL (the API never saw the execution). Fire-and-forget:
    * request() never rejects, and callers don't await the result.
@@ -107,7 +85,6 @@ export const useLessonAPI = () => {
 
   return {
     getLessonBySlug,
-    runSnippet,
     sendSnippetFallbackBeacon,
     getLessons,
     createLesson,

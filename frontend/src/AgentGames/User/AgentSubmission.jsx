@@ -40,8 +40,8 @@ function AgentSubmission() {
     getGameInstructions,
   } = useSubmissionAPI();
 
-  // Pyodide-first submission with automatic server fallback; same contract
-  // as useSubmissionAPI.submitCode.
+  // Pyodide-first submission with automatic Lambda-direct fallback; the
+  // contract useSubmissionWorkspace expects.
   const { submitCode, isLoading: isSubmitting } = usePyodideValidationSubmit({
     gameName,
     teamName: currentUser.name,

@@ -1,7 +1,8 @@
 """Builds the context string fed to the AI when generating a student hint.
 
-The validation executor (``backend/validation_lambda/executor.py``) runs a
-student submission and returns a ``ValidationResponse`` shaped like::
+A validation run (the browser's Pyodide harness, or the private validation
+Lambda it falls back to — both pinned to the same semantics) produces a
+``ValidationResponse`` shaped like::
 
     {
         "status": "success" | "error",
@@ -37,10 +38,10 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 
 # --- Validator coupling -----------------------------------------------------
-# These mirror the literals produced in backend/validation_lambda/executor.py
-# and code_validation.py. We intentionally do NOT import the executor:
-# importing it drags in the game factory. If you change a message there,
-# change the matching prefix here.
+# These mirror the literals produced by the validation runners (the browser's
+# validation_harness.py and the private validation Lambda's executor, kept in
+# parity) and by code_validation.py. If you change a message there, change
+# the matching prefix here.
 # Each prefix is matched with str.startswith() against response.message.
 
 SYNTAX_ERROR_PREFIX = "Syntax error in code:"
@@ -50,7 +51,7 @@ INIT_ERROR_PREFIX = "Error initializing game:"
 CONSTRUCTION_ERROR_PREFIX = "Failed to create player"
 RUNTIME_ERROR_PREFIX = "Error during simulation:"
 
-# Hard cap the validator enforces (executor.VALIDATION_TIMEOUT_SECONDS).
+# Hard cap the Lambda validator enforces (executor.VALIDATION_TIMEOUT_SECONDS).
 # Kept here only for human-readable context; not used for control flow.
 VALIDATION_TIMEOUT_SECONDS = 5
 

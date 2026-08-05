@@ -41,7 +41,7 @@ const PROBE_ATTEMPTS = 2;
 const PROBE_CODE = '1+1';
 
 // Same phrasing as the fallback executor's EXERCISE_TIMEOUT_MESSAGE /
-// SNIPPET_TIMEOUT_MESSAGE (backend/fallback_lambda/executor.py) with this
+// SNIPPET_TIMEOUT_MESSAGE (backend/lambda_fallback/exercise_snippet/executor.py) with this
 // runtime's honest budget.
 const EXERCISE_TIMEOUT_MESSAGE =
   `Your code consumes too much time - the tests did not finish within ` +

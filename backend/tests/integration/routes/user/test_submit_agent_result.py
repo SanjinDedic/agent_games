@@ -1,8 +1,11 @@
 """Integration tests for /user/submit-agent-result.
 
-The endpoint persists agent validations the browser already ran via Pyodide
-(frontend/src/pyodide/validation_harness.py). No server-side execution is
-involved anywhere in this file — that is the point of the endpoint.
+The endpoint persists agent validations the browser already ran — via Pyodide
+(frontend/src/pyodide/validation_harness.py) or via the browser's direct call
+to the validation Lambda (tagged, covered in test_submit_agent_fallback.py).
+No server-side execution is involved anywhere in this file — that is the
+point of the endpoint. Hint requests ride the same endpoint with
+?generate_hint=true (covered in test_user_agent.py).
 """
 
 from datetime import timedelta
@@ -236,6 +239,17 @@ def test_stdout_is_truncated_server_side(client, db_session, result_headers):
     response = client.post(
         "/user/submit-agent-result",
         json=make_payload(stdout="x" * (MAX_RESULT_STDOUT_CHARS * 2)),
+        headers=result_headers,
+    )
+    assert response.status_code == 200
+
+
+def test_traceback_is_accepted_and_bounded(client, result_headers):
+    """The 7th envelope key feeds the hint context only; an oversized value
+    is truncated by the same validator as stdout, never rejected."""
+    response = client.post(
+        "/user/submit-agent-result",
+        json=make_payload(traceback="t" * (MAX_RESULT_STDOUT_CHARS * 2)),
         headers=result_headers,
     )
     assert response.status_code == 200

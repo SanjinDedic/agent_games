@@ -117,8 +117,11 @@ const parseOutputMark = (text) => {
  * - ```output-mark fences are graded RunnableCodeBlocks: a `--- expected ---`
  *   line marks the target output, and a matching run earns a green tick.
  * - Other fenced languages get Prism syntax highlighting.
+ *
+ * `preview` marks admin/institution preview surfaces (threaded down to the
+ * runnable blocks): those are Pyodide-only, never the Lambda fallback.
  */
-function LessonMarkdown({ content }) {
+function LessonMarkdown({ content, preview = false }) {
   const { openLesson } = useLessonModal();
 
   // Rebuilding this object re-renders every block in the document — including
@@ -156,12 +159,16 @@ function LessonMarkdown({ content }) {
       const match = /language-([\w-]+)/.exec(className || '');
       const text = String(children).replace(/\n$/, '');
       if (match && match[1] === 'python-run') {
-        return <RunnableCodeBlock initialCode={text} />;
+        return <RunnableCodeBlock initialCode={text} preview={preview} />;
       }
       if (match && match[1] === 'output-mark') {
         const { code, expected } = parseOutputMark(text);
         return (
-          <RunnableCodeBlock initialCode={code} expectedOutput={expected} />
+          <RunnableCodeBlock
+            initialCode={code}
+            expectedOutput={expected}
+            preview={preview}
+          />
         );
       }
       if (match) {
@@ -182,7 +189,7 @@ function LessonMarkdown({ content }) {
         </code>
       );
     },
-  }), [openLesson]);
+  }), [openLesson, preview]);
 
   return (
     <>

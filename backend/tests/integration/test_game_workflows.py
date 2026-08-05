@@ -166,7 +166,8 @@ def test_complete_game_lifecycle(
     assert assign_response.status_code == 200
     assert "assigned to league" in assign_response.json()["message"]
 
-    # 3. Submit code
+    # 3. Submit code the way the browser does: a validation envelope the
+    # Pyodide runner produced, persisted via submit-agent-result
     code = """
 from games.prisoners_dilemma.player import Player
 class CustomPlayer(Player):
@@ -175,9 +176,18 @@ class CustomPlayer(Player):
         return "collude" if game_state['round_number'] % 2 == 0 else "defect"
 """
     submit_response = client.post(
-        "/user/submit-agent",
+        "/user/submit-agent-result",
         headers=team_headers,
-        json={"code": code},
+        json={
+            "code": code,
+            "status": "success",
+            "feedback": {"game": "prisoners_dilemma"},
+            "simulation_results": {
+                "total_points": {"integration_team": 40, "Bot1": 60},
+                "num_simulations": 100,
+            },
+            "duration_ms": 500.0,
+        },
     )
     assert submit_response.status_code == 200
     assert submit_response.json()["submission_id"] is not None

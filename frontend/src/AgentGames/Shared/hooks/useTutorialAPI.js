@@ -189,90 +189,10 @@ export const useTutorialAPI = () => {
   }, [apiUrl, accessToken]);
 
   /**
-   * Submit exercise code and get per-test-case results.
-   * Failing tests come back as a success whose output lists the failures;
-   * a 400 means the code never produced test results (unsafe/crashed/timeout).
-   */
-  const submitExercise = useCallback(async (
-    exerciseId,
-    code,
-    { preview = false, executionSource = null, fallbackReason = null } = {}
-  ) => {
-    if (!code || code.trim() === "") {
-      toast.error("Please enter some code before submitting");
-      return { success: false, error: "Empty code submission" };
-    }
-
-    setIsLoading(true);
-
-    // The preview endpoint (institution/teacher/admin tokens) runs the same
-    // tests but persists nothing — the response shape is identical.
-    const path = preview
-      ? '/tutorial/preview/submit-exercise'
-      : '/tutorial/submit-exercise';
-
-    // Only Pyodide fallbacks send the extra fields ("pyodide_fallback"), so
-    // the server can log/count them; a plain server submission stays
-    // byte-identical to before the in-browser runner existed.
-    const body = { exercise_id: exerciseId, code };
-    if (executionSource) {
-      body.execution_source = executionSource;
-      body.fallback_reason = fallbackReason;
-    }
-
-    try {
-      const response = await authFetch(`${apiUrl}${path}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          output: {
-            passed: data.passed,
-            test_results: data.test_results,
-            stdout: data.stdout,
-            duration_ms: data.duration_ms,
-          },
-          feedback: null,
-          hint: null,
-          hint_available: false,
-          hint_cancelled: false,
-        };
-      }
-      toast.error(data.detail || "Error in submission");
-      return {
-        success: false,
-        error: data.detail,
-        // Partial prints from a crashed/timed-out run — the worker preserves
-        // them and the 400 body carries them alongside the detail.
-        stdout: data.stdout,
-        hint: null,
-        hint_available: false,
-        hint_cancelled: false,
-      };
-    } catch (error) {
-      console.error("Error during exercise submission:", error);
-      toast.error("Network error during submission. Please try again.");
-      return { success: false, error: "Network error during submission" };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiUrl, accessToken]);
-
-  /**
    * Persist an exercise attempt the browser already ran via Pyodide.
    * `envelope` is the harness's normalized result ({ status, message,
-   * passed, test_results, stdout, duration_ms, ... }). Returns the same
-   * workspace result shape as submitExercise, so the caller treats both
-   * paths identically.
+   * passed, test_results, stdout, duration_ms, ... }). Returns the
+   * workspace result shape ({ success, output | error, hint... }).
    *
    * When the envelope came from a direct Lambda Function URL call instead
    * of a local Pyodide run, executionSource="pyodide_fallback" makes this
@@ -388,22 +308,6 @@ export const useTutorialAPI = () => {
     [adminRequest]
   );
 
-  /**
-   * Dry-run a test script against code without saving anything (backs the
-   * exercise editor's Run button). Always resolves with the full run result
-   * — { status, message, passed, test_results, traceback, stdout, ... } —
-   * so failing tests and broken test scripts both render, never toast.
-   */
-  const runExerciseTests = useCallback(
-    (code, entryFunction, testCode) =>
-      adminRequest('/admin/run-exercise', 'POST', {
-        code,
-        entry_function: entryFunction,
-        test_code: testCode,
-      }),
-    [adminRequest]
-  );
-
   const createTutorial = useCallback(
     (title, description) =>
       adminRequest('/tutorials', 'POST', { title, description }),
@@ -457,10 +361,8 @@ export const useTutorialAPI = () => {
     getLatestExerciseSubmission,
     getExerciseSubmissions,
     recordHintReveal,
-    submitExercise,
     submitExerciseResult,
     getTutorialAdmin,
-    runExerciseTests,
     createTutorial,
     updateTutorial,
     deleteTutorial,

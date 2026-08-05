@@ -200,3 +200,4 @@ backend/celery_easy/
 .claude/skills/lesson_author
 .claude/skills/exercise_author
 reasearch/.env
+backend/lambda_fallback

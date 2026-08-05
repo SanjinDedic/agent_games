@@ -1,7 +1,8 @@
 """One-off benchmark: derive each game's validation_simulations attribute.
 
-Mirrors the body of backend/validation_lambda/executor.run_validation
-(feedback game + run_simulations + get_player_strategies) using each game's
+Mirrors the validation run body (feedback game + run_simulations +
+get_player_strategies, as implemented by the private validation Lambda's
+executor and the browser harness) using each game's
 starter_code as the submitted agent, then recommends a per-game pass count
 that keeps the whole validation load under one second. Re-run after adding a
 game or changing a game engine, and copy the recommendation into the game

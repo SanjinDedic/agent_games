@@ -2,8 +2,9 @@
 
 Every game/exercise submission endpoint bumps a (user, kind, environment)
 row in CodeEnvUsage; /admin/code-env-stats aggregates users and calls for
-the admin "Code Env" tab. The lambda-path tests run the real local-subprocess
-executors (no Lambda env vars in tests), same as the other submission tests.
+the admin "Code Env" tab. "lambda" rows come from envelopes the browser
+fetched from a Lambda Function URL directly (execution_source=
+"pyodide_fallback") — the server itself never executes code.
 """
 
 from datetime import timedelta
@@ -180,9 +181,14 @@ def test_pyodide_game_submission_is_counted(
 def test_lambda_game_submission_is_counted(
     client, db_session, league_team_headers
 ):
+    """An envelope the browser fetched from the validation Lambda's Function
+    URL (execution_source="pyodide_fallback") counts as a lambda run."""
     response = client.post(
-        "/user/submit-agent",
-        json={"code": VALID_AGENT_CODE},
+        "/user/submit-agent-result",
+        json=agent_result_payload(
+            execution_source="pyodide_fallback",
+            fallback_reason="boot-timeout",
+        ),
         headers=league_team_headers,
     )
     assert response.status_code == 200
@@ -223,9 +229,15 @@ def test_pyodide_exercise_submission_is_counted(
 def test_lambda_exercise_submission_is_counted(
     client, db_session, league_team_headers, league_exercise
 ):
+    """An envelope the browser fetched from the fallback Lambda's Function
+    URL (execution_source="pyodide_fallback") counts as a lambda run."""
     response = client.post(
-        "/tutorial/submit-exercise",
-        json={"exercise_id": league_exercise.id, "code": PASSING_EXERCISE_CODE},
+        "/tutorial/submit-exercise-result",
+        json=exercise_result_payload(
+            league_exercise.id,
+            execution_source="pyodide_fallback",
+            fallback_reason="boot-timeout",
+        ),
         headers=league_team_headers,
     )
     assert response.status_code == 200

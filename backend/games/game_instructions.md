@@ -209,7 +209,7 @@ After adding files, restart the API so it picks up the new game module:
 docker compose restart api
 ```
 In production, also redeploy the validation Lambda — its zip snapshots
-`backend/games/` (`./backend/validation_lambda/deploy.sh --smoke`).
+`backend/games/` (`./backend/lambda_fallback/validation/deploy.sh --smoke`).
 
 ## 6. Enable In-Browser Simulation (optional, per game)
 League simulations run in the browser via Pyodide, not on the server.

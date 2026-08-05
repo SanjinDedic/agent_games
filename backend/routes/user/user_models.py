@@ -7,41 +7,20 @@ from pydantic import BaseModel, field_validator
 MAX_RESULT_STDOUT_CHARS = 50_000
 
 
-class SubmissionCode(BaseModel):
-    """Model for code submissions from teams.
-
-    ``execution_source`` distinguishes the default server-run submission
-    (wire value "celery", kept for contract stability after the Celery
-    removal) from a browser submission that fell back to the server because
-    Pyodide could not run (frontend/src/pyodide/validationRunnerClient.js).
-    Fallbacks are logged and counted in the shared telemetry.
-    """
-
-    code: str
-    execution_source: Literal["celery", "pyodide_fallback"] = "celery"
-    fallback_reason: Optional[str] = None
-
-    @field_validator("fallback_reason")
-    @classmethod
-    def clean_fallback_reason(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
-        value = value.strip()[:500]
-        return value or None
-
-
 class AgentResultSubmissionRequest(BaseModel):
-    """A finished in-browser (Pyodide) agent validation, submitted for storage.
+    """A finished in-browser agent validation, submitted for storage.
 
-    The browser already ran the full validation load
-    (frontend/src/pyodide/validation_harness.py); this carries the resulting
-    envelope so the attempt is recorded exactly like a server-run one. The
+    The browser is the only executor: the envelope comes either from the
+    Pyodide run (frontend/src/pyodide/validation_harness.py) or, when Pyodide
+    couldn't run, from the browser's direct call to the validation Lambda's
+    Function URL — the latter tagged ``execution_source="pyodide_fallback"``
+    with a ``fallback_reason``, counted in the shared telemetry. The
     client-reported results only feed the informational validation ranking
     (league standings come from separate league simulations), but the code
     itself is re-gated by the server-side AST check before storage — stored
     submissions are later executed in teachers' browsers by the league
-    simulation runner. ``traceback`` is not accepted: the server path never
-    persists it either.
+    simulation runner. ``traceback`` is accepted only to feed the hint
+    context on ``?generate_hint=true`` requests; it is never persisted.
     """
 
     code: str
@@ -50,14 +29,25 @@ class AgentResultSubmissionRequest(BaseModel):
     feedback: Optional[Union[str, dict]] = None
     simulation_results: Optional[dict] = None
     duration_ms: Optional[float] = None
+    traceback: Optional[str] = None
     stdout: Optional[str] = None
+    execution_source: Literal["pyodide", "pyodide_fallback"] = "pyodide"
+    fallback_reason: Optional[str] = None
 
-    @field_validator("stdout")
+    @field_validator("stdout", "traceback")
     @classmethod
-    def truncate_stdout(cls, value: Optional[str]) -> Optional[str]:
+    def truncate_output(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
         return value[:MAX_RESULT_STDOUT_CHARS]
+
+    @field_validator("fallback_reason")
+    @classmethod
+    def clean_fallback_reason(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()[:500]
+        return value or None
 
 
 class LeagueAssignRequest(BaseModel):

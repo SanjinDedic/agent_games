@@ -1,31 +1,28 @@
 """Integration test: only validated agents reach a greedy_pig simulation.
 
-Seven teams join a greedy_pig league: two valid strategies and five invalid
-agents the validator rejects (recorded as a SubmissionMetadata attempt with NO
-linked Submission code row). The test passes only if exactly the two valid
-teams reach the simulation payload — and play against each other when that
-payload runs through the in-browser simulation harness.
+Seven teams join a greedy_pig league and submit through /user/submit-agent-
+result (the browser is the executor; the server only gates and persists):
+two valid strategies, and five invalid agents that are rejected (recorded as
+a SubmissionMetadata attempt with NO linked Submission code row). The test
+passes only if exactly the two valid teams reach the simulation payload —
+and play against each other when that payload runs through the in-browser
+simulation harness.
 
 The five invalid agents fall into two groups, on purpose:
 
-1. Security violations (unauthorized imports, unauthorized `eval`). These would
-   *load and play fine in the simulator if they ever reached it* — the
-   harness's add_player runs exec() with no AST security check. So the ONLY
-   thing keeping them out is that failed attempts never get a Submission code
-   row, so get-league-submissions cannot see them. These make the
-   test sensitive to the write path: store failed code in Submission and these
-   agents leak into the run and show up in total_points.
+1. Security violations (unauthorized imports, unauthorized `eval`). These
+   submit CLAIMED-SUCCESS envelopes — a tampered client asserting the code
+   passed — and would *load and play fine in the simulator if they ever
+   reached it*: the harness's add_player runs exec() with no AST security
+   check. Only the server-side AST gate keeps them out, by refusing the
+   Submission code row. Store failed code in Submission and these agents
+   leak into the run and show up in total_points.
 
 2. Runtime faults (infinite loop / timeout, divide-by-zero on construction).
-   These are *also* caught downstream — the validator kills the runaway loop
-   agent after its hard timeout and reports failure, and the harness's
-   add_player skips the div-by-zero agent when construction raises (the game
-   swallows exceptions inside make_decision, so the fault must surface before
-   the game loop). They don't exercise the filter, but they assert the whole
-   pipeline rejects every flavor of bad agent.
-
-NOTE: the infinite-loop agent is the slowest submission here — it waits out the
-validator's hard timeout before the error comes back.
+   The browser's runner catches these itself — its watchdog kills the
+   runaway loop and construction failures surface before the game loop — so
+   the browser submits the error envelopes it produced, and the server
+   records the attempt without a code row.
 """
 
 import pytest
@@ -143,9 +140,43 @@ def _make_team(db_session: Session, league: League, name: str) -> Team:
     return team
 
 
-def _submit(client: TestClient, team: Team, code: str):
+def _submit(client: TestClient, team: Team, code: str, envelope: dict):
+    """POST a browser-produced envelope for this team's code."""
     headers = {"Authorization": f"Bearer {make_student_token(team)}"}
-    return client.post("/user/submit-agent", headers=headers, json={"code": code})
+    payload = {"code": code, **envelope}
+    return client.post(
+        "/user/submit-agent-result", headers=headers, json=payload
+    )
+
+
+def _success_envelope(team_name: str) -> dict:
+    return {
+        "status": "success",
+        "feedback": {"game": "greedy_pig"},
+        "simulation_results": {
+            "total_points": {team_name: 500, "Bot1": 700},
+            "num_simulations": 300,
+        },
+        "duration_ms": 800.0,
+    }
+
+
+# What the browser runner reports for the two runtime-fault agents.
+TIMEOUT_ENVELOPE = {
+    "status": "error",
+    "message": "Your agent consumes too much time - validation did not finish",
+    "duration_ms": 20000.0,
+}
+
+CONSTRUCTION_ENVELOPE = {
+    "status": "error",
+    "message": (
+        "Failed to create player for team invalid_divide_by_zero: "
+        "division by zero"
+    ),
+    "traceback": "ZeroDivisionError: division by zero",
+    "duration_ms": 15.0,
+}
 
 
 def test_only_validated_agents_reach_greedy_pig_simulation(
@@ -168,14 +199,21 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
         "invalid_divide_by_zero": INVALID_DIVIDE_BY_ZERO,
     }
 
-    # 1. Seven teams submit code through the real validator. Invalid agents are
-    #    rejected: their attempt is recorded in SubmissionMetadata but no
-    #    Submission code row is written.
+    # 1. Seven teams submit envelopes. The AST-invalid agents claim success
+    #    (a tampered client) and are refused by the server gate; the runtime-
+    #    fault agents submit the error envelopes the browser produced. Either
+    #    way the attempt is recorded in SubmissionMetadata but no Submission
+    #    code row is written.
+    claimed_envelopes = {
+        "invalid_timeout": TIMEOUT_ENVELOPE,
+        "invalid_divide_by_zero": CONSTRUCTION_ENVELOPE,
+    }
     teams_by_name = {}
     for name, code in {**valid_teams, **invalid_teams}.items():
         team = _make_team(db_session, greedy_pig_league, name)
         teams_by_name[name] = team
-        response = _submit(client, team, code)
+        envelope = claimed_envelopes.get(name, _success_envelope(name))
+        response = _submit(client, team, code, envelope)
         if name in valid_teams:
             assert (
                 response.status_code == 200

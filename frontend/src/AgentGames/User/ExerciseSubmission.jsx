@@ -30,8 +30,8 @@ function ExerciseSubmission({ exercise, tutorialTitle, panelHeader, preview = fa
   const { getLatestExerciseSubmission, getExerciseSubmissions } =
     useTutorialAPI();
 
-  // Pyodide-first execution with automatic server fallback; same submitCode
-  // contract as submitExercise, so the workspace is unchanged.
+  // Pyodide-first execution (students fall back to the direct Lambda,
+  // previews are Pyodide-only); the submitCode contract is unchanged.
   const { submitCode, isLoading: isSubmitting } = usePyodideExerciseSubmit({
     exercise,
     preview,

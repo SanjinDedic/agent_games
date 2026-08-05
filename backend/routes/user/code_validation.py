@@ -1,8 +1,9 @@
 """AST safety check for submitted agent code.
 
-Runs in the API process before execution — unsafe code never reaches the
-sandbox. The executor that actually runs the agent lives in
-backend/validation_lambda/executor.py.
+Runs in the API process before a submission is stored — the agent itself is
+executed only in browsers (the Pyodide validation harness, the league
+simulation runner) or in the private validation Lambda the browser falls
+back to, never on the server.
 """
 
 import ast

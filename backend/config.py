@@ -107,4 +107,3 @@ STRIPE_PRICE_UNI_YEAR = os.getenv("STRIPE_PRICE_UNI_YEAR")
 # tier reuses STRIPE_PRICE_UNI_ONCE (same $299 / 500-student product).
 STRIPE_PRICE_TEACHER_ONCE = os.getenv("STRIPE_PRICE_TEACHER_ONCE")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")

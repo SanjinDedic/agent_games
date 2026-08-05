@@ -176,3 +176,66 @@ def test_build_hint_context_from_response_one_shot():
     )
     assert text.startswith("=== STUDENT SUBMISSION HINT CONTEXT ===")
     assert "--- Game Source Code ---" not in text
+
+
+# --- Rendering of runner-produced error envelopes ----------------------------
+# Envelope literals mirror what the validation runners (browser harness /
+# private Lambda executor) actually produce for a construction failure and a
+# runtime crash; the trace-capture behavior itself is pinned in the private
+# suite (backend/lambda_fallback/validation/tests/test_agent_error_traces.py).
+
+
+def test_renders_trace_for_construction_error_envelope():
+    result = {
+        "status": "error",
+        "message": (
+            "Failed to create player for team CrashTeam: "
+            "division by zero"
+        ),
+        "feedback": None,
+        "simulation_results": None,
+        "duration_ms": 12.3,
+        "traceback": (
+            "Traceback (most recent call last):\n"
+            '  File "<string>", line 6, in __init__\n'
+            "ZeroDivisionError: division by zero\n"
+        ),
+        "stdout": None,
+    }
+    ctx = HintContext.from_validation_response(
+        "class CustomPlayer: ...", result, game_name="greedy_pig",
+        team_name="CrashTeam", include_game_code=False,
+    )
+    assert ctx.category == "construction_error"
+    rendered = str(ctx)
+    assert "--- Stack Trace ---" in rendered
+    assert "ZeroDivisionError" in rendered
+
+
+def test_renders_trace_for_runtime_error_envelope():
+    result = {
+        "status": "error",
+        "message": "Error during simulation: Invalid decision by CrashTeam",
+        "feedback": None,
+        "simulation_results": None,
+        "duration_ms": 45.6,
+        "traceback": (
+            "Traceback (most recent call last):\n"
+            '  File "<string>", line 5, in make_decision\n'
+            "RuntimeError: agent exploded\n"
+            "\n"
+            "During handling of the above exception, another exception "
+            "occurred:\n"
+            "\n"
+            "ValueError: Invalid decision by CrashTeam\n"
+        ),
+        "stdout": None,
+    }
+    ctx = HintContext.from_validation_response(
+        "class CustomPlayer: ...", result, game_name="greedy_pig",
+        team_name="CrashTeam", include_game_code=False,
+    )
+    assert ctx.category == "runtime_error"
+    rendered = str(ctx)
+    assert "--- Stack Trace ---" in rendered
+    assert "RuntimeError: agent exploded" in rendered

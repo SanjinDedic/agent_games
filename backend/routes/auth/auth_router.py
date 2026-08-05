@@ -1,9 +1,15 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from backend.database.db_session import get_db
+from backend.routes.auth import auth_config
+from backend.routes.auth.auth_config import (
+    EXEC_TOKEN_EXPIRY_SECONDS,
+    create_execution_token,
+)
+from backend.routes.auth.auth_core import get_current_user, verify_any_role
 from backend.routes.auth.auth_db import (
     get_admin_token,
     get_competitions,
@@ -15,6 +21,7 @@ from backend.routes.auth.auth_models import (
     AdminLogin,
     AgentLogin,
     CompetitionsResponse,
+    ExecutionTokenResponse,
     InstitutionLogin,
     TeamLogin,
     TokenResponse,
@@ -59,3 +66,29 @@ def institution_login(login: InstitutionLogin, session: Session = Depends(get_db
 def agent_login(credentials: AgentLogin, session: Session = Depends(get_db)):
     """Authenticate an agent via API key and issue an access token."""
     return verify_agent_api_key(session, credentials.api_key)
+
+
+@auth_router.post("/execution-token", response_model=ExecutionTokenResponse)
+@verify_any_role
+async def execution_token(current_user: dict = Depends(get_current_user)):
+    """Exchange a session token for a short-lived execution token.
+
+    The browser presents this to the exercise-fallback Lambda's Function URL
+    (direct call, no API in the execution leg). Signed with the dedicated
+    EXEC_JWT_SECRET — see create_execution_token for why it is never
+    SECRET_KEY. 503 when the secret isn't configured (direct path disabled)."""
+    # Read through the module so tests (and a future secret rotation) see
+    # the live value, not an import-time copy.
+    if not auth_config.EXEC_JWT_SECRET:
+        raise HTTPException(
+            status_code=503, detail="Execution tokens are not configured"
+        )
+    sub = (
+        current_user.get("team_name")
+        or current_user.get("institution_name")
+        or current_user["role"]
+    )
+    return ExecutionTokenResponse(
+        token=create_execution_token(sub, current_user["role"]),
+        expires_in=EXEC_TOKEN_EXPIRY_SECONDS,
+    )

@@ -412,7 +412,7 @@ class Exercise(SQLModel, table=True):
     """One coding problem inside a tutorial.
 
     Tests live in `test_code`: an admin-trusted Python test script
-    (backend/fallback_lambda/executor.py) exec'd into the same namespace as
+    (backend/lambda_fallback/exercise_snippet/executor.py) exec'd into the same namespace as
     the student's code. It can test multiple functions and check print
     output. Authored by the seed script or through the admin exercise
     editor; students never see it. `entry_function` names the one function
@@ -592,7 +592,7 @@ class LessonConcept(SQLModel, table=True):
 
 class CodeEnvUsage(SQLModel, table=True):
     """Per-user counters of where submitted code executed: browser Pyodide
-    (WASM) vs the server path (Lambda, or its local-subprocess degraded mode).
+    (WASM) vs a Lambda the browser called directly ("lambda").
 
     One row per (user, kind, environment); call_count grows by one per
     submission. user_identifier is the team name as a plain string —

@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
@@ -13,7 +11,6 @@ from backend.database.code_env import (
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import (
     get_current_user,
-    verify_admin_or_institution,
     verify_admin_role,
     verify_ai_agent_service_or_student,
     verify_any_role,
@@ -49,15 +46,10 @@ from backend.routes.tutorial.tutorial_models import (
     ExerciseReorderRequest,
     ExerciseRequest,
     ExerciseResultSubmissionRequest,
-    ExerciseRunRequest,
-    ExerciseSubmissionRequest,
     HintRevealRequest,
     TutorialCreateRequest,
     TutorialUpdateRequest,
 )
-from backend.fallback_lambda.client import run_exercise_fallback
-
-logger = logging.getLogger(__name__)
 
 tutorial_router = APIRouter()
 
@@ -74,143 +66,6 @@ def _require_team_id(current_user: dict) -> int:
             status_code=400, detail="This endpoint requires a team token"
         )
     return team_id
-
-
-@tutorial_router.post("/submit-exercise")
-@verify_ai_agent_service_or_student
-async def submit_exercise(
-    submission: ExerciseSubmissionRequest,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Submit exercise code, run its test cases, and store the attempt.
-
-    Failing test cases are a normal outcome — the response is a 200 whose
-    test_results say which cases passed. HTTP 400 means the code never
-    produced test results at all (a syntax error, a missing entry function,
-    or a timeout); those attempts are recorded without code, mirroring
-    failed agent validation.
-
-    Unlike agent submission there is no AST safety gate: the code goes
-    straight to the sandboxed fallback runner (backend/fallback_lambda/),
-    which is the enforcement boundary.
-    """
-    team_id = _require_team_id(current_user)
-    exercise = get_exercise_by_id(session, submission.exercise_id)
-    assert_exercise_in_team_league(session, exercise, team_id)
-    allow_exercise_submission(session, team_id)
-
-    if submission.execution_source == "pyodide_fallback":
-        # The browser couldn't run this via Pyodide and fell back here;
-        # counted after the rate limit so spam can't inflate the telemetry.
-        record_pyodide_fallback(
-            team_id, submission.fallback_reason or "unspecified"
-        )
-
-    # Environment counter (also post-rate-limit): everything through this
-    # endpoint runs on the server path, fallback traffic included.
-    record_code_env_call(
-        session, current_user["team_name"], KIND_EXERCISE, ENV_LAMBDA
-    )
-
-    logger.info(
-        f"Running exercise fallback for team {team_id}, "
-        f"exercise {exercise.id}"
-    )
-    run_result = await run_exercise_fallback(
-        code=submission.code,
-        entry_function=exercise.entry_function,
-        test_code=exercise.test_code,
-    )
-
-    duration_ms = run_result.get("duration_ms")
-
-    if run_result.get("status") == "error":
-        record_failed_exercise_submission(
-            session, team_id, exercise.id, duration_ms=duration_ms
-        )
-        return JSONResponse(
-            status_code=400,
-            content={
-                "detail": run_result.get("message", "Exercise run failed"),
-                "stdout": run_result.get("stdout"),
-            },
-        )
-
-    passed = run_result.get("passed", False)
-    test_results = run_result.get("test_results", [])
-    if submission.execution_source == "pyodide_fallback":
-        # Stamp the stored rows so fallback runs stay identifiable in the
-        # submission history (the default server path stays untouched; the
-        # stored "celery_fallback" value predates the Celery removal).
-        test_results = normalize_client_rows(test_results, "celery_fallback")
-    submission_id = save_exercise_submission(
-        session,
-        submission.code,
-        team_id,
-        exercise.id,
-        passed=passed,
-        test_results=test_results,
-        duration_ms=duration_ms,
-    )
-    return {
-        "submission_id": submission_id,
-        "exercise_id": exercise.id,
-        "passed": passed,
-        "test_results": test_results,
-        "stdout": run_result.get("stdout"),
-        "duration_ms": duration_ms,
-    }
-
-
-@tutorial_router.post("/preview/submit-exercise")
-@verify_admin_or_institution
-async def preview_submit_exercise(
-    submission: ExerciseSubmissionRequest,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Run exercise code exactly like /submit-exercise but persist nothing.
-
-    Backs the tutorial preview for institution/teacher/admin accounts: they
-    try a tutorial as a fresh student would see it, so no submission or
-    metadata rows may be written — every preview starts blank. Response shape
-    mirrors /submit-exercise (submission_id is always null) so the same
-    frontend workspace drives both. No league check (these roles browse the
-    whole library) and no per-team rate limit (there is no team).
-    """
-    exercise = get_exercise_by_id(session, submission.exercise_id)
-
-    if submission.execution_source == "pyodide_fallback":
-        # Preview runs persist nothing, but a teacher's browser failing to
-        # run Pyodide is the same signal as a student's — count it.
-        record_pyodide_fallback(
-            None, submission.fallback_reason or "unspecified"
-        )
-
-    run_result = await run_exercise_fallback(
-        code=submission.code,
-        entry_function=exercise.entry_function,
-        test_code=exercise.test_code,
-    )
-
-    if run_result.get("status") == "error":
-        return JSONResponse(
-            status_code=400,
-            content={
-                "detail": run_result.get("message", "Exercise run failed"),
-                "stdout": run_result.get("stdout"),
-            },
-        )
-
-    return {
-        "submission_id": None,
-        "exercise_id": exercise.id,
-        "passed": run_result.get("passed", False),
-        "test_results": run_result.get("test_results", []),
-        "stdout": run_result.get("stdout"),
-        "duration_ms": run_result.get("duration_ms"),
-    }
 
 
 @tutorial_router.post("/submit-exercise-result")
@@ -231,22 +86,39 @@ async def submit_exercise_result(
     is recomputed server-side, and every stored row is stamped
     "source": "pyodide".
 
-    Same auth, league check, and 5/minute budget as /submit-exercise, and the
-    same response contract (400 with detail+stdout when the run produced no
-    test results) so the frontend shares one result path.
+    This is the only submission path: the server never executes exercise
+    code. Auth, league check, and a 5/minute budget guard it; the response
+    contract is 400 with detail+stdout when the run produced no test results.
+
+    execution_source="pyodide_fallback" marks an envelope the browser got by
+    calling the fallback Lambda's Function URL directly (no API in the
+    execution leg): the submission then doubles as the fallback-telemetry
+    beacon and the stored rows are stamped "lambda_direct".
     """
     team_id = _require_team_id(current_user)
     exercise = get_exercise_by_id(session, submission.exercise_id)
     assert_exercise_in_team_league(session, exercise, team_id)
     allow_exercise_submission(session, team_id)
 
-    # Post-rate-limit like submit_exercise's counter: this endpoint only ever
-    # persists runs the browser executed via Pyodide.
+    direct_lambda = submission.execution_source == "pyodide_fallback"
+    if direct_lambda:
+        # Counted after the rate limit so spam can't inflate the telemetry.
+        record_pyodide_fallback(
+            team_id, submission.fallback_reason or "unspecified"
+        )
+    # Post-rate-limit so spam can't inflate the counter: this endpoint
+    # persists runs the browser executed via Pyodide or fetched from the
+    # direct Lambda.
     record_code_env_call(
-        session, current_user["team_name"], KIND_EXERCISE, ENV_PYODIDE
+        session,
+        current_user["team_name"],
+        KIND_EXERCISE,
+        ENV_LAMBDA if direct_lambda else ENV_PYODIDE,
     )
 
-    test_results = normalize_client_rows(submission.test_results, "pyodide")
+    test_results = normalize_client_rows(
+        submission.test_results, "lambda_direct" if direct_lambda else "pyodide"
+    )
 
     if submission.status == "error" or not test_results:
         record_failed_exercise_submission(
@@ -356,27 +228,6 @@ async def get_tutorial_admin_endpoint(
 ):
     """One tutorial with full exercise definitions, including test cases."""
     return get_tutorial_admin_detail(session, tutorial_id)
-
-
-@tutorial_router.post("/admin/run-exercise")
-@verify_admin_role
-async def run_exercise_endpoint(
-    run: ExerciseRunRequest,
-    current_user: dict = Depends(get_current_user),
-):
-    """Dry-run a test script against code without saving anything.
-
-    Backs the admin exercise editor's Run button. Unlike /submit-exercise,
-    every outcome is a 200 with the full run result — including `traceback`
-    when the test script itself fails to exec, since the caller is the person
-    debugging that script. Like student submissions, there is no AST safety
-    gate — the sandboxed fallback runner is the enforcement boundary.
-    """
-    return await run_exercise_fallback(
-        code=run.code,
-        entry_function=run.entry_function,
-        test_code=run.test_code,
-    )
 
 
 @tutorial_router.post("/tutorials")

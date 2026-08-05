@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useTutorialAPI from '../Shared/hooks/useTutorialAPI';
+import usePyodideExerciseRun from '../Shared/hooks/usePyodideExerciseRun';
 import CodeEditor from '../Shared/Submission/CodeEditor';
 import ExerciseResults from '../User/ExerciseResults';
 
@@ -395,7 +396,6 @@ function AdminTutorials() {
   const {
     getTutorials,
     getTutorialAdmin,
-    runExerciseTests,
     createTutorial,
     updateTutorial,
     deleteTutorial,
@@ -404,6 +404,7 @@ function AdminTutorials() {
     deleteExercise,
     reorderExercises,
   } = useTutorialAPI();
+  const runExerciseTests = usePyodideExerciseRun();
 
   const [tutorials, setTutorials] = useState([]);
   const [loading, setLoading] = useState(true);
