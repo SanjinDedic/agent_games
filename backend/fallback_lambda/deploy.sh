@@ -196,14 +196,31 @@ else
     --cors "$CORS_JSON" \
     --region "$REGION" >/dev/null
 fi
-# Public invoke permission for the URL; already-exists on re-runs is fine.
-aws lambda add-permission \
-  --function-name "$FUNCTION_NAME" \
-  --statement-id public-function-url \
-  --action lambda:InvokeFunctionUrl \
-  --principal '*' \
-  --function-url-auth-type NONE \
-  --region "$REGION" >/dev/null 2>&1 || true
+# Public invoke permissions for the URL. Since October 2025 new function
+# URLs need BOTH statements: lambda:InvokeFunctionUrl and, restricted to
+# URL calls only, lambda:InvokeFunction — one alone yields 403 on every
+# request. Idempotency is explicit (grep the policy) so a real
+# add-permission failure surfaces instead of being swallowed.
+POLICY="$(aws lambda get-policy --function-name "$FUNCTION_NAME" \
+  --region "$REGION" --query Policy --output text 2>/dev/null || true)"
+if ! grep -q '"Sid":"public-function-url"' <<<"$POLICY"; then
+  aws lambda add-permission \
+    --function-name "$FUNCTION_NAME" \
+    --statement-id public-function-url \
+    --action lambda:InvokeFunctionUrl \
+    --principal '*' \
+    --function-url-auth-type NONE \
+    --region "$REGION" >/dev/null
+fi
+if ! grep -q '"Sid":"public-function-url-invoke"' <<<"$POLICY"; then
+  aws lambda add-permission \
+    --function-name "$FUNCTION_NAME" \
+    --statement-id public-function-url-invoke \
+    --action lambda:InvokeFunction \
+    --principal '*' \
+    --invoked-via-function-url \
+    --region "$REGION" >/dev/null
+fi
 FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" \
   --region "$REGION" --query FunctionUrl --output text)"
 
