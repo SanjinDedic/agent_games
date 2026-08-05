@@ -128,34 +128,38 @@ export const useSubmissionAPI = () => {
   }, [apiUrl]);
   
   /**
-   * Submit code for evaluation
-   * @param {string} code - The agent code to submit
+   * Persist an agent validation the browser already ran (Pyodide, or the
+   * validation Lambda called directly) — the only submission endpoint.
+   * @param {string} code - The validated agent code
+   * @param {Object} envelope - The 7-key ValidationResponse from the runner
    * @param {Object} [options]
-   * @param {boolean} [options.generateHint] - Ask the backend to also generate a hint
+   * @param {boolean} [options.generateHint] - Ask the backend to generate a
+   *   hint from this envelope (only produced when the envelope failed)
    * @param {string} [options.executionSource] - 'pyodide_fallback' when the
-   *   in-browser runner couldn't run and this submission is the fallback
+   *   envelope came from the Lambda's Function URL instead of Pyodide
    * @param {string} [options.fallbackReason] - why Pyodide couldn't run
+   * A network failure is flagged with networkError so the caller can show
+   * the local result without re-running anywhere.
    */
-  const submitCode = useCallback(async (
+  const submitAgentResult = useCallback(async (
     code,
+    envelope,
     { generateHint = false, executionSource, fallbackReason } = {}
   ) => {
-    if (!code || code.trim() === "") {
-      toast.error("Please enter some code before submitting");
-      return {
-        success: false,
-        error: "Empty code submission"
-      };
-    }
-
     setIsLoading(true);
-
     try {
-      const url = `${apiUrl}/user/submit-agent${generateHint ? "?generate_hint=true" : ""}`;
+      const url = `${apiUrl}/user/submit-agent-result${generateHint ? "?generate_hint=true" : ""}`;
       // The tagging fields are only added when present so the default
-      // server submission stays byte-identical to the pre-Pyodide one.
+      // Pyodide submission stays byte-identical to the pre-fallback one.
       const body = {
         code,
+        status: envelope.status,
+        message: envelope.message,
+        feedback: envelope.feedback,
+        simulation_results: envelope.simulation_results,
+        duration_ms: envelope.duration_ms,
+        traceback: envelope.traceback,
+        stdout: envelope.stdout,
         ...(executionSource
           ? { execution_source: executionSource, fallback_reason: fallbackReason }
           : {}),
@@ -195,67 +199,6 @@ export const useSubmissionAPI = () => {
         };
       }
     } catch (error) {
-      console.error("Error during submission:", error);
-      toast.error("Network error during submission. Please try again.");
-      return { 
-        success: false, 
-        error: "Network error during submission" 
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiUrl, accessToken]);
-  
-  /**
-   * Persist an agent validation the browser already ran via Pyodide.
-   * @param {string} code - The validated agent code
-   * @param {Object} envelope - The 7-key ValidationResponse from the harness
-   * Result contract matches submitCode so the workspace consumes both paths
-   * identically; a network failure is flagged with networkError so the
-   * caller can show the local result without re-running on the server.
-   */
-  const submitAgentResult = useCallback(async (code, envelope) => {
-    setIsLoading(true);
-    try {
-      const response = await authFetch(`${apiUrl}/user/submit-agent-result`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          code,
-          status: envelope.status,
-          message: envelope.message,
-          feedback: envelope.feedback,
-          simulation_results: envelope.simulation_results,
-          duration_ms: envelope.duration_ms,
-          stdout: envelope.stdout,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          output: data.results,
-          feedback: data.feedback,
-          hint: data.hint ?? null,
-          hint_available: data.hint_available ?? false,
-          hint_cancelled: data.hint_cancelled ?? false
-        };
-      } else {
-        toast.error(data.detail || "Error in submission");
-        return {
-          success: false,
-          error: data.detail,
-          hint: data.hint ?? null,
-          hint_available: data.hint_available ?? false,
-          hint_cancelled: false
-        };
-      }
-    } catch (error) {
       console.error("Error saving validation result:", error);
       return {
         success: false,
@@ -272,7 +215,6 @@ export const useSubmissionAPI = () => {
     getLatestSubmission,
     getTeamSubmissions,
     getGameInstructions,
-    submitCode,
     submitAgentResult
   };
 };
