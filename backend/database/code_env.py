@@ -1,12 +1,13 @@
 """Counters for which environment ran submitted code: Pyodide vs Lambda.
 
-Every game and exercise submission passes through one of three endpoints —
-/user/submit-agent (server path, validation Lambda or its local-subprocess
-degraded mode), /user/submit-agent-result (the browser ran it via Pyodide),
-or /tutorial/submit-exercise-result (Pyodide, or "lambda" when the envelope
-came from a direct browser→fallback-Lambda Function URL call). Each calls
-record_code_env_call after its rate limit, so spam can't inflate the
-counters and a 429'd attempt isn't counted.
+Every game and exercise submission passes through one of two endpoints —
+/user/submit-agent-result (Pyodide, or "lambda" when the envelope came from
+a direct browser→validation-Lambda Function URL call) or
+/tutorial/submit-exercise-result (Pyodide, or "lambda" when the envelope
+came from a direct browser→fallback-Lambda Function URL call). The server
+never executes submitted code. Each calls record_code_env_call after its
+rate limit, so spam can't inflate the counters and a 429'd attempt isn't
+counted.
 
 Unlike the Valkey fallback telemetry (pyodide_support.py), these counters are
 durable and keyed by user: submission rows are routinely purged (demo

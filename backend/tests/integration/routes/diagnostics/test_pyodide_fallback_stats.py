@@ -1,8 +1,8 @@
 """GET /diagnostics/pyodide-fallbacks — the fallback-telemetry read side.
 
 This endpoint outlives backend/fallback_lambda/: validation fallbacks
-(validation:-prefixed reasons from /user/submit-agent) keep feeding the same
-Valkey counters after the exercise fallback is deleted.
+(validation:-prefixed reasons from /user/submit-agent-result) keep feeding
+the same Valkey counters after the exercise fallback is deleted.
 """
 
 from backend.time_utils import utc_now

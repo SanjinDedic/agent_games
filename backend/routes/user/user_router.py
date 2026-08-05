@@ -63,11 +63,9 @@ from backend.routes.user.user_models import (
     DirectSchoolLeagueSignup,
     GameName,
     LeagueAssignRequest,
-    SubmissionCode,
     TeamPasswordReset,
 )
 from backend.schools.providers import SchoolsProviderError, get_schools_provider
-from backend.validation_lambda.client import run_validation_fallback
 from backend.utils import get_games_names
 
 logger = logging.getLogger(__name__)
@@ -120,25 +118,31 @@ def _validation_field_size(game_name: str) -> int | None:
         return None
 
 
-@user_router.post("/submit-agent")
+@user_router.post("/submit-agent-result")
 @verify_ai_agent_service_or_student
-async def submit_agent(
-    submission: SubmissionCode,
+async def submit_agent_result(
+    submission: AgentResultSubmissionRequest,
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
     generate_hint: bool = False,
 ):
-    """Submit agent code for validation and storage.
+    """Persist an agent validation the browser already ran.
 
-    A submission whose code fails validation is a business failure -> HTTP 400,
-    but the body still carries the hint fields next to "detail" because a hint
-    is most useful exactly when validation fails.
+    The browser is the only executor: the default run happens in Pyodide, and
+    when Pyodide can't run the browser calls the validation Lambda's Function
+    URL directly and submits that envelope here tagged
+    execution_source="pyodide_fallback". The trust posture mirrors
+    /institution/save-simulation-results and /tutorial/submit-exercise-result:
+    the client-reported results only feed the informational validation ranking
+    (league standings come from separate league simulations), but the code is
+    re-gated by the AST check because stored submissions are later executed in
+    teachers' browsers by the league simulation runner.
 
     Hints exist to help students reach valid code, not to improve a valid
-    agent — so a hint is only generated when this submission fails validation.
-    If a hint is requested but the code passes, the hint is cancelled: no LLM
-    call, the attempt isn't consumed, and the success body carries
-    "hint_cancelled": true so the frontend can say so.
+    agent — so a hint is only generated when the submitted envelope failed
+    validation. If a hint is requested but the code passes, the hint is
+    cancelled: no LLM call, the attempt isn't consumed, and the success body
+    carries "hint_cancelled": true so the frontend can say so.
     """
     team_name = current_user["team_name"]
     team = get_team_by_id(session, current_user["team_id"])
@@ -162,19 +166,22 @@ async def submit_agent(
     # Counted after the rate limit so submission spam can't inflate the
     # telemetry. The "validation:" prefix keeps agent-validation fallbacks
     # distinguishable from exercise/snippet ones in the shared counters.
-    if submission.execution_source == "pyodide_fallback":
+    direct_lambda = submission.execution_source == "pyodide_fallback"
+    if direct_lambda:
         record_pyodide_fallback(
             team.id, f"validation:{submission.fallback_reason or 'unspecified'}"
         )
 
-    # Environment counter (also post-rate-limit): everything through this
-    # endpoint — including hint requests and fallback traffic — runs on the
-    # server path, so it counts as "lambda" regardless of execution_source.
-    record_code_env_call(session, team_name, KIND_GAME, ENV_LAMBDA)
+    # Environment counter (also post-rate-limit): a fallback-tagged envelope
+    # came from the browser's direct call to the validation Lambda, everything
+    # else ran in Pyodide.
+    record_code_env_call(
+        session, team_name, KIND_GAME, ENV_LAMBDA if direct_lambda else ENV_PYODIDE
+    )
 
     # Computed on the attempts recorded so far — enough to gate hint REQUESTS
-    # cheaply, before the (expensive) validation run. As a RESPONSE value it is
-    # stale by one attempt, so the failed path recomputes it after recording.
+    # cheaply. As a RESPONSE value it is stale by one attempt, so the failed
+    # path recomputes it after recording.
     allow_hint = hint_available(session, team)
     if generate_hint and not allow_hint:
         raise HTTPException(
@@ -182,9 +189,9 @@ async def submit_agent(
             detail="You are not allowed to request a hint right now",
         )
 
-    # AST safety check runs here, before execution: cheap, and unsafe code
-    # never reaches the sandbox. The "Agent code is not safe: " prefix is
-    # matched by hint_context.classify_outcome — do not reword.
+    # The server-side AST gate wins over the client-claimed envelope: cheap,
+    # and unsafe code must never be stored. The "Agent code is not safe: "
+    # prefix is matched by hint_context.classify_outcome — do not reword.
     is_safe, error_message = validate_code(submission.code)
     if not is_safe:
         validation_result = {
@@ -197,12 +204,15 @@ async def submit_agent(
             "stdout": None,
         }
     else:
-        logger.info(f"Running validation for team {team_name}")
-        # Lambda (or local-subprocess degraded mode); every kill/timeout/
-        # service fault comes back as a clean validation failure envelope.
-        validation_result = await run_validation_fallback(
-            submission.code, team.league.game, team_name
-        )
+        validation_result = {
+            "status": submission.status,
+            "message": submission.message,
+            "feedback": submission.feedback,
+            "simulation_results": submission.simulation_results,
+            "duration_ms": submission.duration_ms,
+            "traceback": submission.traceback,
+            "stdout": submission.stdout,
+        }
 
     duration_ms = validation_result.get("duration_ms")
     validation_failed = validation_result.get("status") == "error"
@@ -215,6 +225,9 @@ async def submit_agent(
             # hint: skip the LLM call and don't consume the attempt.
             hint_cancelled = True
         else:
+            # The envelope feeding the prompt is client-supplied input to the
+            # LLM; hint_context truncates every field and the AST gate above
+            # already ran server-side.
             hints = await provide_hints(
                 session, submission.code, validation_result, team.league.game, team_name
             )
@@ -246,7 +259,7 @@ async def submit_agent(
         return JSONResponse(
             status_code=400,
             content={
-                "detail": validation_result.get("message", "Code validation failed"),
+                "detail": validation_result.get("message") or "Code validation failed",
                 "hint": jsonable_encoder(hint),
                 "hint_available": allow_hint,
             },
@@ -274,93 +287,6 @@ async def submit_agent(
         # never advertises one regardless of rationing.
         "hint_available": False,
         "hint_cancelled": hint_cancelled,
-    }
-
-
-@user_router.post("/submit-agent-result")
-@verify_ai_agent_service_or_student
-async def submit_agent_result(
-    submission: AgentResultSubmissionRequest,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Persist an agent validation the browser already ran via Pyodide.
-
-    The trust posture mirrors /institution/save-simulation-results and
-    /tutorial/submit-exercise-result: the client-reported results only feed
-    the informational validation ranking (league standings come from
-    separate league simulations), but the code is re-gated by the AST check
-    because stored submissions are later executed in teachers' browsers by
-    the league simulation runner. Response bodies match /user/submit-agent
-    so the frontend consumes both paths identically; hints stay exclusive
-    to the server path (a hint request never runs in the browser).
-    """
-    team_name = current_user["team_name"]
-    team = get_team_by_id(session, current_user["team_id"])
-
-    if not team.league:
-        raise HTTPException(
-            status_code=400, detail="Team is not assigned to a league."
-        )
-    if team.league.name == "unassigned":
-        raise HTTPException(
-            status_code=400, detail="Team is not assigned to a valid league."
-        )
-
-    allow_submission(session, team.id)
-
-    # Post-rate-limit like submit_agent's counter: this endpoint only ever
-    # persists runs the browser executed via Pyodide.
-    record_code_env_call(session, team_name, KIND_GAME, ENV_PYODIDE)
-
-    def _failed(detail: str):
-        record_failed_submission(
-            session,
-            team.id,
-            league_id=team.league_id,
-            duration_ms=submission.duration_ms,
-        )
-        # Recomputed after recording, like submit_agent's failed path: the
-        # failure just made may be the one that crosses the rationing
-        # threshold.
-        return JSONResponse(
-            status_code=400,
-            content={
-                "detail": detail,
-                "hint": None,
-                "hint_available": hint_available(session, team),
-            },
-        )
-
-    # The server-side gate wins over the client-claimed status. Same prefix
-    # contract as submit_agent — matched by hint_context.classify_outcome.
-    is_safe, error_message = validate_code(submission.code)
-    if not is_safe:
-        return _failed(f"Agent code is not safe: {error_message}")
-
-    if submission.status == "error":
-        return _failed(submission.message or "Code validation failed")
-
-    submission_id = save_submission(
-        session,
-        submission.code,
-        team.id,
-        league_id=team.league_id,
-        duration_ms=submission.duration_ms,
-        hint_included=False,
-        ranking=_validation_ranking(
-            {"simulation_results": submission.simulation_results}, team_name
-        ),
-    )
-    return {
-        "submission_id": submission_id,
-        "team_name": team_name,
-        "results": submission.simulation_results,
-        "feedback": submission.feedback,
-        "duration_ms": submission.duration_ms,
-        "hint": None,
-        "hint_available": False,
-        "hint_cancelled": False,
     }
 
 

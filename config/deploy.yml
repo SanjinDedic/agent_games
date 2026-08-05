@@ -10,15 +10,15 @@ servers:
     # unions a role's secret list with the root's (Env#merge: `secret_keys |
     # other.secret_keys`), so anything under the top-level env.secret would be
     # injected into EVERY role. Keep that invariant even now that web is the
-    # only role: untrusted agent/exercise code runs on Lambda (or a
-    # scrubbed-env local subprocess), never with these credentials.
+    # only role: untrusted agent/exercise code runs in browsers or on
+    # Lambdas the browser calls directly, never with these credentials.
     env:
       secret:
         - SECRET_KEY
-        # Signs /auth/execution-token; must match the EXEC_JWT_SECRET the
-        # fallback Lambda was deployed with (fallback_lambda/deploy.sh).
-        # Dedicated secret — student code can read the Lambda's memory, so
-        # this must never be SECRET_KEY.
+        # Signs /auth/execution-token; must match the EXEC_JWT_SECRET both
+        # Lambdas were deployed with (fallback_lambda/deploy.sh and
+        # validation_lambda/deploy.sh). Dedicated secret — student code can
+        # read a Lambda's memory, so this must never be SECRET_KEY.
         - EXEC_JWT_SECRET
         # Managed Postgres (DigitalOcean), TLS-only:
         #   postgresql+psycopg://agent_games_user:...@<cluster>:25060/agent_games?sslmode=require
@@ -34,9 +34,6 @@ servers:
         - STRIPE_PRICE_UNI_ONCE
         - STRIPE_PRICE_UNI_YEAR
         - STRIPE_PRICE_TEACHER_ONCE
-        # Load-test gate. Set the value in .kamal/secrets only while benchmarking,
-        # then clear it and re-push to disable /diagnostics/benchmark-submit.
-        - BENCHMARK_TOKEN
     options:
       hostname: api
       memory: 400m
@@ -93,16 +90,11 @@ env:
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
-    # Exercise/snippet fallback is browser→Lambda-Function-URL direct
-    # (backend/fallback_lambda/): the API never invokes it, so no env var and
-    # no IAM permission — only EXEC_JWT_SECRET above must match the Lambda.
-    # Server-side agent validation (hint requests, non-Pyodide builds, browser
-    # fallbacks) runs on this Lambda (backend/validation_lambda/, deployed via
-    # its deploy.sh). Unlike the exercise fallback this is PERMANENT infra —
-    # hint generation always needs a server-run envelope. A function name, not
-    # a secret; unset for local-subprocess degraded mode; the API's IAM user
-    # needs lambda:InvokeFunction on it.
-    VALIDATION_LAMBDA_FUNCTION: agent-games-validation
+    # Both Lambdas — the exercise/snippet fallback (backend/fallback_lambda/)
+    # and the agent-validation fallback (backend/validation_lambda/) — are
+    # browser→Lambda-Function-URL direct: the API never invokes either, so no
+    # function-name env vars and no IAM invoke permission. Only EXEC_JWT_SECRET
+    # above must match what each Lambda was deployed with (their deploy.sh).
     FRONTEND_URL: https://agentgames.io
   # NOTE: no top-level `secret:` block by design. Kamal unions each role's
   # secret list with the root's, so a secret listed here would reach every

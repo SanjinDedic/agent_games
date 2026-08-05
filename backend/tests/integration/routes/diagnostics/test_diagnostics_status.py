@@ -22,8 +22,8 @@ async def test_status_success(client, auth_headers):
     statuses = data["statuses"]
     assert isinstance(statuses, dict)
 
-    # Only Valkey remains: validation runs via backend/validation_lambda/,
-    # exercise/snippet fallbacks via backend/fallback_lambda/ — no workers.
+    # Only Valkey remains: all execution happens in browsers or on Lambdas
+    # the browser calls directly — no workers.
     expected_services = [
         "valkey",
     ]

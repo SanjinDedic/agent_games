@@ -42,7 +42,7 @@ const teamDefs = (run) => [
 // overview rather than hardcoded — the tutorial is authored content and grows.
 // Submission outcomes are asserted from the submit response body (200 with
 // passed/test_results; 400 detail when the code never produces results),
-// mirroring how agent submissions are asserted from /user/submit-agent.
+// mirroring how agent submissions are asserted from /user/submit-agent-result.
 // Exercises run Pyodide-first in the browser and persist via
 // /tutorial/submit-exercise-result — the only exercise endpoint; the server
 // never executes exercise code (when Pyodide can't run, the browser calls

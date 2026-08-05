@@ -1,7 +1,17 @@
+"""Integration tests for the agent submission surface.
+
+/user/submit-agent-result is the only submission endpoint: the browser runs
+the validation (Pyodide, or the validation Lambda called directly) and posts
+the resulting envelope. The server never executes agent code — it re-runs
+the AST gate, applies rate limiting and hint rationing, and persists. Hint
+requests ride the same endpoint with ?generate_hint=true, feeding the
+client-supplied envelope to provide_hints (monkeypatched here).
+"""
+
 from datetime import timedelta
 
 import pytest
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, select
 
 import backend.routes.user.user_router as user_router_module
 from backend.database.db_models import League, Submission, SubmissionMetadata, Team
@@ -21,11 +31,67 @@ from backend.tests.conftest import (
 )
 from backend.time_utils import utc_now
 
+TEAM_NAME = "test_submit_team"
+
+VALID_CODE = """
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+
+UNSAFE_CODE = """
+import os
+from games.prisoners_dilemma.player import Player
+
+class CustomPlayer(Player):
+    def make_decision(self, game_state):
+        return "collude"
+"""
+
+
+def make_payload(code: str = VALID_CODE, **overrides):
+    """A successful validation envelope as the browser would submit it."""
+    payload = {
+        "code": code,
+        "status": "success",
+        "message": None,
+        "feedback": {"game": "prisoners_dilemma", "rounds": []},
+        "simulation_results": {
+            "total_points": {TEAM_NAME: 500, "Bot1": 700, "Bot2": 300},
+            "num_simulations": 100,
+        },
+        "duration_ms": 321.0,
+        "stdout": None,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def error_payload(code: str = VALID_CODE, **overrides):
+    """A failed validation envelope, traceback included, as the browser
+    (Pyodide harness or direct-Lambda call) would produce it."""
+    payload = make_payload(
+        code,
+        status="error",
+        message="Error during simulation: Invalid decision by test_submit_team",
+        feedback=None,
+        simulation_results=None,
+        duration_ms=45.0,
+        traceback=(
+            "Traceback (most recent call last):\n"
+            '  File "<string>", line 5, in make_decision\n'
+            "RuntimeError: agent exploded\n"
+        ),
+    )
+    payload.update(overrides)
+    return payload
+
 
 @pytest.fixture
 def setup_test_league(db_session: Session) -> League:
     """Create a test league with correct game type"""
-    # First check if league exists
     league = db_session.exec(
         select(League).where(League.name == "test_submit_league")
     ).first()
@@ -33,7 +99,7 @@ def setup_test_league(db_session: Session) -> League:
     if not league:
         league = League(
             name="test_submit_league",
-            game="prisoners_dilemma",  # Match the game type with test code
+            game="prisoners_dilemma",
             created_date=utc_now(),
             expiry_date=utc_now() + timedelta(days=7),
         )
@@ -47,14 +113,13 @@ def setup_test_league(db_session: Session) -> League:
 @pytest.fixture
 def setup_test_team(db_session: Session, setup_test_league: League) -> Team:
     """Create a test team properly linked to the test league"""
-    # First check if team exists
-    team = db_session.exec(select(Team).where(Team.name == "test_submit_team")).first()
+    team = db_session.exec(select(Team).where(Team.name == TEAM_NAME)).first()
 
     if not team:
         team = Team(
-            name="test_submit_team",
+            name=TEAM_NAME,
             school_name="Test School",
-            password_hash="test_hash",  # In real tests this would be properly hashed
+            password_hash="test_hash",
             league_id=setup_test_league.id,
         )
         db_session.add(team)
@@ -73,25 +138,15 @@ def student_token(setup_test_team: Team) -> str:
 def test_submit_agent_success(
     client, db_session: Session, student_token: str, setup_test_team: Team
 ):
-    """Test successful agent submission scenarios"""
-
-    # Verify team is properly set up
+    """Successful envelope submissions are stored with a server-computed rank."""
     team = get_team_by_id(db_session, setup_test_team.id)
     assert team is not None
     assert team.league is not None
-    assert team.league.game == "prisoners_dilemma"  # Verify game type matches test code
+    assert team.league.game == "prisoners_dilemma"
 
-    # Test case 1: Basic valid submission
-    valid_code = """
-from games.prisoners_dilemma.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return "collude"
-"""
     response = client.post(
-        "/user/submit-agent",
-        json={"code": valid_code},
+        "/user/submit-agent-result",
+        json=make_payload(),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -100,7 +155,6 @@ class CustomPlayer(Player):
     assert "results" in data
     assert "feedback" in data
 
-    # Verify submission was saved
     latest_submission = db_session.exec(
         select(Submission)
         .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
@@ -108,13 +162,12 @@ class CustomPlayer(Player):
         .order_by(Submission.timestamp.desc())
     ).first()
     assert latest_submission is not None
-    assert latest_submission.code == valid_code
-    # Rank vs the validation bots, computed from the validation run's
-    # total_points; exact value is stochastic but always a valid rank.
-    assert latest_submission.ranking is not None
-    assert latest_submission.ranking >= 1
+    assert latest_submission.code == VALID_CODE
+    # Rank computed server-side from the envelope's total_points: only Bot1
+    # (700) outscores the team (500) -> rank 2.
+    assert latest_submission.ranking == 2
 
-    # Test case 2: Submission with complex strategy
+    # A second submission with a different agent persists too
     complex_code = """
 from games.prisoners_dilemma.player import Player
 
@@ -127,8 +180,8 @@ class CustomPlayer(Player):
         return "collude"
 """
     response = client.post(
-        "/user/submit-agent",
-        json={"code": complex_code},
+        "/user/submit-agent-result",
+        json=make_payload(complex_code),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -139,9 +192,9 @@ def test_submit_agent_exceptions(
     client,
     student_token: str,
 ):
-    """Test error cases for agent submission"""
+    """Error cases: the server AST gate wins over the claimed envelope."""
 
-    # Test case 1: Submit unsafe code
+    # Test case 1: Unsafe code with a claimed-success envelope still 400s
     unsafe_code = """
 import os
 from games.prisoners_dilemma.player import Player
@@ -152,14 +205,14 @@ class CustomPlayer(Player):
         return "collude"
 """
     response = client.post(
-        "/user/submit-agent",
-        json={"code": unsafe_code},
+        "/user/submit-agent-result",
+        json=make_payload(unsafe_code),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 400
     assert "Agent code is not safe" in response.json()["detail"]
 
-    # Test case 2: Submit with syntax error
+    # Test case 2: Syntax error is caught by the server-side AST parse
     invalid_code = """
 from games.prisoners_dilemma.player import Player
 
@@ -168,15 +221,15 @@ class CustomPlayer(Player):
         return "collude"  # Missing colon
 """
     response = client.post(
-        "/user/submit-agent",
-        json={"code": invalid_code},
+        "/user/submit-agent-result",
+        json=make_payload(invalid_code),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 400
     assert "syntax error" in response.json()["detail"].lower()
 
     # Test case 3: Submit without authorization
-    response = client.post("/user/submit-agent", json={"code": "valid_code"})
+    response = client.post("/user/submit-agent-result", json=make_payload())
     assert response.status_code == 401
 
     # Test case 4: Submit with wrong token type
@@ -184,8 +237,8 @@ class CustomPlayer(Player):
         data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(minutes=30)
     )
     response = client.post(
-        "/user/submit-agent",
-        json={"code": "valid_code"},
+        "/user/submit-agent-result",
+        json=make_payload(),
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 403
@@ -372,8 +425,8 @@ def test_failed_submission_response_counts_itself_toward_hint(
     )
 
     response = client.post(
-        "/user/submit-agent",
-        json={"code": "import os\n"},
+        "/user/submit-agent-result",
+        json=make_payload("import os\n"),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 400
@@ -397,23 +450,23 @@ def test_failed_submission_response_still_rationed_below_threshold(
     )
 
     response = client.post(
-        "/user/submit-agent",
-        json={"code": "import os\n"},
+        "/user/submit-agent-result",
+        json=make_payload("import os\n"),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 400
     assert response.json()["hint_available"] is False
 
 
-def test_submit_agent_hint_cancelled_on_valid_code(
+def test_hint_cancelled_on_valid_code(
     client,
     db_session: Session,
     student_token: str,
     setup_test_team: Team,
     monkeypatch,
 ):
-    """A hint requested alongside code that passes validation is cancelled:
-    no LLM call, the attempt isn't consumed, and the response says so."""
+    """A hint requested alongside an envelope that passed validation is
+    cancelled: no LLM call, the attempt isn't consumed, the response says so."""
     _make_hints_available(db_session, setup_test_team.id)
 
     async def fail_provide_hints(*args, **kwargs):
@@ -421,16 +474,9 @@ def test_submit_agent_hint_cancelled_on_valid_code(
 
     monkeypatch.setattr(user_router_module, "provide_hints", fail_provide_hints)
 
-    valid_code = """
-from games.prisoners_dilemma.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return "collude"
-"""
     response = client.post(
-        "/user/submit-agent?generate_hint=true",
-        json={"code": valid_code},
+        "/user/submit-agent-result?generate_hint=true",
+        json=make_payload(),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -451,49 +497,50 @@ class CustomPlayer(Player):
     assert hint_available(db_session, setup_test_team) is True
 
 
-def test_submit_agent_hint_returned_when_validation_fails(
+def test_hint_generated_from_client_supplied_envelope(
     client,
     db_session: Session,
     student_token: str,
     setup_test_team: Team,
     monkeypatch,
 ):
-    """A hint requested alongside failing code is generated, returned in the
-    400 body, and consumes the hint attempt."""
+    """A hint requested alongside a failed envelope is generated from that
+    envelope (traceback included), returned in the 400 body, and consumes
+    the hint attempt."""
     _make_hints_available(db_session, setup_test_team.id)
 
     fake_hint = Hint(
         line_number=1,
-        quoted_line="import os",
-        assumptions=["the sandbox allows importing os"],
-        small_hint="Is the os module available to agent code?",
-        big_hint="Agent code cannot import os; remove the import.",
+        quoted_line="return 'hoard'",
+        assumptions=["'hoard' is a legal decision"],
+        small_hint="What decisions does the game accept?",
+        big_hint="Return 'collude' or 'defect', nothing else.",
         priority=1,
         bug=True,
     )
+    seen = {}
 
-    async def fake_provide_hints(*args, **kwargs):
+    async def fake_provide_hints(session, code, validation_result, game, team):
+        seen["envelope"] = validation_result
         return [fake_hint]
 
     monkeypatch.setattr(user_router_module, "provide_hints", fake_provide_hints)
 
-    unsafe_code = """
-import os
-from games.prisoners_dilemma.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return "collude"
-"""
+    payload = error_payload()
     response = client.post(
-        "/user/submit-agent?generate_hint=true",
-        json={"code": unsafe_code},
+        "/user/submit-agent-result?generate_hint=true",
+        json=payload,
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 400
     data = response.json()
     assert data["hint"]["small_hint"] == fake_hint.small_hint
     assert data["hint_available"] is False
+
+    # The hint context was built from the client-supplied envelope, with the
+    # traceback intact.
+    assert seen["envelope"]["message"] == payload["message"]
+    assert seen["envelope"]["traceback"] == payload["traceback"]
 
     latest_meta = db_session.exec(
         select(SubmissionMetadata)
@@ -503,21 +550,21 @@ class CustomPlayer(Player):
     assert latest_meta.hint_included is True
 
 
-def test_submit_agent_hint_request_rejected_when_unavailable(
+def test_hint_request_rejected_when_unavailable(
     client, student_token: str, setup_test_team: Team
 ):
     """With no prior attempts, hint rationing denies the request with a 429
-    before any validation runs."""
+    before the envelope is looked at."""
     response = client.post(
-        "/user/submit-agent?generate_hint=true",
-        json={"code": "irrelevant"},
+        "/user/submit-agent-result?generate_hint=true",
+        json=error_payload(),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 429
     assert "not allowed to request a hint" in response.json()["detail"]
 
 
-def test_submit_agent_hint_request_bypasses_rate_limit(
+def test_hint_request_bypasses_rate_limit(
     client,
     db_session: Session,
     student_token: str,
@@ -535,8 +582,8 @@ def test_submit_agent_hint_request_bypasses_rate_limit(
 
     # Sanity: a plain submission is rate limited right now
     response = client.post(
-        "/user/submit-agent",
-        json={"code": "irrelevant"},
+        "/user/submit-agent-result",
+        json=make_payload(),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 429
@@ -557,17 +604,9 @@ def test_submit_agent_hint_request_bypasses_rate_limit(
 
     monkeypatch.setattr(user_router_module, "provide_hints", fake_provide_hints)
 
-    unsafe_code = """
-import os
-from games.prisoners_dilemma.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return "collude"
-"""
     response = client.post(
-        "/user/submit-agent?generate_hint=true",
-        json={"code": unsafe_code},
+        "/user/submit-agent-result?generate_hint=true",
+        json=error_payload(),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 400
@@ -590,18 +629,11 @@ def test_submit_agent_rate_limit(
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
-    valid_code = """
-from games.prisoners_dilemma.player import Player
-
-class CustomPlayer(Player):
-    def make_decision(self, game_state):
-        return "collude"
-"""
     # Make 5 quick submissions through the endpoint
     for i in range(5):
         response = client.post(
-            "/user/submit-agent",
-            json={"code": valid_code},
+            "/user/submit-agent-result",
+            json=make_payload(),
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == 200
@@ -617,8 +649,8 @@ class CustomPlayer(Player):
 
     # The 6th submission should fail due to rate limit
     response = client.post(
-        "/user/submit-agent",
-        json={"code": valid_code},
+        "/user/submit-agent-result",
+        json=make_payload(),
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 429

@@ -21,9 +21,9 @@ def _entry(name: str, is_healthy: bool, health: str) -> Dict:
 def _collect_statuses() -> Dict[str, Dict]:
     """Health of the backing services the API depends on.
 
-    Only Valkey remains: agent validation runs on AWS Lambda (or a local
-    subprocess) via backend/validation_lambda/, exercises/snippets via
-    backend/fallback_lambda/ — neither has a long-lived service to ping.
+    Only Valkey remains: all code execution happens in the browser (Pyodide)
+    or on Lambdas the browser calls directly (backend/validation_lambda/,
+    backend/fallback_lambda/) — neither has a long-lived service to ping.
     """
     statuses: Dict[str, Dict] = {}
     try:

@@ -1,20 +1,22 @@
-"""Agent exceptions must surface to the AI hint context as stack traces.
+"""Agent exceptions must surface in the envelope as stack traces.
 
 Every game aborts on a bad agent: an exception (or an invalid return value)
 in the agent's decision method is re-raised as ValueError, and the task
 boundary formats the *chained* traceback, so the agent's own frames are
 included -> status "error" + traceback. No game substitutes a default action.
 
-run_validation is called directly here — no worker needed, we only exercise
-trace capture, not timeouts/isolation.
+run_validation is called directly here — we only exercise trace capture,
+not timeouts/isolation.
 
 Construction failures (exec / __init__ raising) surface via
 PlayerConstructionError -> "Failed to create player..." + traceback.
+
+The rendering of these envelopes into the hint prompt is pinned publicly in
+backend/tests/unit/routes/ai/test_hint_context.py against envelope literals.
 """
 
 import pytest
 
-from backend.routes.ai.hint_context import HintContext
 from backend.validation_lambda.executor import run_validation
 
 
@@ -106,31 +108,3 @@ def test_missing_custom_player_has_message_but_no_trace():
     assert result["message"].startswith("Failed to create player for team CrashTeam")
     assert "No CustomPlayer class" in result["message"]
     assert result["traceback"] is None
-
-
-# --- Hint context integration -------------------------------------------------
-
-
-def test_hint_context_renders_trace_for_construction_error():
-    result = _validate(CONSTRUCTION_CRASH, "greedy_pig")
-    ctx = HintContext.from_validation_response(
-        CONSTRUCTION_CRASH, result, game_name="greedy_pig",
-        team_name="CrashTeam", include_game_code=False,
-    )
-    assert ctx.category == "construction_error"
-    rendered = str(ctx)
-    assert "--- Stack Trace ---" in rendered
-    assert "ZeroDivisionError" in rendered
-
-
-def test_hint_context_renders_trace_for_runtime_error():
-    code = _crashing_agent("greedy_pig")
-    result = _validate(code, "greedy_pig")
-    ctx = HintContext.from_validation_response(
-        code, result, game_name="greedy_pig", team_name="CrashTeam",
-        include_game_code=False,
-    )
-    assert ctx.category == "runtime_error"
-    rendered = str(ctx)
-    assert "--- Stack Trace ---" in rendered
-    assert "RuntimeError: agent exploded" in rendered

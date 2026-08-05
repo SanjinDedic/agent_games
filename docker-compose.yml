@@ -164,12 +164,18 @@ services:
       # `... run --rm --no-deps test-runner pytest tutorial_data/tests/`;
       # not part of the public suite/CI — the folder is gitignored)
       - ./tutorial_data:/agent_games/tutorial_data
-      # Browser exercise + simulation harnesses, for the CPython parity tests
-      # (backend/fallback_lambda/tests/test_exercise_harness_parity.py,
-      # backend/tests/unit/test_simulation_harness_parity.py,
-      # test_simulation_engine_copies.py)
+      # Browser exercise/validation/simulation harnesses, for the CPython
+      # parity tests (backend/tests/unit/test_simulation_harness_parity.py,
+      # test_simulation_engine_copies.py, and the private Lambda suites'
+      # test_exercise_harness_parity.py / test_validation_harness_parity.py
+      # — see below)
       - ./frontend/src/pyodide:/agent_games/frontend/src/pyodide:ro
-    command: pytest backend/tests/ backend/fallback_lambda/tests/ -v
+    # backend/fallback_lambda/ and backend/validation_lambda/ are private
+    # nested repos (gitignored, like tutorial_data/). Their tests run on
+    # demand from a checkout that has them:
+    # `... run --rm test-runner pytest backend/fallback_lambda/tests/`
+    # `... run --rm test-runner pytest backend/validation_lambda/tests/`
+    command: pytest backend/tests/ -v
     scale: 0
 
 volumes:
