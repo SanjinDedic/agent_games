@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
@@ -20,12 +18,8 @@ from backend.routes.lesson.lesson_db import (
 from backend.routes.lesson.lesson_models import (
     LessonRequest,
     SnippetFallbackBeacon,
-    SnippetRunRequest,
 )
-from backend.fallback_lambda.client import run_snippet_fallback
 from backend.routes.tutorial.pyodide_support import record_pyodide_fallback
-
-logger = logging.getLogger(__name__)
 
 lesson_router = APIRouter()
 
@@ -61,37 +55,6 @@ async def get_lesson_endpoint(
     return get_lesson_by_slug(session, slug)
 
 
-@lesson_router.post("/run-snippet")
-@verify_any_role
-async def run_snippet_endpoint(
-    run: SnippetRunRequest,
-    current_user: dict = Depends(get_current_user),
-):
-    """Run a lesson code block and return its output.
-
-    Backs the Run button on ```python-run blocks (student modal and admin
-    editor preview alike) — but only when the browser could not run the code
-    itself: snippets execute Pyodide-first in the page, so this endpoint sees
-    fallback traffic (tagged execution_source="pyodide_fallback", counted in
-    the shared telemetry under "snippet:"-prefixed reasons) and kill-switch
-    builds. The 10/min rate limit therefore bounds fallback traffic, not
-    total snippet activity. Every outcome is a 200 with the full run result —
-    a traceback is the learning content here, not a failure of the endpoint.
-    Nothing is stored. Like exercise submissions there is no AST safety gate:
-    the sandboxed fallback runner (backend/fallback_lambda/) is the
-    enforcement boundary.
-    """
-    allow_snippet_run(_snippet_identity(current_user))
-    if run.execution_source == "pyodide_fallback":
-        # The browser couldn't run this via Pyodide and fell back here;
-        # counted after the rate limit so spam can't inflate the telemetry.
-        record_pyodide_fallback(
-            current_user.get("team_id"),
-            f"snippet:{run.fallback_reason or 'unspecified'}",
-        )
-    return await run_snippet_fallback(run.code)
-
-
 @lesson_router.post("/snippet-fallback-beacon")
 @verify_any_role
 async def snippet_fallback_beacon_endpoint(
@@ -102,8 +65,9 @@ async def snippet_fallback_beacon_endpoint(
 
     Fire-and-forget from the client after a direct Function URL call (there
     is no result to persist for snippets — this exists purely so the shared
-    fallback telemetry keeps measuring when the folder can be deleted).
-    Shares run-snippet's 10/min budget so spam can't inflate the counters.
+    fallback telemetry keeps measuring when the folder can be deleted). The
+    server never executes snippet code; the 10/min budget just bounds beacon
+    spam so it can't inflate the counters.
     """
     allow_snippet_run(_snippet_identity(current_user))
     record_pyodide_fallback(

@@ -51,8 +51,8 @@ const EDITOR_OPTIONS = {
  * the target is authored in the lesson content, so there is nothing to store
  * or hide; it is instant feedback, not assessment.
  */
-function RunnableCodeBlock({ initialCode, expectedOutput = null }) {
-  const { runSnippet } = usePyodideSnippetRun();
+function RunnableCodeBlock({ initialCode, expectedOutput = null, preview = false }) {
+  const { runSnippet } = usePyodideSnippetRun({ preview });
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [running, setRunning] = useState(false);

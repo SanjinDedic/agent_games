@@ -44,12 +44,13 @@ const teamDefs = (run) => [
 // passed/test_results; 400 detail when the code never produces results),
 // mirroring how agent submissions are asserted from /user/submit-agent.
 // Exercises run Pyodide-first in the browser and persist via
-// /tutorial/submit-exercise-result (Celery is the automatic fallback via
-// /tutorial/submit-exercise) — both endpoints share the response contract and
-// the '/tutorial/submit-exercise' substring, so one waitForResponse covers
-// both paths. There is deliberately NO AST safety gate on exercises — the
-// sandbox is the Pyodide worker (or the slim exercise-worker container) — so
-// the "rejected" case is code that never produces results (a syntax error),
+// /tutorial/submit-exercise-result — the only exercise endpoint; the server
+// never executes exercise code (when Pyodide can't run, the browser calls
+// the fallback Lambda's Function URL directly and persists the envelope
+// through the same endpoint). The '/tutorial/submit-exercise' substring in
+// waitForResponse matches it. There is deliberately NO AST safety gate on
+// exercises — the sandbox is the Pyodide worker (or the Lambda) — so the
+// "rejected" case is code that never produces results (a syntax error),
 // not an unauthorized import.
 async function runTutorialExercise(page) {
   console.log('\n=== Tutorial exercise (Team 1 only) ===');

@@ -223,9 +223,15 @@ def test_pyodide_exercise_submission_is_counted(
 def test_lambda_exercise_submission_is_counted(
     client, db_session, league_team_headers, league_exercise
 ):
+    """An envelope the browser fetched from the fallback Lambda's Function
+    URL (execution_source="pyodide_fallback") counts as a lambda run."""
     response = client.post(
-        "/tutorial/submit-exercise",
-        json={"exercise_id": league_exercise.id, "code": PASSING_EXERCISE_CODE},
+        "/tutorial/submit-exercise-result",
+        json=exercise_result_payload(
+            league_exercise.id,
+            execution_source="pyodide_fallback",
+            fallback_reason="boot-timeout",
+        ),
         headers=league_team_headers,
     )
     assert response.status_code == 200

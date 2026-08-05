@@ -2,8 +2,9 @@
 
 The browser executes exercises locally via
 frontend/src/pyodide/exercise_harness.py and submits the finished envelope to
-/tutorial/submit-exercise-result; when Pyodide cannot run at all, the
-frontend falls back to the server path with
+/tutorial/submit-exercise-result; when Pyodide cannot run at all, the browser
+calls the fallback Lambda's Function URL directly (the server never executes
+the code) and the persisted envelope carries
 execution_source="pyodide_fallback". Every fallback is logged and counted in
 Valkey so the migration can prove when the exercise fallback path
 (backend/fallback_lambda/) has become dead weight and can be deleted.

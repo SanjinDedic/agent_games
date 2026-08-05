@@ -89,12 +89,13 @@ Conventions (see `_helpers.js`):
   are asserted from the `/user/submit-agent` response body (200 + `submission_id` = valid,
   400 + `detail` = failed validation), not from the UI. Tutorial exercise submissions are
   asserted the same way: exercises run Pyodide-first in the browser and persist via
-  `/tutorial/submit-exercise-result`, with `/tutorial/submit-exercise` (Celery) as automatic
-  fallback — both share the response contract (200 + `passed`/`test_results`; 400 + `detail`
-  when the code never produces results — a syntax error, a missing entry function, or a
-  timeout) and the `/tutorial/submit-exercise` URL substring, so one waitForResponse covers
-  both. Exercises have NO AST safety gate by design: the Pyodide worker (or the slim
-  exercise-worker container) is the sandbox, so `import os` is allowed there.
+  `/tutorial/submit-exercise-result` — the only exercise endpoint (the server never executes
+  exercise code; when Pyodide can't run, the browser calls the fallback Lambda's Function URL
+  directly and persists the envelope through the same endpoint). The response contract is
+  200 + `passed`/`test_results`, or 400 + `detail` when the code never produces results — a
+  syntax error, a missing entry function, or a timeout; the `/tutorial/submit-exercise` URL
+  substring in waitForResponse matches it. Exercises have NO AST safety gate by design: the
+  Pyodide worker (or the Lambda) is the sandbox, so `import os` is allowed there.
 
 Known app-side deviations the scripts expect and document (full detail in
 `docs/test_findings/integration-manual-run-2026-07-11.md`):

@@ -165,10 +165,11 @@ services:
       # not part of the public suite/CI — the folder is gitignored)
       - ./tutorial_data:/agent_games/tutorial_data
       # Browser exercise + simulation harnesses, for the CPython parity tests
-      # (backend/tests/unit/test_exercise_harness_parity.py,
-      # test_simulation_harness_parity.py, test_simulation_engine_copies.py)
+      # (backend/fallback_lambda/tests/test_exercise_harness_parity.py,
+      # backend/tests/unit/test_simulation_harness_parity.py,
+      # test_simulation_engine_copies.py)
       - ./frontend/src/pyodide:/agent_games/frontend/src/pyodide:ro
-    command: pytest backend/tests/ -v
+    command: pytest backend/tests/ backend/fallback_lambda/tests/ -v
     scale: 0
 
 volumes:

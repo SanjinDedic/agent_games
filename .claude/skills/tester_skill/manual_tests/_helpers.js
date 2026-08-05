@@ -191,7 +191,8 @@ async function readAgentPanel(page, timeout = 20000) {
 // Click "Submit Code" and return {status, body} from the submit response.
 // Success = HTTP 200 with submission_id; validation failure = HTTP 400 with detail.
 // `endpoint` picks the response to assert on: agent submissions (default) or
-// tutorial exercises ('/tutorial/submit-exercise').
+// tutorial exercises ('/tutorial/submit-exercise' — a substring match, so it
+// catches /tutorial/submit-exercise-result, the only exercise persist path).
 async function submitCode(page, timeout = 120000, endpoint = '/user/submit-agent') {
   const [resp] = await Promise.all([
     page.waitForResponse((r) => r.url().includes(endpoint) && r.request().method() === 'POST', { timeout }),

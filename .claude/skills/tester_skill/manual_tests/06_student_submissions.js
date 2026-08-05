@@ -46,9 +46,9 @@ const studentDefs = (run) => [
 // Scoreboard", a top-level-code exercise, position read off the overview)
 // but asserting the classroom wording: the workspace footer label is
 // STUDENT:, not TEAM:. Submission outcomes are asserted from the submit
-// response body exactly as in Stage 3.3 (Pyodide-first via
-// /tutorial/submit-exercise-result, Celery fallback via
-// /tutorial/submit-exercise — one waitForResponse substring covers both).
+// response body exactly as in Stage 3.3 (Pyodide-first, persisted via
+// /tutorial/submit-exercise-result — matched by the '/tutorial/submit-exercise'
+// waitForResponse substring; the server never executes exercise code).
 async function runTutorialExercise(page) {
   console.log('\n=== Short Course exercise (Student 1 only) ===');
 

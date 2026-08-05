@@ -19,7 +19,7 @@ from backend.database.db_models import (
     Team,
     Tutorial,
 )
-from backend.fallback_lambda.executor import MAX_STDOUT_CHARS
+from backend.routes.tutorial.tutorial_models import MAX_STDOUT_CHARS
 from backend.time_utils import utc_now
 
 PASSING_CODE = "def add(a, b):\n    return a + b\n"
@@ -212,12 +212,11 @@ def test_success_with_no_rows_is_an_error(
     assert db_session.exec(select(ExerciseSubmission)).all() == []
 
 
-def test_rate_limit_is_shared_with_submit_exercise(
+def test_rate_limit(
     client, db_session, team_headers, pyodide_exercise
 ):
-    """Both endpoints count the same ExerciseSubmissionMetadata budget, so
-    a student can't double their 5/minute by mixing paths. (The 429 fires
-    before any enqueue, so no worker is needed.)"""
+    """The 6th persist inside a minute is rejected against the
+    ExerciseSubmissionMetadata budget, and the window resets."""
     team_a = db_session.exec(select(Team).where(Team.name == "TeamA")).one()
     for _ in range(5):
         db_session.add(
@@ -232,13 +231,6 @@ def test_rate_limit_is_shared_with_submit_exercise(
     response = client.post(
         "/tutorial/submit-exercise-result",
         json=make_payload(pyodide_exercise.id),
-        headers=team_headers,
-    )
-    assert response.status_code == 429
-
-    response = client.post(
-        "/tutorial/submit-exercise",
-        json={"exercise_id": pyodide_exercise.id, "code": PASSING_CODE},
         headers=team_headers,
     )
     assert response.status_code == 429
@@ -258,8 +250,7 @@ def test_rate_limit_is_shared_with_submit_exercise(
 
 
 def test_requires_student_role(client, admin_headers, pyodide_exercise):
-    """Admin tokens are rejected by the role decorator, same as
-    /submit-exercise."""
+    """Admin tokens are rejected by the role decorator."""
     response = client.post(
         "/tutorial/submit-exercise-result",
         json=make_payload(pyodide_exercise.id),

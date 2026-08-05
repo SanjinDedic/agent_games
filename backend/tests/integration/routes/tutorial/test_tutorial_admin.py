@@ -441,119 +441,6 @@ def test_reorder_rejects_incomplete_id_list(
     assert response.status_code == 400
 
 
-# -- dry run ----------------------------------------------------------------
-
-
-RUN_PAYLOAD = {
-    "code": "def add(a, b):\n    return a + b\n",
-    "entry_function": "add",
-    "test_code": (
-        "def test_adds():\n"
-        '    """adds two numbers"""\n'
-        "    check(add(1, 2), 3)\n"
-        "def test_adds_negatives():\n"
-        '    """adds negatives"""\n'
-        "    check(add(-1, -2), -3)\n"
-    ),
-}
-
-
-def test_run_exercise_passes(client, auth_headers):
-    response = client.post(
-        "/tutorial/admin/run-exercise", json=RUN_PAYLOAD, headers=auth_headers
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["passed"] is True
-    assert [t["name"] for t in data["test_results"]] == [
-        "adds two numbers",
-        "adds negatives",
-    ]
-
-
-def test_run_exercise_top_level_code(client, auth_headers):
-    """The dry run works without an entry function: top-level prints are
-    graded through module_output."""
-    payload = {
-        "code": "print('Hello, world!')\n",
-        "entry_function": "",
-        "test_code": (
-            "def test_prints():\n"
-            "    check_output(module_output, 'Hello, world!')\n"
-        ),
-    }
-    response = client.post(
-        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["passed"] is True
-
-
-def test_run_exercise_failing_test(client, auth_headers):
-    payload = {**RUN_PAYLOAD, "code": "def add(a, b):\n    return a - b\n"}
-    response = client.post(
-        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["passed"] is False
-
-
-def test_run_exercise_broken_test_script_returns_traceback(
-    client, auth_headers
-):
-    """An admin debugging their own test script gets the traceback — unlike
-    the student route, which hides it."""
-    payload = {**RUN_PAYLOAD, "test_code": "not_a_defined_helper()\n"}
-    response = client.post(
-        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert "test script failed to run" in data["message"]
-    assert "NameError" in data["traceback"]
-
-
-def test_run_exercise_without_tests_is_an_error(
-    client, auth_headers
-):
-    payload = {**RUN_PAYLOAD, "test_code": None}
-    response = client.post(
-        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "error"
-    assert data["message"] == "This exercise defines no tests."
-
-
-def test_run_exercise_has_no_ast_gate(client, auth_headers):
-    """Dry-runs skip the agent-submission AST check like student submissions
-    do: starter/solution code may import freely — the sandboxed exercise
-    worker is the enforcement boundary."""
-    payload = {
-        **RUN_PAYLOAD,
-        "code": (
-            "import os\n"
-            "def add(a, b):\n"
-            "    assert os.getpid() > 0\n"
-            "    return a + b\n"
-        ),
-    }
-    response = client.post(
-        "/tutorial/admin/run-exercise", json=payload, headers=auth_headers
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["passed"] is True
-
-
 def test_admin_endpoints_denied_for_team(
     client, team_headers, db_session, tutorial_with_exercises
 ):
@@ -566,7 +453,6 @@ def test_admin_endpoints_denied_for_team(
         ("post", f"/tutorial/tutorial/{tutorial_id}/exercises", EXERCISE_PAYLOAD),
         ("put", f"/tutorial/exercise/{exercise_id}", EXERCISE_PAYLOAD),
         ("delete", f"/tutorial/exercise/{exercise_id}", None),
-        ("post", "/tutorial/admin/run-exercise", RUN_PAYLOAD),
         (
             "post",
             f"/tutorial/tutorial/{tutorial_id}/exercises/reorder",

@@ -93,18 +93,15 @@ env:
     AWS_REGION: ap-southeast-2
     AWS_S3_BUCKET: agent-games-backups
     AWS_S3_ASSETS_BUCKET: agent-games-assets
-    # Exercise/snippet fallback runs on this Lambda (backend/fallback_lambda/,
-    # deployed via its deploy.sh). A function name, not a secret. Unset it to
-    # fall back to local subprocess execution inside the API container
-    # (emergency degraded mode). The API's IAM user needs lambda:InvokeFunction
-    # on exactly this function.
-    EXERCISE_LAMBDA_FUNCTION: agent-games-exercise-fallback
+    # Exercise/snippet fallback is browser→Lambda-Function-URL direct
+    # (backend/fallback_lambda/): the API never invokes it, so no env var and
+    # no IAM permission — only EXEC_JWT_SECRET above must match the Lambda.
     # Server-side agent validation (hint requests, non-Pyodide builds, browser
     # fallbacks) runs on this Lambda (backend/validation_lambda/, deployed via
     # its deploy.sh). Unlike the exercise fallback this is PERMANENT infra —
-    # hint generation always needs a server-run envelope. Same rules: a
-    # function name, not a secret; unset for local-subprocess degraded mode;
-    # the API's IAM user needs lambda:InvokeFunction on it.
+    # hint generation always needs a server-run envelope. A function name, not
+    # a secret; unset for local-subprocess degraded mode; the API's IAM user
+    # needs lambda:InvokeFunction on it.
     VALIDATION_LAMBDA_FUNCTION: agent-games-validation
     FRONTEND_URL: https://agentgames.io
   # NOTE: no top-level `secret:` block by design. Kamal unions each role's

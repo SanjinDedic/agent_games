@@ -144,7 +144,7 @@ function LessonEditor({ initialForm, isNew, onSave, onCancel }) {
                 Live preview — Run buttons work here
               </label>
               <div className="flex-1 border border-gray-300 rounded-md overflow-y-auto p-4 bg-white">
-                <LessonMarkdown content={form.content} />
+                <LessonMarkdown content={form.content} preview />
               </div>
             </div>
           </div>
