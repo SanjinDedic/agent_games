@@ -19,6 +19,7 @@ from backend.routes.lesson.lesson_db import (
 )
 from backend.routes.lesson.lesson_models import (
     LessonRequest,
+    SnippetFallbackBeacon,
     SnippetRunRequest,
 )
 from backend.fallback_lambda.client import run_snippet_fallback
@@ -89,6 +90,27 @@ async def run_snippet_endpoint(
             f"snippet:{run.fallback_reason or 'unspecified'}",
         )
     return await run_snippet_fallback(run.code)
+
+
+@lesson_router.post("/snippet-fallback-beacon")
+@verify_any_role
+async def snippet_fallback_beacon_endpoint(
+    beacon: SnippetFallbackBeacon,
+    current_user: dict = Depends(get_current_user),
+):
+    """Count a snippet run the browser sent straight to the fallback Lambda.
+
+    Fire-and-forget from the client after a direct Function URL call (there
+    is no result to persist for snippets — this exists purely so the shared
+    fallback telemetry keeps measuring when the folder can be deleted).
+    Shares run-snippet's 10/min budget so spam can't inflate the counters.
+    """
+    allow_snippet_run(_snippet_identity(current_user))
+    record_pyodide_fallback(
+        current_user.get("team_id"),
+        f"snippet:{beacon.reason or 'unspecified'}",
+    )
+    return {"detail": "recorded"}
 
 
 # ---------------------------------------------------------------------------

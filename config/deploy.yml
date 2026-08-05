@@ -15,6 +15,11 @@ servers:
     env:
       secret:
         - SECRET_KEY
+        # Signs /auth/execution-token; must match the EXEC_JWT_SECRET the
+        # fallback Lambda was deployed with (fallback_lambda/deploy.sh).
+        # Dedicated secret — student code can read the Lambda's memory, so
+        # this must never be SECRET_KEY.
+        - EXEC_JWT_SECRET
         # Managed Postgres (DigitalOcean), TLS-only:
         #   postgresql+psycopg://agent_games_user:...@<cluster>:25060/agent_games?sslmode=require
         - DATABASE_URL

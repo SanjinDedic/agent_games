@@ -67,3 +67,19 @@ class SnippetRunRequest(BaseModel):
             return None
         value = value.strip()[:500]
         return value or None
+
+
+class SnippetFallbackBeacon(BaseModel):
+    """Telemetry ping for a snippet the browser ran via the direct Lambda
+    Function URL (no API in the execution leg) — keeps the pyodide-fallback
+    counters honest when /lesson/run-snippet is bypassed."""
+
+    reason: Optional[str] = None
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()[:500]
+        return value or None

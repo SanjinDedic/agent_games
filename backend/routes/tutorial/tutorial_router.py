@@ -234,19 +234,35 @@ async def submit_exercise_result(
     Same auth, league check, and 5/minute budget as /submit-exercise, and the
     same response contract (400 with detail+stdout when the run produced no
     test results) so the frontend shares one result path.
+
+    execution_source="pyodide_fallback" marks an envelope the browser got by
+    calling the fallback Lambda's Function URL directly (no API in the
+    execution leg): the submission then doubles as the fallback-telemetry
+    beacon and the stored rows are stamped "lambda_direct".
     """
     team_id = _require_team_id(current_user)
     exercise = get_exercise_by_id(session, submission.exercise_id)
     assert_exercise_in_team_league(session, exercise, team_id)
     allow_exercise_submission(session, team_id)
 
-    # Post-rate-limit like submit_exercise's counter: this endpoint only ever
-    # persists runs the browser executed via Pyodide.
+    direct_lambda = submission.execution_source == "pyodide_fallback"
+    if direct_lambda:
+        # Counted after the rate limit so spam can't inflate the telemetry.
+        record_pyodide_fallback(
+            team_id, submission.fallback_reason or "unspecified"
+        )
+    # Post-rate-limit like submit_exercise's counter: this endpoint persists
+    # runs the browser executed via Pyodide or fetched from the direct Lambda.
     record_code_env_call(
-        session, current_user["team_name"], KIND_EXERCISE, ENV_PYODIDE
+        session,
+        current_user["team_name"],
+        KIND_EXERCISE,
+        ENV_LAMBDA if direct_lambda else ENV_PYODIDE,
     )
 
-    test_results = normalize_client_rows(submission.test_results, "pyodide")
+    test_results = normalize_client_rows(
+        submission.test_results, "lambda_direct" if direct_lambda else "pyodide"
+    )
 
     if submission.status == "error" or not test_results:
         record_failed_exercise_submission(

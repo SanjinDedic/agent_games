@@ -49,6 +49,12 @@ class ExerciseResultSubmissionRequest(BaseModel):
     test_results: List[dict] = []
     stdout: Optional[str] = None
     duration_ms: Optional[float] = None
+    # "pyodide" = the browser ran it locally (default). "pyodide_fallback" =
+    # Pyodide couldn't run and the browser called the fallback Lambda's
+    # Function URL directly — this envelope is that Lambda's result, and the
+    # submission doubles as the fallback-telemetry beacon.
+    execution_source: Literal["pyodide", "pyodide_fallback"] = "pyodide"
+    fallback_reason: Optional[str] = None
 
     @field_validator("stdout")
     @classmethod

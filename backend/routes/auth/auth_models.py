@@ -59,6 +59,13 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class ExecutionTokenResponse(BaseModel):
+    """Short-lived token for direct browser→Lambda fallback execution."""
+
+    token: str
+    expires_in: int  # seconds
+
+
 class CompetitionInfo(BaseModel):
     """One competition on the public login picker."""
 
