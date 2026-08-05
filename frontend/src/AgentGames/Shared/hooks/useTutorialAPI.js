@@ -273,9 +273,32 @@ export const useTutorialAPI = () => {
    * passed, test_results, stdout, duration_ms, ... }). Returns the same
    * workspace result shape as submitExercise, so the caller treats both
    * paths identically.
+   *
+   * When the envelope came from a direct Lambda Function URL call instead
+   * of a local Pyodide run, executionSource="pyodide_fallback" makes this
+   * submission double as the fallback-telemetry beacon.
    */
-  const submitExerciseResult = useCallback(async (exerciseId, code, envelope) => {
+  const submitExerciseResult = useCallback(async (
+    exerciseId,
+    code,
+    envelope,
+    { executionSource = null, fallbackReason = null } = {}
+  ) => {
     setIsLoading(true);
+    const body = {
+      exercise_id: exerciseId,
+      code,
+      status: envelope.status,
+      message: envelope.message,
+      passed: envelope.passed,
+      test_results: envelope.test_results,
+      stdout: envelope.stdout,
+      duration_ms: envelope.duration_ms,
+    };
+    if (executionSource) {
+      body.execution_source = executionSource;
+      body.fallback_reason = fallbackReason;
+    }
     try {
       const response = await authFetch(`${apiUrl}/tutorial/submit-exercise-result`, {
         method: "POST",
@@ -283,16 +306,7 @@ export const useTutorialAPI = () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          exercise_id: exerciseId,
-          code,
-          status: envelope.status,
-          message: envelope.message,
-          passed: envelope.passed,
-          test_results: envelope.test_results,
-          stdout: envelope.stdout,
-          duration_ms: envelope.duration_ms,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();

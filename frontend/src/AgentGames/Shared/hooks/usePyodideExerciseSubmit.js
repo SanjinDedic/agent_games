@@ -1,10 +1,16 @@
 // src/AgentGames/Shared/hooks/usePyodideExerciseSubmit.js
 import { useCallback, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import {
   isPyodideEnabled,
   runExercise,
 } from '../../../pyodide/exerciseRunnerClient';
+import {
+  isLambdaDirectEnabled,
+  runOnLambdaDirect,
+} from '../../../utils/lambdaFallback';
+import { selectToken } from '../../../slices/authSlice';
 import useTutorialAPI from './useTutorialAPI';
 
 /**
@@ -20,12 +26,18 @@ import useTutorialAPI from './useTutorialAPI';
  *    - student: persist via /tutorial/submit-exercise-result (server stamps
  *      rows "source": "pyodide" and owns the 400/429 contract);
  *    - preview: build the result locally, zero network.
- * 3. Pyodide itself couldn't run: submit through the server tagged
- *    execution_source="pyodide_fallback" so the server logs and counts it.
+ * 3. Pyodide itself couldn't run and VITE_EXERCISE_LAMBDA_URL is set
+ *    (students only): call the fallback Lambda's Function URL directly, then
+ *    persist the envelope tagged execution_source="pyodide_fallback" — the
+ *    submission doubles as the telemetry beacon. The API never runs the code.
+ * 4. Direct path unavailable or failed (and previews always): submit through
+ *    the server tagged execution_source="pyodide_fallback" as before.
  */
 const usePyodideExerciseSubmit = ({ exercise, preview = false }) => {
   const { submitExercise, submitExerciseResult, isLoading: isApiLoading } =
     useTutorialAPI();
+  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
+  const accessToken = useSelector(selectToken);
   const [isRunningLocally, setIsRunningLocally] = useState(false);
 
   const submitCode = useCallback(
@@ -51,18 +63,50 @@ const usePyodideExerciseSubmit = ({ exercise, preview = false }) => {
         setIsRunningLocally(false);
       }
 
+      let envelope = null;
+      let resultTags = {};
       if (run.kind === 'fallback') {
-        return submitExercise(exercise.id, code, {
-          preview,
-          executionSource: 'pyodide_fallback',
-          fallbackReason: run.reason,
-        });
+        // Previews stay on the proxied route: the persist leg below needs a
+        // team token, and preview traffic is rare admin/institution use.
+        if (!preview && isLambdaDirectEnabled()) {
+          setIsRunningLocally(true);
+          let direct;
+          try {
+            direct = await runOnLambdaDirect(
+              {
+                kind: 'exercise',
+                code,
+                entry_function: exercise.entry_function,
+                test_code: exercise.test_code,
+              },
+              { apiUrl, accessToken }
+            );
+          } finally {
+            setIsRunningLocally(false);
+          }
+          if (direct.ok) {
+            envelope = direct.envelope;
+            resultTags = {
+              executionSource: 'pyodide_fallback',
+              fallbackReason: run.reason,
+            };
+          }
+        }
+        if (!envelope) {
+          return submitExercise(exercise.id, code, {
+            preview,
+            executionSource: 'pyodide_fallback',
+            fallbackReason: run.reason,
+          });
+        }
+      } else {
+        envelope = run.envelope;
       }
 
-      const envelope = run.envelope;
-
       if (!preview) {
-        const result = await submitExerciseResult(exercise.id, code, envelope);
+        const result = await submitExerciseResult(
+          exercise.id, code, envelope, resultTags
+        );
         if (!result.networkError) {
           return result;
         }
@@ -96,7 +140,7 @@ const usePyodideExerciseSubmit = ({ exercise, preview = false }) => {
         hint_cancelled: false,
       };
     },
-    [exercise, preview, submitExercise, submitExerciseResult]
+    [exercise, preview, submitExercise, submitExerciseResult, apiUrl, accessToken]
   );
 
   return { submitCode, isLoading: isRunningLocally || isApiLoading };

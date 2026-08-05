@@ -72,6 +72,16 @@ export const useLessonAPI = () => {
     [request]
   );
 
+  /**
+   * Telemetry ping for a snippet the browser ran via the direct Lambda
+   * Function URL (the API never saw the execution). Fire-and-forget:
+   * request() never rejects, and callers don't await the result.
+   */
+  const sendSnippetFallbackBeacon = useCallback(
+    (reason) => request('/snippet-fallback-beacon', 'POST', { reason }),
+    [request]
+  );
+
   // ------------------------------------------------------------------
   // Admin content management (admin token required by the backend)
   // ------------------------------------------------------------------
@@ -98,6 +108,7 @@ export const useLessonAPI = () => {
   return {
     getLessonBySlug,
     runSnippet,
+    sendSnippetFallbackBeacon,
     getLessons,
     createLesson,
     updateLesson,
