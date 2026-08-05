@@ -163,6 +163,7 @@ jobs:
         STRIPE_PRICE_UNI_ONCE: ${{ secrets.STRIPE_PRICE_UNI_ONCE }}
         STRIPE_PRICE_UNI_YEAR: ${{ secrets.STRIPE_PRICE_UNI_YEAR }}
         STRIPE_PRICE_TEACHER_ONCE: ${{ secrets.STRIPE_PRICE_TEACHER_ONCE }}
+        EXEC_JWT_SECRET: ${{ secrets.EXEC_JWT_SECRET }}
       run: |
         mkdir -p .kamal
         cat > .kamal/secrets <<EOF
@@ -183,6 +184,7 @@ jobs:
         STRIPE_PRICE_UNI_ONCE=$STRIPE_PRICE_UNI_ONCE
         STRIPE_PRICE_UNI_YEAR=$STRIPE_PRICE_UNI_YEAR
         STRIPE_PRICE_TEACHER_ONCE=$STRIPE_PRICE_TEACHER_ONCE
+        EXEC_JWT_SECRET=$EXEC_JWT_SECRET
         EOF
 
     - name: Deploy with Kamal
