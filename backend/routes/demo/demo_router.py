@@ -9,10 +9,8 @@ from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.demo.demo_db import (
     create_demo_user,
     ensure_demo_leagues_exist,
-    get_demo_content_summary,
 )
 from backend.routes.demo.demo_models import (
-    DemoContentOverview,
     DemoLaunchRequestWithUser,
     DemoLaunchResponse,
 )
@@ -52,11 +50,4 @@ async def launch_demo(
     )
 
 
-@demo_router.get("/content_overview", response_model=DemoContentOverview)
-async def content_overview(session: Session = Depends(get_db)):
-    """What the demo includes and how much content the full platform has.
 
-    Unauthenticated by design: it feeds the public home and demo pages and
-    exposes only titles and counts.
-    """
-    return DemoContentOverview(**get_demo_content_summary(session))

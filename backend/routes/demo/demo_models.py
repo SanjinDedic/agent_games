@@ -61,16 +61,3 @@ class DemoLaunchResponse(BaseModel):
     expires_at: str
     available_games: list[str]
     demo_leagues: list[str]
-
-
-class DemoContentOverview(BaseModel):
-    """Public summary of the demo sample vs the full content library.
-
-    Backs the marketing pages: the demo page lists the sample titles, the
-    home page shows the totals.
-    """
-
-    demo_tutorials: list[str]
-    demo_lessons: list[str]
-    total_tutorials: int
-    total_lessons: int

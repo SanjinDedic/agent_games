@@ -208,8 +208,7 @@ def install_summary(
     module level from a locustfile, passing `locust.events`.
 
     note / unit let a different benchmark reuse this printer with its own
-    wording (the exercises benchmark counts "exercise runs", and its expected
-    failures are on different rows) without duplicating the whole listener."""
+    wording without duplicating the whole listener."""
 
     @events.init.add_listener
     def _quiet_periodic_tables(environment, **kwargs):

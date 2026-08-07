@@ -8,24 +8,18 @@ from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select
 
-from backend.database.db_models import (Exercise, ExerciseSubmission,
-                                        ExerciseSubmissionMetadata,
-                                        Institution, League, LeagueType,
-                                        LeagueTutorial, SimulationResult,
+from backend.database.db_models import (Institution, League, LeagueType,
+                                        SimulationResult,
                                         SimulationResultItem, Submission,
-                                        SubmissionMetadata, Team, TeamType,
-                                        Tutorial)
+                                        SubmissionMetadata, Team, TeamType)
 from backend.database.submission_helpers import (delete_submissions_for_teams,
                                                  delete_team_children)
 from backend.games.game_factory import GameFactory
 from backend.routes.institution.institution_models import LeagueSignUp
 from backend.schools.config import (GoogleSheetsSchoolsConfig,
                                     StaticSchoolsConfig)
-from backend.routes.tutorial.tutorial_db import (set_league_tutorials,
-                                                 validate_tutorial_ids)
 from backend.schools.providers import (GoogleSheetsSchoolsProvider,
                                        SchoolsProviderError)
-from backend.team_capacity import assert_team_capacity
 from backend.utils import process_simulation_results
 from backend.time_utils import ensure_utc, to_sydney, utc_now
 
@@ -103,16 +97,6 @@ def _build_schools_config(
     return StaticSchoolsConfig(schools=list(league_data.schools))
 
 
-def _membership_expiry(session: Session, institution_id: int) -> Optional[datetime]:
-    """The institution's subscription end date, or None when it has no
-    subscription record. A league may not outlive it."""
-    institution = session.get(Institution, institution_id)
-    subscription = institution.subscription if institution else None
-    if subscription is None or subscription.subscription_expiry is None:
-        return None
-    return ensure_utc(subscription.subscription_expiry)
-
-
 def create_league(
     session: Session, league_data: LeagueSignUp, institution_id: int
 ) -> Dict:
@@ -132,8 +116,6 @@ def create_league(
     # Validate game name
     GameFactory.get_game_class(league_data.game)
 
-    # Validate tutorial ids up front (404) so nothing is created on failure.
-    validate_tutorial_ids(session, league_data.tutorial_ids)
 
     schools_config_model = _build_schools_config(league_data)
     schools_config = (
@@ -143,10 +125,8 @@ def create_league(
     # Generate unique signup token
     signup_token = secrets.token_urlsafe(16)
 
-    # A new league runs until the institution's membership ends; without a
-    # subscription record on file it falls back to a 24 hour trial window.
-    membership_expiry = _membership_expiry(session, institution_id)
-    default_expiry = membership_expiry or (utc_now() + timedelta(hours=24))
+    # A new league runs for 24 hours unless its expiry is extended later.
+    default_expiry = utc_now() + timedelta(hours=24)
 
     # Create the league
     league = League(
@@ -163,24 +143,17 @@ def create_league(
 
     session.add(league)
     session.flush()
-    # Attach the selected tutorials in the same transaction: an unknown
-    # tutorial id raises (404) and rolls the league creation back with it.
-    set_league_tutorials(
-        session, league.id, league_data.tutorial_ids, commit=False
-    )
     session.commit()
     return {
         "league_id": league.id,
         "name": league.name,
         "signup_token": signup_token,
         "school_league": league_data.school_league,
-        "tutorial_ids": league_data.tutorial_ids,
     }
 
 
 def create_team(session: Session, team_data, institution_id: int) -> Dict:
     """Create a new team for an institution"""
-    assert_team_capacity(session, institution_id)
     try:
         # Check for existing team within this institution
         existing_team = session.exec(
@@ -279,8 +252,8 @@ def get_all_teams(session: Session, institution_id: int) -> Dict:
 
 def get_classroom_summaries(session: Session, institution_id: int) -> list:
     """League/classroom cards for the institution home page: every non-deleted
-    league except the 'unassigned' holding pen, with its team count, attached
-    tutorial titles, and shareable signup link."""
+    league except the 'unassigned' holding pen, with its team count and
+    shareable signup link."""
     leagues = session.exec(
         select(League)
         .where(
@@ -293,7 +266,6 @@ def get_classroom_summaries(session: Session, institution_id: int) -> list:
     league_ids = [league.id for league in leagues]
 
     team_counts: dict = {}
-    tutorial_titles: dict = {}
     if league_ids:
         team_counts = dict(
             session.exec(
@@ -302,15 +274,6 @@ def get_classroom_summaries(session: Session, institution_id: int) -> list:
                 .group_by(Team.league_id)
             ).all()
         )
-        for league_id, tutorial_id, title in session.exec(
-            select(LeagueTutorial.league_id, Tutorial.id, Tutorial.title)
-            .join(Tutorial, Tutorial.id == LeagueTutorial.tutorial_id)
-            .where(LeagueTutorial.league_id.in_(league_ids))
-            .order_by(LeagueTutorial.tutorial_id)
-        ).all():
-            tutorial_titles.setdefault(league_id, []).append(
-                {"id": tutorial_id, "title": title}
-            )
 
     now = utc_now()
     return [
@@ -319,7 +282,6 @@ def get_classroom_summaries(session: Session, institution_id: int) -> list:
             "name": league.name,
             "game": league.game,
             "team_count": team_counts.get(league.id, 0),
-            "tutorials": tutorial_titles.get(league.id, []),
             "signup_link": league.signup_link,
             "created_date": league.created_date,
             "expiry_date": league.expiry_date,
@@ -399,121 +361,6 @@ def get_teams_progress(session: Session, institution_id: int) -> list:
                 # oldest -> newest so the row reads as a trend
                 "recent_rankings": list(reversed(recent_rankings.get(team.id, []))),
                 "achieved_first": team.id in achieved_first,
-            }
-        )
-    return progress
-
-
-def get_tutorials_progress(session: Session, institution_id: int) -> list:
-    """Per-exercise attempted/passed team counts for every tutorial attached
-    to one of the institution's leagues.
-
-    A tutorial's eligible teams are the teams currently in the leagues it is
-    attached to; attempted/passed counts only include those teams, so a team
-    that submitted and then moved to a league without the tutorial drops out
-    of both sides of the rate.
-    """
-    league_names = dict(
-        session.exec(
-            select(League.id, League.name).where(
-                League.institution_id == institution_id
-            )
-        ).all()
-    )
-    if not league_names:
-        return []
-
-    leagues_by_tutorial: dict = {}
-    for link in session.exec(
-        select(LeagueTutorial).where(
-            LeagueTutorial.league_id.in_(league_names)
-        )
-    ).all():
-        leagues_by_tutorial.setdefault(link.tutorial_id, set()).add(link.league_id)
-    if not leagues_by_tutorial:
-        return []
-
-    tutorials = session.exec(
-        select(Tutorial)
-        .where(Tutorial.id.in_(leagues_by_tutorial))
-        .order_by(Tutorial.id)
-    ).all()
-
-    progress = []
-    for tutorial in tutorials:
-        tutorial_league_ids = leagues_by_tutorial[tutorial.id]
-        eligible_team_ids = set(
-            session.exec(
-                select(Team.id).where(Team.league_id.in_(tutorial_league_ids))
-            ).all()
-        )
-
-        attempted_counts = {}
-        passed_counts = {}
-        if eligible_team_ids:
-            attempted_counts = dict(
-                session.exec(
-                    select(
-                        ExerciseSubmissionMetadata.exercise_id,
-                        func.count(
-                            func.distinct(ExerciseSubmissionMetadata.team_id)
-                        ),
-                    )
-                    .join(
-                        Exercise,
-                        Exercise.id == ExerciseSubmissionMetadata.exercise_id,
-                    )
-                    .where(Exercise.tutorial_id == tutorial.id)
-                    .where(
-                        ExerciseSubmissionMetadata.team_id.in_(eligible_team_ids)
-                    )
-                    .group_by(ExerciseSubmissionMetadata.exercise_id)
-                ).all()
-            )
-            passed_counts = dict(
-                session.exec(
-                    select(
-                        ExerciseSubmissionMetadata.exercise_id,
-                        func.count(
-                            func.distinct(ExerciseSubmissionMetadata.team_id)
-                        ),
-                    )
-                    .join(
-                        ExerciseSubmission,
-                        ExerciseSubmission.metadata_id
-                        == ExerciseSubmissionMetadata.id,
-                    )
-                    .join(
-                        Exercise,
-                        Exercise.id == ExerciseSubmissionMetadata.exercise_id,
-                    )
-                    .where(Exercise.tutorial_id == tutorial.id)
-                    .where(
-                        ExerciseSubmissionMetadata.team_id.in_(eligible_team_ids)
-                    )
-                    .where(ExerciseSubmission.passed == True)  # noqa: E712
-                    .group_by(ExerciseSubmissionMetadata.exercise_id)
-                ).all()
-            )
-
-        progress.append(
-            {
-                "id": tutorial.id,
-                "title": tutorial.title,
-                "team_count": len(eligible_team_ids),
-                "league_names": sorted(
-                    league_names[league_id] for league_id in tutorial_league_ids
-                ),
-                "exercises": [
-                    {
-                        "id": exercise.id,
-                        "title": exercise.title,
-                        "order_index": exercise.order_index,
-                        "attempted_count": attempted_counts.get(exercise.id, 0),
-                        "passed_count": passed_counts.get(exercise.id, 0),
-                    }
-                    for exercise in tutorial.exercises
-                ],
             }
         )
     return progress
@@ -657,32 +504,15 @@ def publish_sim_results(
 def update_expiry_date(
     session: Session, league_id: int, expiry_date: datetime, institution_id: int, is_admin: bool = False
 ) -> str:
-    """Update league expiry date.
-
-    A league may not outlive the owning institution's membership: a later date
-    is capped at the subscription expiry and the message says so. Admins set
-    dates freely.
-    """
+    """Update league expiry date."""
     league = session.get(League, league_id)
     if not league or (not is_admin and league.institution_id != institution_id):
         raise LeagueNotFoundError(f"League with ID {league_id} not found in your institution")
-
-    capped_at = None
-    if not is_admin and league.institution_id is not None:
-        membership_expiry = _membership_expiry(session, league.institution_id)
-        if membership_expiry and ensure_utc(expiry_date) > membership_expiry:
-            expiry_date = membership_expiry
-            capped_at = membership_expiry
 
     league.expiry_date = expiry_date
     session.add(league)
     session.commit()
 
-    if capped_at:
-        return (
-            f"Expiry capped at your membership end date "
-            f"({to_sydney(capped_at).strftime('%d %B %Y')}) for league '{league.name}'"
-        )
     return f"Expiry date updated successfully for league '{league.name}'"
 
 
@@ -871,10 +701,6 @@ def delete_league(session: Session, league_id: int, institution_id: int, is_admi
         session.add(team)
 
     session.commit()
-    # Delete the league (tutorial attachments first — they FK the league)
-    session.exec(
-        delete(LeagueTutorial).where(LeagueTutorial.league_id == league.id)
-    )
     session.delete(league)
     session.commit()
 

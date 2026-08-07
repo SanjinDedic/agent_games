@@ -22,7 +22,6 @@ from backend.routes.auth.auth_db import mint_team_token
 from backend.routes.institution.institution_db import get_league_by_id
 from backend.routes.institution.institution_models import LeagueName
 from backend.routes.institution.institution_router import _resolve_institution
-from backend.routes.tutorial.tutorial_db import get_team_tutorials_progress
 from backend.routes.user.code_validation import validate_code
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
@@ -269,13 +268,12 @@ async def get_team_data(
     session: Session = Depends(get_db),
 ):
     """Everything the student landing page needs in one call: identity,
-    classroom-vs-competition wording flag, current league, per-tutorial
-    progress, and agent-game stats.
+    classroom-vs-competition wording flag, current league, and agent-game stats.
 
     Resolved from the DB, not the token, so a mid-session league move or a
     teacher-flag change shows up on the next page load. An unassigned team
-    gets league=None (with empty tutorials/agent_game) — the frontend sends
-    those students to the league picker.
+    gets league=None (with no agent_game) — the frontend sends those students
+    to the league picker.
     """
     team_id = _require_team_id(current_user)
     team = get_team_by_id(session, team_id)
@@ -294,9 +292,6 @@ async def get_team_data(
         "league": None
         if unassigned
         else {"id": league.id, "name": league.name, "game": league.game},
-        "tutorials": []
-        if unassigned
-        else get_team_tutorials_progress(session, team_id, league.id),
         "agent_game": None
         if unassigned
         else get_team_agent_stats(

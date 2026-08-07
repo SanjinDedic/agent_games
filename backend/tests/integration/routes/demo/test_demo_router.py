@@ -14,13 +14,9 @@ from backend.routes.auth.auth_config import (
 from backend.database.db_models import (
     DemoUser,
     League,
-    LeagueTutorial,
-    Lesson,
     Team,
-    Tutorial,
 )
 from backend.routes.demo.demo_db import (
-    DEMO_TUTORIAL_LIMIT,
     create_demo_user,
     get_or_create_demo_league,
 )
@@ -232,100 +228,6 @@ def test_demo_user_can_join_demo_league(
     )
     assert response.status_code == 200
     assert "assigned to league" in response.json()["message"]
-
-
-@pytest.fixture
-def content_library(db_session: Session) -> dict:
-    """More tutorials than the demo cap, plus a few lessons."""
-    tutorials = [
-        Tutorial(title=f"Tutorial {i}", description=f"Tutorial number {i}")
-        for i in range(1, DEMO_TUTORIAL_LIMIT + 3)
-    ]
-    lessons = [
-        Lesson(slug=f"lesson-{i}", title=f"Lesson {i}", content="# Content")
-        for i in range(1, 4)
-    ]
-    db_session.add_all(tutorials + lessons)
-    db_session.commit()
-    for record in tutorials + lessons:
-        db_session.refresh(record)
-    return {"tutorials": tutorials, "lessons": lessons}
-
-
-def test_demo_league_links_only_first_five_tutorials(
-    db_session: Session, content_library: dict
-):
-    """A new demo league carries the first DEMO_TUTORIAL_LIMIT tutorials by id."""
-    league = get_or_create_demo_league(db_session, "greedy_pig")
-
-    linked_ids = set(
-        db_session.exec(
-            select(LeagueTutorial.tutorial_id).where(
-                LeagueTutorial.league_id == league.id
-            )
-        ).all()
-    )
-    expected_ids = {t.id for t in content_library["tutorials"][:DEMO_TUTORIAL_LIMIT]}
-    assert linked_ids == expected_ids
-
-
-def test_existing_demo_league_is_trimmed_to_cap(
-    db_session: Session, content_library: dict
-):
-    """Leagues created before the cap converge to the sample on next launch."""
-    league = get_or_create_demo_league(db_session, "greedy_pig")
-
-    # Simulate the pre-cap state: every tutorial linked
-    for tutorial in content_library["tutorials"]:
-        existing = db_session.exec(
-            select(LeagueTutorial)
-            .where(LeagueTutorial.league_id == league.id)
-            .where(LeagueTutorial.tutorial_id == tutorial.id)
-        ).first()
-        if not existing:
-            db_session.add(
-                LeagueTutorial(league_id=league.id, tutorial_id=tutorial.id)
-            )
-    db_session.commit()
-
-    league = get_or_create_demo_league(db_session, "greedy_pig")
-
-    linked_ids = set(
-        db_session.exec(
-            select(LeagueTutorial.tutorial_id).where(
-                LeagueTutorial.league_id == league.id
-            )
-        ).all()
-    )
-    expected_ids = {t.id for t in content_library["tutorials"][:DEMO_TUTORIAL_LIMIT]}
-    assert linked_ids == expected_ids
-
-
-def test_content_overview_lists_sample_and_totals(
-    client: TestClient, content_library: dict
-):
-    """The public endpoint reports the 5-item samples and full-library counts."""
-    response = client.get("/demo/content_overview")
-    assert response.status_code == 200
-    data = response.json()
-
-    tutorials = content_library["tutorials"]
-    lessons = content_library["lessons"]
-    assert data["demo_tutorials"] == [
-        t.title for t in tutorials[:DEMO_TUTORIAL_LIMIT]
-    ]
-    assert data["demo_lessons"] == [lesson.title for lesson in lessons]
-    assert data["total_tutorials"] == len(tutorials)
-    assert data["total_lessons"] == len(lessons)
-
-
-def test_content_overview_requires_no_auth(client: TestClient):
-    """An empty library still answers 200 with zero counts (public endpoint)."""
-    response = client.get("/demo/content_overview")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total_tutorials"] >= 0
-    assert data["total_lessons"] >= 0
 
 
 def test_demo_user_cannot_join_non_demo_league(

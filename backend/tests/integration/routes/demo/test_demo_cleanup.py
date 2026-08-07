@@ -6,8 +6,6 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
-    ExerciseHintReveal,
-    ExerciseSubmissionMetadata,
     Institution,
     League,
     LeagueType,
@@ -18,7 +16,7 @@ from backend.database.db_models import (
     get_password_hash,
 )
 from backend.database.submission_helpers import delete_team_children
-from backend.tests.conftest import add_exercise_work, add_submission
+from backend.tests.conftest import add_submission
 from backend.routes.demo.demo_db import (
     assign_user_to_demo_league,
     cleanup_expired_demo_users,
@@ -146,37 +144,6 @@ def test_cleanup_expired_demo_users(db_session, demo_setup):
         select(Team).where(Team.name == "old_demo_team_Demo")
     ).first()
     assert team is None
-
-
-def test_cleanup_expired_demo_users_with_exercise_work(db_session, demo_setup):
-    """Exercise rows must not strand an expired demo team.
-
-    The ORM won't null out these FKs (Team has no relationship to them), so the
-    cleanup has to delete them or the whole run fails.
-    """
-    old_team = demo_setup["old_team"]
-    add_exercise_work(db_session, old_team.id, title="Demo Cleanup Exercise")
-
-    count = cleanup_expired_demo_users(db_session, age_minutes=60)
-    assert count >= 1
-
-    assert db_session.exec(select(Team).where(Team.id == old_team.id)).first() is None
-    assert (
-        db_session.exec(
-            select(ExerciseSubmissionMetadata).where(
-                ExerciseSubmissionMetadata.team_id == old_team.id
-            )
-        ).all()
-        == []
-    )
-    assert (
-        db_session.exec(
-            select(ExerciseHintReveal).where(
-                ExerciseHintReveal.team_id == old_team.id
-            )
-        ).all()
-        == []
-    )
 
 
 def test_assign_user_to_demo_league_success(db_session, demo_setup):
