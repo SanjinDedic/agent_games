@@ -9,9 +9,6 @@
 //   5.2 create a greedy_pig classroom from the Home page's "Create New
 //       Classroom" card ("Create Classroom" button, "Classroom Created
 //       Successfully" modal); capture + copy the join URL
-//   5.3 open the new classroom's workspace and attach the seeded tutorial from
-//       its Settings tab — a teacher sees it as the "Short Courses" section
-//       (students only see attached tutorials — script 06's Short Course steps
 //       are empty without it)
 //   5.4 logout -> /Teacher (teacher accounts return to the teacher login)
 //
@@ -21,7 +18,6 @@
 // the Home card.
 //
 // Known app copy that stays "league" even for teachers (backend message):
-// the Save Tutorials toast is "Tutorials updated for league '<name>'".
 //
 // Reads teacher credentials from the state file written by 01_admin_setup.js;
 // writes classroomName / classroomSignupUrl / classroomSignupToken for 06.
@@ -62,7 +58,7 @@ const {
     console.log('[5.1] teacher logged in -> /InstitutionHome (classroom/student wording confirmed)');
 
     // 5.2 create the classroom from the Home page's creation card (expiry left
-    // blank = 24h default; school league unchecked; no tutorials selected here)
+    // blank = 24h default; school league unchecked)
     await page.waitForSelector('h2:has-text("Create New Classroom")', { timeout: 15000 });
     await page.click('button:has-text("Create Classroom")');
     const modal = page.locator('div.fixed.inset-0');
@@ -103,28 +99,6 @@ const {
       classroomCreateResponse: createBody,
     });
 
-    // 5.3 attach the seeded tutorial: open the classroom workspace from its Home
-    // card, go to the Settings tab, tick the tutorial in the Tutorials section,
-    // save. The runner seeds the tutorial before Stage 1, so it exists in the
-    // library but is not yet attached (the seed only auto-attaches to leagues
-    // existing at seed time).
-    await card.locator(`button[title="Open the ${classroomName} workspace"]`).click();
-    await page.waitForURL('**/Classroom/**', { timeout: 15000 });
-    await page.click('button:text-is("Settings")');
-    // Teacher wording: tutorials are "Short Courses" throughout a teacher account
-    // (Shared/terminology.js TEACHER_TERMS), so the section heading and its save
-    // button are "Short Courses" / "Save Short Courses", never "Tutorials".
-    await page.waitForSelector('h3:has-text("Short Courses")', { timeout: 15000 });
-    if (await page.locator('h3:text-is("Tutorials")').count()) {
-      throw new Error('teacher Settings tab shows tutorial wording — terminology switch regressed');
-    }
-    const tutorialLabel = page.locator('label:has-text("Python Foundations for Greedy Pig")');
-    await tutorialLabel.waitFor({ timeout: 15000 });
-    await tutorialLabel.locator('input[type="checkbox"]').check();
-    await page.click('button:has-text("Save Short Courses")');
-    // Backend copy: this toast says "tutorials"/"league" even for classrooms.
-    await waitForToast(page, `Tutorials updated for league '${classroomName}'`);
-    console.log('[5.3] short course attached to classroom via the workspace Settings tab');
 
     // 5.4 logout — teacher accounts land back on /Teacher, not /Institution
     await page.click('button:has-text("Logout")');

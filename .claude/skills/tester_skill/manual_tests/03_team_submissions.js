@@ -7,13 +7,6 @@
 //       + My Submissions history check + the landing page reading the same
 //       three back (agent panel: 2 valid, 2 placement squares, 1 attempt that
 //       didn't get past validation)
-//   3.3 (Team 1 only) one tutorial exercise end-to-end: overview -> "Add Up
-//       the Scoreboard" (#4 of 10) -> starter fails 0/5 -> fix passes 5/5 ->
-//       broken code (renamed entry function) 400s -> overview shows
-//       Completed / 1 of 10.
-//       PREREQUISITES: the tutorial must be seeded
-//         (docker compose exec api python -m backend.scripts.seed_tutorial)
-//       AND attached to the league — Stage 2.3 attaches it.
 //   3.4 logout
 //
 // Reads signupUrl from the state file written by 02_institution_league.js;
@@ -21,12 +14,9 @@
 //   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/03_team_submissions.js
 const {
   BASE, loadState, saveState, launchPage, waitForToast, dismissToasts,
-  setMonacoValue, getMonacoValue, readTutorialOverview, readAgentPanel,
+  setMonacoValue, getMonacoValue, readAgentPanel,
   submitCode, finish,
 } = require('./_helpers');
-
-const EXERCISE = 'Add Up the Scoreboard';
-const TUTORIAL = 'Python Foundations for Greedy Pig';
 
 // Names carry the run suffix so re-runs don't collide with existing teams.
 const teamDefs = (run) => [
@@ -35,101 +25,6 @@ const teamDefs = (run) => [
   { name: `charl${run}`, password: 'CharliePass1' },
 ];
 
-// 3.3 (Team 1 only) — one tutorial exercise per the manual, using the seeded
-// exercise "Add Up the Scoreboard" (total_banked over the banked_money dict,
-// 5 tests). Its position and the tutorial's exercise count are read off the
-// overview rather than hardcoded — the tutorial is authored content and grows.
-// Submission outcomes are asserted from the
-// /tutorial/submit-exercise response body (200 with passed/test_results;
-// 400 detail when the code never produces results), mirroring how agent
-// submissions are asserted from /user/submit-agent. There is deliberately
-// NO AST safety gate on exercises any more — the slim exercise-worker
-// container is the sandbox — so the "rejected" case is code whose entry
-// function is missing, not an unauthorized import.
-async function runTutorialExercise(page) {
-  console.log('\n=== Tutorial exercise (Team 1 only) ===');
-
-  await page.click('nav a:has-text("Tutorial")');
-  await page.waitForURL('**/Tutorial', { timeout: 20000 });
-  await page.waitForSelector(`h1:has-text("${TUTORIAL}")`, { timeout: 30000 });
-  const overview = await readTutorialOverview(page, EXERCISE);
-  if (overview.passed !== 0) {
-    throw new Error(`fresh team should start at 0 completed, overview says ${overview.passed}`);
-  }
-  if (!overview.position) throw new Error(`"${EXERCISE}" is already completed before this stage ran`);
-  console.log(`[3.3] overview loaded: ${overview.total} exercises, 0 of ${overview.total} completed ` +
-    `("${EXERCISE}" is #${overview.position})`);
-
-  await page.click(`li button:has-text("${EXERCISE}")`);
-  await page.waitForSelector('button:has-text("Problem Description")', { timeout: 30000 });
-  await page.waitForSelector(`text=${overview.position}. ${EXERCISE}`, { timeout: 15000 });
-  await page.waitForSelector('text=TEAM:', { timeout: 15000 });
-  if (await page.locator('button:has-text("Get Hint")').count()) {
-    throw new Error('tutorial workspace unexpectedly shows a Get Hint button (hints are agent-submission only)');
-  }
-  console.log('[3.3] exercise workspace open (Problem Description, footer TEAM label, no Get Hint)');
-
-  const starter = await getMonacoValue(page);
-  if (!starter.includes('def total_banked(banked_money):')) {
-    throw new Error('exercise starter code no longer defines total_banked(banked_money)');
-  }
-  const PASS_LINE = 'pass  # Replace this line with your code';
-  if (!starter.includes(PASS_LINE)) {
-    throw new Error(`exercise starter code no longer contains the line the manual says to replace: ${PASS_LINE}`);
-  }
-
-  // Submission 1 — starter as-is: runs fine but every test must fail (returns None)
-  const sub1 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (!sub1.ok || sub1.body.passed !== false || (sub1.body.test_results || []).length !== 5) {
-    throw new Error(`starter submission should be 200 with 5 failing tests but got HTTP ${sub1.status}: ${JSON.stringify(sub1.body).slice(0, 300)}`);
-  }
-  await page.waitForSelector('text=0 of 5 tests passed', { timeout: 15000 });
-  console.log('[3.3] starter submission: 0 of 5 tests passed (as expected)');
-
-  // Submission 2 — the fix: all tests must pass
-  await setMonacoValue(page, starter.replace(PASS_LINE, 'return sum(banked_money.values())'));
-  const sub2 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (!sub2.ok || sub2.body.passed !== true) {
-    throw new Error(`fixed submission should pass all tests but got HTTP ${sub2.status}: ${JSON.stringify(sub2.body).slice(0, 300)}`);
-  }
-  await page.waitForSelector('text=All 5 tests passed', { timeout: 15000 });
-  console.log('[3.3] fixed submission: all 5 tests passed');
-
-  // Submission 3 — code that never produces test results must 400 with the
-  // worker's message (recorded without code, like failed agent validation).
-  // Renaming the entry function gives a deterministic message.
-  await setMonacoValue(page, starter.replace('def total_banked(', 'def total_banked_typo('));
-  const sub3 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (sub3.ok) throw new Error('broken exercise submission (renamed entry function) unexpectedly passed');
-  const detail = sub3.body.detail || '';
-  if (!detail.includes("Your code must define a function named 'total_banked'")) {
-    throw new Error(`unexpected exercise rejection message: HTTP ${sub3.status} "${detail}"`);
-  }
-  console.log(`[3.3] broken submission correctly rejected: "${detail}"`);
-
-  // Back to the overview: the exercise is Completed, progress 1 of <total> (a
-  // passed run counts even though a rejected attempt came after it). The
-  // rejection toast overlaps the panel header in a headless browser —
-  // dismiss it first.
-  await dismissToasts(page);
-  await page.click('button:has-text("All exercises")');
-  await page.waitForSelector(`text=1 of ${overview.total} exercises completed`, { timeout: 15000 });
-  await page.locator(`li button:has-text("${EXERCISE}")`)
-    .locator('text=Completed').waitFor({ timeout: 15000 });
-  console.log(`[3.3] overview shows ${EXERCISE} as Completed, 1 of ${overview.total}`);
-
-  // The landing page counts the same pass on its tutorial card, under the
-  // agent panel — same number, two places, one backend call (/user/team-data).
-  await page.click('nav a:has-text("Home")');
-  await page.waitForURL('**/TeamHome', { timeout: 20000 });
-  const tutorialCard = page.locator('section button').filter({ hasText: TUTORIAL }).first();
-  await tutorialCard.waitFor({ timeout: 15000 });
-  const cardText = (await tutorialCard.innerText()).replace(/\s+/g, ' ');
-  if (!cardText.includes(`1 of ${overview.total} exercises completed`)) {
-    throw new Error(`landing page tutorial card reads "${cardText}", expected 1 of ${overview.total} completed`);
-  }
-  console.log(`[3.3] landing page tutorial card agrees: 1 of ${overview.total} completed`);
-}
 
 // 3.2d — the landing page reports the submissions back. The tiles come from
 // GET /user/team-data and the placement squares are the same validation
@@ -143,15 +38,9 @@ async function checkLandingPage(page) {
   // /user/team-data resolves, so nothing else can be read before it.
   const panel = await readAgentPanel(page);
 
-  // The agent game leads the page; the tutorials sit under it.
   const sections = await page.locator('section > h2').allInnerTexts();
   if (sections[0] !== 'Agent Game') {
     throw new Error(`landing page sections are ${JSON.stringify(sections)}, expected Agent Game first`);
-  }
-  // Competition wording: a team's courses stay "Tutorials" (script 06 asserts
-  // the teacher-account counterpart, "Short Courses").
-  if (!sections.includes('Tutorials')) {
-    throw new Error(`landing page sections are ${JSON.stringify(sections)}, expected a Tutorials section`);
   }
 
   if (panel.validSubmissions !== 2) {
@@ -184,7 +73,7 @@ async function checkLandingPage(page) {
     `(best ${panel.best} of ${panel.fieldSize}), 1 failed attempt counted`);
 }
 
-async function runTeam(page, observed, signupUrl, team, { withTutorial = false } = {}) {
+async function runTeam(page, observed, signupUrl, team) {
   console.log(`\n=== Team ${team.name} ===`);
 
   // 3.1 signup — the /join page opens on its login tab; switch to signup
@@ -268,11 +157,6 @@ async function runTeam(page, observed, signupUrl, team, { withTutorial = false }
   // 3.2d the same three submissions, read back off the landing page
   await checkLandingPage(page);
 
-  // 3.3 tutorial exercise — manual says Team 1 only (progress is per-team)
-  if (withTutorial) {
-    await runTutorialExercise(page);
-  }
-
   // 3.4 logout
   await page.click('button:has-text("Logout")');
   await page.waitForURL('**/AgentLogin', { timeout: 15000 });
@@ -287,7 +171,7 @@ async function runTeam(page, observed, signupUrl, team, { withTutorial = false }
   const { browser, page, observed } = await launchPage();
   try {
     for (const [i, team] of teams.entries()) {
-      await runTeam(page, observed, state.signupUrl, team, { withTutorial: i === 0 });
+      await runTeam(page, observed, state.signupUrl, team);
     }
     saveState({ teams });
     await finish(page, browser, observed, { name: 'STAGE3' });

@@ -6,10 +6,6 @@
 //       (navbar "Teams", home heading "Active Leagues"), never classroom/student
 //   2.2 create a greedy_pig league from the Home page's "Create New League"
 //       card; capture + copy the signup URL from the success modal
-//   2.3 open the new league's workspace and attach the seeded tutorial from
-//       its Settings tab (teams only see tutorials attached to their league;
-//       creation attaches none here, and Stage 3.3's Tutorial page is empty
-//       without this)
 //
 // Post-revamp layout: the old "League Management" navbar page is gone. Creation
 // lives on /InstitutionHome (LeagueCreation card + modal); everything else about
@@ -49,7 +45,7 @@ const {
     console.log('[2.1] institution logged in -> /InstitutionHome (league/team wording confirmed)');
 
     // 2.2 create the league from the Home page's creation card (expiry left
-    // blank = 24h default; school league unchecked; no tutorials selected here)
+    // blank = 24h default; school league unchecked)
     await page.waitForSelector('h2:has-text("Create New League")', { timeout: 15000 });
     await page.click('button:has-text("Create League")');
     const modal = page.locator('div.fixed.inset-0');
@@ -89,22 +85,6 @@ const {
       signupToken: signupUrl.split('/join/')[1],
       leagueCreateResponse: createBody,
     });
-
-    // 2.3 attach the seeded tutorial: open the new league's workspace from its
-    // Home card, go to the Settings tab, tick the tutorial in the Tutorials
-    // section, save. The runner seeds the tutorial before Stage 1, so it exists
-    // in the library but is not yet attached to this league (the seed only
-    // auto-attaches to leagues existing at seed time).
-    await card.locator(`button[title="Open the ${leagueName} workspace"]`).click();
-    await page.waitForURL('**/Classroom/**', { timeout: 15000 });
-    await page.click('button:text-is("Settings")');
-    await page.waitForSelector('h3:has-text("Tutorials")', { timeout: 15000 });
-    const tutorialLabel = page.locator('label:has-text("Python Foundations for Greedy Pig")');
-    await tutorialLabel.waitFor({ timeout: 15000 });
-    await tutorialLabel.locator('input[type="checkbox"]').check();
-    await page.click('button:has-text("Save Tutorials")');
-    await waitForToast(page, `Tutorials updated for league '${leagueName}'`);
-    console.log('[2.3] tutorial attached to league via the workspace Settings tab');
 
     // Logout to leave a clean session for Stage 3 (manual says either is fine).
     await page.click('button:has-text("Logout")');

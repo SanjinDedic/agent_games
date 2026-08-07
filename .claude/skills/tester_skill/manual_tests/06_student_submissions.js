@@ -9,30 +9,19 @@
 //       + My Submissions history check + the landing page reading the same
 //       three back (agent panel: 2 valid, 2 placement squares, 1 attempt that
 //       didn't get past validation)
-//   6.3 (Student 1 only) one tutorial exercise end-to-end, exactly as in
-//       Stage 3.3 but with the classroom wording (STUDENT: footer label, and
-//       the navbar link reading "Short Course" rather than "Tutorial"):
-//       starter fails 0/5 -> fix passes 5/5 -> broken code 400s -> overview
-//       Completed / 1 of <total>. PREREQUISITES: tutorial seeded AND attached
-//       to the classroom (05 attaches it). Progress is per-student, so this
-//       classroom student starts at 0 completed even after Stage 3 ran.
 //   6.4 logout
 //
 // Terminology note: the signup toast follows the classroom terminology now
-// ("Signed up and joined classroom successfully!"); only backend copy such as
-// the Save Short Courses toast still says "league"/"tutorials".
+// ("Signed up and joined classroom successfully!").
 //
 // Reads classroomSignupUrl/classroomName from the state file written by
 // 05_teacher_classroom.js; writes the student credentials back as `students`.
 //   NODE_PATH="$HOME/.agent-games-playwright/node_modules" node .claude/skills/tester_skill/manual_tests/06_student_submissions.js
 const {
   loadState, saveState, launchPage, waitForToast, dismissToasts,
-  setMonacoValue, getMonacoValue, readTutorialOverview, readAgentPanel,
+  setMonacoValue, getMonacoValue, readAgentPanel,
   submitCode, finish,
 } = require('./_helpers');
-
-const EXERCISE = 'Add Up the Scoreboard';
-const TUTORIAL = 'Python Foundations for Greedy Pig';
 
 // Names carry the run suffix so re-runs don't collide with existing accounts
 // (and stay distinct from Stage 3's alpha/bravo/charl teams).
@@ -41,99 +30,6 @@ const studentDefs = (run) => [
   { name: `noah${run}`, password: 'NoahPass1' },
 ];
 
-// 6.3 (Student 1 only) — same tutorial exercise as Stage 3.3 ("Add Up the
-// Scoreboard", position read off the overview) but asserting the classroom
-// wording: the workspace
-// footer label is STUDENT:, not TEAM:. Submission outcomes are asserted from
-// the /tutorial/submit-exercise response body exactly as in Stage 3.3.
-async function runTutorialExercise(page) {
-  console.log('\n=== Short Course exercise (Student 1 only) ===');
-
-  // Teacher wording: a classroom student's navbar link is "Short Course"
-  // (Navbar.jsx renders T.Tutorial), never "Tutorial".
-  if (await page.locator('nav a:has-text("Tutorial")').count()) {
-    throw new Error('classroom student navbar shows tutorial wording — terminology switch regressed');
-  }
-  await page.click('nav a:has-text("Short Course")');
-  await page.waitForURL('**/Tutorial', { timeout: 20000 });
-  await page.waitForSelector(`h1:has-text("${TUTORIAL}")`, { timeout: 30000 });
-  const overview = await readTutorialOverview(page, EXERCISE);
-  if (overview.passed !== 0) {
-    throw new Error(`per-student progress should start at 0 completed, overview says ${overview.passed}`);
-  }
-  if (!overview.position) throw new Error(`"${EXERCISE}" is already completed before this stage ran`);
-  console.log(`[6.3] overview loaded: ${overview.total} exercises, 0 of ${overview.total} completed ` +
-    `("${EXERCISE}" is #${overview.position})`);
-
-  await page.click(`li button:has-text("${EXERCISE}")`);
-  await page.waitForSelector('button:has-text("Problem Description")', { timeout: 30000 });
-  await page.waitForSelector(`text=${overview.position}. ${EXERCISE}`, { timeout: 15000 });
-  await page.waitForSelector('text=STUDENT:', { timeout: 15000 });
-  if (await page.locator('span:text-is("TEAM:")').count()) {
-    throw new Error('classroom tutorial workspace shows a TEAM: footer label — terminology switch regressed');
-  }
-  if (await page.locator('button:has-text("Get Hint")').count()) {
-    throw new Error('tutorial workspace unexpectedly shows a Get Hint button (hints are agent-submission only)');
-  }
-  console.log('[6.3] exercise workspace open (Problem Description, footer STUDENT label, no Get Hint)');
-
-  const starter = await getMonacoValue(page);
-  if (!starter.includes('def total_banked(banked_money):')) {
-    throw new Error('exercise starter code no longer defines total_banked(banked_money)');
-  }
-  const PASS_LINE = 'pass  # Replace this line with your code';
-  if (!starter.includes(PASS_LINE)) {
-    throw new Error(`exercise starter code no longer contains the line the manual says to replace: ${PASS_LINE}`);
-  }
-
-  // Submission 1 — starter as-is: runs fine but every test must fail (returns None)
-  const sub1 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (!sub1.ok || sub1.body.passed !== false || (sub1.body.test_results || []).length !== 5) {
-    throw new Error(`starter submission should be 200 with 5 failing tests but got HTTP ${sub1.status}: ${JSON.stringify(sub1.body).slice(0, 300)}`);
-  }
-  await page.waitForSelector('text=0 of 5 tests passed', { timeout: 15000 });
-  console.log('[6.3] starter submission: 0 of 5 tests passed (as expected)');
-
-  // Submission 2 — the fix: all tests must pass
-  await setMonacoValue(page, starter.replace(PASS_LINE, 'return sum(banked_money.values())'));
-  const sub2 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (!sub2.ok || sub2.body.passed !== true) {
-    throw new Error(`fixed submission should pass all tests but got HTTP ${sub2.status}: ${JSON.stringify(sub2.body).slice(0, 300)}`);
-  }
-  await page.waitForSelector('text=All 5 tests passed', { timeout: 15000 });
-  console.log('[6.3] fixed submission: all 5 tests passed');
-
-  // Submission 3 — code that never produces test results must 400 with the
-  // worker's message (renamed entry function = deterministic message).
-  await setMonacoValue(page, starter.replace('def total_banked(', 'def total_banked_typo('));
-  const sub3 = await submitCode(page, 120000, '/tutorial/submit-exercise');
-  if (sub3.ok) throw new Error('broken exercise submission (renamed entry function) unexpectedly passed');
-  const detail = sub3.body.detail || '';
-  if (!detail.includes("Your code must define a function named 'total_banked'")) {
-    throw new Error(`unexpected exercise rejection message: HTTP ${sub3.status} "${detail}"`);
-  }
-  console.log(`[6.3] broken submission correctly rejected: "${detail}"`);
-
-  // Back to the overview: Completed, 1 of <total> (per-student progress).
-  await dismissToasts(page);
-  await page.click('button:has-text("All exercises")');
-  await page.waitForSelector(`text=1 of ${overview.total} exercises completed`, { timeout: 15000 });
-  await page.locator(`li button:has-text("${EXERCISE}")`)
-    .locator('text=Completed').waitFor({ timeout: 15000 });
-  console.log(`[6.3] overview shows ${EXERCISE} as Completed, 1 of ${overview.total}`);
-
-  // The landing page counts the same pass on its course card, under the agent
-  // panel — same number, two places, one backend call (/user/team-data).
-  await page.click('nav a:has-text("Home")');
-  await page.waitForURL('**/TeamHome', { timeout: 20000 });
-  const courseCard = page.locator('section button').filter({ hasText: TUTORIAL }).first();
-  await courseCard.waitFor({ timeout: 15000 });
-  const cardText = (await courseCard.innerText()).replace(/\s+/g, ' ');
-  if (!cardText.includes(`1 of ${overview.total} exercises completed`)) {
-    throw new Error(`landing page course card reads "${cardText}", expected 1 of ${overview.total} completed`);
-  }
-  console.log(`[6.3] landing page course card agrees: 1 of ${overview.total} completed`);
-}
 
 // 6.2d — the landing page reports the submissions back. The tiles come from
 // GET /user/team-data and the placement squares are the same validation
@@ -147,14 +43,9 @@ async function checkLandingPage(page) {
   // /user/team-data resolves, so nothing else can be read before it.
   const panel = await readAgentPanel(page);
 
-  // The agent game leads the page; the short courses sit under it.
   const sections = await page.locator('section > h2').allInnerTexts();
   if (sections[0] !== 'Agent Game') {
     throw new Error(`landing page sections are ${JSON.stringify(sections)}, expected Agent Game first`);
-  }
-  // Teacher wording: a classroom student's tutorials are Short Courses.
-  if (!sections.includes('Short Courses')) {
-    throw new Error(`landing page sections are ${JSON.stringify(sections)}, expected a Short Courses section`);
   }
 
   if (panel.validSubmissions !== 2) {
@@ -187,7 +78,7 @@ async function checkLandingPage(page) {
     `(best ${panel.best} of ${panel.fieldSize}), 1 failed attempt counted`);
 }
 
-async function runStudent(page, observed, state, student, { withTutorial = false } = {}) {
+async function runStudent(page, observed, state, student) {
   console.log(`\n=== Student ${student.name} ===`);
 
   // 6.1 signup — the /join page opens on its login tab; switch to signup.
@@ -269,11 +160,6 @@ async function runStudent(page, observed, state, student, { withTutorial = false
   // 6.2d the same three submissions, read back off the landing page
   await checkLandingPage(page);
 
-  // 6.3 tutorial exercise — Student 1 only (progress is per-student)
-  if (withTutorial) {
-    await runTutorialExercise(page);
-  }
-
   // 6.4 logout
   await page.click('button:has-text("Logout")');
   await page.waitForURL('**/AgentLogin', { timeout: 15000 });
@@ -290,7 +176,7 @@ async function runStudent(page, observed, state, student, { withTutorial = false
   const { browser, page, observed } = await launchPage();
   try {
     for (const [i, student] of students.entries()) {
-      await runStudent(page, observed, state, student, { withTutorial: i === 0 });
+      await runStudent(page, observed, state, student);
     }
     saveState({ students });
     await finish(page, browser, observed, { name: 'STAGE6' });
