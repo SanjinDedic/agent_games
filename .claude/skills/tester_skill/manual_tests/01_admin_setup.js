@@ -2,7 +2,7 @@
 //   1.1 login  1.2 create two institutions + one TEACHER account (the
 //       "Teacher account (classroom/student wording)" checkbox — drives the
 //       classroom flow in scripts 05/06)  1.3 delete one institution
-//   1.4 backup + restore round-trip  1.5 configure OpenAI key  1.6 logout
+//   1.4 configure OpenAI key  1.5 logout
 //
 // Requires OPENAI_API_KEY in the environment (a real, funded sk-... key).
 // Records the kept institution's credentials into the state file for Stage 2.
@@ -11,13 +11,7 @@
 //
 // Steps run independently where possible: a failing step is recorded (and the
 // script exits 1 at the end) but later steps still run, so one broken feature
-// doesn't hide the state of the others. Note on 1.4 backup/restore: it runs
-// against MinIO locally (admin_backup._get_s3_client() honours S3_ENDPOINT_URL)
-// and needs the AWS_S3_BUCKET bucket to exist — the minio service's compose
-// entrypoint pre-creates it, so a `docker compose down -v` reset is fine. With
-// real creds (.aws.env) it talks to real AWS instead: the MANUAL dump then
-// lands in the production backup bucket and the restore replays the newest
-// dump (its own) into the local DB.
+// doesn't hide the state of the others.
 const {
   BASE, saveState, launchPage, acceptDialogs, waitForToast, dismissToasts, finish,
 } = require('./_helpers');
@@ -50,7 +44,6 @@ async function createInstitution(page, inst, { teacher = false } = {}) {
   await page.fill('#contact_person', inst.contact_person);
   await page.fill('#contact_email', inst.contact_email);
   await page.fill('#password', inst.password);
-  // Subscription expiry: leave the default (1 year); Docker access: leave unchecked.
   if (teacher) await page.check('#is_teacher');
   await page.click('button:has-text("Create Institution")');
   await waitForToast(page, 'Institution created successfully');
@@ -116,38 +109,11 @@ async function createInstitution(page, inst, { teacher = false } = {}) {
       }
     });
 
-    await step('1.4 backup + restore', false, async () => {
-      await page.click('a:has-text("Backups"), button:has-text("Backups")');
-      await page.waitForURL('**/AdminBackup', { timeout: 15000 });
-      await page.waitForSelector('h1:has-text("Database Backups")');
-      const [backupResp] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/admin/backup-database'), { timeout: 120000 }).catch(() => null),
-        page.click('button:has-text("Create Backup")'),
-      ]);
-      // A CORS-stripped 500 never yields a response object — treat both as failure.
-      if (!backupResp || !backupResp.ok()) {
-        throw new Error(`backup-database failed (HTTP ${backupResp ? backupResp.status() : 'blocked/no response'})`);
-      }
-      await waitForToast(page, 'Backup created', 60000);
-      await page.waitForSelector('table tbody tr', { timeout: 15000 });
-      console.log('  backup created');
-
-      const [restoreResp] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/admin/restore-database'), { timeout: 180000 }).catch(() => null),
-        page.locator('table tbody tr').first().locator('button:has-text("Restore")').click(),
-      ]);
-      if (!restoreResp || !restoreResp.ok()) {
-        throw new Error(`restore-database failed (HTTP ${restoreResp ? restoreResp.status() : 'blocked/no response'})`);
-      }
-      await waitForToast(page, 'Database restored', 60000);
-      console.log('  restore completed');
-    });
-
-    await step('1.5 configure OpenAI key', true, async () => {
-      // If 1.4's backup/restore failed (known local-dev limitation), its error
-      // toast lingers over the top-center navbar — and react-toastify pauses
-      // its auto-dismiss timer in an unfocused headless window, so it never
-      // clears itself and intercepts the "API Keys" nav click. Dismiss it first.
+    await step('1.4 configure OpenAI key', true, async () => {
+      // A lingering error toast sits over the top-center navbar — and
+      // react-toastify pauses its auto-dismiss timer in an unfocused headless
+      // window, so it never clears itself and intercepts the "API Keys" nav
+      // click. Dismiss any first.
       await dismissToasts(page);
       await page.click('a:has-text("API Keys"), button:has-text("API Keys")');
       await page.waitForURL('**/AdminAPIKeys', { timeout: 15000 });
@@ -167,7 +133,7 @@ async function createInstitution(page, inst, { teacher = false } = {}) {
       await page.waitForSelector('span:has-text("Configured")', { timeout: 15000 });
     });
 
-    await step('1.6 logout', false, async () => {
+    await step('1.5 logout', false, async () => {
       await page.click('button:has-text("Logout")');
       await page.waitForURL('**/Admin', { timeout: 15000 });
     });

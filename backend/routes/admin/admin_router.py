@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from backend.routes.admin.admin_backup import create_backup, list_backups, restore_backup
 from backend.routes.admin.admin_db import (
     clear_institution_data,
     create_agent_team,
@@ -21,7 +20,6 @@ from backend.routes.admin.admin_models import (
     CreateInstitution,
     DeleteInstitution,
     InstitutionUpdate,
-    RestoreBackup,
     UpdateSupportTicket,
 )
 from backend.routes.auth.auth_core import get_current_user, verify_admin_role
@@ -159,46 +157,6 @@ async def delete_all_demo_teams_and_submissions(
     """Delete all demo teams and submissions."""
     delete_all_demo_teams_and_subs(session)
     return {"message": "All demo users deleted"}
-
-
-# Database backup endpoints
-@admin_router.post("/backup-database")
-@verify_admin_role
-async def backup_database_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """Create a pg_dump backup and upload to DigitalOcean Spaces."""
-    try:
-        result = create_backup()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Backup failed: {e}")
-    return {"message": f"Backup created: {result['filename']}", **result}
-
-
-@admin_router.get("/list-backups")
-@verify_admin_role
-async def list_backups_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """List all database backups in DigitalOcean Spaces."""
-    try:
-        return {"backups": list_backups()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list backups: {e}")
-
-
-@admin_router.post("/restore-database")
-@verify_admin_role
-async def restore_database_endpoint(
-    request: RestoreBackup,
-    current_user: dict = Depends(get_current_user),
-):
-    """Restore the database from an S3 backup."""
-    try:
-        result = restore_backup(request.s3_key)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Restore failed: {e}")
-    return {"message": f"Database restored from {result['filename']}", **result}
 
 
 # Support ticket management endpoints
