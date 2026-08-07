@@ -20,12 +20,11 @@ def get_db_engine():
         # These are cheap everywhere, so they stay on for dev/test too.
         kwargs = dict(pool_pre_ping=True, pool_recycle=300)
 
-        # The smallest managed plan allows ~22 client connections for the whole
-        # cluster, shared by the gunicorn workers and every forked Celery child.
-        # SQLAlchemy's default 5+10 per process can exhaust that, so prod sets
-        # DB_POOL_SIZE/DB_MAX_OVERFLOW small (see config/deploy.yml). Unset (dev
-        # and the test suite on a local cluster with no such cap) keeps the
-        # generous defaults — a tiny pool there just serializes tests.
+        # A connection-capped cluster shared by the gunicorn workers and every
+        # forked Celery child can be exhausted by SQLAlchemy's default 5+10 per
+        # process, so DB_POOL_SIZE/DB_MAX_OVERFLOW can cap it. Unset (dev and
+        # the test suite on a local cluster with no such cap) keeps the generous
+        # defaults — a tiny pool there just serializes tests.
         if os.environ.get("DB_POOL_SIZE"):
             kwargs["pool_size"] = int(os.environ["DB_POOL_SIZE"])
         if os.environ.get("DB_MAX_OVERFLOW"):

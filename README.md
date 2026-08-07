@@ -20,7 +20,6 @@ A multi-game agent simulation platform where students and teams submit code agen
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1.svg?logo=postgresql&logoColor=white)
 ![Gunicorn](https://img.shields.io/badge/Gunicorn-25.3.0-499848.svg?logo=gunicorn&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9.svg?logo=uv&logoColor=white)
-[![Tests](https://github.com/SanjinDedic/agent_games/actions/workflows/tests_coverage_deploy.yml/badge.svg)](https://github.com/SanjinDedic/agent_games/actions/workflows/tests_coverage_deploy.yml)
 [![codecov](https://codecov.io/gh/SanjinDedic/agent_games/graph/badge.svg?token=PWUU4GJSOD)](https://codecov.io/gh/SanjinDedic/agent_games)
 
 ## Containers
@@ -53,34 +52,6 @@ The database initializes automatically on first startup.
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
 ```
-
-## Production
-
-Production is deployed with Kamal (`config/deploy.yml`) and runs against a
-**DigitalOcean managed Postgres** cluster (there is no postgres accessory on the
-droplet). Secrets live in `.kamal/secrets`; the database is reached over TLS:
-
-```env
-SECRET_KEY=<real secret>
-DATABASE_URL=postgresql+psycopg://agent_games_user:<password>@<cluster-host>:25060/agent_games?sslmode=require
-```
-
-First-time setup against a fresh managed cluster:
-
-1. In the DO control panel create the database (`agent_games`) and the app
-   role (`agent_games_user`).
-2. Grant that role what `init_db` needs (run once, as the `doadmin` role):
-
-   ```bash
-   DOADMIN_DATABASE_URL='postgresql://doadmin:<pw>@<cluster-host>:25060/agent_games?sslmode=require' \
-     uv run python -m backend.scripts.grant_managed_db
-   ```
-
-3. Deploy. `backend/entrypoint.sh` runs `init_db` (builds the schema from the
-   models + seeds) then the migrations — no dump to import.
-
-Allow the droplet's IP under the cluster's *Trusted Sources* so the app and the
-CI/backups (which `pg_dump` through the web container) can connect.
 
 ## Adding a New Game
 
