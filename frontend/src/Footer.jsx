@@ -13,14 +13,13 @@ const FOOTER_COLUMNS = [
   {
     heading: "For Teachers",
     links: [
-      { to: "/Teachers", label: "Create a Classroom" },
+      { to: "/Teacher", label: "Teacher Login" },
       { to: "/AgentLogin", label: "Student Login" },
     ],
   },
   {
     heading: "Competitions",
     links: [
-      { to: "/Institutions", label: "Host a Competition" },
       { to: "/Institution", label: "Organizer Login" },
     ],
   },

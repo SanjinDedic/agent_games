@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setToken,
@@ -121,27 +121,6 @@ function Institution({ variant = "institution" }) {
             <p className="text-lg text-danger text-center">{errorMessage}</p>
           )}
         </form>
-        
-        <div className="mt-6 text-center text-ui">
-          <p>
-            Don't have an account yet?{' '}
-            {isTeacher ? (
-              <>
-                <Link to="/Teachers" className="text-primary font-semibold underline">
-                  Sign up here
-                </Link>{' '}
-                — from $29 for 90 days.
-              </>
-            ) : (
-              <>
-                <Link to="/Institutions" className="text-primary font-semibold underline">
-                  Sign up here
-                </Link>{' '}
-                to host a competition.
-              </>
-            )}
-          </p>
-        </div>
       </div>
     </div>
   );
