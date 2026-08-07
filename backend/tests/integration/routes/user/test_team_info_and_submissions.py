@@ -28,7 +28,6 @@ def institution(db_session: Session) -> Institution:
             contact_person="Tester",
             contact_email="ti@example.com",
             created_date=utc_now(),
-            subscription_expiry=utc_now() + timedelta(days=30),
             password_hash="hash",
         )
         db_session.add(inst)

@@ -31,8 +31,6 @@ def school_league_fixture(db_session: Session) -> dict:
         contact_person="Teacher",
         contact_email="teacher@school.com",
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=now + timedelta(days=30),
         password_hash="hash",
     )
     db_session.add(institution)

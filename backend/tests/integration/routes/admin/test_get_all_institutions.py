@@ -20,8 +20,6 @@ def institutions_setup(db_session: Session) -> list:
         contact_person="First Contact",
         contact_email="first@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(institution1)
@@ -57,8 +55,6 @@ def institutions_setup(db_session: Session) -> list:
         contact_person="Second Contact",
         contact_email="second@example.com",
         created_date=utc_now(),
-        subscription_active=False,  # Inactive
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
         is_teacher=True,
     )
@@ -67,14 +63,12 @@ def institutions_setup(db_session: Session) -> list:
     db_session.refresh(institution2)
     institutions.append(institution2)
     
-    # Create third institution with expired subscription
+    # Create third institution
     institution3 = build_institution(
         name="third_institution",
         contact_person="Third Contact",
         contact_email="third@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() - timedelta(days=1),  # Expired
         password_hash="test_hash",
     )
     db_session.add(institution3)
@@ -110,8 +104,6 @@ def test_get_all_institutions_success(client, auth_headers, institutions_setup):
         assert "contact_person" in inst
         assert "contact_email" in inst
         assert "created_date" in inst
-        assert "subscription_active" in inst
-        assert "subscription_expiry" in inst
         assert "team_count" in inst
         assert "league_count" in inst
         assert "is_teacher" in inst

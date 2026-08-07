@@ -44,8 +44,6 @@ def two_institutions(db_session: Session) -> dict:
         contact_person="Person A",
         contact_email="a@example.com",
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=now + timedelta(days=30),
         password_hash="hash_a",
     )
     db_session.add(inst_a)
@@ -58,8 +56,6 @@ def two_institutions(db_session: Session) -> dict:
         contact_person="Person B",
         contact_email="b@example.com",
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=now + timedelta(days=30),
         password_hash="hash_b",
     )
     db_session.add(inst_b)

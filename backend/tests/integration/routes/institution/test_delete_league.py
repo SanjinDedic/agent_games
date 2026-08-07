@@ -18,8 +18,6 @@ def delete_league_setup(db_session: Session) -> tuple:
         contact_person="Test Person",
         contact_email="test@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -173,8 +171,6 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         contact_person="Other Person",
         contact_email="other@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(other_institution)
@@ -242,8 +238,6 @@ def test_delete_league_creates_unassigned_if_missing(client, db_session):
         contact_person="Test",
         contact_email="test@test.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="hash",
     )
     db_session.add(inst)

@@ -18,8 +18,6 @@ def institution_with_teams(db_session: Session) -> tuple:
         contact_person="Test Person",
         contact_email="test@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(institution)

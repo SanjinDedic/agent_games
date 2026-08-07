@@ -3,8 +3,7 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session
 
-from backend.database.db_models import (League, LeagueTutorial, Team,
-                                        Tutorial)
+from backend.database.db_models import League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.tests.conftest import build_institution
 from backend.time_utils import utc_now
@@ -12,8 +11,8 @@ from backend.time_utils import utc_now
 
 @pytest.fixture
 def home_setup(db_session: Session) -> tuple:
-    """Institution with an active league (teams + tutorials), an expired
-    league, and the 'unassigned' holding league."""
+    """Institution with an active league (teams), an expired league, and the
+    'unassigned' holding league."""
     institution = build_institution(
         name="home_test_institution",
         password_hash="test_hash",
@@ -68,16 +67,6 @@ def home_setup(db_session: Session) -> tuple:
         )
     )
 
-    tut_a = Tutorial(title="Home Test Printing")
-    tut_b = Tutorial(title="Home Test Variables")
-    db_session.add_all([tut_a, tut_b])
-    db_session.commit()
-    db_session.add_all(
-        [
-            LeagueTutorial(league_id=active_league.id, tutorial_id=tut_a.id),
-            LeagueTutorial(league_id=active_league.id, tutorial_id=tut_b.id),
-        ]
-    )
     db_session.commit()
 
     token = create_access_token(
@@ -98,10 +87,7 @@ def test_home_success(client, home_setup):
     assert response.status_code == 200
     data = response.json()
 
-    # Subscription summary matches the /subscription payload shape
     assert data["institution_name"] == institution.name
-    assert data["subscription"]["subscription_active"] is True
-    assert "tier" in data["subscription"]
 
     # The 'unassigned' holding league is excluded
     classrooms = {c["name"]: c for c in data["classrooms"]}
@@ -110,17 +96,11 @@ def test_home_success(client, home_setup):
     active = classrooms["year9_code_club"]
     assert active["game"] == "greedy_pig"
     assert active["team_count"] == 3
-    assert [t["title"] for t in active["tutorials"]] == [
-        "Home Test Printing",
-        "Home Test Variables",
-    ]
-    assert all(isinstance(t["id"], int) for t in active["tutorials"])
     assert active["signup_link"] == "active-signup-token"
     assert active["is_active"] is True
 
     expired = classrooms["last_term"]
     assert expired["team_count"] == 0
-    assert expired["tutorials"] == []
     assert expired["signup_link"] is None
     assert expired["is_active"] is False
 

@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -13,7 +12,6 @@ class CreateInstitution(BaseModel):
     contact_person: str
     contact_email: EmailStr
     password: str
-    subscription_expiry: datetime
     is_teacher: bool = False
     icon: Optional[str] = None
 
@@ -31,8 +29,6 @@ class InstitutionUpdate(BaseModel):
     name: Optional[str] = None
     contact_person: Optional[str] = None
     contact_email: Optional[EmailStr] = None
-    subscription_active: Optional[bool] = None
-    subscription_expiry: Optional[datetime] = None
     password: Optional[str] = None
     is_teacher: Optional[bool] = None
     # Empty string clears the icon; None means "leave unchanged".
@@ -62,12 +58,6 @@ class CreateAgentTeam(BaseModel):
         if not v.strip():
             raise ValueError("Team name cannot be empty")
         return v.strip()
-
-
-class RestoreBackup(BaseModel):
-    """Model for restoring a database backup"""
-
-    s3_key: str
 
 
 class CreateAgentAPIKey(BaseModel):

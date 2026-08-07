@@ -17,7 +17,6 @@ def test_institution_create_success(client, auth_headers, db_session):
         "contact_person": "New Contact",
         "contact_email": "new@example.com",
         "password": "new_password",
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     
     response = client.post(
@@ -53,7 +52,6 @@ def test_institution_create_is_teacher(client, auth_headers, db_session):
         "contact_person": "Ms Smith",
         "contact_email": "smith@example.com",
         "password": "teacher_password",
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
         "is_teacher": True,
     }
     response = client.post(
@@ -74,7 +72,6 @@ def test_institution_create_is_teacher(client, auth_headers, db_session):
         "contact_person": "Plain Contact",
         "contact_email": "plain@example.com",
         "password": "plain_password",
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     response = client.post(
         "/admin/institution-create",
@@ -98,8 +95,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         contact_person="Existing Contact",
         contact_email="existing@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(existing_institution)
@@ -111,7 +106,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_person": "New Contact",
         "contact_email": "new@example.com",
         "password": "new_password",
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     
     response = client.post(
@@ -126,7 +120,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
     incomplete_data = {
         "name": "incomplete_institution",
         # Missing contact_person, contact_email, password
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     
     response = client.post(
@@ -142,7 +135,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_person": "Invalid Contact",
         "contact_email": "not_an_email",  # Invalid email format
         "password": "password",
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     
     response = client.post(
@@ -158,7 +150,6 @@ def test_institution_create_failures(client, auth_headers, db_session):
         "contact_person": "Empty Name Contact",
         "contact_email": "empty@example.com",
         "password": "password",
-        "subscription_expiry": (utc_now() + timedelta(days=30)).isoformat(),
     }
     
     response = client.post(

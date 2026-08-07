@@ -3,12 +3,9 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import (add_exercise_work, add_submission,
+from backend.tests.conftest import (add_submission,
                                     build_institution)
-from backend.database.db_models import (ExerciseHintReveal,
-                                        ExerciseSubmission,
-                                        ExerciseSubmissionMetadata,
-                                        Institution, League, Submission,
+from backend.database.db_models import (Institution, League, Submission,
                                         SubmissionMetadata, Team)
 from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
@@ -23,8 +20,6 @@ def institution_setup(db_session: Session) -> tuple:
         contact_person="Test Person",
         contact_email="test@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -117,47 +112,6 @@ def test_delete_team_success(client, institution_setup, db_session):
     assert len(orphaned_code) == 0
 
 
-def test_delete_team_with_exercise_work(client, institution_setup, db_session):
-    """A student who has attempted exercises or revealed hints can be deleted.
-
-    Those rows FK-reference team.id with no ON DELETE CASCADE, so they have to
-    be cleared explicitly or the delete 500s.
-    """
-    _, team, _, headers = institution_setup
-    add_exercise_work(db_session, team.id, title="Delete Team Exercise")
-
-    response = client.post(
-        "/institution/delete-team",
-        headers=headers,
-        json={"id": team.id},
-    )
-    assert response.status_code == 200
-
-    assert db_session.exec(select(Team).where(Team.id == team.id)).first() is None
-    assert (
-        db_session.exec(
-            select(ExerciseSubmissionMetadata).where(
-                ExerciseSubmissionMetadata.team_id == team.id
-            )
-        ).all()
-        == []
-    )
-    assert (
-        db_session.exec(
-            select(ExerciseHintReveal).where(ExerciseHintReveal.team_id == team.id)
-        ).all()
-        == []
-    )
-    orphaned_code = db_session.exec(
-        select(ExerciseSubmission).where(
-            ~ExerciseSubmission.metadata_id.in_(
-                select(ExerciseSubmissionMetadata.id)
-            )
-        )
-    ).all()
-    assert orphaned_code == []
-
-
 def test_delete_team_failures(client, institution_setup, db_session):
     """Test failure cases for team deletion"""
     institution, team, _, headers = institution_setup
@@ -178,8 +132,6 @@ def test_delete_team_failures(client, institution_setup, db_session):
         contact_person="Other Person",
         contact_email="other@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(other_institution)

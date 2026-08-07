@@ -12,19 +12,13 @@ from backend.database.db_config import get_database_url
 from backend.database.db_models import (
     Admin,
     DemoUser,
-    Exercise,
-    ExerciseHintReveal,
-    ExerciseSubmission,
-    ExerciseSubmissionMetadata,
     Institution,
-    InstitutionSubscription,
     League,
     LeagueType,
     Submission,
     SubmissionMetadata,
     Team,
     TeamType,
-    Tutorial,
 )
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import create_access_token
@@ -73,38 +67,17 @@ def build_institution(
     contact_person="Test Contact",
     contact_email="test@example.com",
     created_date=None,
-    subscription_active=True,
-    subscription_expiry=None,
-    payment_method="admin",
     **extra,
 ):
-    """Build an Institution with its 1:1 InstitutionSubscription attached via the
-    relationship — NOT yet persisted.
-
-    Subscription state (active/expiry) lives on InstitutionSubscription, so the
-    inline subscription kwargs populate that record. Because the subscription is
-    assigned through the relationship, a plain ``session.add(inst)`` +
-    ``commit()``/``flush()`` cascades and persists it automatically — existing
-    test code that adds/commits the institution itself keeps working unchanged.
-    """
-    now = created_date or utc_now()
-    if subscription_expiry is None:
-        subscription_expiry = now + timedelta(days=30)
-    institution = Institution(
+    """Build an Institution — NOT yet persisted."""
+    return Institution(
         name=name,
         contact_person=contact_person,
         contact_email=contact_email,
-        created_date=now,
+        created_date=created_date or utc_now(),
         password_hash=password_hash,
         **extra,
     )
-    institution.subscription = InstitutionSubscription(
-        payment_method=payment_method,
-        subscription_active=subscription_active,
-        subscription_expiry=subscription_expiry,
-        created_date=now,
-    )
-    return institution
 
 
 def create_test_institution(session, **kwargs):
@@ -119,22 +92,21 @@ def create_test_institution(session, **kwargs):
 def celery_workers():
     """Fail fast with a clear message when the Celery workers are not up.
 
-    Task-level tests enqueue to the real broker and need all three queue
-    workers running (docker compose starts them; test-runner depends_on their
-    healthchecks). The exercises worker runs a separate Celery app, but ping
-    is a broadcast over the shared broker, so one inspect reaches it too.
+    Task-level tests enqueue to the real broker and need both queue workers
+    running (docker compose starts them; test-runner depends_on their
+    healthchecks).
     """
     from backend.tasks.celery_app import celery_app
 
-    # limit=3 returns as soon as all three workers reply (~10ms) instead of
+    # limit=2 returns as soon as both workers reply (~10ms) instead of
     # waiting out the full broadcast timeout.
-    replies = celery_app.control.inspect(timeout=5, limit=3).ping() or {}
-    for prefix in ("validation", "simulation", "exercises"):
+    replies = celery_app.control.inspect(timeout=5, limit=2).ping() or {}
+    for prefix in ("validation", "simulation"):
         if not any(node.startswith(f"{prefix}@") for node in replies):
             pytest.fail(
                 f"No {prefix} worker responded to ping — start the compose "
                 f"workers first (docker compose up -d worker-validation "
-                f"worker-simulation worker-exercises)"
+                f"worker-simulation)"
             )
     return replies
 
@@ -235,7 +207,6 @@ def populate_test_database(session):
         contact_person="Admin",
         contact_email="admin@admin.com",
         created_date=now,
-        subscription_expiry=now + timedelta(days=365),
         password_hash=_HASH_INSTITUTION,
     )
 
@@ -433,72 +404,6 @@ def add_failed_submission(
     return meta
 
 
-def add_exercise_attempt(
-    session,
-    team_id: int,
-    exercise_id: int,
-    passed: bool = None,
-    timestamp: datetime = None,
-    code: str = "def solve(): pass",
-    test_results: list = None,
-):
-    """One exercise attempt: metadata-only when passed is None, otherwise a
-    stored run. Does not commit."""
-    now = timestamp or utc_now()
-    meta = ExerciseSubmissionMetadata(
-        team_id=team_id, exercise_id=exercise_id, timestamp=now
-    )
-    session.add(meta)
-    if passed is not None:
-        session.flush()
-        session.add(
-            ExerciseSubmission(
-                code=code,
-                timestamp=now,
-                passed=passed,
-                test_results=test_results or [],
-                metadata_id=meta.id,
-            )
-        )
-
-
-def build_exercise(session, title: str = "Helper Exercise") -> Exercise:
-    """Create a tutorial holding a single exercise and return that exercise.
-
-    For tests that only need something for exercise work to hang off. Commits so
-    the exercise has an id.
-    """
-    tutorial = Tutorial(title=f"{title} Tutorial", description="d")
-    session.add(tutorial)
-    session.commit()
-    exercise = Exercise(
-        tutorial_id=tutorial.id,
-        order_index=0,
-        title=title,
-        problem_markdown="p",
-        entry_function="solve",
-    )
-    session.add(exercise)
-    session.commit()
-    session.refresh(exercise)
-    return exercise
-
-
-def add_exercise_work(session, team_id: int, title: str = "Helper Exercise") -> Exercise:
-    """Give a team one attempt plus one revealed hint on a fresh exercise.
-
-    The shape that used to make Team deletes fail: rows in every exercise table
-    that FK-references team. Commits.
-    """
-    exercise = build_exercise(session, title=title)
-    add_exercise_attempt(session, team_id=team_id, exercise_id=exercise.id, passed=True)
-    session.add(
-        ExerciseHintReveal(team_id=team_id, exercise_id=exercise.id, hint_index=0)
-    )
-    session.commit()
-    return exercise
-
-
 @pytest.fixture
 def auth_headers(admin_token) -> dict:
     """Return headers with admin authentication"""
@@ -605,7 +510,6 @@ def institution_token(db_session: Session) -> str:
         name="test_institution",
         contact_person="Test Person",
         contact_email="test@example.com",
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
 

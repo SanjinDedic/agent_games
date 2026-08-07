@@ -279,8 +279,6 @@ def test_token_validation(client, db_session: Session):
         name="test_institution",
         contact_person="Test Contact",
         created_date=utc_now(),  # Add timezone
-        subscription_expiry=utc_now()
-        + timedelta(days=30),  # Add timezone
         password_hash=TEST_PASSWORD_HASHES["inst_password"],
     )
 

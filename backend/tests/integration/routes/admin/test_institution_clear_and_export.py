@@ -35,8 +35,6 @@ def seeded_institution(db_session: Session) -> Institution:
         contact_person="C",
         contact_email="c@example.com",
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=now + timedelta(days=30),
         password_hash="hashed",
     )
     db_session.add(institution)

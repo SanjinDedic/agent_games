@@ -8,7 +8,6 @@ from backend.database.db_models import (
     Admin,
     AgentAPIKey,
     Institution,
-    InstitutionSubscription,
     Team,
     TeamType,
 )
@@ -19,7 +18,7 @@ from backend.routes.auth.auth_config import (
     TEAM_TOKEN_EXPIRY_MINUTES,
     create_access_token,
 )
-from backend.time_utils import ensure_utc, utc_now
+from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +43,6 @@ def get_competitions(session: Session):
     """
     institutions = session.exec(
         select(Institution)
-        .join(InstitutionSubscription)
-        .where(InstitutionSubscription.subscription_active == True)
         .where(Institution.name != "Demo Institution")
         .where(Institution.is_teacher == False)
     ).all()
@@ -121,20 +118,6 @@ def get_institution_token(session: Session, institution_name: str, password: str
 
     if not institution.verify_password(password):
         raise InvalidCredentialsError("Invalid password")
-
-    # Subscription state lives on the 1:1 InstitutionSubscription record.
-    subscription = institution.subscription
-
-    # Check if subscription is active (missing record == no active subscription)
-    if subscription is None or not subscription.subscription_active:
-        raise InvalidCredentialsError("Institution subscription is not active")
-
-    if ensure_utc(subscription.subscription_expiry) < utc_now():
-        # Update subscription_active to False
-        subscription.subscription_active = False
-        session.add(subscription)
-        session.commit()
-        raise InvalidCredentialsError("Institution subscription has expired")
 
     access_token = create_access_token(
         data={

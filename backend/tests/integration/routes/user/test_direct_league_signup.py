@@ -7,7 +7,6 @@ import pytest
 from jose import jwt
 from sqlmodel import Session, select
 
-from backend import team_capacity
 from backend.tests.conftest import build_institution
 from backend.database.db_models import Institution, League, LeagueType, Team
 from backend.routes.auth.auth_config import SECRET_KEY, ALGORITHM
@@ -25,8 +24,6 @@ def signup_league(db_session: Session) -> dict:
         contact_person="Teacher",
         contact_email="teacher@signup.com",
         created_date=now,
-        subscription_active=True,
-        subscription_expiry=now + timedelta(days=30),
         password_hash="hash",
     )
     db_session.add(institution)
@@ -106,41 +103,6 @@ def test_direct_signup_success(client, signup_league, db_session):
     assert team.league_id == signup_league["league"].id
     assert team.institution_id == signup_league["institution"].id
     assert team.school_name == "Test High School"
-
-
-def test_direct_signup_blocked_at_plan_cap(client, signup_league, db_session, monkeypatch):
-    """Signup links stop admitting students once the plan's team cap is reached."""
-    institution = signup_league["institution"]
-    institution.subscription.tier = "teacher"
-    db_session.add(institution)
-    db_session.commit()
-
-    monkeypatch.setitem(team_capacity.TIER_TEAM_CAPS, "teacher", 1)
-
-    resp = client.post(
-        "/user/direct-league-signup",
-        json={
-            "team_name": "first_student",
-            "password": "securepass123",
-            "signup_token": signup_league["signup_token"],
-        },
-    )
-    assert resp.status_code == 200
-
-    resp = client.post(
-        "/user/direct-league-signup",
-        json={
-            "team_name": "second_student",
-            "password": "securepass123",
-            "signup_token": signup_league["signup_token"],
-        },
-    )
-    assert resp.status_code == 403
-    assert "up to 1" in resp.json()["detail"]
-    assert (
-        db_session.exec(select(Team).where(Team.name == "second_student")).first()
-        is None
-    )
 
 
 def test_direct_signup_token_usable(client, signup_league):

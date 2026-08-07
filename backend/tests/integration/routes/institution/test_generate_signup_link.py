@@ -18,8 +18,6 @@ def signup_link_setup(db_session: Session) -> tuple:
         contact_person="Test Person",
         contact_email="test@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -111,8 +109,6 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
         contact_person="Other Person",
         contact_email="other@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(other_institution)

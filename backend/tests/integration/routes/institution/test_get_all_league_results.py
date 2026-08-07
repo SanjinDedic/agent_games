@@ -19,8 +19,6 @@ def league_results_setup(db_session: Session) -> tuple:
         contact_person="Test Person",
         contact_email="test@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(institution)
@@ -144,8 +142,6 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
         contact_person="Other Person",
         contact_email="other@example.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     db_session.add(other_institution)

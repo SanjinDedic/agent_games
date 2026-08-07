@@ -168,8 +168,6 @@ def test_get_all_submissions_institution_own_league(client, db_session):
         contact_person="Person",
         contact_email="p@e.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="hash",
     )
     db_session.add(institution)
@@ -212,8 +210,6 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         contact_person="A",
         contact_email="a@e.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="hash",
     )
     inst_b = build_institution(
@@ -221,8 +217,6 @@ def test_get_all_submissions_institution_cannot_see_other_institution(
         contact_person="B",
         contact_email="b@e.com",
         created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="hash",
     )
     db_session.add(inst_a)

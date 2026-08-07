@@ -11,10 +11,8 @@ from backend.database.db_models import (
     AgentAPIKey,
     DemoUser,
     Institution,
-    InstitutionSubscription,
     League,
     LeagueType,
-    LeagueTutorial,
     SimulationResult,
     SimulationResultItem,
     Submission,
@@ -88,17 +86,6 @@ def create_institution(session: Session, institution_data: CreateInstitution) ->
     session.add(institution)
     session.flush()  # Get the ID for the new institution
 
-    # Admin-granted access: subscription state lives on the 1:1 record.
-    session.add(
-        InstitutionSubscription(
-            institution_id=institution.id,
-            payment_method="admin",
-            subscription_active=True,
-            subscription_expiry=institution_data.subscription_expiry,
-            created_date=now,
-        )
-    )
-
     # Create unassigned league for this institution
     unassigned_league = League(
         name="unassigned",
@@ -147,29 +134,6 @@ def update_institution(session: Session, institution_data: InstitutionUpdate) ->
             institution.is_teacher = institution_data.is_teacher
         if institution_data.icon is not None:
             institution.icon = institution_data.icon.strip() or None
-
-        # Subscription fields live on the 1:1 InstitutionSubscription record.
-        if (
-            institution_data.subscription_active is not None
-            or institution_data.subscription_expiry is not None
-        ):
-            subscription = institution.subscription
-            if subscription is None:
-                subscription = InstitutionSubscription(
-                    institution_id=institution.id,
-                    payment_method="admin",
-                    subscription_active=True,
-                    subscription_expiry=(
-                        institution_data.subscription_expiry
-                        or utc_now()
-                    ),
-                    created_date=utc_now(),
-                )
-            if institution_data.subscription_active is not None:
-                subscription.subscription_active = institution_data.subscription_active
-            if institution_data.subscription_expiry is not None:
-                subscription.subscription_expiry = institution_data.subscription_expiry
-            session.add(subscription)
 
         session.add(institution)
         session.commit()
@@ -256,11 +220,6 @@ def _purge_institution_data(
 
     leagues_to_delete = [lid for lid in league_ids if lid not in leagues_to_keep]
     if leagues_to_delete:
-        session.exec(
-            delete(LeagueTutorial).where(
-                LeagueTutorial.league_id.in_(leagues_to_delete)
-            )
-        )
         session.exec(delete(League).where(League.id.in_(leagues_to_delete)))
 
     return {
@@ -482,16 +441,6 @@ def get_all_institutions(session: Session) -> Dict:
                 "created_date": inst.created_date,
                 "is_teacher": inst.is_teacher,
                 "icon": inst.icon,
-                "subscription_active": (
-                    inst.subscription.subscription_active
-                    if inst.subscription
-                    else None
-                ),
-                "subscription_expiry": (
-                    inst.subscription.subscription_expiry
-                    if inst.subscription
-                    else None
-                ),
                 "team_count": len(inst.teams),
                 "league_count": len(inst.leagues),
             }

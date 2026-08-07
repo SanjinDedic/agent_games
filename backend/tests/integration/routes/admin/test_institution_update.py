@@ -17,7 +17,6 @@ def update_institution_setup(db_session: Session) -> Institution:
         name="update_test_institution",
         contact_person="Original Contact",
         contact_email="original@example.com",
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
 
@@ -32,7 +31,6 @@ def test_institution_update_success(client, auth_headers, update_institution_set
         "name": "updated_institution",
         "contact_person": "Updated Contact",
         "contact_email": "updated@example.com",
-        "subscription_active": False,
         "password": "new_password",
     }
     
@@ -50,7 +48,6 @@ def test_institution_update_success(client, auth_headers, update_institution_set
     assert institution.name == "updated_institution"
     assert institution.contact_person == "Updated Contact"
     assert institution.contact_email == "updated@example.com"
-    assert institution.subscription.subscription_active is False
     
     # Test partial update
     partial_update = {
@@ -131,7 +128,6 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
         name="other_institution",
         contact_person="Other Contact",
         contact_email="other@example.com",
-        subscription_expiry=utc_now() + timedelta(days=30),
         password_hash="test_hash",
     )
     
@@ -179,27 +175,14 @@ def test_institution_update_failures(client, auth_headers, update_institution_se
     )
     assert response.status_code == 422
     
-    # Test case 5: Invalid date format
-    invalid_date_update = {
-        "id": institution.id,
-        "subscription_expiry": "not_a_date",
-    }
-    
-    response = client.post(
-        "/admin/institution-update",
-        headers=auth_headers,
-        json=invalid_date_update,
-    )
-    assert response.status_code == 422
-    
-    # Test case 6: Unauthorized access (no token)
+    # Test case 5: Unauthorized access (no token)
     response = client.post(
         "/admin/institution-update",
         json={"id": institution.id, "name": "unauthorized_update"},
     )
     assert response.status_code == 401
     
-    # Test case 7: Wrong role token
+    # Test case 6: Wrong role token
     wrong_token = create_access_token(
         data={"sub": "wrong", "role": "institution"},
         expires_delta=timedelta(minutes=30),

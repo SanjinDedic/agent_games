@@ -2,8 +2,9 @@ from datetime import timedelta
 
 from sqlmodel import select
 
-from backend.database.db_models import Institution, League
+from backend.database.db_models import League
 from backend.routes.auth.auth_core import create_access_token
+from backend.time_utils import utc_now
 
 
 def test_league_create_success(client, institution_headers, db_session):
@@ -26,17 +27,10 @@ def test_league_create_success(client, institution_headers, db_session):
     assert league is not None
     assert league.game == "greedy_pig"
 
-    # A new league runs until the institution's membership ends
-    institution = db_session.get(Institution, league.institution_id)
-    assert (
-        abs(
-            (
-                league.expiry_date
-                - institution.subscription.subscription_expiry
-            ).total_seconds()
-        )
-        < 1
-    )
+    # A new league defaults to a 24 hour window
+    assert abs(
+        (league.expiry_date - (utc_now() + timedelta(hours=24))).total_seconds()
+    ) < 60
 
 
 def test_league_create_failures(client, institution_headers, db_session):
