@@ -13,18 +13,15 @@ import { Button } from './components/ui';
 import { useTerms } from './AgentGames/Shared/terminology';
 
 // User-visible entity labels come from terminology.js (the `T` map): teacher
-// accounts see "Students"/"Short Course", everyone else "Teams"/"Tutorial".
+// accounts see "Students", everyone else "Teams".
 // Routes, admin-section labels, and marketing copy stay literal.
 function getNavLinks(T) {
   return {
     admin: [
       { to: "/AdminInstitutions", label: "Institutions" },
       { to: "/AdminDockerStatus", label: "Service Status" },
-      { to: "/AdminBackup", label: "Backups" },
       { to: "/AdminAPIKeys", label: "API Keys" },
       { to: "/AdminUserSupport", label: "User Support" },
-      { to: "/AdminTutorials", label: "Tutorials" },
-      { to: "/AdminLessons", label: "Lessons" },
     ],
     // Everything about one league/classroom lives in the /Classroom/:id
     // workspace, entered from the Home cards; the navbar only keeps Home and
@@ -38,13 +35,11 @@ function getNavLinks(T) {
     team: [
       { to: "/TeamHome", label: "Home" },
       { to: "/AgentSubmission", label: "Submit Agent" },
-      { to: "/Tutorial", label: T.Tutorial },
       { to: "/Leaderboards", label: "Leaderboards" },
     ],
     demo: [
       { to: "/TeamHome", label: "Home" },
       { to: "/AgentSubmission", label: "Submit Agent" },
-      { to: "/Tutorial", label: T.Tutorial },
     ],
     // Logged-out visitors get the teacher-first pitch. Navbar links go to the
     // login pages (returning users); the home-page hero carries the signup CTAs,

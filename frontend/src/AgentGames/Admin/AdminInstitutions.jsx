@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
 import { selectToken } from '../../slices/authSlice';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment-timezone';
 import { saveAs } from 'file-saver';
 import { authFetch } from '../../utils/authFetch';
@@ -20,7 +18,6 @@ function AdminInstitutions() {
     contact_person: '',
     contact_email: '',
     password: '',
-    subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default to 1 year
     is_teacher: false,
     icon: '',
   });
@@ -60,13 +57,6 @@ function AdminInstitutions() {
     }));
   };
 
-  const handleDateChange = (date) => {
-    setInstitutionForm(prev => ({
-      ...prev,
-      subscription_expiry: date
-    }));
-  };
-
   const handleCreateInstitution = (e) => {
     e.preventDefault();
     
@@ -96,7 +86,6 @@ function AdminInstitutions() {
             contact_person: '',
             contact_email: '',
             password: '',
-            subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
             is_teacher: false,
             icon: '',
           });
@@ -338,16 +327,6 @@ function AdminInstitutions() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="subscription_expiry" className="block text-ui-dark mb-1">Subscription Expiry *</label>
-                    <DatePicker
-                      selected={institutionForm.subscription_expiry}
-                      onChange={handleDateChange}
-                      className="w-full p-2 border border-ui-light rounded-lg"
-                      dateFormat="dd/MM/yyyy"
-                      minDate={new Date()}
-                    />
-                  </div>
-                  <div>
                     <label htmlFor="icon" className="block text-ui-dark mb-1">Icon (emoji or image URL)</label>
                     <input
                       type="text"
@@ -407,14 +386,11 @@ function AdminInstitutions() {
                         <th className="px-4 py-2 text-left text-ui-dark">Type</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Teams</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Leagues</th>
-                        <th className="px-4 py-2 text-left text-ui-dark">Subscription</th>
                         <th className="px-4 py-2 text-left text-ui-dark">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {institutions.map((institution) => {
-                        const isActive = institution.subscription_active && 
-                                         moment(institution.subscription_expiry).isAfter(moment());
                         return (
                           <tr key={institution.id} className="border-b border-ui-light hover:bg-ui-lighter/50">
                             <td className="px-4 py-3">
@@ -449,16 +425,6 @@ function AdminInstitutions() {
                             </td>
                             <td className="px-4 py-3">{institution.team_count}</td>
                             <td className="px-4 py-3">{institution.league_count}</td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                isActive ? 'bg-success-light text-success' : 'bg-danger-light text-danger'
-                              }`}>
-                                {isActive ? 'Active' : 'Expired'}
-                              </span>
-                              <div className="text-xs text-ui mt-1">
-                                {moment(institution.subscription_expiry).format('MMM DD, YYYY')}
-                              </div>
-                            </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <button

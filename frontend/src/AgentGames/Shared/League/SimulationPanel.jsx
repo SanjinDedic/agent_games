@@ -1,5 +1,5 @@
 // src/AgentGames/Shared/League/SimulationPanel.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import { setCurrentSimulation } from "../../../slices/leaguesSlice";
@@ -8,7 +8,6 @@ import SimulationRunner from "./SimulationRunner";
 import SimulationRunSummary from "./SimulationRunSummary";
 import RunResultsModal from "./RunResultsModal";
 
-import useClassroomAPI from "../hooks/useClassroomAPI";
 import useLeagueAPI from "../hooks/useLeagueAPI";
 import { useTerms } from "../terminology";
 
@@ -30,11 +29,9 @@ const SimulationPanel = ({ userRole }) => {
   );
 
   const api = useLeagueAPI(userRole);
-  const { getClassroomProgress } = useClassroomAPI();
-
   // Roster names, used to show who had no agent in the selected run. Null when
-  // unavailable (e.g. the progress call failed) — the block then stays hidden.
-  const [roster, setRoster] = useState(null);
+  // the teams list hasn't loaded — the block then stays hidden.
+  const allTeams = useSelector((state) => state.teams.list);
   // Leaderboard + feedback of the selected run open in a modal on demand.
   const [showResults, setShowResults] = useState(false);
 
@@ -56,21 +53,13 @@ const SimulationPanel = ({ userRole }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLeague?.game]);
 
-  useEffect(() => {
-    let active = true;
-    setRoster(null);
-    if (!currentLeague?.id || isPlaceholderLeague) return undefined;
-    (async () => {
-      const result = await getClassroomProgress(currentLeague.id);
-      if (!active) return;
-      setRoster(
-        result.success ? (result.data.teams || []).map((team) => team.name) : null
-      );
-    })();
-    return () => {
-      active = false;
-    };
-  }, [currentLeague?.id, isPlaceholderLeague, getClassroomProgress]);
+  const roster = useMemo(() => {
+    if (!currentLeague?.name || isPlaceholderLeague) return null;
+    const names = allTeams
+      .filter((team) => team.league === currentLeague.name)
+      .map((team) => team.name);
+    return names.length > 0 ? names : null;
+  }, [allTeams, currentLeague?.name, isPlaceholderLeague]);
 
   const hasResults = allSimulations && allSimulations.length > 0;
 

@@ -5,7 +5,6 @@ import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
 import { authFetch } from "../../../utils/authFetch";
 import { selectToken } from '../../../slices/authSlice';
-import LeagueTutorialSelector from "./LeagueTutorialSelector";
 import useLeagueAPI from "../hooks/useLeagueAPI";
 import { useTerms } from "../terminology";
 
@@ -17,13 +16,12 @@ const EMPTY_FORM = {
   schoolsSource: "static",
   schoolsText: "",
   sheetUrl: "",
-  tutorialIds: [],
 };
 
 /**
  * "Create New League" button that opens the creation form in a modal.
  * The form covers name, game, school-league settings, expiry, and which
- * tutorials the league's teams will see. After a successful creation the
+ * game and signup options. After a successful creation the
  * modal shows the signup link until dismissed. `compact` renders the card
  * as a single thin row (title + button) so it can share a column with
  * other cards.
@@ -89,11 +87,6 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    setError("");
-  };
-
-  const handleTutorialsChange = (tutorialIds) => {
-    setLeagueInfo((prev) => ({ ...prev, tutorialIds }));
     setError("");
   };
 
@@ -182,7 +175,6 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
             leagueInfo.schoolLeague && leagueInfo.schoolsSource === "sheet"
               ? leagueInfo.sheetUrl.trim()
               : null,
-          tutorial_ids: leagueInfo.tutorialIds,
         }),
       });
 
@@ -223,7 +215,7 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
         <div className="flex items-center justify-between gap-4">
           <h2
             className="text-lg font-bold text-ui-dark"
-            title={`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
+            title={`Set up the game and signup options for the ${T.league}.`}
           >
             {`Create New ${T.League}`}
           </h2>
@@ -238,7 +230,7 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
         <>
           <h2 className="text-xl font-bold text-ui-dark mb-4">{`Create New ${T.League}`}</h2>
           <p className="text-sm text-ui mb-4">
-            {`Set up the game, signup options, and the ${T.tutorials} ${T.teams} in the ${T.league} will see.`}
+            {`Set up the game and signup options for the ${T.league}.`}
           </p>
           <button
             onClick={() => setIsOpen(true)}
@@ -356,17 +348,6 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-ui-dark mb-1">{T.Tutorials}</label>
-                  <p className="text-sm text-ui mb-2">
-                    {`${T.Teams} in this ${T.league} will only see the ${T.tutorials} selected here. Leave empty for no ${T.tutorials}.`}
-                  </p>
-                  <LeagueTutorialSelector
-                    selectedIds={leagueInfo.tutorialIds}
-                    onChange={handleTutorialsChange}
-                  />
                 </div>
 
                 <div className="mb-4 flex items-center">

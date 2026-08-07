@@ -9,19 +9,10 @@ import useLeagueAPI from '../../Shared/hooks/useLeagueAPI';
 import { useTerms } from '../../Shared/terminology';
 import SimulationPanel from '../../Shared/League/SimulationPanel';
 import LeagueDetailsPanel from '../../Shared/League/LeagueDetailsPanel';
-import StudentsTab from './StudentsTab';
-import TutorialMatrixTab from './TutorialMatrixTab';
-import ConceptsTab from './ConceptsTab';
+import LeagueTeams from '../../Shared/League/LeagueTeams';
 import SubmissionsTab from './SubmissionsTab';
 
-const TAB_KEYS = [
-  'students',
-  'tutorials',
-  'concepts',
-  'submissions',
-  'simulation',
-  'settings',
-];
+const TAB_KEYS = ['students', 'submissions', 'simulation', 'settings'];
 
 /**
  * The classroom workspace: everything about one classroom/league behind
@@ -81,8 +72,6 @@ function ClassroomWorkspace() {
   const isActive = moment().isBefore(moment(league.expiry_date));
   const tabs = [
     { key: 'students', label: T.Teams },
-    { key: 'tutorials', label: `${T.Tutorial} Progress` },
-    { key: 'concepts', label: 'Concepts' },
     { key: 'submissions', label: 'Submissions' },
     { key: 'simulation', label: 'Simulation' },
     { key: 'settings', label: 'Settings' },
@@ -148,9 +137,12 @@ function ClassroomWorkspace() {
         </div>
 
         {/* Tab content */}
-        {activeTab === 'students' && <StudentsTab league={league} />}
-        {activeTab === 'tutorials' && <TutorialMatrixTab league={league} />}
-        {activeTab === 'concepts' && <ConceptsTab league={league} />}
+        {activeTab === 'students' && (
+          <LeagueTeams
+            selected_league_name={league.name}
+            userRole="institution"
+          />
+        )}
         {activeTab === 'submissions' && <SubmissionsTab league={league} />}
         {activeTab === 'simulation' && <SimulationPanel userRole="institution" />}
         {activeTab === 'settings' && (

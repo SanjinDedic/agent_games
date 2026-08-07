@@ -4,27 +4,17 @@ import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
 import TeamHome from './AgentGames/User/TeamHome';
-import Tutorial from './AgentGames/User/Tutorial';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
-import Institutions from './AgentGames/Institutions';
-import Teachers from './AgentGames/Teachers';
-import InstitutionSignup from './AgentGames/InstitutionSignup';
-import InstitutionInvoiceSignup from './AgentGames/InstitutionInvoiceSignup';
 import Institution from "./AgentGames/Institution/Institution";
 import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
 import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
 import ClassroomWorkspace from "./AgentGames/Institution/Classroom/ClassroomWorkspace";
-import StudentDetail from "./AgentGames/Institution/Classroom/StudentDetail";
 import Leaderboards from "./AgentGames/Leaderboards";
 import Admin from "./AgentGames/Admin/Admin";
 import AdminLeague from "./AgentGames/Admin/AdminLeague";
 import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
-import AdminBackup from "./AgentGames/Admin/AdminBackup";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
-import AdminTutorials from "./AgentGames/Admin/AdminTutorials";
-import AdminLessons from "./AgentGames/Admin/AdminLessons";
-import LessonModalProvider from "./AgentGames/Shared/Lesson/LessonModalProvider";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
@@ -47,7 +37,6 @@ function App() {
   return (
     <BrowserRouter>
       <div className="App">
-        <LessonModalProvider>
         <AgentGamesNavbar />
         <Routes>
           <Route path="/" element={<AgentHome />} />
@@ -76,36 +65,8 @@ function App() {
               </AuthProtection>
             }
           />
-          <Route
-            path="Tutorial"
-            element={
-              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
-                <Tutorial />
-              </AuthProtection>
-            }
-          />
-          {/* Institutions/teachers/admins trying tutorials as a student would
-              see them — nothing run here is saved */}
-          <Route
-            path="TutorialPreview"
-            element={
-              <AuthProtection
-                requiredRole={["institution", "admin"]}
-                redirectTo="/"
-              >
-                <Tutorial preview />
-              </AuthProtection>
-            }
-          />
           <Route path="Rankings" element={<AgentRankings />} />
           <Route path="Demo" element={<Demo />} />
-          <Route path="Institutions" element={<Institutions />} />
-          <Route path="Teachers" element={<Teachers />} />
-          <Route path="InstitutionSignup" element={<InstitutionSignup />} />
-          <Route
-            path="InstitutionInvoiceSignup"
-            element={<InstitutionInvoiceSignup />}
-          />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="About" element={<About />} />
           {/* Per-classroom/league page: log in or sign up, land in the league.
@@ -147,14 +108,6 @@ function App() {
           />
           {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
           <Route
-            path="AdminBackup"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminBackup />
-              </AuthProtection>
-            }
-          />
-          <Route
             path="AdminDockerStatus"
             element={
               <AuthProtection requiredRole="admin" redirectTo="/Admin">
@@ -178,33 +131,9 @@ function App() {
               </AuthProtection>
             }
           />
-          <Route
-            path="AdminTutorials"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminTutorials />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminLessons"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminLessons />
-              </AuthProtection>
-            }
-          />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
           <Route path="Teacher" element={<Institution variant="teacher" />} />
-          <Route
-            path="Classroom/:leagueId/student/:teamId"
-            element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <StudentDetail />
-              </AuthProtection>
-            }
-          />
           <Route
             path="Classroom/:leagueId/:tab?"
             element={
@@ -268,7 +197,6 @@ function App() {
         <SupportButton />
 
         <CreditLink />
-        </LessonModalProvider>
       </div>
     </BrowserRouter>
   );
@@ -283,7 +211,6 @@ function CreditLink() {
   const { pathname } = useLocation();
   const hideOn = [
     /^\/AgentSubmission\b/,
-    /^\/Tutorial\b/,
     /^\/Classroom\//,
   ];
   if (hideOn.some((re) => re.test(pathname))) return null;

@@ -14,10 +14,8 @@ import { authFetch } from '../../../utils/authFetch';
 
 // Import shared components
 import LeagueTeams from './LeagueTeams';
-import LeagueTutorials from './LeagueTutorials';
 import PureMarkdown from '../Utilities/PureMarkdown';
 import StatChip from '../Common/StatChip';
-import useClassroomAPI from '../hooks/useClassroomAPI';
 import useLeagueAPI from '../hooks/useLeagueAPI';
 import { useTerms } from '../terminology';
 
@@ -30,7 +28,7 @@ const EXPIRY_TONES = {
 
 /**
  * The details card for the league currently selected in Redux: expiry,
- * shareable login page, markdown info editor, attached tutorials, delete.
+ * shareable login page, markdown info editor, delete.
  * `showTeams` adds the assign/unassign grid (the admin/institution management
  * page wants it; the classroom workspace's Students tab owns membership).
  * `onDeleted` fires after a successful delete so the caller can navigate.
@@ -53,49 +51,14 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     deleteLeague,
   } = useLeagueAPI(userRole);
 
-  const { getClassroomProgress, getSubscription } = useClassroomAPI();
-
   const [infoMarkdownDraft, setInfoMarkdownDraft] = useState('');
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [showInfoPreview, setShowInfoPreview] = useState(false);
   const [showInfoEditor, setShowInfoEditor] = useState(false);
-  // Roster counts for the overview chips; null while loading or unavailable.
-  const [progress, setProgress] = useState(null);
-  // The institution's membership end date — a league may not outlive it.
-  const [membershipExpiry, setMembershipExpiry] = useState(null);
+  // Roster count for the overview chip, from the loaded teams list.
+  const allTeams = useSelector((state) => state.teams.list);
 
   moment.tz.setDefault("Australia/Sydney");
-
-  // Roster + exercise counts for the overview chips
-  useEffect(() => {
-    let active = true;
-    setProgress(null);
-    if (!currentLeague?.id) return undefined;
-    (async () => {
-      const result = await getClassroomProgress(currentLeague.id);
-      if (active && result.success) setProgress(result.data);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [currentLeague?.id, getClassroomProgress]);
-
-  // Membership end date (institutions only — admins have no subscription of
-  // their own and are not capped by one).
-  useEffect(() => {
-    let active = true;
-    if (userRole !== 'institution') return undefined;
-    (async () => {
-      const result = await getSubscription();
-      const expiry = result.success
-        ? result.data?.subscription?.subscription_expiry ?? null
-        : null;
-      if (active) setMembershipExpiry(expiry);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [userRole, getSubscription]);
 
   // Reset markdown draft when the selected league changes
   useEffect(() => {
@@ -179,14 +142,9 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     }
   };
 
-  // Handle expiry date update. The server caps anything past the membership
-  // end date, so clamp here too and Redux stays in step with what was stored.
+  // Handle expiry date update.
   const handleExpiryDateChange = async (date) => {
-    const capped =
-      membershipExpiry && date > new Date(membershipExpiry)
-        ? new Date(membershipExpiry)
-        : date;
-    const formattedDate = capped.toISOString();
+    const formattedDate = date.toISOString();
 
     try {
       const result = await updateLeagueExpiry(currentLeague.id, formattedDate);
@@ -231,8 +189,9 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     ? moment(currentLeague.expiry_date).diff(moment(), 'days')
     : 0;
   const expiryTone = !isActive ? 'danger' : daysLeft < 7 ? 'warning' : 'plain';
-  // Every team in a classroom shares the same attached-exercise total.
-  const exercisesAttached = progress?.teams?.[0]?.exercises_total ?? 0;
+  const teamCount = currentLeague
+    ? allTeams.filter((team) => team.league === currentLeague.name).length
+    : 0;
 
   if (!currentLeague) {
     return (
@@ -261,13 +220,8 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
           />
           <StatChip
             label={T.Teams}
-            value={progress?.teams ? progress.teams.length : '—'}
+            value={teamCount}
             title={`${T.Teams} enrolled in this ${T.league}`}
-          />
-          <StatChip
-            label="Exercises"
-            value={progress ? exercisesAttached : '—'}
-            title={`Exercises across the ${T.tutorials} attached below`}
           />
           <StatChip
             label="Created"
@@ -286,7 +240,6 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
                 onChange={handleExpiryDateChange}
                 showTimeSelect
                 dateFormat="d MMM yyyy, h:mm aa"
-                maxDate={membershipExpiry ? new Date(membershipExpiry) : undefined}
                 className="w-44 bg-transparent text-base font-semibold leading-tight cursor-pointer outline-none border-b border-dashed border-ui"
               />
               <span className="text-sm">
@@ -295,13 +248,6 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
             </div>
           </div>
         </div>
-        {membershipExpiry && (
-          <p className="text-sm text-ui mt-2">
-            {`Your membership ends ${moment(membershipExpiry).format(
-              'D MMMM YYYY'
-            )} — a ${T.league} can't outlast it, so later dates are capped.`}
-          </p>
-        )}
       </div>
 
       {/* Shareable login page — one slim row, the URL is the content */}
@@ -440,14 +386,6 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
             )}
           </div>
         )}
-      </div>
-
-      {/* League Tutorials */}
-      <div className="border-t border-ui-light pt-5">
-        <LeagueTutorials
-          leagueId={currentLeague.id}
-          userRole={userRole}
-        />
       </div>
 
       {/* Teams Grid */}

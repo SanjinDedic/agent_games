@@ -1,6 +1,6 @@
 // FeedbackDisplay.jsx
 import React, { useState, useEffect } from 'react';
-import LessonMarkdown from '../Lesson/LessonMarkdown';
+import RichMarkdown from '../Markdown/RichMarkdown';
 
 /**
  * Shared submission-page panel: a collapsible markdown instructions section on
@@ -9,8 +9,7 @@ import LessonMarkdown from '../Lesson/LessonMarkdown';
  * cases, ...) — this component only handles the loading/empty/results states.
  * `hintsPanel` (optional) renders between the instructions and the results —
  * the exercise page uses it for its condensed hints panel.
- * Instructions render through LessonMarkdown, so they get syntax
- * highlighting, lesson:// links, and runnable ```python-run blocks.
+ * Instructions render through RichMarkdown, so they get syntax highlighting.
  */
 function FeedbackDisplay({
     instructions,
@@ -48,7 +47,7 @@ function FeedbackDisplay({
 
                     {showInstructions && (
                         <div className="p-3 max-h-[550px] overflow-y-auto">
-                            <LessonMarkdown content={instructions} />
+                            <RichMarkdown content={instructions} />
                         </div>
                     )}
                 </div>
