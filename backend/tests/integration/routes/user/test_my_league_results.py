@@ -13,7 +13,6 @@ from backend.routes.auth.auth_db import mint_team_token
 from backend.time_utils import utc_now
 
 
-
 @pytest.fixture
 def two_leagues_with_published_results(db_session: Session) -> dict:
     """Two leagues; each has one published and one unpublished result, plus a team."""
@@ -178,7 +177,5 @@ def test_get_all_leagues_includes_info_markdown(client, two_leagues_with_publish
     assert response.status_code == 200
     leagues = response.json()["leagues"]
     by_name = {l["name"]: l for l in leagues}
-    # team_a is institution_id=None => admin-only sees all; student with no
-    # institution returns empty. We assert the field exists when present.
     for league in leagues:
         assert "info_markdown" in league

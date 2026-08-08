@@ -1,5 +1,5 @@
 // src/AgentGames/Shared/League/SimulationPanel.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import { setCurrentSimulation } from "../../../slices/leaguesSlice";
@@ -8,17 +8,16 @@ import SimulationRunner from "./SimulationRunner";
 import SimulationRunSummary from "./SimulationRunSummary";
 import RunResultsModal from "./RunResultsModal";
 
-import useClassroomAPI from "../hooks/useClassroomAPI";
 import useLeagueAPI from "../hooks/useLeagueAPI";
 import { useTerms } from "../terminology";
 
 /**
  * Simulation controls + results for the league currently selected in Redux.
- * League selection lives with the caller: the admin/institution page keeps
+ * League selection lives with the caller: the admin page keeps
  * its LeagueCardList column; the classroom workspace's Simulation tab renders
  * this panel alone.
  */
-const SimulationPanel = ({ userRole }) => {
+const SimulationPanel = () => {
   const T = useTerms();
   const dispatch = useDispatch();
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -29,12 +28,10 @@ const SimulationPanel = ({ userRole }) => {
     (state) => state.leagues.currentLeagueResultSelected
   );
 
-  const api = useLeagueAPI(userRole);
-  const { getClassroomProgress } = useClassroomAPI();
-
+  const api = useLeagueAPI();
   // Roster names, used to show who had no agent in the selected run. Null when
-  // unavailable (e.g. the progress call failed) — the block then stays hidden.
-  const [roster, setRoster] = useState(null);
+  // the teams list hasn't loaded — the block then stays hidden.
+  const allTeams = useSelector((state) => state.teams.list);
   // Leaderboard + feedback of the selected run open in a modal on demand.
   const [showResults, setShowResults] = useState(false);
 
@@ -56,27 +53,19 @@ const SimulationPanel = ({ userRole }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLeague?.game]);
 
-  useEffect(() => {
-    let active = true;
-    setRoster(null);
-    if (!currentLeague?.id || isPlaceholderLeague) return undefined;
-    (async () => {
-      const result = await getClassroomProgress(currentLeague.id);
-      if (!active) return;
-      setRoster(
-        result.success ? (result.data.teams || []).map((team) => team.name) : null
-      );
-    })();
-    return () => {
-      active = false;
-    };
-  }, [currentLeague?.id, isPlaceholderLeague, getClassroomProgress]);
+  const roster = useMemo(() => {
+    if (!currentLeague?.name || isPlaceholderLeague) return null;
+    const names = allTeams
+      .filter((team) => team.league === currentLeague.name)
+      .map((team) => team.name);
+    return names.length > 0 ? names : null;
+  }, [allTeams, currentLeague?.name, isPlaceholderLeague]);
 
   const hasResults = allSimulations && allSimulations.length > 0;
 
   return (
     <div className="space-y-6">
-      <SimulationRunner league={currentLeague} userRole={userRole} />
+      <SimulationRunner league={currentLeague} />
 
       {isPlaceholderLeague ? (
         <div className="bg-white rounded-lg shadow-lg p-6">
@@ -96,7 +85,6 @@ const SimulationPanel = ({ userRole }) => {
             current={currentSimulation}
             onSelect={(timestamp) => dispatch(setCurrentSimulation(timestamp))}
             league={currentLeague}
-            userRole={userRole}
             roster={roster}
             onViewResults={() => setShowResults(true)}
           />

@@ -15,8 +15,7 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.database.db_config import get_database_url
-from backend.database.db_models import (Admin, Institution,
-                                        InstitutionSubscription, League,
+from backend.database.db_models import (UNASSIGNED_LEAGUE_NAME, League,
                                         LeagueType, Team, TeamType,
                                         get_password_hash)
 from backend.database.db_session import get_db_engine
@@ -89,126 +88,98 @@ def initialize_database():
     logger.info("Database initialization complete")
     return True
 
+def _seed_sample_data_enabled() -> bool:
+    """Whether to seed the example leagues and TeamA/B/C.
+
+    On for local dev and the manual test suite (docker-compose.yml sets it), off
+    in production: a teacher's fresh install should not arrive holding three fake
+    teams they have to find and delete.
+    """
+    return os.getenv("SEED_SAMPLE_DATA", "").strip().lower() in {"1", "true", "yes"}
+
+
 def populate_database(engine):
-    """Populate the database with initial data"""
+    """Populate the database with the initial data the app cannot run without.
+
+    No admin account is seeded — there is no default password to ship and forget
+    to change. A fresh deployment is claimed through POST /auth/setup, which
+    refuses once an admin exists.
+
+    Idempotence is keyed on the 'unassigned' league rather than on an account,
+    since that league is now the one row this function must always produce.
+    """
     logger.info("Populating database with initial data...")
 
     with Session(engine) as session:
-        # Check if admin already exists to prevent duplicates on rerun
-        existing_admin = session.exec(select(Admin).where(Admin.username == "admin")).first()
-        if existing_admin:
-            logger.info("Admin already exists, skipping initial data population")
+        existing = session.exec(
+            select(League).where(League.name == UNASSIGNED_LEAGUE_NAME)
+        ).first()
+        if existing:
+            logger.info("Database already seeded, skipping initial data population")
             return
 
-        # Create administrator
-        admin_password = os.getenv(
-            "ADMIN_PASSWORD", "admin"
-        )  # Default for backward compatibility
-        admin = Admin(username="admin", password_hash=get_password_hash(admin_password))
-        session.add(admin)
-
-        # Create default institution
-        institution_password = os.getenv(
-            "INSTITUTION_PASSWORD", "institution"
-        )  # Default for backward compatibility
-        default_institution = Institution(
-            name="Admin Institution",
-            contact_person="Admin",
-            contact_email="admin@admin.com",
-            created_date=utc_now(),
-            password_hash=get_password_hash(institution_password),
-        )
-        session.add(default_institution)
-        session.flush()  # assign id before creating the subscription
-        session.add(
-            InstitutionSubscription(
-                institution_id=default_institution.id,
-                payment_method="admin",
-                subscription_active=True,
-                subscription_expiry=(utc_now() + timedelta(days=365)),
-                created_date=utc_now(),
-            )
-        )
-        session.commit()
-
-        # Create unassigned league
+        # The holding pen every team without a league sits in. Load-bearing:
+        # team creation and league deletion both move teams here.
         unassigned_league = League(
-            name="unassigned",
+            name=UNASSIGNED_LEAGUE_NAME,
             created_date=utc_now(),
-            expiry_date=(
-                utc_now() + timedelta(days=30)
-            ),
+            expiry_date=utc_now() + timedelta(days=365),
             game="greedy_pig",
             league_type=LeagueType.STUDENT,
-            institution_id=default_institution.id,
         )
         session.add(unassigned_league)
+        session.commit()
+        session.refresh(unassigned_league)
 
-        # Create greedy pig league
-        greedy_pig_league = League(
-            name="greedy_pig_league",
-            created_date=utc_now(),
-            expiry_date=(
-                utc_now() + timedelta(days=30)
-            ),
-            game="greedy_pig",
-            league_type=LeagueType.STUDENT,
-            institution_id=default_institution.id,
-        )
-        session.add(greedy_pig_league)
+        if not _seed_sample_data_enabled():
+            logger.info("SEED_SAMPLE_DATA is off — seeded the unassigned league only")
+            return
 
-        # Create prisoners dilemma league
-        prisoners_dilemma_league = League(
-            name="prisoners_dilemma_league",
-            created_date=utc_now(),
-            expiry_date=(
-                utc_now() + timedelta(days=30)
-            ),
-            game="prisoners_dilemma",
-            league_type=LeagueType.STUDENT,
-            institution_id=default_institution.id,
-        )
-        session.add(prisoners_dilemma_league)
-
+        for league_name, game in (
+            ("greedy_pig_league", "greedy_pig"),
+            ("prisoners_dilemma_league", "prisoners_dilemma"),
+        ):
+            session.add(
+                League(
+                    name=league_name,
+                    created_date=utc_now(),
+                    expiry_date=utc_now() + timedelta(days=30),
+                    game=game,
+                    league_type=LeagueType.STUDENT,
+                )
+            )
         session.commit()
 
-        # Create initial teams from teams.json
         try:
-            # Define initial teams if teams.json isn't available
             teams_data = {
                 "teams": [
                     {
                         "name": "TeamA",
-                        "password": os.getenv(
-                            "TEAM_A_PASSWORD", "AA"
-                        ),  # Default for backward compatibility
+                        "password": os.getenv("TEAM_A_PASSWORD", "AA"),
                         "school": "Sirius College",
                     },
                     {
                         "name": "TeamB",
-                        "password": os.getenv(
-                            "TEAM_B_PASSWORD", "BB"
-                        ),  # Default for backward compatibility
+                        "password": os.getenv("TEAM_B_PASSWORD", "BB"),
                         "school": "Sirius College",
                     },
                     {
                         "name": "TeamC",
-                        "password": os.getenv(
-                            "TEAM_C_PASSWORD", "CC"
-                        ),  # Default for backward compatibility
+                        "password": os.getenv("TEAM_C_PASSWORD", "CC"),
                         "school": "Glen Waverley Secondary College",
                     },
                 ]
             }
 
-            # Try to open teams.json if available
-            teams_json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "teams.json")
+            teams_json_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "teams.json"
+            )
             if os.path.exists(teams_json_path):
                 import json
+
                 with open(teams_json_path, "r") as f:
                     teams_data = json.load(f)
 
-            # Create teams
             for team_data in teams_data["teams"]:
                 team = Team(
                     name=team_data["name"],
@@ -216,17 +187,17 @@ def populate_database(engine):
                     password_hash=get_password_hash(team_data["password"]),
                     league_id=unassigned_league.id,
                     team_type=TeamType.STUDENT,
-                    institution_id=default_institution.id,
                 )
                 session.add(team)
 
             session.commit()
-            logger.info(f"Created {len(teams_data['teams'])} initial teams")
+            logger.info(f"Created {len(teams_data['teams'])} sample teams")
         except Exception as e:
-            logger.error(f"Error creating initial teams: {e}")
+            logger.error(f"Error creating sample teams: {e}")
             session.rollback()
 
         logger.info("Initial data population complete")
+
 
 if __name__ == "__main__":
     # Non-zero exit on failure so container commands can gate server start

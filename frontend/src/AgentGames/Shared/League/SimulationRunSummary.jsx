@@ -65,7 +65,6 @@ const SimulationRunSummary = ({
   current,
   onSelect,
   league,
-  userRole,
   roster,
   onViewResults,
 }) => {
@@ -179,7 +178,6 @@ const SimulationRunSummary = ({
                   simulation_id={current.id}
                   selected_league_id={league.id}
                   selected_league_name={league.name}
-                  userRole={userRole}
                 />
               )
             )}

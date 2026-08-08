@@ -6,9 +6,9 @@ import { clearTeam } from '../slices/teamsSlice';
 export const sessionExpired = createAction('auth/sessionExpired');
 
 const LOGIN_ROUTES = {
-  admin: '/Admin',
-  institution: '/Institution',
+  admin: '/Login',
   student: '/AgentLogin',
+  ai_agent: '/AgentLogin',
 };
 
 let isLoggingOut = false;
@@ -23,13 +23,12 @@ authErrorMiddleware.startListening({
 
     const currentUser = selectCurrentUser(listenerApi.getState());
     const role = currentUser?.role;
-    const isDemo = currentUser?.is_demo;
 
     listenerApi.dispatch(logout());
     listenerApi.dispatch(clearLeagues());
     listenerApi.dispatch(clearTeam());
 
-    const redirectTo = isDemo ? '/' : (LOGIN_ROUTES[role] || '/');
+    const redirectTo = LOGIN_ROUTES[role] || '/';
     window.location.href = redirectTo;
 
     setTimeout(() => {

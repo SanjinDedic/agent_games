@@ -5,23 +5,17 @@ const FOOTER_COLUMNS = [
   {
     heading: "Explore",
     links: [
-      { to: "/Demo", label: "Try the Demo" },
       { to: "/Leaderboards", label: "Leaderboards" },
       { to: "/About", label: "About" },
     ],
   },
   {
-    heading: "For Teachers",
+    // One deployment, one of each login — the split into "For Teachers" and
+    // "Competitions" columns existed to point at two different organizer pages.
+    heading: "Log in",
     links: [
-      { to: "/Teachers", label: "Create a Classroom" },
+      { to: "/Login", label: "Organizer Login" },
       { to: "/AgentLogin", label: "Student Login" },
-    ],
-  },
-  {
-    heading: "Competitions",
-    links: [
-      { to: "/Institutions", label: "Host a Competition" },
-      { to: "/Institution", label: "Organizer Login" },
     ],
   },
 ];

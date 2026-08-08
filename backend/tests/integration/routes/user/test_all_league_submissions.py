@@ -5,9 +5,8 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.tests.conftest import add_submission, build_institution
+from backend.tests.conftest import add_submission
 from backend.database.db_models import (
-    Institution,
     League,
     Team,
     TeamType,
@@ -19,16 +18,12 @@ from backend.time_utils import utc_now
 @pytest.fixture
 def league_with_submissions(db_session: Session) -> dict:
     """Create a league with 2 teams and multiple submissions each."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     league = League(
         name="submissions_test_league",
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
@@ -41,7 +36,6 @@ def league_with_submissions(db_session: Session) -> dict:
             school_name=f"Sub School {i}",
             password_hash="hash",
             league_id=league.id,
-            institution_id=institution.id,
             team_type=TeamType.STUDENT,
         )
         db_session.add(team)
@@ -66,14 +60,13 @@ def league_with_submissions(db_session: Session) -> dict:
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(empty_league)
     db_session.commit()
     db_session.refresh(empty_league)
 
     token = create_access_token(
-        data={"sub": "admin", "role": "admin", "institution_id": 1},
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -138,7 +131,7 @@ def test_get_all_submissions_no_auth(client, league_with_submissions):
 
 
 def test_get_all_submissions_invalid_league(client, league_with_submissions):
-    """Non-existent league_id returns an error (no cross-institution leak)."""
+    """Non-existent league_id returns an error."""
     resp = client.get(
         "/user/get-all-league-submissions/99999",
         headers=league_with_submissions["headers"],
@@ -148,7 +141,7 @@ def test_get_all_submissions_invalid_league(client, league_with_submissions):
 
 
 def test_get_all_submissions_student_forbidden(client, league_with_submissions):
-    """Student role is rejected by verify_admin_or_institution."""
+    """Student role is rejected by require_admin."""
     data = league_with_submissions
     student_token = create_access_token(
         data={"sub": "some_student", "role": "student"},
@@ -161,27 +154,15 @@ def test_get_all_submissions_student_forbidden(client, league_with_submissions):
     assert resp.status_code == 403
 
 
-def test_get_all_submissions_institution_own_league(client, db_session):
-    """An institution can see submissions in a league it owns."""
-    institution = build_institution(
-        name="own_league_inst",
-        contact_person="Person",
-        contact_email="p@e.com",
-        created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="hash",
-    )
-    db_session.add(institution)
+def test_get_all_submissions_admin_sees_league(client, db_session):
+    """The admin can see submissions in any league."""
     db_session.commit()
-    db_session.refresh(institution)
 
     league = League(
         name="owned_league",
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
@@ -189,9 +170,8 @@ def test_get_all_submissions_institution_own_league(client, db_session):
 
     token = create_access_token(
         data={
-            "sub": institution.name,
-            "role": "institution",
-            "institution_id": institution.id,
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -202,81 +182,3 @@ def test_get_all_submissions_institution_own_league(client, db_session):
     assert resp.status_code == 200
     assert resp.json()["league_name"] == "owned_league"
 
-
-def test_get_all_submissions_institution_cannot_see_other_institution(
-    client, db_session
-):
-    """Institution A cannot read Institution B's league submissions."""
-    inst_a = build_institution(
-        name="inst_a_for_leak_test",
-        contact_person="A",
-        contact_email="a@e.com",
-        created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="hash",
-    )
-    inst_b = build_institution(
-        name="inst_b_for_leak_test",
-        contact_person="B",
-        contact_email="b@e.com",
-        created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="hash",
-    )
-    db_session.add(inst_a)
-    db_session.add(inst_b)
-    db_session.commit()
-    db_session.refresh(inst_a)
-    db_session.refresh(inst_b)
-
-    # League belongs to inst_b; team + submissions inside it
-    b_league = League(
-        name="inst_b_league",
-        created_date=utc_now(),
-        expiry_date=utc_now() + timedelta(days=7),
-        game="greedy_pig",
-        institution_id=inst_b.id,
-    )
-    db_session.add(b_league)
-    db_session.commit()
-    db_session.refresh(b_league)
-
-    b_team = Team(
-        name="secret_team",
-        school_name="Secret School",
-        password_hash="hash",
-        league_id=b_league.id,
-        institution_id=inst_b.id,
-        team_type=TeamType.STUDENT,
-    )
-    db_session.add(b_team)
-    db_session.commit()
-    db_session.refresh(b_team)
-
-    add_submission(
-        db_session,
-        code="# secret code",
-        timestamp=utc_now(),
-        team_id=b_team.id,
-    )
-    db_session.commit()
-
-    # Inst A tries to read Inst B's league.
-    a_token = create_access_token(
-        data={
-            "sub": inst_a.name,
-            "role": "institution",
-            "institution_id": inst_a.id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
-    resp = client.get(
-        f"/user/get-all-league-submissions/{b_league.id}",
-        headers={"Authorization": f"Bearer {a_token}"},
-    )
-    assert resp.status_code == 403
-    assert "permission" in resp.json()["detail"].lower()
-    # Critical: the secret code must NOT leak in the error response.
-    assert "secret code" not in resp.text

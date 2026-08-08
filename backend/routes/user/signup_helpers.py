@@ -3,8 +3,9 @@
 from sqlmodel import Session
 
 from backend.database.db_models import League, Team
+from backend.errors import LeagueExpiredError
 from backend.routes.auth.auth_db import mint_team_token
-from backend.routes.user.user_db import LeagueExpiredError, get_league_by_signup_token
+from backend.routes.user.user_db import get_league_by_signup_token
 from backend.time_utils import ensure_utc, utc_now
 
 

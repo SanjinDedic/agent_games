@@ -31,7 +31,7 @@ async function launchPage() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
 
-  const observed = { toasts: [], consoleErrors: [], pageErrors: [], dialogs: [] };
+  const observed = { toasts: [], consoleErrors: [], pageErrors: [] };
 
   // Toasts unmount after a few seconds; a MutationObserver catches them all.
   await context.addInitScript(() => {
@@ -52,15 +52,6 @@ async function launchPage() {
   page.on('pageerror', (e) => observed.pageErrors.push(String(e)));
 
   return { browser, context, page, observed };
-}
-
-// Auto-accept native confirm()/prompt() dialogs, recording each message.
-// promptText is typed into window.prompt dialogs when provided.
-function acceptDialogs(page, observed, promptText) {
-  page.on('dialog', async (dialog) => {
-    observed.dialogs.push(`[${dialog.type()}] ${dialog.message()}`);
-    await dialog.accept(promptText);
-  });
 }
 
 async function collectToasts(page, observed) {
@@ -107,91 +98,9 @@ async function getMonacoValue(page) {
   return page.evaluate(() => window.monaco.editor.getEditors()[0].getValue());
 }
 
-// Read the tutorial overview's progress line ("<passed> of <total> exercises
-// completed") and the list position of one exercise. Both numbers are content,
-// not behaviour: exercises get authored in and out of a tutorial, so pinning
-// them in a script turns every content edit into a false failure. Callers
-// assert the passed count they caused and carry `total`/`position` forward.
-// The position must be read BEFORE the exercise passes — the badge shows a ✓
-// instead of the number once it is completed.
-async function readTutorialOverview(page, exerciseTitle, timeout = 15000) {
-  const progress = page.locator('text=/^\\d+ of \\d+ exercises completed$/').first();
-  await progress.waitFor({ timeout });
-  const line = (await progress.innerText()).trim();
-  const counts = line.match(/^(\d+) of (\d+) exercises completed$/);
-  if (!counts) throw new Error(`unexpected tutorial progress line: "${line}"`);
-
-  const item = page.locator('li').filter({
-    has: page.locator(`button:has-text("${exerciseTitle}")`),
-  }).first();
-  if (!(await item.count())) {
-    throw new Error(`tutorial overview has no exercise titled "${exerciseTitle}"`);
-  }
-  // First span in the card is the status badge: the 1-based position, or ✓.
-  const badge = (await item.locator('button > span').first().innerText()).trim();
-
-  return {
-    passed: Number(counts[1]),
-    total: Number(counts[2]),
-    position: /^\d+$/.test(badge) ? Number(badge) : null,
-  };
-}
-
-// Read the agent-game panel on /TeamHome. The student landing page leads with
-// this panel (the tutorials sit under it): three stat tiles — best placement
-// with the size of the field, the recent placements, the valid submission
-// count — over one line of activity. Placements render as coloured squares,
-// so they are read off each square's title ("3rd against the validation
-// bots") rather than its colour, and the tiles a team with no ranked
-// submissions shows as "—" come back as null/[].
-//
-// Placement VALUES are content of a random game and must not be asserted:
-// where an agent lands against the bots moves between runs. What holds is the
-// shape — how many squares, the best being the best of them, the field size.
-async function readAgentPanel(page, timeout = 20000) {
-  const panel = page.locator('section').filter({
-    has: page.locator('h2:text-is("Agent Game")'),
-  });
-  await panel.waitFor({ timeout });
-
-  // Each tile is the div carrying its own label; the "Stuck on …" nudge box
-  // shares the tile background but has no label div, so it can't match.
-  const tile = (label) =>
-    panel
-      .locator('div.bg-ui-lighter')
-      .filter({ has: page.locator(`div:text-is("${label}")`) })
-      .first();
-  const placements = async (label) => {
-    const squares = tile(label).locator('span[title*="against the validation bots"]');
-    return (await squares.allInnerTexts()).map((t) => Number(t.trim()));
-  };
-
-  const best = await placements('Best placement');
-  const fieldSize = (await tile('Best placement').innerText()).match(/of (\d+)/);
-  const activity = panel
-    .locator('p')
-    .filter({ hasText: /^(Last submission|No submissions yet)/ })
-    .first();
-
-  return {
-    best: best.length ? best[0] : null,
-    fieldSize: fieldSize ? Number(fieldSize[1]) : null,
-    recent: await placements('Recent placements'),
-    validSubmissions: Number(
-      (await tile('Valid submissions').innerText()).trim().split('\n')[0]
-    ),
-    activity: (await activity.innerText()).trim(),
-    reachedFirst: (await panel.locator('text=REACHED 1ST').count()) > 0,
-    // The "Stuck on <game>?" nudge, shown once a team has many valid
-    // submissions and still no 1st place (STUCK_AFTER_VALID_SUBMISSIONS).
-    nudge: (await panel.locator('p:has-text("Stuck on")').count()) > 0,
-  };
-}
 
 // Click "Submit Code" and return {status, body} from the submit response.
 // Success = HTTP 200 with submission_id; validation failure = HTTP 400 with detail.
-// `endpoint` picks the response to assert on: agent submissions (default) or
-// tutorial exercises ('/tutorial/submit-exercise').
 async function submitCode(page, timeout = 120000, endpoint = '/user/submit-agent') {
   const [resp] = await Promise.all([
     page.waitForResponse((r) => r.url().includes(endpoint) && r.request().method() === 'POST', { timeout }),
@@ -219,7 +128,7 @@ async function finish(page, browser, observed, { name, failure } = {}) {
 }
 
 module.exports = {
-  BASE, STATE_FILE, loadState, saveState, launchPage, acceptDialogs,
+  BASE, STATE_FILE, loadState, saveState, launchPage,
   collectToasts, waitForToast, dismissToasts, setMonacoValue, getMonacoValue,
-  readTutorialOverview, readAgentPanel, submitCode, finish,
+  submitCode, finish,
 };

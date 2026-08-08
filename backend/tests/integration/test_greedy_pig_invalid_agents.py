@@ -133,7 +133,6 @@ def _make_team(db_session: Session, league: League, name: str) -> Team:
         school_name="Invalid Agents Test School",
         password_hash="test_hash",
         league_id=league.id,
-        institution_id=league.institution_id,
     )
     db_session.add(team)
     db_session.commit()
@@ -149,7 +148,7 @@ def _submit(client: TestClient, team: Team, code: str):
 def test_only_validated_agents_reach_greedy_pig_simulation(
     client: TestClient,
     db_session: Session,
-    auth_headers: dict,
+    admin_headers: dict,
     greedy_pig_league: League,
 ):
     assert greedy_pig_league is not None, "greedy_pig_league should be seeded"
@@ -200,10 +199,10 @@ def test_only_validated_agents_reach_greedy_pig_simulation(
             assert len(attempts) == 1, f"{name}: failed attempt should be recorded"
             assert len(code_rows) == 0, f"{name}: failed code must NOT be stored"
 
-    # 2. Run the simulation as admin (Admin Institution owns the seeded league).
+    # 2. Run the simulation as the admin.
     sim_response = client.post(
-        "/institution/run-simulation",
-        headers=auth_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={"league_id": greedy_pig_league.id, "num_simulations": 20},
     )
     assert sim_response.status_code == 200, sim_response.text

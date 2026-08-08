@@ -7,7 +7,6 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import (
     AgentAPIKey,
-    Institution,
     League,
     LeagueType,
     Team,
@@ -20,10 +19,7 @@ from backend.time_utils import utc_now
 
 @pytest.fixture
 def agent_league(db_session: Session) -> dict:
-    """Create an institution with an agent-type league."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
+    """An agent-type league."""
 
     league = League(
         name="agent_test_league",
@@ -31,13 +27,12 @@ def agent_league(db_session: Session) -> dict:
         expiry_date=utc_now() + timedelta(days=30),
         game="greedy_pig",
         league_type=LeagueType.AGENT,
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
     db_session.refresh(league)
 
-    return {"institution": institution, "league": league}
+    return {"league": league}
 
 
 def test_create_agent_team_success(db_session, agent_league):
@@ -51,8 +46,7 @@ def test_create_agent_team_success(db_session, agent_league):
 
     team = db_session.get(Team, result["team_id"])
     assert team.team_type == TeamType.AGENT
-    assert team.institution_id == agent_league["institution"].id
-
+    
 
 def test_create_agent_team_league_not_found(db_session):
     """Raises ValueError for non-existent league."""
@@ -63,9 +57,6 @@ def test_create_agent_team_league_not_found(db_session):
 
 def test_create_agent_team_wrong_league_type(db_session):
     """Raises ValueError when league is not an agent league."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     student_league = League(
         name="student_league_for_agent_test",
@@ -73,7 +64,6 @@ def test_create_agent_team_wrong_league_type(db_session):
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
         league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
     )
     db_session.add(student_league)
     db_session.commit()
@@ -109,11 +99,8 @@ def test_create_api_key_team_not_found(db_session):
 
 def test_create_api_key_non_agent_team(db_session):
     """Raises ValueError when team is not an agent team."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
     unassigned = db_session.exec(
-        select(League).where(League.name == "unassigned").where(League.institution_id == institution.id)
+        select(League).where(League.name == "unassigned")
     ).first()
 
     student_team = Team(
@@ -121,7 +108,6 @@ def test_create_api_key_non_agent_team(db_session):
         school_name="School",
         password_hash="hash",
         league_id=unassigned.id,
-        institution_id=institution.id,
         team_type=TeamType.STUDENT,
     )
     db_session.add(student_team)

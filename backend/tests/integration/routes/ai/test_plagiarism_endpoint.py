@@ -10,10 +10,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlmodel import Session
 
-from backend.tests.conftest import add_submission, build_institution
+from backend.tests.conftest import add_submission
 from backend.database.db_models import (
     AIProviderKey,
-    Institution,
     League,
     Team,
 )
@@ -61,30 +60,16 @@ def _mock_openai_client(envelope):
 
 
 @pytest.fixture
-def institution_setup(db_session: Session):
-    """Create an institution, league, team with 2 submissions, and an institution token.
+def league_setup(db_session: Session):
+    """A league, a team with 2 submissions, and admin headers.
 
-    Returns (institution, league, team, headers).
+    Returns (league, team, headers).
     """
-    institution = build_institution(
-        name="plagiarism_test_inst",
-        contact_person="Test Person",
-        contact_email="test@example.com",
-        created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="hash",
-    )
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-
     league = League(
         name="plagiarism_test_league",
         game="greedy_pig",
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
@@ -95,7 +80,6 @@ def institution_setup(db_session: Session):
         school_name="Test School",
         password_hash="hash",
         league_id=league.id,
-        institution_id=institution.id,
     )
     db_session.add(team)
     db_session.commit()
@@ -116,15 +100,11 @@ def institution_setup(db_session: Session):
     db_session.commit()
 
     token = create_access_token(
-        data={
-            "sub": institution.name,
-            "role": "institution",
-            "institution_id": institution.id,
-        },
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
     headers = {"Authorization": f"Bearer {token}"}
-    return institution, league, team, headers
+    return league, team, headers
 
 
 @pytest.fixture
@@ -139,9 +119,9 @@ def stored_openai_key(db_session: Session):
 # --- Tests ---
 
 
-def test_assess_no_api_key_returns_error(client, institution_setup):
+def test_assess_no_api_key_returns_error(client, league_setup):
     """No API key configured → error response."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
@@ -151,8 +131,8 @@ def test_assess_no_api_key_returns_error(client, institution_setup):
     assert "not configured" in response.json()["detail"].lower()
 
 
-def test_assess_team_not_found_in_league(client, institution_setup, stored_openai_key):
-    institution, league, team, headers = institution_setup
+def test_assess_team_not_found_in_league(client, league_setup, stored_openai_key):
+    league, team, headers = league_setup
     response = client.post(
         "/ai/assess-plagiarism",
         headers=headers,
@@ -162,49 +142,9 @@ def test_assess_team_not_found_in_league(client, institution_setup, stored_opena
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_assess_league_not_owned_by_institution(
-    client, institution_setup, stored_openai_key, db_session
-):
-    """Institution A cannot assess teams in Institution B's league."""
-    institution_a, league_a, team_a, headers_a = institution_setup
-
-    other_inst = build_institution(
-        name="other_inst",
-        contact_person="Other",
-        contact_email="other@example.com",
-        created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="hash",
-    )
-    db_session.add(other_inst)
-    db_session.commit()
-    db_session.refresh(other_inst)
-
-    other_league = League(
-        name="other_league",
-        game="greedy_pig",
-        created_date=utc_now(),
-        expiry_date=utc_now() + timedelta(days=7),
-        institution_id=other_inst.id,
-    )
-    db_session.add(other_league)
-    db_session.commit()
-    db_session.refresh(other_league)
-
-    # Institution A tries to assess in other_league (not owned).
-    response = client.post(
-        "/ai/assess-plagiarism",
-        headers=headers_a,
-        json={"league_id": other_league.id, "team_id": team_a.id},
-    )
-    assert response.status_code == 403
-    assert "permission" in response.json()["detail"].lower()
-
-
-def test_assess_wrong_role_forbidden(client, institution_setup, stored_openai_key):
-    """Student role is rejected by verify_admin_or_institution."""
-    _, league, team, _ = institution_setup
+def test_assess_wrong_role_forbidden(client, league_setup, stored_openai_key):
+    """Student role is rejected by require_admin."""
+    league, team, _ = league_setup
     token = create_access_token(
         data={"sub": "some_student", "role": "student"},
         expires_delta=timedelta(minutes=30),
@@ -218,10 +158,10 @@ def test_assess_wrong_role_forbidden(client, institution_setup, stored_openai_ke
 
 
 def test_assess_no_submissions(
-    client, institution_setup, stored_openai_key, db_session
+    client, league_setup, stored_openai_key, db_session
 ):
     """Team with zero submissions → error."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     # Remove all existing submissions for the team.
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
@@ -237,9 +177,9 @@ def test_assess_no_submissions(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_two_submissions_happy_path(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     envelope = _llm_envelope(_valid_llm_verdict_json())
     mock_client_cls.return_value = _mock_openai_client(envelope)
 
@@ -263,10 +203,10 @@ def test_assess_two_submissions_happy_path(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_single_submission_progression_not_applicable(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """Single submission → LLM returns not_applicable progression."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     # Delete one of the two code rows so only one validated submission remains.
     from sqlmodel import select
 
@@ -305,10 +245,10 @@ def test_assess_single_submission_progression_not_applicable(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_sampling_when_over_ten_submissions(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """Team with 15 submissions → sampled=True, analyzed=10."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     # Add 13 more submissions (starts with 2).
     base_ts = utc_now()
     for i in range(13):
@@ -337,9 +277,9 @@ def test_assess_sampling_when_over_ten_submissions(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_llm_returns_non_json(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     envelope = {
         "choices": [{"message": {"content": "this is not json at all"}}]
     }
@@ -356,10 +296,10 @@ def test_assess_llm_returns_non_json(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_llm_returns_bad_literal(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
     """LLM returns JSON with an invalid enum value → Pydantic validation fails."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     bad_verdict = _valid_llm_verdict_json()
     bad_verdict["progression_verdict"] = "maybe"  # invalid literal
     mock_client_cls.return_value = _mock_openai_client(_llm_envelope(bad_verdict))
@@ -375,10 +315,10 @@ def test_assess_llm_returns_bad_literal(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_llm_extra_keys_rejected(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
     """extra='forbid' rejects hallucinated keys."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     bad_verdict = _valid_llm_verdict_json()
     bad_verdict["hallucinated_key"] = "surprise"
     mock_client_cls.return_value = _mock_openai_client(_llm_envelope(bad_verdict))
@@ -393,10 +333,10 @@ def test_assess_llm_extra_keys_rejected(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_openai_500(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
     """Non-200 from OpenAI → error response."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_response.text = "internal server error"
@@ -417,10 +357,10 @@ def test_assess_openai_500(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_failover_to_google_on_openai_error(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """OpenAI 500 + google key stored → verdict served by the gemini fallback."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     db_session.add(AIProviderKey(provider="google", api_key="AIza-test-google-key"))
     db_session.commit()
 
@@ -454,11 +394,11 @@ def test_assess_failover_to_google_on_openai_error(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_openai_timeout(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
     import httpx as _httpx
 
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     mock_client = AsyncMock()
     mock_client.post = AsyncMock(side_effect=_httpx.TimeoutException("timed out"))
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -476,10 +416,10 @@ def test_assess_openai_timeout(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_anonymization_strips_team_name(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
     """The team name must not appear in the outbound payload to OpenAI."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     mock_client = _mock_openai_client(_llm_envelope(_valid_llm_verdict_json()))
     mock_client_cls.return_value = mock_client
 
@@ -507,11 +447,11 @@ def test_assess_anonymization_strips_team_name(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_deterministic_flag_over_likely_threshold(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """A submission delta exceeding 6 chars/sec should be flagged as likely_plagiarism
     regardless of the LLM verdict, and must be included in deterministic_flag_summary."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     # Wipe existing submissions and create a pair: 2000 chars added in 10 seconds = 200 cps.
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
@@ -547,10 +487,10 @@ def test_assess_deterministic_flag_over_likely_threshold(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_deterministic_flag_between_4_and_6(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """Delta in the probable-plagiarism range (4 < cps <= 6)."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
@@ -582,10 +522,10 @@ def test_assess_deterministic_flag_between_4_and_6(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_normal_typing_speed_flag(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
-    """Default institution_setup fixture uses 5-minute gaps → typing-speed flag is normal."""
-    institution, league, team, headers = institution_setup
+    """Default league_setup fixture uses 5-minute gaps → typing-speed flag is normal."""
+    league, team, headers = league_setup
     mock_client_cls.return_value = _mock_openai_client(
         _llm_envelope(_valid_llm_verdict_json())
     )
@@ -605,10 +545,10 @@ def test_assess_normal_typing_speed_flag(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_deterministic_summary_sent_to_llm(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """The deterministic_flag_summary must be included in the outbound LLM payload."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
@@ -640,10 +580,10 @@ def test_assess_deterministic_summary_sent_to_llm(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_template_similarity_present(
-    mock_client_cls, client, institution_setup, stored_openai_key
+    mock_client_cls, client, league_setup, stored_openai_key
 ):
     """Submissions in a greedy_pig league should have template_similarity computed."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     mock_client_cls.return_value = _mock_openai_client(
         _llm_envelope(_valid_llm_verdict_json())
     )
@@ -662,10 +602,10 @@ def test_assess_template_similarity_present(
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
 def test_assess_ast_construct_counts(
-    mock_client_cls, client, institution_setup, stored_openai_key, db_session
+    mock_client_cls, client, league_setup, stored_openai_key, db_session
 ):
     """AST construct counts should increase when code grows more complex."""
-    institution, league, team, headers = institution_setup
+    league, team, headers = league_setup
     delete_submissions_for_teams(db_session, [team.id])
     db_session.commit()
 
@@ -701,12 +641,12 @@ def test_assess_ast_construct_counts(
 
 
 def test_assess_admin_can_assess_any_league(
-    client, institution_setup, stored_openai_key
+    client, league_setup, stored_openai_key
 ):
-    """Admin token bypasses institution ownership check."""
-    institution, league, team, _ = institution_setup
+    """Any league in the deployment is the admin's to assess."""
+    league, team, _ = league_setup
     admin_token = create_access_token(
-        data={"sub": "admin", "role": "admin", "institution_id": 1},
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
     with patch(

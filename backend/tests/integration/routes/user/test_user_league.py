@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, select
 
-from backend.database.db_models import Institution, League, Team
+from backend.database.db_models import League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_by_id
 from backend.tests.conftest import make_student_token
@@ -11,17 +11,7 @@ from backend.time_utils import utc_now
 
 
 @pytest.fixture
-def test_institution(db_session: Session) -> Institution:
-    """Get the Admin Institution created by conftest seed data"""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
-    assert institution is not None, "Admin Institution not found"
-    return institution
-
-
-@pytest.fixture
-def setup_leagues(db_session: Session, test_institution: Institution) -> dict:
+def setup_leagues(db_session: Session) -> dict:
     """Create test leagues for assignment testing"""
     leagues = {}
 
@@ -36,7 +26,6 @@ def setup_leagues(db_session: Session, test_institution: Institution) -> dict:
             created_date=utc_now(),
             expiry_date=utc_now() + timedelta(days=7),
             game="greedy_pig",
-            institution_id=test_institution.id,
         )
         db_session.add(comp_test)
         db_session.commit()
@@ -52,7 +41,6 @@ def setup_leagues(db_session: Session, test_institution: Institution) -> dict:
             created_date=utc_now(),
             expiry_date=utc_now() + timedelta(days=7),
             game="prisoners_dilemma",
-            institution_id=test_institution.id,
         )
         db_session.add(pd_league)
         db_session.commit()
@@ -63,7 +51,7 @@ def setup_leagues(db_session: Session, test_institution: Institution) -> dict:
 
 
 @pytest.fixture
-def setup_unassigned_team(db_session: Session, test_institution: Institution) -> Team:
+def setup_unassigned_team(db_session: Session) -> Team:
     """Create a test team in unassigned league"""
     # Get unassigned league
     unassigned = db_session.exec(
@@ -81,7 +69,6 @@ def setup_unassigned_team(db_session: Session, test_institution: Institution) ->
             school_name="Test School",
             password_hash="test_hash",
             league_id=unassigned.id,
-            institution_id=test_institution.id,
         )
         db_session.add(team)
         db_session.commit()

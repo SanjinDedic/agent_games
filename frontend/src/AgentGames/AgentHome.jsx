@@ -4,10 +4,11 @@ import { Link } from 'react-router-dom';
 import Footer from '../Footer';
 import { imageUrl } from '../config/assets';
 import { featuredGames } from './Feedback/games';
+import { useTerms } from './Shared/terminology';
 
 const HOW_IT_WORKS_STEPS = [
   { time: "5 min", title: "Sign up and create a classroom" },
-  { time: "5 min", title: "Select an agent game and its exercises" },
+  { time: "5 min", title: "Select an agent game for it" },
   { time: "5 min", title: "Invite students and watch them log in and progress" },
 ];
 
@@ -26,28 +27,13 @@ const SHOWCASE_HEADING =
 // replaced.
 const DASHBOARD_SHOTS = [
   {
-    src: "teacher/dashboard-concepts.png?v=2",
-    title: "Every student against every concept",
-    text: "One cell per student and concept, from fluent to needs help — plus the concepts the whole class is finding costly, and the individuals to sit with next.",
-  },
-  {
     src: "teacher/dashboard-roster.png?v=2",
     title: "Class roster with progress at a glance",
-    text: "Attempts, validated agents, hints used, ranking trend and exercise completion — one row per student.",
-  },
-  {
-    src: "teacher/dashboard-progress.png?v=2",
-    title: "Exercise-by-exercise progress grid",
-    text: "See who passed what and who is stuck where, with attempt counts on the exercises that need another look.",
+    text: "Attempts, validated agents, hints used and ranking trend — one row per student.",
   },
 ];
 
 const STUDENT_SHOTS = [
-  {
-    src: "student/student-lesson.png",
-    title: "Lessons with runnable code",
-    text: "Concepts open next to the exercise, and every example is editable and runs in a sandbox — students try an idea without losing their place.",
-  },
   {
     src: "student/student-hint.png",
     title: "A hint when the error is in the way",
@@ -120,6 +106,7 @@ const ShotGrid = ({ shots, onZoom }) => (
 );
 
 const Homepage = () => {
+  const T = useTerms();
   const [zoomed, setZoomed] = useState(null);
 
   return (
@@ -132,23 +119,18 @@ const Homepage = () => {
           </h1>
           <p className="text-lg text-league-text max-w-3xl mx-auto mb-5">
             Your students program agents that battle in strategic games — with
-            guided tutorials, instant feedback, and live leaderboards. Set up
-            your classroom in minutes.
+            instant feedback and live leaderboards. Set up your classroom in
+            minutes.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
-            <Link to="/Demo" className="inline-block">
-              <button className="bg-success hover:bg-success-hover text-white shadow-lg text-lg py-2.5 px-8 rounded">
-                Try the Demo
-              </button>
-            </Link>
-            <Link to="/Teachers" className="inline-block">
+            <Link to="/Login" className="inline-block">
               <button className="bg-white text-primary hover:bg-league-text hover:text-primary-dark shadow-lg text-lg py-2.5 px-8 rounded">
-                Create Your Classroom
+                Log in
               </button>
             </Link>
-            <Link to="/Institutions" className="inline-block">
+            <Link to="/AgentLogin" className="inline-block">
               <button className="bg-blue-200 text-primary-dark hover:bg-blue-300 shadow-lg text-lg py-2.5 px-8 rounded">
-                Create a Coding Competition
+                {`${T.Team} login`}
               </button>
             </Link>
           </div>
@@ -194,7 +176,7 @@ const Homepage = () => {
         <div className="container mx-auto px-6">
           <h2 className={SHOWCASE_HEADING}>
             <span className="block">
-              Give targeted help to specific students on specific concepts
+              Give targeted help to the students who need it
             </span>
             <span className="block">
               Precise information about student learning, empowering teachers
@@ -209,10 +191,7 @@ const Homepage = () => {
         <div className="container mx-auto px-6">
           <h2 className={SHOWCASE_HEADING}>
             <span className="block">
-              Students complete short courses and exercises
-            </span>
-            <span className="block">
-              Then program agents that win at games of strategy
+              Students program agents that win at games of strategy
             </span>
           </h2>
           <ShotGrid shots={STUDENT_SHOTS} onZoom={setZoomed} />
@@ -348,9 +327,9 @@ const Homepage = () => {
                   {game.displayName}
                 </h3>
                 <p className="text-ui mb-4">{game.description}</p>
-                <Link to={`/Demo?game=${game.name}`}>
+                <Link to={`/GamePreview/${game.name}`}>
                   <span className="text-primary font-medium hover:text-primary-hover">
-                    Try it →
+                    Preview →
                   </span>
                 </Link>
               </div>
@@ -377,9 +356,8 @@ const Homepage = () => {
               </h3>
               <ul className="space-y-3 text-league-text">
                 {[
-                  "Structured Python tutorials with instant automated feedback",
                   "A shareable classroom login page — students join with one link",
-                  "A progress dashboard: exercise completion and recent placements for every student",
+                  "A progress dashboard: recent placements for every student",
                   "Automatic evaluation of student agents with live leaderboards",
                 ].map((benefit) => (
                   <li key={benefit} className="flex items-start">
@@ -399,9 +377,9 @@ const Homepage = () => {
                 ))}
               </ul>
               <div className="mt-6 text-center">
-                <Link to="/Teachers">
+                <Link to="/Login">
                   <button className="bg-white text-league-blue hover:bg-league-text hover:text-league-blue py-2 px-6 rounded">
-                    Create Your Classroom
+                    Log in
                   </button>
                 </Link>
               </div>
@@ -422,10 +400,10 @@ const Homepage = () => {
             results.
           </p>
           <Link
-            to="/Institutions"
+            to="/Login"
             className="text-primary font-medium hover:text-primary-hover text-lg"
           >
-            Learn about hosting competitions →
+            Organizer login →
           </Link>
         </div>
       </section>

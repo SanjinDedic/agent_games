@@ -5,7 +5,7 @@ from backend.config import GAMES
 from backend.database.db_session import get_db
 from backend.routes.agent.agent_db import allow_simulation, get_league_by_id
 from backend.routes.agent.agent_models import SimulationRequest
-from backend.routes.auth.auth_core import get_current_user, verify_ai_agent_role
+from backend.routes.auth.auth_core import require_agent
 from backend.routes.user.user_db import get_latest_submissions_for_league
 from backend.tasks.celery_utils import poll_task_result
 from backend.tasks.simulation_task import run_simulation as run_simulation_task
@@ -20,10 +20,9 @@ agent_router = APIRouter()
 
 
 @agent_router.post("/simulate")
-@verify_ai_agent_role
 async def run_simulation(
     request: SimulationRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_agent),
     session: Session = Depends(get_db),
 ):
     league = get_league_by_id(session, request.league_id)

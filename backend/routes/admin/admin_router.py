@@ -1,129 +1,294 @@
+import json
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from backend.routes.admin.admin_backup import create_backup, list_backups, restore_backup
+from backend.database.db_models import UNASSIGNED_LEAGUE_NAME
+from backend.database.db_session import get_db
+from backend.errors import ProtectedLeagueError
+from backend.routes.auth.auth_core import require_admin
 from backend.routes.admin.admin_db import (
-    clear_institution_data,
+    assign_team_to_league,
     create_agent_team,
     create_api_key,
-    create_institution,
-    delete_all_demo_teams_and_subs,
-    delete_institution,
-    export_institution_data,
-    get_all_demo_users,
-    get_all_institutions,
-    update_institution,
+    create_league,
+    create_team,
+    delete_league,
+    delete_team,
+    generate_signup_link,
+    generate_team_password_reset,
+    get_all_league_results,
+    get_all_teams,
+    get_classroom_summaries,
+    get_league_by_id,
+    publish_sim_results,
+    save_simulation_results,
+    unassign_team,
+    update_expiry_date,
+    update_league_info,
 )
 from backend.routes.admin.admin_models import (
-    ClearInstitutionData,
     CreateAgentAPIKey,
     CreateAgentTeam,
-    CreateInstitution,
-    DeleteInstitution,
-    InstitutionUpdate,
-    RestoreBackup,
-    UpdateSupportTicket,
+    ExpiryDate,
+    LeagueDelete,
+    LeagueIdRef,
+    LeagueInfoUpdate,
+    LeagueResults,
+    LeagueSignUp,
+    SimulationConfig,
+    TeamDelete,
+    TeamIdRef,
+    TeamLeagueAssignment,
+    TeamSignup,
 )
-from backend.routes.auth.auth_core import get_current_user, verify_admin_role
-from backend.database.db_session import get_db
-from backend.database.db_models import (
-    SupportTicketStatus,
-    SupportTicketSubmitterType,
-)
-from backend.routes.support.support_db import (
-    delete_ticket,
-    list_tickets,
-    update_ticket,
-)
+from backend.routes.user.user_db import get_latest_submissions_for_league
+from backend.tasks.celery_utils import poll_task_result
+from backend.tasks.simulation_task import run_simulation
 
-admin_router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Business failures raise domain exceptions (InstitutionNotFoundError -> 404,
-# InstitutionExistsError -> 409, AgentTeamError -> 400, SupportError -> 404),
-# mapped centrally by the handlers in api.py. Bad enum values raise HTTPException
-# directly. Anything unexpected surfaces as a 500 rather than a masked 200. Each
-# route returns its payload directly; the HTTP status line is the status.
+admin_router = APIRouter(dependencies=[Depends(require_admin)])
+
+# Every route here requires the admin role, enforced once by the router-level
+# dependency above rather than per route — there is no endpoint in this module a
+# team may call, so a missing per-route guard should be impossible rather than
+# merely unlikely.
+#
+# Business failures raise domain exceptions mapped centrally in api.py:
+# LeagueNotFoundError / TeamNotFoundError / SimulationResultNotFoundError -> 404,
+# LeagueExistsError / TeamExistsError -> 409, SchoolsConfigError /
+# ProtectedLeagueError -> 400. Anything unexpected surfaces as a 500 rather than
+# a swallowed error. Data endpoints return their payload; action endpoints return
+# {"message": ...}.
 
 
-# Institution management endpoints
-@admin_router.post("/institution-create")
-@verify_admin_role
-async def create_institution_endpoint(
-    institution: CreateInstitution,
-    current_user: dict = Depends(get_current_user),
+@admin_router.post("/league-create")
+async def create_league_endpoint(
+    league: LeagueSignUp,
     session: Session = Depends(get_db),
 ):
-    """Create a new institution."""
-    return create_institution(session, institution)
+    """Create a new league."""
+    return create_league(session, league)
 
 
-@admin_router.post("/institution-update")
-@verify_admin_role
-async def update_institution_endpoint(
-    institution: InstitutionUpdate,
-    current_user: dict = Depends(get_current_user),
+@admin_router.post("/team-create")
+async def team_create_endpoint(
+    team: TeamSignup,
     session: Session = Depends(get_db),
 ):
-    """Update an institution."""
-    return update_institution(session, institution)
+    """Create a new team."""
+    return create_team(session, team)
 
 
-@admin_router.post("/institution-delete")
-@verify_admin_role
-async def delete_institution_endpoint(
-    institution: DeleteInstitution,
-    current_user: dict = Depends(get_current_user),
+@admin_router.post("/delete-team")
+async def delete_team_endpoint(
+    team: TeamDelete,
     session: Session = Depends(get_db),
 ):
-    """Delete an institution and all associated teams and leagues."""
-    return {"message": delete_institution(session, institution.id)}
+    """Delete a team."""
+    return {"message": delete_team(session, team.id)}
 
 
-@admin_router.post("/institution-clear-data")
-@verify_admin_role
-async def clear_institution_data_endpoint(
-    request: ClearInstitutionData,
-    current_user: dict = Depends(get_current_user),
+@admin_router.get("/get-all-teams")
+async def get_teams_endpoint(session: Session = Depends(get_db)):
+    """Get every team in this deployment."""
+    return get_all_teams(session)
+
+
+@admin_router.get("/home")
+async def get_home_endpoint(session: Session = Depends(get_db)):
+    """Payload backing the admin home page: one card per league/classroom (team
+    count, game, signup link)."""
+    return {"classrooms": get_classroom_summaries(session)}
+
+
+@admin_router.post("/run-simulation")
+async def run_simulation_endpoint(
+    simulation_config: SimulationConfig,
     session: Session = Depends(get_db),
 ):
-    """Clear all teams/leagues/submissions/results for an institution while keeping
-    the institution row and its auto-created 'unassigned' league."""
-    counts = clear_institution_data(session, request.id)
-    message = (
-        f"Cleared institution data: {counts['teams_deleted']} team(s), "
-        f"{counts['leagues_deleted']} league(s), "
-        f"{counts['tickets_deleted']} ticket(s) removed"
+    """Run a simulation for a league."""
+    league = get_league_by_id(session, simulation_config.league_id)
+
+    if league.name == UNASSIGNED_LEAGUE_NAME:
+        raise ProtectedLeagueError(
+            f"Cannot run simulations on the '{UNASSIGNED_LEAGUE_NAME}' league"
+        )
+
+    # Read the submitted code here (the API holds the DB session) and pass it to
+    # the worker as a task arg, so the worker running untrusted agent code needs
+    # no database credential.
+    submissions = get_latest_submissions_for_league(
+        session, simulation_config.league_id
     )
-    return {"message": message, **counts}
+
+    async_result = run_simulation.delay(
+        league_id=simulation_config.league_id,
+        game_name=league.game,
+        submissions=submissions,
+        num_simulations=simulation_config.num_simulations,
+        custom_rewards=simulation_config.custom_rewards,
+        player_feedback=True,
+    )
+    results = await poll_task_result(async_result, timeout=300)
+
+    # A failed run (e.g. no loadable players) must surface as an error, not be
+    # stored: saving it would leave an empty result in the history that renders
+    # as a rankings table with no rows and no explanation.
+    if results.get("status") == "error":
+        raise HTTPException(
+            status_code=400,
+            detail=results.get("message", "Simulation failed"),
+        )
+
+    simulation_results = results.get("simulation_results")
+    feedback = results.get("feedback")
+    player_feedback = results.get("player_feedback")
+
+    sim_result = save_simulation_results(
+        session,
+        league.id,
+        simulation_results,
+        simulation_config.custom_rewards,
+        feedback_str=(feedback if isinstance(feedback, str) else None),
+        feedback_json=(json.dumps(feedback) if isinstance(feedback, dict) else None),
+    )
+
+    response_data = {
+        "league_name": league.name,
+        "id": sim_result.id if sim_result else None,
+        "total_points": simulation_results["total_points"],
+        "num_simulations": simulation_results["num_simulations"],
+        # Present when the run hit the 10-minute cap: the count actually run
+        # (num_simulations) is below what was requested.
+        "requested_simulations": simulation_results.get(
+            "requested_simulations", simulation_results["num_simulations"]
+        ),
+        "capped": simulation_results.get("capped", False),
+        "timestamp": sim_result.timestamp if sim_result else None,
+        "rewards": simulation_config.custom_rewards,
+        "table": simulation_results.get("table", {}),
+        "strategies": simulation_results.get("strategies", {}),
+    }
+
+    if feedback is not None:
+        response_data["feedback"] = feedback
+    if player_feedback is not None:
+        response_data["player_feedback"] = player_feedback
+
+    return response_data
 
 
-@admin_router.get("/institution-export/{institution_id}")
-@verify_admin_role
-async def export_institution_endpoint(
-    institution_id: int,
-    current_user: dict = Depends(get_current_user),
+@admin_router.post("/get-all-league-results")
+async def get_league_results_endpoint(
+    league: LeagueIdRef,
     session: Session = Depends(get_db),
 ):
-    """Return a JSON dump of every record belonging to one institution."""
-    return export_institution_data(session, institution_id)
+    """Get all results for a specific league."""
+    return get_all_league_results(session, league.league_id)
 
 
-@admin_router.get("/get-all-institutions")
-@verify_admin_role
-async def get_institutions_endpoint(
+@admin_router.post("/publish-results")
+async def publish_results_endpoint(
+    results: LeagueResults,
     session: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
 ):
-    """Get all institutions."""
-    return get_all_institutions(session)
+    """Publish simulation results for a league."""
+    msg, data = publish_sim_results(
+        session, results.league_id, results.id, results.feedback
+    )
+    return {"message": msg, **data}
 
 
-# Agent-related endpoints
+@admin_router.post("/update-expiry-date")
+async def update_expiry_endpoint(
+    expiry: ExpiryDate,
+    session: Session = Depends(get_db),
+):
+    """Update a league's expiry date."""
+    return {"message": update_expiry_date(session, expiry.league_id, expiry.date)}
+
+
+@admin_router.post("/update-league-info")
+async def update_league_info_endpoint(
+    payload: LeagueInfoUpdate,
+    session: Session = Depends(get_db),
+):
+    """Update the markdown info block shown to teams enrolled in this league."""
+    return {
+        "message": update_league_info(
+            session, payload.league_id, payload.info_markdown
+        )
+    }
+
+
+@admin_router.post("/assign-team-to-league")
+async def assign_team_endpoint(
+    assignment: TeamLeagueAssignment,
+    session: Session = Depends(get_db),
+):
+    """Assign a team to a league."""
+    return {
+        "message": assign_team_to_league(
+            session, assignment.team_id, assignment.league_id
+        )
+    }
+
+
+@admin_router.post("/generate-signup-link")
+async def generate_signup_link_endpoint(
+    league: LeagueIdRef,
+    session: Session = Depends(get_db),
+):
+    """Generate a signup link for a league."""
+    result = generate_signup_link(session, league.league_id)
+    return {
+        "message": f"Signup link generated for league {result['league_name']}",
+        "signup_token": result["signup_token"],
+    }
+
+
+@admin_router.post("/team-password-reset")
+async def team_password_reset_endpoint(
+    team: TeamIdRef,
+    session: Session = Depends(get_db),
+):
+    """Generate a shareable one-time password-reset link for a team."""
+    result = generate_team_password_reset(session, team.team_id)
+    return {
+        "message": f"Password reset link generated for '{result['team_name']}'",
+        "reset_token": result["reset_token"],
+        "team_name": result["team_name"],
+    }
+
+
+@admin_router.post("/delete-league")
+async def delete_league_endpoint(
+    league: LeagueDelete,
+    session: Session = Depends(get_db),
+):
+    """Delete a league and move all teams to the unassigned league."""
+    return {"message": delete_league(session, league.league_id)}
+
+
+@admin_router.post("/unassign-team")
+async def unassign_team_endpoint(
+    team: TeamIdRef,
+    session: Session = Depends(get_db),
+):
+    """Move a team to the 'unassigned' league without relying on a
+    client-provided league id."""
+    return {"message": unassign_team(session, team.team_id)}
+
+
+# --- agent teams (API-key driven, for the /agent router) --------------------
+
+
 @admin_router.post("/create-agent-team")
-@verify_admin_role
 async def create_agent_team_endpoint(
     request: CreateAgentTeam,
-    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Create a new agent team."""
@@ -131,142 +296,9 @@ async def create_agent_team_endpoint(
 
 
 @admin_router.post("/create-agent-api-key")
-@verify_admin_role
 async def create_agent_api_key_endpoint(
     request: CreateAgentAPIKey,
-    current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
     """Create a new API key for an agent team."""
     return create_api_key(session, request.team_id)
-
-
-# Demo user management endpoints
-@admin_router.get("/get_all_demo_users")
-@verify_admin_role
-async def get_all_demo_users_endpoint(
-    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
-):
-    """Get the name, number of submissions and time created for all demo users."""
-    return get_all_demo_users(session)
-
-
-@admin_router.post("/delete_demo_teams_and_subs")
-@verify_admin_role
-async def delete_all_demo_teams_and_submissions(
-    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
-):
-    """Delete all demo teams and submissions."""
-    delete_all_demo_teams_and_subs(session)
-    return {"message": "All demo users deleted"}
-
-
-# Database backup endpoints
-@admin_router.post("/backup-database")
-@verify_admin_role
-async def backup_database_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """Create a pg_dump backup and upload to DigitalOcean Spaces."""
-    try:
-        result = create_backup()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Backup failed: {e}")
-    return {"message": f"Backup created: {result['filename']}", **result}
-
-
-@admin_router.get("/list-backups")
-@verify_admin_role
-async def list_backups_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """List all database backups in DigitalOcean Spaces."""
-    try:
-        return {"backups": list_backups()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list backups: {e}")
-
-
-@admin_router.post("/restore-database")
-@verify_admin_role
-async def restore_database_endpoint(
-    request: RestoreBackup,
-    current_user: dict = Depends(get_current_user),
-):
-    """Restore the database from an S3 backup."""
-    try:
-        result = restore_backup(request.s3_key)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Restore failed: {e}")
-    return {"message": f"Database restored from {result['filename']}", **result}
-
-
-# Support ticket management endpoints
-@admin_router.get("/support-tickets")
-@verify_admin_role
-async def list_support_tickets_endpoint(
-    submitter_type: str = "all",
-    status: str | None = None,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """List support tickets, optionally filtered by submitter type and status."""
-    submitter_filter = None
-    if submitter_type != "all":
-        try:
-            submitter_filter = SupportTicketSubmitterType(submitter_type)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid submitter_type: {submitter_type}"
-            )
-
-    status_filter = None
-    if status:
-        try:
-            status_filter = SupportTicketStatus(status)
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
-
-    tickets = list_tickets(
-        session,
-        submitter_type=submitter_filter,
-        status=status_filter,
-    )
-    return {"tickets": [t.model_dump(mode="json") for t in tickets]}
-
-
-@admin_router.post("/support-ticket-update")
-@verify_admin_role
-async def update_support_ticket_endpoint(
-    request: UpdateSupportTicket,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Update a support ticket's status and/or admin note."""
-    status_enum = None
-    if request.status is not None:
-        try:
-            status_enum = SupportTicketStatus(request.status)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid status: {request.status}"
-            )
-
-    updated = update_ticket(
-        session,
-        ticket_id=request.ticket_id,
-        status=status_enum,
-        admin_note=request.admin_note,
-    )
-    return {"ticket": updated.model_dump(mode="json")}
-
-
-@admin_router.delete("/support-ticket/{ticket_id}")
-@verify_admin_role
-async def delete_support_ticket_endpoint(
-    ticket_id: int,
-    current_user: dict = Depends(get_current_user),
-    session: Session = Depends(get_db),
-):
-    """Delete a support ticket and any associated S3 attachments."""
-    return delete_ticket(session, ticket_id)

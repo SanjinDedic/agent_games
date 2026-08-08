@@ -6,7 +6,6 @@ import gamesReducer from './slices/gamesSlice.js';
 import rankingsReducer from './slices/rankingsSlice';
 import settingsReducer from './slices/settingsSlice';
 import feedbackReducer from './slices/feedbackSlice';
-import supportReducer from './slices/supportSlice';
 import {
   authErrorMiddleware,
   sessionExpired,
@@ -16,10 +15,20 @@ import { registerOnUnauthorized } from './utils/authFetch';
 const saveState = (state) => {
   try {
     // immersiveMode mirrors the live browser-fullscreen state, which never
-    // survives a reload — persisting true would hide the navbar with no way back
+    // survives a reload — persisting true would hide the navbar with no way back.
+    // The site config is deploy state fetched from GET /config on every boot;
+    // persisting it would let a stale siteMode outlive a server-side change and
+    // render the wrong vocabulary until the tab was closed.
     const serializedState = JSON.stringify({
       ...state,
-      settings: { ...state.settings, immersiveMode: false },
+      settings: {
+        ...state.settings,
+        immersiveMode: false,
+        siteMode: undefined,
+        siteName: undefined,
+        siteIcon: undefined,
+        setupRequired: undefined,
+      },
     });
     sessionStorage.setItem('reduxState', serializedState); // Use sessionStorage instead of localStorage
   } catch (e) {
@@ -48,7 +57,6 @@ const rootReducer = combineReducers({
   rankings: rankingsReducer,
   settings: settingsReducer,
   feedback: feedbackReducer,
-  support: supportReducer,
 });
 
 // The persisted blob may have been written by a different build of the app

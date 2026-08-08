@@ -19,7 +19,6 @@ dependencies = [
     "requests>=2.33.0",
     "sqlalchemy>=2.0.48",
     "sqlmodel>=0.0.37",
-    "stripe>=12.0.0",
     # zoneinfo tz database — the Alpine base image has no system tzdata
     "tzdata>=2025.2",
     "uvicorn[standard]>=0.42.0",

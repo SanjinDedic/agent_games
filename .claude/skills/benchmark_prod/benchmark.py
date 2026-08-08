@@ -7,8 +7,8 @@ Runs one suite per environment:
                  submit-agent is the interesting one: AST check in the API, then a
                  validation task on a Celery worker (enqueue -> execute -> poll).
   auth phase   - admin login + institution login (bcrypt = a clean single-core CPU probe)
-  institution  - 3 institution-token actions: get-all-teams (read), league-create
-                 (write), team-progress (aggregate read across teams/tutorials)
+  institution  - 2 institution-token actions: get-all-teams (read), league-create
+                 (write)
   simulation   - run-simulation over greedy_pig_demo with the agents the demo phase
                  just submitted. Admin token, because the demo league belongs to the
                  Demo Institution and only admin bypasses the ownership check.
@@ -269,9 +269,6 @@ def run_suite(client: Client, admin_pw: str, inst_pw: str, num_sims: int, timing
     )
     record("create league", ms)
     bench_league_id = created.get("league_id")
-
-    ms, _ = client.call("GET", "/institution/team-progress", token=inst_token)
-    record("team progress", ms)
 
     # --- simulation: the CPU question, answered ----------------------------
     demo_league_id = league_id

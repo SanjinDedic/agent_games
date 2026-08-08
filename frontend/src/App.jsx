@@ -4,50 +4,31 @@ import AgentLogin from './AgentGames/User/AgentLogin';
 import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
 import TeamHome from './AgentGames/User/TeamHome';
-import Tutorial from './AgentGames/User/Tutorial';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
-import Institutions from './AgentGames/Institutions';
-import Teachers from './AgentGames/Teachers';
-import InstitutionSignup from './AgentGames/InstitutionSignup';
-import InstitutionInvoiceSignup from './AgentGames/InstitutionInvoiceSignup';
-import Institution from "./AgentGames/Institution/Institution";
-import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
-import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
-import ClassroomWorkspace from "./AgentGames/Institution/Classroom/ClassroomWorkspace";
-import StudentDetail from "./AgentGames/Institution/Classroom/StudentDetail";
+import AdminLogin from "./AgentGames/Admin/AdminLogin";
+import AdminTeams from "./AgentGames/Admin/AdminTeams";
+import AdminHome from "./AgentGames/Admin/AdminHome";
+import ClassroomWorkspace from "./AgentGames/Admin/Classroom/ClassroomWorkspace";
+import AIProviderKeys from "./AgentGames/Admin/AIProviderKeys";
+import ServiceStatus from "./AgentGames/Admin/ServiceStatus";
 import Leaderboards from "./AgentGames/Leaderboards";
-import Admin from "./AgentGames/Admin/Admin";
-import AdminLeague from "./AgentGames/Admin/AdminLeague";
-import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
-import AdminBackup from "./AgentGames/Admin/AdminBackup";
-import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
-import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
-import AdminTutorials from "./AgentGames/Admin/AdminTutorials";
-import AdminLessons from "./AgentGames/Admin/AdminLessons";
-import LessonModalProvider from "./AgentGames/Shared/Lesson/LessonModalProvider";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./utils/toastDefaults";
-import DockerStatus from "./AgentGames/Admin/DockerStatus";
-import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
-// import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
 import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
-import SupportButton from "./AgentGames/Support/SupportButton";
-import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
-import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
+import AuthProtection from "./AgentGames/Shared/Common/AuthProtection";
 
 function App() {
   return (
     <BrowserRouter>
       <div className="App">
-        <LessonModalProvider>
         <AgentGamesNavbar />
         <Routes>
           <Route path="/" element={<AgentHome />} />
@@ -76,36 +57,7 @@ function App() {
               </AuthProtection>
             }
           />
-          <Route
-            path="Tutorial"
-            element={
-              <AuthProtection requiredRole="student" redirectTo="/AgentLogin">
-                <Tutorial />
-              </AuthProtection>
-            }
-          />
-          {/* Institutions/teachers/admins trying tutorials as a student would
-              see them — nothing run here is saved */}
-          <Route
-            path="TutorialPreview"
-            element={
-              <AuthProtection
-                requiredRole={["institution", "admin"]}
-                redirectTo="/"
-              >
-                <Tutorial preview />
-              </AuthProtection>
-            }
-          />
           <Route path="Rankings" element={<AgentRankings />} />
-          <Route path="Demo" element={<Demo />} />
-          <Route path="Institutions" element={<Institutions />} />
-          <Route path="Teachers" element={<Teachers />} />
-          <Route path="InstitutionSignup" element={<InstitutionSignup />} />
-          <Route
-            path="InstitutionInvoiceSignup"
-            element={<InstitutionInvoiceSignup />}
-          />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="About" element={<About />} />
           {/* Per-classroom/league page: log in or sign up, land in the league.
@@ -115,138 +67,56 @@ function App() {
             path="/TeamSignup/:leagueToken"
             element={<ClassroomJoin defaultTab="signup" />}
           />
-          {/* One-time password-reset link shared by the institution */}
+          {/* One-time password-reset link shared by the admin */}
           <Route path="/reset/:resetToken" element={<TeamPasswordReset />} />
-          {/* New Route for Published Results */}
           <Route path="/results/:publishLink" element={<PublishedResults />} />
-          {/* Admin Routes */}
-          <Route path="Admin" element={<Admin />} />
+
+          {/* Admin routes. /Login serves both the login form and, on an
+              unclaimed deployment, the first-run setup form. */}
+          <Route path="Login" element={<AdminLogin />} />
           <Route
-            path="AdminLeague"
+            path="Home"
             element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminLeague />
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
+                <AdminHome />
               </AuthProtection>
             }
           />
           <Route
-            path="AdminLeagueSimulation"
+            path="Teams"
             element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminLeagueSimulation />
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
+                <AdminTeams />
               </AuthProtection>
             }
           />
-          <Route
-            path="AdminInstitutions"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminInstitutions />
-              </AuthProtection>
-            }
-          />
-          {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
-          <Route
-            path="AdminBackup"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminBackup />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminDockerStatus"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <DockerStatus />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminAPIKeys"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminAPIKeys />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminUserSupport"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminUserSupport />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminTutorials"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminTutorials />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminLessons"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminLessons />
-              </AuthProtection>
-            }
-          />
-          {/* Institution Routes */}
-          <Route path="Institution" element={<Institution />} />
-          <Route path="Teacher" element={<Institution variant="teacher" />} />
-          <Route
-            path="Classroom/:leagueId/student/:teamId"
-            element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <StudentDetail />
-              </AuthProtection>
-            }
-          />
+          {/* Path kept as /Classroom in both site modes: routes are canonical,
+              only user-visible copy switches vocabulary. */}
           <Route
             path="Classroom/:leagueId/:tab?"
             element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
                 <ClassroomWorkspace />
               </AuthProtection>
             }
           />
           <Route
-            path="InstitutionTeam"
+            path="ServiceStatus"
             element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionTeam />
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
+                <ServiceStatus />
               </AuthProtection>
             }
           />
           <Route
-            path="InstitutionHome"
+            path="APIKeys"
             element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionHome />
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
+                <AIProviderKeys />
               </AuthProtection>
             }
           />
-          {/* Legacy routes from the pre-workspace layout redirect into the
-              classroom workspace (or home when no classroom is implied). */}
-          <Route
-            path="InstitutionLeagueSubmissions/:leagueId"
-            element={<LegacySubmissionsRedirect />}
-          />
-          <Route
-            path="InstitutionProgress"
-            element={<Navigate to="/InstitutionHome" replace />}
-          />
-          <Route
-            path="InstitutionLeague"
-            element={<Navigate to="/InstitutionHome" replace />}
-          />
-          <Route
-            path="InstitutionLeagueSimulation"
-            element={<Navigate to="/InstitutionHome" replace />}
-          />
+
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />
           <Route path="GamePreview/:gameName" element={<GamePreview />} />
@@ -265,25 +135,17 @@ function App() {
           theme="light"
         />
 
-        <SupportButton />
 
         <CreditLink />
-        </LessonModalProvider>
       </div>
     </BrowserRouter>
   );
-}
-
-function LegacySubmissionsRedirect() {
-  const { leagueId } = useParams();
-  return <Navigate to={`/Classroom/${leagueId}/submissions`} replace />;
 }
 
 function CreditLink() {
   const { pathname } = useLocation();
   const hideOn = [
     /^\/AgentSubmission\b/,
-    /^\/Tutorial\b/,
     /^\/Classroom\//,
   ];
   if (hideOn.some((re) => re.test(pathname))) return null;

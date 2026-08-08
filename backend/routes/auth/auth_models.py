@@ -1,42 +1,33 @@
 from pydantic import BaseModel, field_validator
 
 
-class AdminLogin(BaseModel):
-    """Admin login request model"""
-
-    username: str
-    password: str
-
-    @field_validator("*")  # Add this validator
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError(f"{v} must not be empty or just whitespace.")
-        return v
+def _not_blank(v):
+    if isinstance(v, str) and not v.strip():
+        raise ValueError("must not be empty or just whitespace")
+    return v
 
 
-class TeamLogin(BaseModel):
-    """Team login request model"""
+class Login(BaseModel):
+    """One login form for every password-based account: the admin and teams."""
 
     name: str
     password: str
 
-    @field_validator("*")
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError(f"{v} must not be empty or just whitespace.")
-        return v
+    _check_not_empty = field_validator("*")(_not_blank)
 
 
-class InstitutionLogin(BaseModel):
-    """Institution login request model"""
+class AdminSetup(BaseModel):
+    """First-run setup: the name and password the admin will log in with."""
 
     name: str
     password: str
 
-    @field_validator("*")
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError(f"{v} must not be empty or just whitespace.")
+    _check_not_empty = field_validator("*")(_not_blank)
+
+    @field_validator("password")
+    def check_length(cls, v):
+        if len(v) < 8:
+            raise ValueError("password must be at least 8 characters")
         return v
 
 
@@ -45,28 +36,13 @@ class AgentLogin(BaseModel):
 
     api_key: str
 
-    @field_validator("api_key")
-    def check_not_empty(cls, v):
-        if isinstance(v, str) and not v.strip():
-            raise ValueError("API key must not be empty")
-        return v
+    _check_not_empty = field_validator("api_key")(_not_blank)
 
 
 class TokenResponse(BaseModel):
-    """Access token issued on a successful login."""
+    """Access token issued on a successful login, with the role it carries so
+    the frontend can route without decoding the JWT first."""
 
     access_token: str
     token_type: str = "bearer"
-
-
-class CompetitionInfo(BaseModel):
-    """One competition on the public login picker."""
-
-    name: str
-    icon: str | None = None
-
-
-class CompetitionsResponse(BaseModel):
-    """Public list of competitions for the login picker."""
-
-    competitions: list[CompetitionInfo]
+    role: str

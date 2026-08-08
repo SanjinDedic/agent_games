@@ -1,25 +1,24 @@
 import { useSelector } from "react-redux";
-import { selectIsTeacher } from "../../slices/authSlice";
+import { selectIsClassroom } from "../../slices/settingsSlice";
 
-// Teacher accounts (institution JWTs with is_teacher, and their students'
-// tokens) see classroom/student wording; everyone else — normal institutions,
-// admins, logged-out visitors — sees the default league/team wording. Only
-// user-visible copy goes through these terms: API paths, JSON keys, and Redux
-// identifiers always keep the league/team names.
-const DEFAULT_TERMS = {
+// One deployment serves one audience, set by SITE_MODE and served over
+// GET /config: a classroom (teacher/classroom/student wording) or a competition
+// (organizer/league/team wording). Only user-visible copy goes through these
+// terms — API paths, JSON keys and Redux identifiers always keep the
+// league/team names.
+const COMPETITION_TERMS = {
   league: "league", League: "League", leagues: "leagues", Leagues: "Leagues",
   team: "team", Team: "Team", teams: "teams", Teams: "Teams",
-  tutorial: "tutorial", Tutorial: "Tutorial", tutorials: "tutorials", Tutorials: "Tutorials",
 };
 
-const TEACHER_TERMS = {
+const CLASSROOM_TERMS = {
   league: "classroom", League: "Classroom", leagues: "classrooms", Leagues: "Classrooms",
   team: "student", Team: "Student", teams: "students", Teams: "Students",
-  tutorial: "short course", Tutorial: "Short Course", tutorials: "short courses", Tutorials: "Short Courses",
 };
 
-export const getTerms = (isTeacher) => (isTeacher ? TEACHER_TERMS : DEFAULT_TERMS);
+const getTerms = (isClassroom) =>
+  isClassroom ? CLASSROOM_TERMS : COMPETITION_TERMS;
 
 export function useTerms() {
-  return getTerms(useSelector(selectIsTeacher));
+  return getTerms(useSelector(selectIsClassroom));
 }

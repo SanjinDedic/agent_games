@@ -2,78 +2,23 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from backend import config
+from backend.errors import EXCEPTION_STATUS_MAP
 from backend.models_api import ResponseModel
-from backend.routes.agent.agent_db import SimulationLimitExceededError
-from backend.routes.auth.auth_db import InvalidCredentialsError
-from backend.routes.admin.admin_db import (
-    AgentTeamError,
-    InstitutionExistsError,
-    InstitutionNotFoundError,
-)
-from backend.routes.support.support_db import SupportError
-from backend.routes.ai.clients import (
-    AIRequestTimeoutError,
-    LLMResponseError,
-    NoApiKeyError,
-    UnknownProviderError,
-)
-from backend.routes.ai.plagiarism_service import (
-    NoSubmissionsError,
-    PayloadTooLargeError,
-)
-from backend.routes.institution.institution_db import (
-    InstitutionAccessError,
-    LeagueExistsError,
-    LeagueNotFoundError,
-    ProtectedLeagueError,
-    SchoolsConfigError,
-    SimulationResultNotFoundError,
-    TeamExistsError,
-    TeamNotFoundError,
-)
-from backend.team_capacity import TeamLimitExceededError
-from backend.routes.payments.payments_db import (
-    InstitutionExistsError as PaidInstitutionExistsError,
-    PaidSignupError,
-)
-from backend.routes.lesson.lesson_db import (
-    LessonExistsError,
-    LessonNotFoundError,
-)
-from backend.routes.tutorial.tutorial_db import (
-    ExerciseNotFoundError,
-    ExerciseReorderError,
-    TutorialExistsError,
-    TutorialNotFoundError,
-)
-from backend.routes.user.user_db import (
-    DemoLeagueError,
-    LeagueExpiredError,
-    ResultNotFoundError,
-    SubmissionLimitExceededError,
-    LeagueNotFoundError as UserLeagueNotFoundError,
-    TeamExistsError as UserTeamExistsError,
-    TeamNotFoundError as UserTeamNotFoundError,
-)
-from backend.routes.admin.admin_router import admin_router
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
+from backend.routes.auth.auth_db import admin_exists
 from backend.routes.auth.auth_router import auth_router
-from backend.routes.demo.demo_router import demo_router
 from backend.routes.diagnostics.diagnostics_router import diagnostics_router
-from backend.routes.institution.institution_router import institution_router
-from backend.routes.payments.payments_router import payments_router
-from backend.routes.support.support_router import support_router
-from backend.routes.lesson.lesson_router import lesson_router
-from backend.routes.tutorial.tutorial_router import tutorial_router
+from backend.routes.admin.admin_router import admin_router
 from backend.routes.user.user_router import user_router
 from sqlmodel import Session, text
 
-from backend.database.db_session import get_db_engine
+from backend.database.db_session import get_db, get_db_engine
 
 logger = logging.getLogger(__name__)
 
@@ -95,18 +40,15 @@ def check_database_status():
     try:
         engine = get_db_engine()
         with Session(engine) as session:
-            # Check if admin table exists and has data
             admin_count = session.exec(text("SELECT COUNT(*) FROM admin")).first()
         if admin_count[0] == 0:
             logger.warning("=" * 60)
-            logger.warning("🚨 DATABASE APPEARS EMPTY")
-            logger.warning("No admin users found.")
-            logger.warning("Run manually: python -m backend.database.init_db")
+            logger.warning("📋 DEPLOYMENT NOT YET CLAIMED")
+            logger.warning("No admin account — visit the frontend to set one up.")
             logger.warning("=" * 60)
         else:
             logger.warning("=" * 60)
             logger.warning("✅ DATABASE PROPERLY INITIALIZED")
-            logger.warning(f"Found {admin_count[0]} admin user(s) in database.")
             logger.warning("=" * 60)
     except Exception as e:
         logger.warning("=" * 60)
@@ -140,205 +82,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.exception_handler(InvalidCredentialsError)
-async def invalid_credentials_handler(request: Request, exc: InvalidCredentialsError):
-    """Map failed authentication to HTTP 401 with a consistent {"detail": ...} body."""
-    return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-
-# Domain exceptions -> HTTP status codes, applied wherever they propagate uncaught.
-# Each maps to a consistent {"detail": ...} body (FastAPI's own convention).
-@app.exception_handler(InstitutionNotFoundError)
-async def institution_not_found_handler(request: Request, exc: InstitutionNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(InstitutionExistsError)
-async def institution_exists_handler(request: Request, exc: InstitutionExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(AgentTeamError)
-async def agent_team_error_handler(request: Request, exc: AgentTeamError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(SupportError)
-async def support_error_handler(request: Request, exc: SupportError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-# AI / plagiarism + league-access domain exceptions -> HTTP status codes.
-@app.exception_handler(LeagueNotFoundError)
-async def league_not_found_handler(request: Request, exc: LeagueNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(InstitutionAccessError)
-async def institution_access_handler(request: Request, exc: InstitutionAccessError):
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(SimulationResultNotFoundError)
-async def simulation_result_not_found_handler(
-    request: Request, exc: SimulationResultNotFoundError
-):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(LeagueExistsError)
-async def league_exists_handler(request: Request, exc: LeagueExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(ProtectedLeagueError)
-async def protected_league_handler(request: Request, exc: ProtectedLeagueError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(SchoolsConfigError)
-async def schools_config_handler(request: Request, exc: SchoolsConfigError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-# TeamNotFoundError/TeamExistsError subclass TeamError; register the concrete
-# subclasses so each maps to its own code (missing -> 404, duplicate -> 409).
-@app.exception_handler(TeamNotFoundError)
-async def team_not_found_handler(request: Request, exc: TeamNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(TeamExistsError)
-async def team_exists_handler(request: Request, exc: TeamExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(UnknownProviderError)
-async def unknown_provider_handler(request: Request, exc: UnknownProviderError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(NoApiKeyError)
-async def no_api_key_handler(request: Request, exc: NoApiKeyError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(NoSubmissionsError)
-async def no_submissions_handler(request: Request, exc: NoSubmissionsError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(PayloadTooLargeError)
-async def payload_too_large_handler(request: Request, exc: PayloadTooLargeError):
-    return JSONResponse(status_code=413, content={"detail": str(exc)})
-
-
-@app.exception_handler(LLMResponseError)
-async def llm_response_error_handler(request: Request, exc: LLMResponseError):
-    return JSONResponse(status_code=502, content={"detail": str(exc)})
-
-
-@app.exception_handler(AIRequestTimeoutError)
-async def ai_timeout_handler(request: Request, exc: AIRequestTimeoutError):
-    return JSONResponse(status_code=504, content={"detail": str(exc)})
-
-
-@app.exception_handler(SimulationLimitExceededError)
-async def simulation_limit_handler(request: Request, exc: SimulationLimitExceededError):
-    return JSONResponse(status_code=429, content={"detail": str(exc)})
-
-
-# User-domain exceptions (user_db defines its own league/team lookup errors,
-# distinct classes from institution_db's; each maps to the same code).
-@app.exception_handler(UserLeagueNotFoundError)
-async def user_league_not_found_handler(request: Request, exc: UserLeagueNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(UserTeamNotFoundError)
-async def user_team_not_found_handler(request: Request, exc: UserTeamNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(UserTeamExistsError)
-async def user_team_exists_handler(request: Request, exc: UserTeamExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(ResultNotFoundError)
-async def result_not_found_handler(request: Request, exc: ResultNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(LeagueExpiredError)
-async def league_expired_handler(request: Request, exc: LeagueExpiredError):
-    return JSONResponse(status_code=410, content={"detail": str(exc)})
-
-
-@app.exception_handler(DemoLeagueError)
-async def demo_league_handler(request: Request, exc: DemoLeagueError):
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(SubmissionLimitExceededError)
-async def submission_limit_handler(request: Request, exc: SubmissionLimitExceededError):
-    return JSONResponse(status_code=429, content={"detail": str(exc)})
-
-
-# Tutorial-domain exceptions (exercise rate limiting reuses
-# SubmissionLimitExceededError above).
-@app.exception_handler(TutorialNotFoundError)
-async def tutorial_not_found_handler(request: Request, exc: TutorialNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(ExerciseNotFoundError)
-async def exercise_not_found_handler(request: Request, exc: ExerciseNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(TutorialExistsError)
-async def tutorial_exists_handler(request: Request, exc: TutorialExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(ExerciseReorderError)
-async def exercise_reorder_handler(request: Request, exc: ExerciseReorderError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-# Lesson-domain exceptions (snippet rate limiting reuses
-# SubmissionLimitExceededError above).
-@app.exception_handler(LessonNotFoundError)
-async def lesson_not_found_handler(request: Request, exc: LessonNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(LessonExistsError)
-async def lesson_exists_handler(request: Request, exc: LessonExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-# Raised from both team-creation paths (institution team-create and
-# signup-link joins) when the plan's team/student cap is reached.
-@app.exception_handler(TeamLimitExceededError)
-async def team_limit_exceeded_handler(request: Request, exc: TeamLimitExceededError):
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-# Payments-domain exceptions: signup validation -> 400; the duplicate-name
-# subclass -> 409 (matches the other "exists" mappings). Starlette resolves
-# handlers by MRO, so the subclass handler wins over the base.
-@app.exception_handler(PaidSignupError)
-async def paid_signup_error_handler(request: Request, exc: PaidSignupError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(PaidInstitutionExistsError)
-async def paid_institution_exists_handler(
-    request: Request, exc: PaidInstitutionExistsError
-):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
+# Domain exceptions -> HTTP status codes, applied wherever they propagate
+# uncaught. Every mapping lives in backend/errors.py; this loop is the only
+# place handlers are registered, and each returns FastAPI's own
+# {"detail": ...} body shape.
+#
+# The factory closes over `status` per iteration — a handler that read `status`
+# from the enclosing scope would see whatever the last iteration left behind
+# and give every exception the same code.
+def _make_domain_handler(status: int):
+    async def handler(request: Request, exc: Exception):
+        return JSONResponse(status_code=status, content={"detail": str(exc)})
+
+    return handler
+
+
+for _exc_class, _status in EXCEPTION_STATUS_MAP.items():
+    app.add_exception_handler(_exc_class, _make_domain_handler(_status))
 
 
 app.add_middleware(
@@ -351,17 +111,11 @@ app.add_middleware(
 
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-app.include_router(admin_router, prefix="/admin", tags=["Administration"])
-app.include_router(institution_router, prefix="/institution", tags=["Institution"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(user_router, prefix="/user", tags=["User Operations"])
 app.include_router(agent_router, prefix="/agent", tags=["Agent Operations"])
-app.include_router(demo_router, prefix="/demo", tags=["Demo Operations"])
 app.include_router(ai_router, prefix="/ai", tags=["AI Configuration"])
 app.include_router(diagnostics_router, prefix="/diagnostics", tags=["Diagnostics"])
-app.include_router(support_router, prefix="/support", tags=["Support"])
-app.include_router(payments_router, prefix="/payments", tags=["Payments"])
-app.include_router(tutorial_router, prefix="/tutorial", tags=["Tutorial"])
-app.include_router(lesson_router, prefix="/lesson", tags=["Lesson"])
 
 
 @app.get("/", response_model=ResponseModel)
@@ -374,3 +128,20 @@ async def root():
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {"status": "healthy"}
+
+
+@app.get("/config")
+async def site_config(session: Session = Depends(get_db)):
+    """Deploy-level settings the frontend needs before anyone logs in.
+
+    Unauthenticated and deliberately app-level rather than a router: this is
+    metadata about the deployment, not a domain resource. `site_mode` drives the
+    classroom-vs-competition wording the frontend renders, and `setup_required`
+    tells it whether to offer the first-run setup form or the login form.
+    """
+    return {
+        "site_mode": config.SITE_MODE,
+        "site_name": config.SITE_NAME,
+        "site_icon": config.SITE_ICON,
+        "setup_required": not admin_exists(session),
+    }

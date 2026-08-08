@@ -194,7 +194,7 @@ class CustomPlayer(Player):
 def test_get_league_submissions_success(
     client,
     db_session: Session,
-    auth_headers,
+    admin_headers,
     setup_test_league: League,
     setup_test_team: Team,
 ):
@@ -223,7 +223,7 @@ def test_get_league_submissions_success(
     # Get league submissions (admin bypasses ownership)
     response = client.get(
         f"/user/get-league-submissions/{setup_test_league.id}",
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -233,16 +233,18 @@ def test_get_league_submissions_success(
     )  # Should get latest submission
 
 
-def test_get_league_submissions_exceptions(client, student_token: str, auth_headers):
+def test_get_league_submissions_exceptions(client, student_token: str, admin_headers):
     """Test error cases for getting league submissions"""
 
-    # Test case 1: Admin gets empty dict for non-existent league
+    # A non-existent league is a 404. It used to return an empty dict for admin
+    # tokens, which is indistinguishable from a league that simply has no
+    # submissions yet.
     response = client.get(
         "/user/get-league-submissions/99999",
-        headers=auth_headers,
+        headers=admin_headers,
     )
-    assert response.status_code == 200
-    assert response.json() == {}
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: Unauthorized access (no token)
     response = client.get("/user/get-league-submissions/1")
@@ -334,7 +336,7 @@ def test_get_team_submission_exceptions(client):
         headers={"Authorization": f"Bearer {non_existent_token}"},
     )
     assert response.status_code == 400
-    assert "team token" in response.json()["detail"]
+    assert "Team ID not found" in response.json()["detail"]
 
 
 def _make_hints_available(db_session: Session, team_id: int) -> None:

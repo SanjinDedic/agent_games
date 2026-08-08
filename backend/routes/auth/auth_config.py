@@ -22,10 +22,7 @@ if not SECRET_KEY:
 # Token expiry durations
 TEAM_TOKEN_EXPIRY_MINUTES = 180
 ADMIN_TOKEN_EXPIRY_MINUTES = 360
-INSTITUTION_TOKEN_EXPIRY_MINUTES = 360
 AGENT_TOKEN_EXPIRY_DAYS = 30
-DEMO_TOKEN_EXPIRY_MINUTES = 90
-SERVICE_TOKEN_EXPIRY_DAYS = 365
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
@@ -38,10 +35,3 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
-
-def create_service_token() -> str:
-    """Create a long-lived JWT token for service-to-service communication"""
-    service_data = {"sub": "service", "role": "service"}
-    expires_delta = timedelta(days=SERVICE_TOKEN_EXPIRY_DAYS)
-    return create_access_token(service_data, expires_delta)

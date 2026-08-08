@@ -9,10 +9,9 @@ import { useTerms } from '../terminology';
 
 /**
  * Hook for handling league-related API calls
- * @param {string} userRole - The role of the current user ('admin' or 'institution')
  * @returns {Object} API methods and loading state
  */
-export const useLeagueAPI = (userRole) => {
+export const useLeagueAPI = () => {
   const dispatch = useDispatch();
   const T = useTerms();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -117,7 +116,7 @@ export const useLeagueAPI = (userRole) => {
     if (!leagueId) return { success: false, error: 'league_id required' };
     try {
       const response = await authFetch(
-        `${apiUrl}/institution/get-all-league-results`,
+        `${apiUrl}/admin/get-all-league-results`,
         {
           method: 'POST',
           headers: {
@@ -155,8 +154,7 @@ export const useLeagueAPI = (userRole) => {
     const toastId = toast.loading("Running simulation...");
     
     try {
-      // Both admin and institution use the same endpoint
-      const response = await authFetch(`${apiUrl}/institution/run-simulation`, {
+      const response = await authFetch(`${apiUrl}/admin/run-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,8 +203,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      // Both admin and institution use the same endpoint
-      const response = await authFetch(`${apiUrl}/institution/league-create`, {
+      const response = await authFetch(`${apiUrl}/admin/league-create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +240,7 @@ export const useLeagueAPI = (userRole) => {
       //set publishData.feedback to none
       publishData.feedback = undefined
 
-      const response = await authFetch(`${apiUrl}/institution/publish-results`, {
+      const response = await authFetch(`${apiUrl}/admin/publish-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -280,7 +277,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/institution/update-expiry-date`, {
+      const response = await authFetch(`${apiUrl}/admin/update-expiry-date`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,7 +313,7 @@ export const useLeagueAPI = (userRole) => {
   const updateLeagueInfo = useCallback(async (leagueId, infoMarkdown) => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/institution/update-league-info`, {
+      const response = await authFetch(`${apiUrl}/admin/update-league-info`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -350,71 +347,13 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken, dispatch, T]);
 
   /**
-   * Get the ids of the tutorials attached to a league
-   */
-  const getLeagueTutorials = useCallback(async (leagueId) => {
-    try {
-      const response = await authFetch(`${apiUrl}/institution/get-league-tutorials`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ league_id: leagueId }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && Array.isArray(data.tutorial_ids)) {
-        return { success: true, tutorialIds: data.tutorial_ids };
-      }
-      return { success: false, error: data.detail || `Failed to load ${T.league} ${T.tutorials}` };
-    } catch (error) {
-      console.error('Error loading league tutorials:', error);
-      return { success: false, error: 'Network error' };
-    }
-  }, [apiUrl, accessToken, T]);
-
-  /**
-   * Replace the set of tutorials attached to a league
-   */
-  const updateLeagueTutorials = useCallback(async (leagueId, tutorialIds) => {
-    setIsLoading(true);
-    try {
-      const response = await authFetch(`${apiUrl}/institution/update-league-tutorials`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ league_id: leagueId, tutorial_ids: tutorialIds }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(data.message);
-        return { success: true, tutorialIds: data.tutorial_ids };
-      }
-      toast.error(data.detail || `Failed to update ${T.league} ${T.tutorials}`);
-      return { success: false, error: data.detail };
-    } catch (error) {
-      console.error('Error updating league tutorials:', error);
-      toast.error(`Network error while updating ${T.league} ${T.tutorials}`);
-      return { success: false, error: 'Network error' };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiUrl, accessToken, T]);
-
-  /**
    * Assign team to league
    */
   const assignTeamToLeague = useCallback(async (teamId, leagueId) => {
     setIsLoading(true);
     
     try {
-      const response = await authFetch(`${apiUrl}/institution/assign-team-to-league`, {
+      const response = await authFetch(`${apiUrl}/admin/assign-team-to-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -445,12 +384,12 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken, T]);
 
   /**
-   * Unassign team (move to institution's 'unassigned' league)
+   * Unassign team (move to the 'unassigned' league)
    */
   const unassignTeam = useCallback(async (teamId) => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/institution/unassign-team`, {
+      const response = await authFetch(`${apiUrl}/admin/unassign-team`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -484,7 +423,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/institution/delete-league`, {
+      const response = await authFetch(`${apiUrl}/admin/delete-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -556,8 +495,6 @@ export const useLeagueAPI = (userRole) => {
     publishResults,
     updateExpiryDate,
     updateLeagueInfo,
-    getLeagueTutorials,
-    updateLeagueTutorials,
     assignTeamToLeague,
     unassignTeam,
     deleteLeague,

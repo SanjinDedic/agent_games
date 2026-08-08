@@ -4,13 +4,19 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 import bcrypt as _bcrypt
-from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text, text
-from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, Text
+from sqlmodel import Field, Relationship, SQLModel
 
 from backend.time_utils import utc_now
 
 # Test runs set BCRYPT_ROUNDS=4 so runtime hashing costs ~1ms instead of ~170ms.
 _BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+
+# The holding pen every team lands in when it has no league: created once by
+# init_db, guaranteed unique by League's unique name, and refused by
+# delete_league. Keyed by name because the name is already how every caller
+# finds it.
+UNASSIGNED_LEAGUE_NAME = "unassigned"
 
 
 def get_password_hash(password):
@@ -35,115 +41,17 @@ class TeamType(str, PyEnum):
 class LeagueType(str, PyEnum):
     STUDENT = "student"
     AGENT = "agent"
-    INSTITUTION = "institution"  # Added new type
-
-
-class Institution(SQLModel, table=True):
-    """Operational identity of an institution: who logs in and what they own.
-
-    All subscription/billing/Stripe state lives in the 1:1 InstitutionSubscription
-    record (see `subscription`), keeping this table free of payment concerns.
-    """
-
-    id: int = Field(primary_key=True)
-    name: str = Field(unique=True, index=True)
-    contact_person: str
-    contact_email: str
-    address: Optional[str] = None
-    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    password_hash: str
-    # Individual-teacher account: same role/permissions as any institution, but
-    # the frontend swaps league->classroom / team->student wording (claim is
-    # stamped into institution and student JWTs at login).
-    is_teacher: bool = Field(
-        default=False,
-        sa_column=Column(Boolean(), nullable=False, server_default=text("false")),
-    )
-    # Emoji or image URL shown next to the name on the public competition
-    # picker (student login page). Only meaningful for non-teacher accounts.
-    icon: Optional[str] = Field(default=None, sa_column=Column(Text(), nullable=True))
-    teams: List["Team"] = Relationship(back_populates="institution")
-    leagues: List["League"] = Relationship(back_populates="institution")
-    subscription: Optional["InstitutionSubscription"] = Relationship(
-        back_populates="institution",
-        sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"},
-    )
-
-    def set_password(self, password: str):
-        self.password_hash = get_password_hash(password)
-
-    def verify_password(self, password: str):
-        return verify_password(password, self.password_hash)
-
-
-class InstitutionSubscription(SQLModel, table=True):
-    """All subscription, billing, and Stripe-linkage state for one Institution.
-
-    One row per institution (1:1). It owns:
-      - the access window (subscription_active / subscription_expiry) read by the
-        login gate,
-      - how access was obtained and billed (payment_method / tier / auto_renew),
-      - the Stripe object IDs webhooks use to tie renewals and cancellations back
-        to the institution (the checkout session ID is unique: one paid session
-        creates exactly one institution — a replay/reuse guard),
-      - and, for the invoiced plan only, the business billing contact (who pays
-        the invoice), kept distinct from the institution's teaching/login contact
-        which lives on Institution.
-    """
-
-    __tablename__ = "institution_subscription"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    institution_id: int = Field(
-        foreign_key="institution.id", unique=True, index=True
-    )
-    # "card" (Stripe Checkout), "invoice" (Stripe send_invoice), or "admin"
-    # (manually granted, no Stripe).
-    payment_method: str = Field(default="admin")
-    tier: Optional[str] = None
-    subscription_active: bool = Field(default=True)
-    subscription_expiry: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    auto_renew: bool = Field(default=False)
-    stripe_customer_id: Optional[str] = Field(default=None, index=True)
-    stripe_subscription_id: Optional[str] = Field(default=None, index=True)
-    stripe_checkout_session_id: Optional[str] = Field(
-        default=None, unique=True, index=True
-    )
-    stripe_invoice_id: Optional[str] = Field(default=None, index=True)
-    business_contact_name: Optional[str] = None
-    business_contact_email: Optional[str] = None
-    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-
-    institution: Optional["Institution"] = Relationship(back_populates="subscription")
-
-
-class League(SQLModel, table=True):
-    id: int = Field(primary_key=True, default=None)
-    name: str = Field(index=True)  # Remove unique=True from here
-    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    deleted_date: datetime | None = None
-    signup_link: str | None = None
-    teams: List["Team"] = Relationship(back_populates="league")
-    game: str
-    league_type: LeagueType = Field(default=LeagueType.STUDENT)
-    is_demo: bool = Field(default=False)
-    school_league: bool = Field(default=False)
-    schools_config: Optional[dict] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True),
-    )
-    info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
-    simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
-    # New field for institution relationship
-    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
-    institution: Optional["Institution"] = Relationship(back_populates="leagues")
-
-    # Add a table-level unique constraint for name + institution_id
-    __table_args__ = (UniqueConstraint("name", "institution_id"),)
 
 
 class Admin(SQLModel, table=True):
+    """The single account that runs this deployment.
+
+    One row, created by the first-run setup endpoint rather than seeded, so a
+    fresh clone has no default password to forget to change. Replaces the old
+    Admin/Institution pair: with one tenant there is no platform operator
+    standing above the organizer, so there is one account and one role.
+    """
+
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     password_hash: str
@@ -155,48 +63,69 @@ class Admin(SQLModel, table=True):
         return verify_password(password, self.password_hash)
 
 
+class League(SQLModel, table=True):
+    id: int = Field(primary_key=True, default=None)
+    # Globally unique now that leagues have no owning tenant. This is also what
+    # guarantees the 'unassigned' holding pen is a singleton.
+    name: str = Field(unique=True, index=True)
+    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    deleted_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    # Public lookup key for the shareable join page: unique so a duplicate token
+    # can never shadow another league, indexed because every join hits it.
+    signup_link: Optional[str] = Field(default=None, unique=True, index=True)
+    game: str
+    league_type: LeagueType = Field(default=LeagueType.STUDENT)
+    school_league: bool = Field(default=False)
+    schools_config: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
+
+    teams: List["Team"] = Relationship(
+        back_populates="league",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+    simulation_results: List["SimulationResult"] = Relationship(
+        back_populates="league",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+
+
 class Team(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    # Not globally unique: names are scoped per-institution by the composite
-    # constraints below, so different institutions can reuse a name like
-    # "Team A". A name is the team's stable identity within its institution as
-    # it moves between leagues. The index stays for name lookups (login,
-    # simulation attribution).
-    name: str = Field(index=True)
+    # Globally unique: with one tenant there is no scope to be unique within, and
+    # uniqueness is what lets login resolve a name to exactly one row instead of
+    # trying every match's password in turn.
+    name: str = Field(unique=True, index=True)
     school_name: str
-    password_hash: str | None = None  # Optional for agent teams
+    password_hash: Optional[str] = None  # Optional for agent teams
     score: int = Field(default=0)
     color: str = Field(default="rgb(171,239,177)")
-    league_id: int = Field(foreign_key="league.id")
+    league_id: int = Field(foreign_key="league.id", ondelete="CASCADE")
     team_type: TeamType = Field(default=TeamType.STUDENT)
-    is_demo: bool = Field(default=False)
-    league: League = Relationship(back_populates="teams")
-    submission_attempts: List["SubmissionMetadata"] = Relationship(back_populates="team")
-    api_key: Optional["AgentAPIKey"] = Relationship(
-        back_populates="team",
-        sa_relationship_kwargs={"uselist": False},
-    )
-    # New field for institution relationship
-    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
-    institution: Optional["Institution"] = Relationship(back_populates="teams")
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-    # One-time password-reset link: generated by the owning institution and
-    # shared with the student out-of-band, cleared when consumed. Regenerating
-    # replaces the previous token, so a mis-shared link can be invalidated.
+    # One-time password-reset link: generated by the admin and shared with the
+    # student out-of-band, cleared when consumed. Regenerating replaces the
+    # previous token, so a mis-shared link can be invalidated.
     password_reset_token: Optional[str] = Field(default=None, index=True)
     password_reset_expiry: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True))
     )
 
-    # Primary rule: a team name is unique within an institution. The
-    # (name, league_id) constraint is a secondary guard for teams whose league
-    # has no institution (institution_id NULL) — Postgres treats NULLs as
-    # distinct in a unique constraint, so the institution rule can't cover them.
-    __table_args__ = (
-        UniqueConstraint("name", "institution_id"),
-        UniqueConstraint("name", "league_id"),
+    league: League = Relationship(back_populates="teams")
+    submission_attempts: List["SubmissionMetadata"] = Relationship(
+        back_populates="team",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+    api_key: Optional["AgentAPIKey"] = Relationship(
+        back_populates="team",
+        sa_relationship_kwargs={"uselist": False, "passive_deletes": True},
     )
 
     def set_password(self, password: str):
@@ -213,19 +142,20 @@ class SubmissionMetadata(SQLModel, table=True):
     and hint availability. A linked Submission row == passed validation."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable so an ORM Team delete can null it out rather than fail; deleting
-    # a Team still goes through delete_team_children(), which removes these rows
-    team_id: Optional[int] = Field(
-        default=None, foreign_key="team.id", nullable=True, index=True
+    team_id: int = Field(foreign_key="team.id", ondelete="CASCADE", index=True)
+    # Nullable: an attempt can be recorded before the team has joined a league.
+    # The cascade still fires whenever it is set.
+    league_id: Optional[int] = Field(
+        default=None, foreign_key="league.id", ondelete="CASCADE", nullable=True
     )
-    league_id: Optional[int] = Field(default=None, foreign_key="league.id", nullable=True)
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     duration_ms: Optional[float] = Field(default=None)
     hint_included: bool = Field(default=False)
-    team: Optional[Team] = Relationship(back_populates="submission_attempts")
+
+    team: Team = Relationship(back_populates="submission_attempts")
     submission: Optional["Submission"] = Relationship(
         back_populates="meta",
-        sa_relationship_kwargs={"uselist": False},
+        sa_relationship_kwargs={"uselist": False, "passive_deletes": True},
     )
 
 
@@ -238,43 +168,52 @@ class Submission(SQLModel, table=True):
     # Rank against the game's validation bots (1 = best, competition ranking),
     # from the validation run's total_points. Not a league standing.
     ranking: Optional[int] = Field(default=None)
-    metadata_id: int = Field(foreign_key="submissionmetadata.id", unique=True, index=True)
+    metadata_id: int = Field(
+        foreign_key="submissionmetadata.id", ondelete="CASCADE", unique=True, index=True
+    )
     # `metadata` is reserved on SQLAlchemy declarative classes
     meta: SubmissionMetadata = Relationship(back_populates="submission")
 
-# In backend/database/db_models.py
 
 class SimulationResult(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    league_id: int = Field(foreign_key="league.id")
-    league: League = Relationship(back_populates="simulation_results")
+    league_id: int = Field(foreign_key="league.id", ondelete="CASCADE")
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    simulation_results: List["SimulationResultItem"] = Relationship(
-        back_populates="simulation_result"
-    )
     published: bool = Field(default=False)
     num_simulations: int = Field(default=0)
     custom_rewards: str = Field(default="[10, 0, 0, 0, 0, 0, 0]")
-    feedback_str: str | None = Field(default=None, sa_column=Column(Text()))
-    feedback_json: str | None = Field(default=None, sa_column=Column(Text()))
-    publish_link: str | None = Field(default=None)  # New field for the publish link
+    feedback_str: Optional[str] = Field(default=None, sa_column=Column(Text()))
+    feedback_json: Optional[str] = Field(default=None, sa_column=Column(Text()))
+    # Public lookup key for the shareable results page — unique and indexed for
+    # the same reason as League.signup_link.
+    publish_link: Optional[str] = Field(default=None, unique=True, index=True)
+
+    league: League = Relationship(back_populates="simulation_results")
+    simulation_results: List["SimulationResultItem"] = Relationship(
+        back_populates="simulation_result",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
 
 
 class SimulationResultItem(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    simulation_result_id: int = Field(foreign_key="simulationresult.id")
+    simulation_result_id: int = Field(
+        foreign_key="simulationresult.id", ondelete="CASCADE"
+    )
+    # Indexed: this is the join column for every standings read.
+    team_id: int = Field(foreign_key="team.id", ondelete="CASCADE", index=True)
+    score: float = Field(default=0)
+    custom_value1: Optional[float] = None
+    custom_value2: Optional[float] = None
+    custom_value3: Optional[float] = None
+    custom_value1_name: Optional[str] = None
+    custom_value2_name: Optional[str] = None
+    custom_value3_name: Optional[str] = None
+
     simulation_result: SimulationResult = Relationship(
         back_populates="simulation_results"
     )
-    team_id: int = Field(foreign_key="team.id")
     team: Team = Relationship()
-    score: float = Field(default=0)
-    custom_value1: float | None = None
-    custom_value2: float | None = None
-    custom_value3: float | None = None
-    custom_value1_name: str | None = None
-    custom_value2_name: str | None = None
-    custom_value3_name: str | None = None
 
 
 class AgentAPIKey(SQLModel, table=True):
@@ -283,14 +222,17 @@ class AgentAPIKey(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     key: str = Field(unique=True, index=True)
     team_id: int = Field(
-        foreign_key="team.id", unique=True
+        foreign_key="team.id", ondelete="CASCADE", unique=True
     )  # Ensures one API key per team
-    team: Team = Relationship(back_populates="api_key")
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-    last_used: datetime | None = None
+    last_used: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     is_active: bool = Field(default=True)
+
+    team: Team = Relationship(back_populates="api_key")
 
 
 class AIProviderKey(SQLModel, table=True):
@@ -305,286 +247,3 @@ class AIProviderKey(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-
-
-class DemoUser(SQLModel, table=True):
-    """Model for demo users with tracking information"""
-
-    id: int = Field(primary_key=True, default=None)
-    username: str = Field(index=True)  # Original username provided by user
-    email: str | None = None  # Optional email provided by user
-    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-
-
-class SupportTicketCategory(str, PyEnum):
-    BUG = "bug"
-    SUPPORT = "support"
-    FEEDBACK = "feedback"
-
-
-class SupportTicketStatus(str, PyEnum):
-    OPEN = "open"
-    IN_PROGRESS = "in_progress"
-    RESOLVED = "resolved"
-
-
-class SupportTicketSubmitterType(str, PyEnum):
-    TEAM = "team"
-    INSTITUTION = "institution"
-
-
-class SupportTicket(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    category: SupportTicketCategory
-    subject: str
-    description: str = Field(sa_column=Column(Text()))
-    status: SupportTicketStatus = Field(default=SupportTicketStatus.OPEN, index=True)
-    admin_note: Optional[str] = Field(default=None, sa_column=Column(Text()))
-    submitter_type: SupportTicketSubmitterType = Field(index=True)
-    team_id: Optional[int] = Field(default=None, foreign_key="team.id", index=True)
-    institution_id: Optional[int] = Field(
-        default=None, foreign_key="institution.id", index=True
-    )
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-    team: Optional["Team"] = Relationship()
-    institution: Optional["Institution"] = Relationship()
-    attachments: List["SupportTicketAttachment"] = Relationship(
-        back_populates="ticket",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
-    )
-
-
-class SupportTicketAttachment(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    ticket_id: int = Field(foreign_key="supportticket.id", index=True)
-    s3_key: str
-    content_type: str
-    size_bytes: int
-    original_filename: str
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-    ticket: SupportTicket = Relationship(back_populates="attachments")
-
-
-class Tutorial(SQLModel, table=True):
-    """An ordered collection of exercises preparing students for agent games."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(unique=True, index=True)
-    description: str = Field(default="", sa_column=Column(Text(), nullable=False))
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-    exercises: List["Exercise"] = Relationship(
-        back_populates="tutorial",
-        sa_relationship_kwargs={
-            "order_by": "Exercise.order_index",
-            "cascade": "all, delete-orphan",
-        },
-    )
-
-
-class LeagueTutorial(SQLModel, table=True):
-    """Attaches a tutorial to a league (many-to-many).
-
-    A league has 0..many tutorials; teams only see the tutorials attached to
-    their league. Tutorials are a global content library, so the same tutorial
-    can be attached to any number of leagues without duplicating content.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    league_id: int = Field(foreign_key="league.id", index=True)
-    tutorial_id: int = Field(foreign_key="tutorial.id", index=True)
-
-    __table_args__ = (UniqueConstraint("league_id", "tutorial_id"),)
-
-
-class Exercise(SQLModel, table=True):
-    """One coding problem inside a tutorial.
-
-    Tests live in `test_code`: an admin-trusted Python test script
-    (backend/exercise_worker/tasks.py) exec'd into the same namespace as
-    the student's code. It can test multiple functions and check print
-    output. Authored by the seed script or through the admin exercise
-    editor; students never see it. `entry_function` names the one function
-    every submission must define, so a wrong-name submission fails fast with
-    a clear message; empty string means a top-level-code exercise — no
-    function required, tests grade module-level variables and the
-    worker-injected `module_output` print capture instead.
-    `solution` is an optional reference solution
-    for the admin editor's Run workflow — like test_code, it never reaches
-    students. `exercise_hints` is an ordered list of Markdown strings shown
-    to students separately from the problem text.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    tutorial_id: int = Field(foreign_key="tutorial.id", index=True)
-    order_index: int = Field(default=0)
-    title: str
-    problem_markdown: str = Field(sa_column=Column(Text(), nullable=False))
-    starter_code: str = Field(default="", sa_column=Column(Text(), nullable=False))
-    entry_function: str
-    test_code: Optional[str] = Field(
-        default=None, sa_column=Column(Text(), nullable=True)
-    )
-    solution: Optional[str] = Field(
-        default=None, sa_column=Column(Text(), nullable=True)
-    )
-    exercise_hints: list = Field(
-        default_factory=list, sa_column=Column(JSON, nullable=False)
-    )
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-    tutorial: Tutorial = Relationship(back_populates="exercises")
-
-
-class ExerciseSubmissionMetadata(SQLModel, table=True):
-    """One row per exercise submission attempt, pass or fail. Drives rate
-    limiting. A linked ExerciseSubmission row == the code was safe and ran."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    # Team has no parent-side relationship to this table, so an ORM Team delete
-    # will NOT null this out — every Team delete must call delete_team_children()
-    team_id: Optional[int] = Field(
-        default=None, foreign_key="team.id", nullable=True, index=True
-    )
-    exercise_id: int = Field(foreign_key="exercise.id", index=True)
-    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    duration_ms: Optional[float] = Field(default=None)
-
-    team: Optional[Team] = Relationship()
-    exercise: Exercise = Relationship()
-    submission: Optional["ExerciseSubmission"] = Relationship(
-        back_populates="meta",
-        sa_relationship_kwargs={"uselist": False},
-    )
-
-
-class ExerciseSubmission(SQLModel, table=True):
-    """Code that was safe and executed (its tests may still fail). 1:1 with
-    ExerciseSubmissionMetadata via unique FK. `passed` == every test passed;
-    `test_results` holds the per-test outcomes shown to the student."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    code: str = Field(sa_column=Column(Text()))
-    timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    passed: bool = Field(default=False)
-    test_results: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
-    metadata_id: int = Field(
-        foreign_key="exercisesubmissionmetadata.id", unique=True, index=True
-    )
-    # `metadata` is reserved on SQLAlchemy declarative classes
-    meta: ExerciseSubmissionMetadata = Relationship(back_populates="submission")
-
-
-class ExerciseHintReveal(SQLModel, table=True):
-    """One row the first time a student reveals a given hint of an exercise.
-
-    Exercise hints are static authored nudges (Exercise.exercise_hints) shown
-    one at a time in the browser; nothing about the reveal used to reach the
-    server. Concept mastery counts a revealed hint as extra effort, so the
-    reveal has to be recorded. The unique constraint makes re-opening the
-    panel idempotent, which is what keeps the counts honest.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    # Team has no parent-side relationship to this table, so an ORM Team delete
-    # will NOT null this out — every Team delete must call delete_team_children()
-    team_id: Optional[int] = Field(
-        default=None, foreign_key="team.id", nullable=True, index=True
-    )
-    exercise_id: int = Field(foreign_key="exercise.id", index=True)
-    # 0-based index into Exercise.exercise_hints
-    hint_index: int
-    revealed_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-    __table_args__ = (UniqueConstraint("team_id", "exercise_id", "hint_index"),)
-
-
-class Lesson(SQLModel, table=True):
-    """A standalone markdown document explaining a concept.
-
-    Lessons are a global content library (not league-gated): they are reached
-    through `lesson://<slug>` links embedded in exercise problem markdown and
-    tutorial descriptions, which are themselves already league-gated. The
-    content may contain ```python-run fences, which the frontend renders as
-    editable runnable code blocks.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    slug: str = Field(unique=True, index=True)
-    title: str
-    content: str = Field(default="", sa_column=Column(Text(), nullable=False))
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-
-class Concept(SQLModel, table=True):
-    """One teachable idea (e.g. "while loops").
-
-    A flat, controlled vocabulary shared by lessons and exercises: an exercise
-    is tagged with the concepts it practises, a lesson with the concepts it
-    explains, and a tutorial's concepts are derived as the union over its
-    exercises (nothing is stored for tutorials). `category` only groups
-    concepts for display and carries no query semantics.
-
-    Authored in tutorial_data/concepts.json and synced like all other tutorial
-    content; the DB stays the runtime source of truth.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    slug: str = Field(unique=True, index=True)
-    name: str
-    # A few characters for column headings and other cramped places, where the
-    # full name would not fit ("Dictionaries" vs "Key-value mappings"). Null on
-    # concepts authored before shortnames existed; clients fall back to `name`.
-    shortname: Optional[str] = Field(default=None)
-    description: str = Field(default="", sa_column=Column(Text(), nullable=False))
-    category: Optional[str] = Field(default=None)
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
-    )
-
-
-class ExerciseConcept(SQLModel, table=True):
-    """Tags an exercise with a concept it teaches (many-to-many).
-
-    Like LeagueTutorial this carries no ORM relationships — it exists to be
-    joined against, so the rows must be cleared explicitly wherever an
-    exercise or concept is deleted.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    exercise_id: int = Field(foreign_key="exercise.id", index=True)
-    concept_id: int = Field(foreign_key="concept.id", index=True)
-
-    __table_args__ = (UniqueConstraint("exercise_id", "concept_id"),)
-
-
-class LessonConcept(SQLModel, table=True):
-    """Tags a lesson with a concept it explains (many-to-many).
-
-    The first structural link between lessons and exercises: before this,
-    lessons were reachable only through `lesson://<slug>` strings embedded in
-    markdown.
-    """
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    lesson_id: int = Field(foreign_key="lesson.id", index=True)
-    concept_id: int = Field(foreign_key="concept.id", index=True)
-
-    __table_args__ = (UniqueConstraint("lesson_id", "concept_id"),)

@@ -39,11 +39,6 @@ from dotenv import load_dotenv
 # Load .env from project root (public, non-secret dev defaults)
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-# Load payment secrets from a gitignored, per-developer file. Available inside
-# the api container via the ./backend volume mount. Does not override values
-# already set in the environment.
-load_dotenv(os.path.join(ROOT_DIR, "routes", "payments", ".env"))
-
 CURRENT_DB = os.path.join(ROOT_DIR, "teams.db")
 GUEST_LEAGUE_EXPIRY = 24  # hours
 ADMIN_LEAGUE_EXPIRY = 180  # 1 week and 12 hours
@@ -78,21 +73,24 @@ GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 # from environment vars
 SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_tests")
 
-# Stripe (test mode). Keys/prices come from .env; webhook secret comes from
-# the Stripe CLI `stripe listen` output during local development.
-STRIPE_SECRET_KEY = os.getenv("SECRET_STRIPE_KEY")
-STRIPE_PUBLISHABLE_KEY = os.getenv("PUBLISHABLE_KEY")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
-# Two Prices per tier: a one-time 90-day pass (Checkout mode="payment") and a
-# yearly recurring subscription (mode="subscription"). The buyer's auto-renew
-# choice selects which one is used. The annual Price is higher than the 90-day
-# one (e.g. club: $99 once vs $299/yr; university: $299 once vs $599/yr).
-STRIPE_PRICE_CLUB_ONCE = os.getenv("STRIPE_PRICE_CLUB_ONCE")
-STRIPE_PRICE_CLUB_YEAR = os.getenv("STRIPE_PRICE_CLUB_YEAR")
-STRIPE_PRICE_UNI_ONCE = os.getenv("STRIPE_PRICE_UNI_ONCE")
-STRIPE_PRICE_UNI_YEAR = os.getenv("STRIPE_PRICE_UNI_YEAR")
-# Teacher plan: 90-day pass only, no annual option. The whole-school teacher
-# tier reuses STRIPE_PRICE_UNI_ONCE (same $299 / 500-student product).
-STRIPE_PRICE_TEACHER_ONCE = os.getenv("STRIPE_PRICE_TEACHER_ONCE")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")
+
+
+# One deployment serves one audience, so the classroom-vs-competition wording is
+# deploy configuration rather than per-account state. The frontend reads these
+# from GET /config and swaps its nouns via AgentGames/Shared/terminology.js;
+# API paths, JSON keys and route names always keep the league/team names.
+# Defaults to competition because that is the wording the app rendered before
+# the mode existed; a classroom deployment opts in explicitly.
+SITE_MODES = ("classroom", "competition")
+SITE_MODE = os.getenv("SITE_MODE", "competition").strip().lower()
+if SITE_MODE not in SITE_MODES:
+    # Fail at import rather than silently render the wrong nouns to a class of
+    # students for a term.
+    raise RuntimeError(
+        f"SITE_MODE must be one of {', '.join(SITE_MODES)} (got {SITE_MODE!r})"
+    )
+
+SITE_NAME = os.getenv("SITE_NAME", "Agent Games").strip()
+SITE_ICON = os.getenv("SITE_ICON", "").strip() or None

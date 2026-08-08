@@ -19,18 +19,16 @@ from backend.routes.ai.clients import CLIENT_REGISTRY, get_client_class
 from backend.routes.ai.plagiarism_service import assess_team_for_plagiarism
 from backend.routes.auth.auth_core import (
     get_current_user,
-    verify_admin_or_institution,
-    verify_admin_role,
+    require_admin,
 )
-from backend.routes.institution.institution_db import get_league_by_id
-from backend.routes.institution.institution_router import _resolve_institution
+from backend.routes.admin.admin_db import get_league_by_id
 
 logger = logging.getLogger(__name__)
 
 ai_router = APIRouter()
 
 # Business failures raise domain exceptions, mapped centrally by the handlers in
-# api.py: LeagueNotFoundError -> 404, InstitutionAccessError -> 403,
+# api.py: LeagueNotFoundError -> 404,
 # UnknownProviderError / NoApiKeyError / NoSubmissionsError -> 400,
 # PayloadTooLargeError -> 413, LLMResponseError -> 502, AIRequestTimeoutError -> 504.
 # Missing resources and bad tokens raise HTTPException directly. Anything unexpected
@@ -39,9 +37,8 @@ ai_router = APIRouter()
 
 
 @ai_router.get("/api-keys")
-@verify_admin_role
 async def get_api_keys_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Get the current AI provider API keys (masked for security)."""
@@ -49,10 +46,9 @@ async def get_api_keys_endpoint(
 
 
 @ai_router.post("/api-keys")
-@verify_admin_role
 async def update_api_keys_endpoint(
     keys_data: UpdateAPIKeysRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Update AI provider API keys."""
@@ -65,10 +61,9 @@ async def update_api_keys_endpoint(
 
 
 @ai_router.post("/api-keys/validate")
-@verify_admin_role
 async def validate_api_key_endpoint(
     request_data: ValidateAPIKeyRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Validate an AI provider API key by making a test call."""
@@ -91,22 +86,14 @@ async def validate_api_key_endpoint(
 
 
 @ai_router.post("/assess-plagiarism")
-@verify_admin_or_institution
 async def assess_plagiarism_endpoint(
     request: PlagiarismRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Run plagiarism + AI-generation assessment against a team's submission history."""
-    institution_id, is_admin = _resolve_institution(current_user)
-    if not institution_id:
-        raise HTTPException(status_code=400, detail="Institution ID not found in token")
-
-    # Verify caller owns this league (admin bypasses ownership check).
-    # LeagueNotFoundError -> 404, InstitutionAccessError -> 403.
-    league = get_league_by_id(
-        session, request.league_id, institution_id, is_admin=is_admin
-    )
+    # LeagueNotFoundError -> 404.
+    league = get_league_by_id(session, request.league_id)
 
     # Verify the team exists and belongs to that league.
     team = get_team_in_league(session, request.team_id, request.league_id)
@@ -118,9 +105,8 @@ async def assess_plagiarism_endpoint(
 
     # Audit log.
     logger.info(
-        "Plagiarism assessment: caller_role=%s caller_institution_id=%s team=%s league_id=%s",
-        current_user.get("role"),
-        current_user.get("institution_id"),
+        "Plagiarism assessment: caller=%s team=%s league_id=%s",
+        current_user.get("admin_name"),
         team.name,
         request.league_id,
     )

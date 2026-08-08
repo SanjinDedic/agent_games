@@ -8,9 +8,8 @@ import pytest
 from jose import jwt
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
+
 from backend.database.db_models import (
-    Institution,
     League,
     LeagueType,
     Team,
@@ -20,24 +19,12 @@ from backend.routes.auth.auth_config import ALGORITHM, SECRET_KEY
 from backend.time_utils import utc_now
 
 
-
 @pytest.fixture
 def school_league_fixture(db_session: Session) -> dict:
-    """Create an institution + a school league with a valid signup token."""
+    """A school league with a valid signup token."""
     now = utc_now()
 
-    institution = build_institution(
-        name="School League Test School",
-        contact_person="Teacher",
-        contact_email="teacher@school.com",
-        created_date=now,
-        subscription_active=True,
-        subscription_expiry=now + timedelta(days=30),
-        password_hash="hash",
-    )
-    db_session.add(institution)
     db_session.commit()
-    db_session.refresh(institution)
 
     token = secrets.token_urlsafe(16)
     league = League(
@@ -45,8 +32,7 @@ def school_league_fixture(db_session: Session) -> dict:
         created_date=now,
         expiry_date=now + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
         signup_link=token,
         school_league=True,
         schools_config={
@@ -58,15 +44,12 @@ def school_league_fixture(db_session: Session) -> dict:
     db_session.commit()
     db_session.refresh(league)
 
-    return {"institution": institution, "league": league, "signup_token": token}
+    return {"league": league, "signup_token": token}
 
 
 @pytest.fixture
 def non_school_league_fixture(db_session: Session) -> dict:
     now = utc_now()
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     token = secrets.token_urlsafe(16)
     league = League(
@@ -74,8 +57,7 @@ def non_school_league_fixture(db_session: Session) -> dict:
         created_date=now,
         expiry_date=now + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
         signup_link=token,
         school_league=False,
     )
@@ -88,9 +70,6 @@ def non_school_league_fixture(db_session: Session) -> dict:
 @pytest.fixture
 def expired_school_league_fixture(db_session: Session) -> dict:
     now = utc_now()
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     token = secrets.token_urlsafe(16)
     league = League(
@@ -98,8 +77,7 @@ def expired_school_league_fixture(db_session: Session) -> dict:
         created_date=now - timedelta(days=14),
         expiry_date=now - timedelta(days=1),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
         signup_link=token,
         school_league=True,
         schools_config={
@@ -119,43 +97,6 @@ def test_league_info_includes_schools(client, school_league_fixture):
     payload = resp.json()
     assert payload["school_league"] is True
     assert payload["schools"] == ["Willetton SHS", "Perth Modern"]
-    assert payload["institution_name"] == "School League Test School"
-    assert payload["is_teacher"] is False
-
-
-def test_league_info_flags_teacher_institution(client, db_session):
-    """The join page needs is_teacher to pick classroom/student wording."""
-    now = utc_now()
-    institution = build_institution(
-        name="Teacher Wording School",
-        contact_person="Teacher",
-        contact_email="teacher@wording.com",
-        created_date=now,
-        password_hash="hash",
-        is_teacher=True,
-    )
-    db_session.add(institution)
-    db_session.commit()
-    db_session.refresh(institution)
-
-    token = secrets.token_urlsafe(16)
-    league = League(
-        name="teacher_wording_league",
-        created_date=now,
-        expiry_date=now + timedelta(days=7),
-        game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
-        signup_link=token,
-    )
-    db_session.add(league)
-    db_session.commit()
-
-    resp = client.get(f"/user/league-info/{token}")
-    assert resp.status_code == 200
-    payload = resp.json()
-    assert payload["institution_name"] == "Teacher Wording School"
-    assert payload["is_teacher"] is True
 
 
 def test_league_info_non_school_omits_schools(client, non_school_league_fixture):
@@ -191,7 +132,6 @@ def test_direct_school_signup_happy_path(client, school_league_fixture, db_sessi
     ).first()
     assert team is not None
     assert team.league_id == school_league_fixture["league"].id
-    assert team.institution_id == school_league_fixture["institution"].id
     assert team.school_name == "Willetton SHS"
 
 
@@ -270,20 +210,21 @@ def test_direct_school_signup_invalid_token(client):
     assert resp.status_code == 404
 
 
-def test_direct_school_signup_skips_same_institution_cross_league(
+def test_direct_school_signup_skips_name_taken_in_another_league(
     client, school_league_fixture, db_session
 ):
-    """A WillettonSHS1 in another league of the SAME institution forces the
-    counter to skip — names are unique per-institution across its leagues."""
-    institution = school_league_fixture["institution"]
+    """A WillettonSHS1 anywhere forces the counter to skip.
+
+    Team names are globally unique, so the counter has to see every league, not
+    just this one — otherwise it proposes a name the insert then rejects.
+    """
     now = utc_now()
     other_league = League(
-        name="other_league_same_institution",
+        name="other_league_same_site",
         created_date=now,
         expiry_date=now + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
     )
     db_session.add(other_league)
     db_session.commit()
@@ -295,7 +236,6 @@ def test_direct_school_signup_skips_same_institution_cross_league(
             school_name="Willetton SHS",
             password_hash="hash",
             league_id=other_league.id,
-            institution_id=institution.id,
             team_type=TeamType.STUDENT,
         )
     )
@@ -311,41 +251,6 @@ def test_direct_school_signup_skips_same_institution_cross_league(
     )
     assert resp.status_code == 200
     assert resp.json()["team_name"] == "WillettonSHS2"
-
-
-def test_direct_school_signup_reuses_name_across_institutions(
-    client, school_league_fixture, db_session
-):
-    """A WillettonSHS1 in a DIFFERENT institution does NOT force a skip; the
-    school team reuses WillettonSHS1 within its own institution."""
-    admin_institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
-    other_league = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).first()
-    db_session.add(
-        Team(
-            name="WillettonSHS1",
-            school_name="Willetton SHS",
-            password_hash="hash",
-            league_id=other_league.id,
-            institution_id=admin_institution.id,
-            team_type=TeamType.STUDENT,
-        )
-    )
-    db_session.commit()
-
-    resp = client.post(
-        "/user/direct-school-league-signup",
-        json={
-            "signup_token": school_league_fixture["signup_token"],
-            "school_name": "Willetton SHS",
-            "password": "pw",
-        },
-    )
-    assert resp.status_code == 200
-    assert resp.json()["team_name"] == "WillettonSHS1"
 
 
 def test_direct_league_signup_still_works_for_non_school_league(
@@ -374,9 +279,6 @@ def test_direct_league_signup_still_works_for_non_school_league(
 def sheet_backed_league_fixture(db_session: Session) -> dict:
     """A school league whose schools_config points at a Google Sheet URL."""
     now = utc_now()
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     token = secrets.token_urlsafe(16)
     league = League(
@@ -384,8 +286,7 @@ def sheet_backed_league_fixture(db_session: Session) -> dict:
         created_date=now,
         expiry_date=now + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
         signup_link=token,
         school_league=True,
         schools_config={

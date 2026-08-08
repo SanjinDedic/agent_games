@@ -10,21 +10,14 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from backend.api import app
 from backend.database.db_config import get_database_url
 from backend.database.db_models import (
-    Admin,
-    DemoUser,
-    Exercise,
-    ExerciseHintReveal,
-    ExerciseSubmission,
-    ExerciseSubmissionMetadata,
-    Institution,
-    InstitutionSubscription,
+    UNASSIGNED_LEAGUE_NAME,
     League,
     LeagueType,
+    Admin,
     Submission,
     SubmissionMetadata,
     Team,
     TeamType,
-    Tutorial,
 )
 from backend.database.db_session import get_db
 from backend.routes.auth.auth_core import create_access_token
@@ -33,27 +26,21 @@ from backend.time_utils import utc_now
 # Precomputed bcrypt hashes to avoid expensive hashing on every test.
 # Cost 4 (not the production 12) so login-flow checkpw is ~1ms instead of
 # ~170ms; verify cost comes from the cost embedded in the hash itself.
-_HASH_ADMIN = "$2b$04$.WPpp.Mj.ExyhVOhCjTugOgLBq24T/4zTjrwvnGiOx4c6bFmAXHcG"  # "admin"
-_HASH_INSTITUTION = "$2b$04$pvWMB/sRar78ntUsCb21lON3FpqsCypw8q.a.jVaEYzTu.e1mVEwq"  # "institution"
 _HASH_AA = "$2b$04$/.xNZ5ccGKIbRDAhGT3kBuDK/75Vl5viXLd/G5WCQRJPkqsorzdFm"  # "AA"
 _HASH_BB = "$2b$04$abtlVrQQ6nJf6uWH7OF2IubTw2KzQtQPbBTMtfXZc290ek8jNv1Xi"  # "BB"
 _HASH_CC = "$2b$04$0j273SvCCLMsx4mTO86gDeH4G812r/MXooXEyuyd7WwJk25Lj/wFG"  # "CC"
 _HASH_TEST_PASSWORD = "$2b$04$S/gQ6t/Ex.ME3g76Ga09ne8sUTLDXpBbCy2iVj5RFBGlFXN9mH/o2"  # "test_password"
 _HASH_TEAM_PASSWORD = "$2b$04$RqccKcL1cJP6rFjzclXWwOFgSQ2ALa/71UWz3O1GP9nyo60n9kPOi"  # "team_password"
 _HASH_PASSWORD2 = "$2b$04$adNjLkXrrC9LgRXfZW1EjeYdj66q8jAGrgeJnJNF6KTPdxHb9Iw6W"  # "password2"
-_HASH_INST_PASSWORD = "$2b$04$mNAjfBlxpWDSuMxJR5.Ie.OesZS46hM0cEFivUPN3XjKMNSreOPEO"  # "inst_password"
 
 # Lookup for test files that need hashes for known passwords
 TEST_PASSWORD_HASHES = {
-    "admin": _HASH_ADMIN,
-    "institution": _HASH_INSTITUTION,
     "AA": _HASH_AA,
     "BB": _HASH_BB,
     "CC": _HASH_CC,
     "test_password": _HASH_TEST_PASSWORD,
     "team_password": _HASH_TEAM_PASSWORD,
     "password2": _HASH_PASSWORD2,
-    "inst_password": _HASH_INST_PASSWORD,
     "expired_password": "$2b$04$LGfX.gdDyIfZvvtT8eq52eRCtl2JTIt3dXMQC6GllmCXXO/9fl7sS",
     "inactive_password": "$2b$04$X17RHyabQ7aKUwPP/9u98uOPKWjXhuW2wdZjg7SAwA7FQ8PrdUcBq",
 }
@@ -66,75 +53,25 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def build_institution(
-    *,
-    name,
-    password_hash,
-    contact_person="Test Contact",
-    contact_email="test@example.com",
-    created_date=None,
-    subscription_active=True,
-    subscription_expiry=None,
-    payment_method="admin",
-    **extra,
-):
-    """Build an Institution with its 1:1 InstitutionSubscription attached via the
-    relationship — NOT yet persisted.
-
-    Subscription state (active/expiry) lives on InstitutionSubscription, so the
-    inline subscription kwargs populate that record. Because the subscription is
-    assigned through the relationship, a plain ``session.add(inst)`` +
-    ``commit()``/``flush()`` cascades and persists it automatically — existing
-    test code that adds/commits the institution itself keeps working unchanged.
-    """
-    now = created_date or utc_now()
-    if subscription_expiry is None:
-        subscription_expiry = now + timedelta(days=30)
-    institution = Institution(
-        name=name,
-        contact_person=contact_person,
-        contact_email=contact_email,
-        created_date=now,
-        password_hash=password_hash,
-        **extra,
-    )
-    institution.subscription = InstitutionSubscription(
-        payment_method=payment_method,
-        subscription_active=subscription_active,
-        subscription_expiry=subscription_expiry,
-        created_date=now,
-    )
-    return institution
-
-
-def create_test_institution(session, **kwargs):
-    """build_institution + persist; returns the committed, refreshed Institution."""
-    institution = build_institution(**kwargs)
-    session.add(institution)
-    session.commit()
-    session.refresh(institution)
-    return institution
-
 @pytest.fixture(scope="session")
 def celery_workers():
     """Fail fast with a clear message when the Celery workers are not up.
 
-    Task-level tests enqueue to the real broker and need all three queue
-    workers running (docker compose starts them; test-runner depends_on their
-    healthchecks). The exercises worker runs a separate Celery app, but ping
-    is a broadcast over the shared broker, so one inspect reaches it too.
+    Task-level tests enqueue to the real broker and need both queue workers
+    running (docker compose starts them; test-runner depends_on their
+    healthchecks).
     """
     from backend.tasks.celery_app import celery_app
 
-    # limit=3 returns as soon as all three workers reply (~10ms) instead of
+    # limit=2 returns as soon as both workers reply (~10ms) instead of
     # waiting out the full broadcast timeout.
-    replies = celery_app.control.inspect(timeout=5, limit=3).ping() or {}
-    for prefix in ("validation", "simulation", "exercises"):
+    replies = celery_app.control.inspect(timeout=5, limit=2).ping() or {}
+    for prefix in ("validation", "simulation"):
         if not any(node.startswith(f"{prefix}@") for node in replies):
             pytest.fail(
                 f"No {prefix} worker responded to ping — start the compose "
                 f"workers first (docker compose up -d worker-validation "
-                f"worker-simulation worker-exercises)"
+                f"worker-simulation)"
             )
     return replies
 
@@ -142,9 +79,6 @@ def celery_workers():
 _ENUM_TYPES = (
     "teamtype",
     "leaguetype",
-    "supportticketcategory",
-    "supportticketstatus",
-    "supportticketsubmittertype",
 )
 
 
@@ -167,10 +101,10 @@ def db_engine():
     except Exception as e:
         logger.info(f"Test database doesn't exist, creating it: {e}")
         base_url = database_url.rsplit("/", 1)[0] + "/postgres"
-        admin_engine = create_engine(base_url)
+        maintenance_engine = create_engine(base_url)
         db_name = database_url.rsplit("/", 1)[1].split("?")[0]
 
-        with admin_engine.connect() as conn:
+        with maintenance_engine.connect() as conn:
             conn.execution_options(isolation_level="AUTOCOMMIT")
             conn.execute(
                 text(
@@ -180,7 +114,7 @@ def db_engine():
             conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
             conn.execute(text(f"CREATE DATABASE {db_name}"))
 
-        admin_engine.dispose()
+        maintenance_engine.dispose()
         logger.info("Test database created successfully")
         engine = create_engine(database_url)
 
@@ -219,70 +153,59 @@ def db_session(db_engine):
 
 
 def populate_test_database(session):
-    """Seed test database with precomputed hashes (no bcrypt cost)"""
-    existing_admin = session.exec(select(Admin).where(Admin.username == "admin")).first()
-    if existing_admin:
+    """Seed test database with precomputed hashes (no bcrypt cost).
+
+    Deliberately seeds no Admin row: tests that need one mint a token via the
+    admin_token fixture, and the setup-flow tests need a deployment that has not
+    been claimed yet.
+    """
+    existing = session.exec(
+        select(League).where(League.name == UNASSIGNED_LEAGUE_NAME)
+    ).first()
+    if existing:
         return
 
     now = utc_now()
 
-    admin = Admin(username="admin", password_hash=_HASH_ADMIN)
-    session.add(admin)
-
-    institution = create_test_institution(
-        session,
-        name="Admin Institution",
-        contact_person="Admin",
-        contact_email="admin@admin.com",
-        created_date=now,
-        subscription_expiry=now + timedelta(days=365),
-        password_hash=_HASH_INSTITUTION,
-    )
-
     unassigned_league = League(
-        name="unassigned",
+        name=UNASSIGNED_LEAGUE_NAME,
         created_date=now,
         expiry_date=now + timedelta(days=30),
         game="greedy_pig",
         league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
     )
     session.add(unassigned_league)
 
-    greedy_pig_league = League(
-        name="greedy_pig_league",
-        created_date=now,
-        expiry_date=now + timedelta(days=30),
-        game="greedy_pig",
-        league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
-    )
-    session.add(greedy_pig_league)
-
-    prisoners_dilemma_league = League(
-        name="prisoners_dilemma_league",
-        created_date=now,
-        expiry_date=now + timedelta(days=30),
-        game="prisoners_dilemma",
-        league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
-    )
-    session.add(prisoners_dilemma_league)
+    for league_name, game in (
+        ("greedy_pig_league", "greedy_pig"),
+        ("prisoners_dilemma_league", "prisoners_dilemma"),
+    ):
+        session.add(
+            League(
+                name=league_name,
+                created_date=now,
+                expiry_date=now + timedelta(days=30),
+                game=game,
+                league_type=LeagueType.STUDENT,
+            )
+        )
     session.commit()
+    session.refresh(unassigned_league)
 
     for name, school, pw_hash in [
         ("TeamA", "Sirius College", _HASH_AA),
         ("TeamB", "Sirius College", _HASH_BB),
         ("TeamC", "Glen Waverley Secondary College", _HASH_CC),
     ]:
-        session.add(Team(
-            name=name,
-            school_name=school,
-            password_hash=pw_hash,
-            league_id=unassigned_league.id,
-            team_type=TeamType.STUDENT,
-            institution_id=institution.id,
-        ))
+        session.add(
+            Team(
+                name=name,
+                school_name=school,
+                password_hash=pw_hash,
+                league_id=unassigned_league.id,
+                team_type=TeamType.STUDENT,
+            )
+        )
     session.commit()
 
 
@@ -304,15 +227,13 @@ def client(db_session) -> TestClient:
 
 @pytest.fixture
 def admin_token(db_session: Session) -> str:
-    """Create admin user and return admin token"""
-    admin = Admin(
-        username="test_admin", password_hash=_HASH_TEST_PASSWORD
-    )
+    """Create the deployment's admin account and return its token."""
+    admin = Admin(username="test_admin", password_hash=_HASH_TEST_PASSWORD)
     db_session.add(admin)
     db_session.commit()
 
     return create_access_token(
-        data={"sub": "admin", "role": "admin", "institution_id": 1},
+        data={"sub": admin.username, "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -342,17 +263,7 @@ def team_token(db_session):
     db_session.commit()
     db_session.refresh(team)
 
-    return create_access_token(
-        data={
-            "sub": team.name,
-            "role": "student",
-            "team_id": team.id,
-            "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
-            "institution_id": team.institution_id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
+    return make_student_token(team)
 
 
 def make_student_token(team: Team, minutes: int = 30) -> str:
@@ -363,8 +274,7 @@ def make_student_token(team: Team, minutes: int = 30) -> str:
             "role": "student",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
-            "institution_id": team.institution_id,
+            "league_id": team.league_id,
         },
         expires_delta=timedelta(minutes=minutes),
     )
@@ -378,8 +288,7 @@ def make_ai_agent_token(team: Team, minutes: int = 30) -> str:
             "role": "ai_agent",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
-            "institution_id": team.institution_id,
+            "league_id": team.league_id,
         },
         expires_delta=timedelta(minutes=minutes),
     )
@@ -433,74 +342,8 @@ def add_failed_submission(
     return meta
 
 
-def add_exercise_attempt(
-    session,
-    team_id: int,
-    exercise_id: int,
-    passed: bool = None,
-    timestamp: datetime = None,
-    code: str = "def solve(): pass",
-    test_results: list = None,
-):
-    """One exercise attempt: metadata-only when passed is None, otherwise a
-    stored run. Does not commit."""
-    now = timestamp or utc_now()
-    meta = ExerciseSubmissionMetadata(
-        team_id=team_id, exercise_id=exercise_id, timestamp=now
-    )
-    session.add(meta)
-    if passed is not None:
-        session.flush()
-        session.add(
-            ExerciseSubmission(
-                code=code,
-                timestamp=now,
-                passed=passed,
-                test_results=test_results or [],
-                metadata_id=meta.id,
-            )
-        )
-
-
-def build_exercise(session, title: str = "Helper Exercise") -> Exercise:
-    """Create a tutorial holding a single exercise and return that exercise.
-
-    For tests that only need something for exercise work to hang off. Commits so
-    the exercise has an id.
-    """
-    tutorial = Tutorial(title=f"{title} Tutorial", description="d")
-    session.add(tutorial)
-    session.commit()
-    exercise = Exercise(
-        tutorial_id=tutorial.id,
-        order_index=0,
-        title=title,
-        problem_markdown="p",
-        entry_function="solve",
-    )
-    session.add(exercise)
-    session.commit()
-    session.refresh(exercise)
-    return exercise
-
-
-def add_exercise_work(session, team_id: int, title: str = "Helper Exercise") -> Exercise:
-    """Give a team one attempt plus one revealed hint on a fresh exercise.
-
-    The shape that used to make Team deletes fail: rows in every exercise table
-    that FK-references team. Commits.
-    """
-    exercise = build_exercise(session, title=title)
-    add_exercise_attempt(session, team_id=team_id, exercise_id=exercise.id, passed=True)
-    session.add(
-        ExerciseHintReveal(team_id=team_id, exercise_id=exercise.id, hint_index=0)
-    )
-    session.commit()
-    return exercise
-
-
 @pytest.fixture
-def auth_headers(admin_token) -> dict:
+def admin_headers(admin_token) -> dict:
     """Return headers with admin authentication"""
     return {"Authorization": f"Bearer {admin_token}"}
 
@@ -526,60 +369,6 @@ def test_league(db_session: Session) -> League:
 
 
 @pytest.fixture
-def setup_demo_data(db_session: Session) -> None:
-    """Set up demo data in the test database"""
-    # Get unassigned league
-    unassigned = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).first()
-
-    # Create demo teams and tracking records
-    for i in range(2):
-        team_name = f"demo_team_{i}"
-        team = db_session.exec(select(Team).where(Team.name == team_name)).first()
-
-        if not team:
-            # Create the Team with is_demo flag
-            team = Team(
-                name=team_name + "_demo",
-                school_name=team_name,
-                password_hash="test_hash",
-                league_id=unassigned.id,
-                is_demo=True,
-                team_type=TeamType.STUDENT,
-            )
-            db_session.add(team)
-            db_session.commit()
-            db_session.refresh(team)
-
-            # Create separate DemoUser tracking record
-            demo_user = DemoUser(
-                username=team_name,
-                email=f"demo{i}@example.com",
-                created_at=utc_now(),
-            )
-            db_session.add(demo_user)
-            db_session.commit()
-
-            # Add submissions for each team
-            for j in range(3):
-                add_submission(
-                    db_session,
-                    code=f"Demo code {j} for team {i}",
-                    timestamp=utc_now() - timedelta(minutes=j),
-                    team_id=team.id,
-                )
-
-    db_session.commit()
-
-
-@pytest.fixture
-def admin_headers(auth_headers) -> dict:
-    """Alias for auth_headers — admin-role bearer headers."""
-    return auth_headers
-
-
-@pytest.fixture
 def student_headers() -> dict:
     """Generic student-role bearer headers (no team_id). Suitable for tests that
     only check role-gating on admin-only endpoints."""
@@ -592,34 +381,6 @@ def student_headers() -> dict:
 
 @pytest.fixture
 def team_headers(db_session) -> dict:
-    """TeamA seed-data bearer headers (role=student, includes team_id + institution_id)."""
+    """TeamA seed-data bearer headers (role=student, includes team_id)."""
     team = db_session.exec(select(Team).where(Team.name == "TeamA")).first()
     return {"Authorization": f"Bearer {make_student_token(team)}"}
-
-
-@pytest.fixture
-def institution_token(db_session: Session) -> str:
-    """Create a fresh institution and return its institution-role JWT."""
-    institution = create_test_institution(
-        db_session,
-        name="test_institution",
-        contact_person="Test Person",
-        contact_email="test@example.com",
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="test_hash",
-    )
-
-    return create_access_token(
-        data={
-            "sub": institution.name,
-            "role": "institution",
-            "institution_id": institution.id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
-
-
-@pytest.fixture
-def institution_headers(institution_token: str) -> dict:
-    """Bearer headers wrapping institution_token."""
-    return {"Authorization": f"Bearer {institution_token}"}

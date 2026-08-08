@@ -1,574 +1,510 @@
 import json
 import logging
 import secrets
-from datetime import timedelta
-from typing import Dict, List, Tuple, Union
+from datetime import datetime, timedelta
+from typing import Dict, Optional, Tuple, Union
 
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, func, select
 
 from backend.database.db_models import (
+    UNASSIGNED_LEAGUE_NAME,
     AgentAPIKey,
-    DemoUser,
-    Institution,
-    InstitutionSubscription,
     League,
     LeagueType,
-    LeagueTutorial,
     SimulationResult,
     SimulationResultItem,
-    Submission,
-    SubmissionMetadata,
-    SupportTicket,
-    SupportTicketAttachment,
     Team,
     TeamType,
-    get_password_hash,
 )
-from backend.database.submission_helpers import delete_team_children
-from backend.routes.admin.admin_models import (
-    CreateAgentTeam,
-    CreateInstitution,
-    InstitutionUpdate,
+from backend.database.submission_helpers import delete_submissions_for_teams
+from backend.errors import (
+    AgentTeamError,
+    LeagueExistsError,
+    LeagueNotFoundError,
+    ProtectedLeagueError,
+    SchoolsConfigError,
+    SimulationResultNotFoundError,
+    TeamError,
+    TeamExistsError,
+    TeamNotFoundError,
 )
-from backend.time_utils import utc_now
+from backend.games.game_factory import GameFactory
+from backend.routes.admin.admin_models import LeagueSignUp
+from backend.schools.config import GoogleSheetsSchoolsConfig, StaticSchoolsConfig
+from backend.schools.providers import (
+    GoogleSheetsSchoolsProvider,
+    SchoolsProviderError,
+)
+from backend.time_utils import ensure_utc, utc_now
+from backend.utils import process_simulation_results
 
 logger = logging.getLogger(__name__)
 
 
-class InstitutionError(Exception):
-    """Base exception for all institution-related errors"""
+def get_unassigned_league(session: Session) -> League:
+    """The single 'unassigned' holding pen, seeded by init_db.
 
-    pass
-
-
-class InstitutionNotFoundError(InstitutionError):
-    """Raised when the target institution does not exist (maps to HTTP 404)."""
-
-    pass
-
-
-class InstitutionExistsError(InstitutionError):
-    """Raised when an institution name collides with an existing one (maps to HTTP 409)."""
-
-    pass
-
-
-class AgentTeamError(ValueError):
-    """Raised for invalid agent-team / API-key operations (maps to HTTP 400).
-
-    Subclasses ValueError so existing callers/tests that catch ValueError keep working.
+    Raises rather than creating one on demand: League.name is unique, so a
+    missing row means the database was never initialized, and silently creating a
+    second definition of a load-bearing singleton would hide that.
     """
+    league = session.exec(
+        select(League).where(League.name == UNASSIGNED_LEAGUE_NAME)
+    ).one_or_none()
+    if not league:
+        raise LeagueNotFoundError(
+            f"The '{UNASSIGNED_LEAGUE_NAME}' league is missing — "
+            "run python -m backend.database.init_db"
+        )
+    return league
 
-    pass
+
+def _build_schools_config(
+    league_data: LeagueSignUp,
+) -> Optional[Union[StaticSchoolsConfig, GoogleSheetsSchoolsConfig]]:
+    """Translate the validated LeagueSignUp into a typed schools_config.
+
+    Sheet-backed configs are validated upfront (one fetch) so configuration
+    errors surface at create time, not at student-signup time.
+    """
+    if not league_data.school_league:
+        return None
+    if league_data.sheet_url:
+        try:
+            schools = GoogleSheetsSchoolsProvider(league_data.sheet_url).list_schools()
+        except SchoolsProviderError as e:
+            raise SchoolsConfigError(f"Could not read the Google Sheet: {e}")
+        if not schools:
+            raise SchoolsConfigError(
+                "The Google Sheet returned an empty list. Ensure sharing "
+                "is set to 'Anyone with the link - Viewer' and that column "
+                "A contains school names below a header row."
+            )
+        return GoogleSheetsSchoolsConfig(sheet_url=league_data.sheet_url)
+    return StaticSchoolsConfig(schools=list(league_data.schools))
 
 
-def create_institution(session: Session, institution_data: CreateInstitution) -> Dict:
-    """Create a new institution"""
-    existing_institution = session.exec(
-        select(Institution).where(Institution.name == institution_data.name)
+def create_league(session: Session, league_data: LeagueSignUp) -> Dict:
+    """Create a new league."""
+    existing_league = session.exec(
+        select(League).where(League.name == league_data.name)
     ).first()
 
-    if existing_institution:
-        raise InstitutionExistsError(
-            f"Institution with name '{institution_data.name}' already exists"
+    if existing_league:
+        raise LeagueExistsError(
+            f"League with name '{league_data.name}' already exists"
         )
 
-    now = utc_now()
-    institution = Institution(
-        name=institution_data.name,
-        contact_person=institution_data.contact_person,
-        contact_email=institution_data.contact_email,
-        created_date=now,
-        is_teacher=institution_data.is_teacher,
-        icon=(institution_data.icon or "").strip() or None,
-    )
-    institution.set_password(institution_data.password)
+    # Validate game name
+    GameFactory.get_game_class(league_data.game)
 
-    session.add(institution)
-    session.flush()  # Get the ID for the new institution
-
-    # Admin-granted access: subscription state lives on the 1:1 record.
-    session.add(
-        InstitutionSubscription(
-            institution_id=institution.id,
-            payment_method="admin",
-            subscription_active=True,
-            subscription_expiry=institution_data.subscription_expiry,
-            created_date=now,
-        )
+    schools_config_model = _build_schools_config(league_data)
+    schools_config = (
+        schools_config_model.model_dump() if schools_config_model else None
     )
 
-    # Create unassigned league for this institution
-    unassigned_league = League(
-        name="unassigned",
+    signup_token = secrets.token_urlsafe(16)
+
+    # A new league runs for 24 hours unless its expiry is extended later.
+    default_expiry = utc_now() + timedelta(hours=24)
+
+    league = League(
+        name=league_data.name,
         created_date=utc_now(),
-        expiry_date=(
-            utc_now()
-            + timedelta(days=365)  # Long expiry for unassigned league
-        ),
-        game="greedy_pig",  # Default game
-        league_type=LeagueType.INSTITUTION,
-        institution_id=institution.id,
+        expiry_date=default_expiry,
+        game=league_data.game,
+        league_type=LeagueType.STUDENT,
+        signup_link=signup_token,
+        school_league=league_data.school_league,
+        schools_config=schools_config,
     )
-    session.add(unassigned_league)
 
+    session.add(league)
     session.commit()
-    session.refresh(institution)
-
     return {
-        "id": institution.id,
-        "name": institution.name,
-        "contact_person": institution.contact_person,
-        "is_teacher": institution.is_teacher,
+        "league_id": league.id,
+        "name": league.name,
+        "signup_token": signup_token,
+        "school_league": league_data.school_league,
     }
 
 
-def update_institution(session: Session, institution_data: InstitutionUpdate) -> Dict:
-    """Update an existing institution"""
-    institution = session.get(Institution, institution_data.id)
-
-    if not institution:
-        raise InstitutionNotFoundError(
-            f"Institution with ID {institution_data.id} not found"
-        )
-
+def create_team(session: Session, team_data) -> Dict:
+    """Create a new team, parked in the 'unassigned' league."""
     try:
-        # Update fields if provided
-        if institution_data.name is not None:
-            institution.name = institution_data.name
-        if institution_data.contact_person is not None:
-            institution.contact_person = institution_data.contact_person
-        if institution_data.contact_email is not None:
-            institution.contact_email = institution_data.contact_email
-        if institution_data.password is not None:
-            institution.set_password(institution_data.password)
-        if institution_data.is_teacher is not None:
-            institution.is_teacher = institution_data.is_teacher
-        if institution_data.icon is not None:
-            institution.icon = institution_data.icon.strip() or None
+        existing_team = session.exec(
+            select(Team).where(Team.name == team_data.name)
+        ).first()
 
-        # Subscription fields live on the 1:1 InstitutionSubscription record.
-        if (
-            institution_data.subscription_active is not None
-            or institution_data.subscription_expiry is not None
-        ):
-            subscription = institution.subscription
-            if subscription is None:
-                subscription = InstitutionSubscription(
-                    institution_id=institution.id,
-                    payment_method="admin",
-                    subscription_active=True,
-                    subscription_expiry=(
-                        institution_data.subscription_expiry
-                        or utc_now()
-                    ),
-                    created_date=utc_now(),
-                )
-            if institution_data.subscription_active is not None:
-                subscription.subscription_active = institution_data.subscription_active
-            if institution_data.subscription_expiry is not None:
-                subscription.subscription_expiry = institution_data.subscription_expiry
-            session.add(subscription)
+        if existing_team:
+            raise TeamExistsError(
+                f"Team with name '{team_data.name}' already exists"
+            )
 
-        session.add(institution)
+        team = Team(
+            name=team_data.name,
+            school_name=team_data.school_name,
+            score=team_data.score,
+            color=team_data.color,
+            league_id=get_unassigned_league(session).id,
+            team_type=TeamType.STUDENT,
+        )
+        team.set_password(team_data.password)
+
+        session.add(team)
         session.commit()
-        session.refresh(institution)
 
-        return {
-            "id": institution.id,
-            "name": institution.name,
-            "contact_person": institution.contact_person,
-        }
+        return {"team_id": team.id, "name": team.name, "school": team.school_name}
+
+    except TeamError:
+        session.rollback()
+        raise
     except IntegrityError as e:
         session.rollback()
-        raise InstitutionExistsError(
-            f"Institution name '{institution_data.name}' already exists"
-        )
+        logger.error(f"Database integrity error creating team: {e}")
+        raise TeamExistsError("Unable to create team due to data constraints")
 
 
-def _purge_institution_data(
-    session: Session, institution_id: int, *, keep_unassigned: bool
-) -> Dict:
-    """Delete every child row owned by an institution (teams, leagues, submissions,
-    simulation results, agent API keys, support tickets + attachments).
+def delete_team(session: Session, team_id: int) -> str:
+    """Delete a team. Its submissions, API key and result rows go with it via
+    ON DELETE CASCADE."""
+    team = session.get(Team, team_id)
 
-    When keep_unassigned is True, the auto-created 'unassigned' league row is preserved
-    (its child teams are still wiped). Does not delete the Institution row itself and
-    does not commit; the caller is responsible for that.
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
 
-    Returns counts for the UI toast.
-    """
-    teams = session.exec(
-        select(Team).where(Team.institution_id == institution_id)
-    ).all()
-    team_ids = [t.id for t in teams]
-
-    leagues = session.exec(
-        select(League).where(League.institution_id == institution_id)
-    ).all()
-    league_ids = [lg.id for lg in leagues]
-    leagues_to_keep = (
-        {lg.id for lg in leagues if lg.name == "unassigned"} if keep_unassigned else set()
-    )
-
-    # Tickets attached to the institution directly, plus any from its teams.
-    ticket_id_set: set[int] = set(
-        session.exec(
-            select(SupportTicket.id).where(
-                SupportTicket.institution_id == institution_id
-            )
-        ).all()
-    )
-    if team_ids:
-        ticket_id_set.update(
-            session.exec(
-                select(SupportTicket.id).where(SupportTicket.team_id.in_(team_ids))
-            ).all()
-        )
-    ticket_ids = list(ticket_id_set)
-
-    # Capture S3 keys before deleting attachment rows so we can clean up after commit.
-    s3_keys: List[str] = []
-    if ticket_ids:
-        s3_keys = list(
-            session.exec(
-                select(SupportTicketAttachment.s3_key).where(
-                    SupportTicketAttachment.ticket_id.in_(ticket_ids)
-                )
-            ).all()
-        )
-        session.exec(
-            delete(SupportTicketAttachment).where(
-                SupportTicketAttachment.ticket_id.in_(ticket_ids)
-            )
-        )
-        session.exec(delete(SupportTicket).where(SupportTicket.id.in_(ticket_ids)))
-
-    if team_ids:
-        delete_team_children(session, team_ids)
-        session.exec(delete(Team).where(Team.institution_id == institution_id))
-
-    if league_ids:
-        session.exec(
-            delete(SimulationResult).where(SimulationResult.league_id.in_(league_ids))
-        )
-
-    leagues_to_delete = [lid for lid in league_ids if lid not in leagues_to_keep]
-    if leagues_to_delete:
-        session.exec(
-            delete(LeagueTutorial).where(
-                LeagueTutorial.league_id.in_(leagues_to_delete)
-            )
-        )
-        session.exec(delete(League).where(League.id.in_(leagues_to_delete)))
-
-    return {
-        "team_ids": team_ids,
-        "league_ids": league_ids,
-        "leagues_deleted": len(leagues_to_delete),
-        "ticket_ids": ticket_ids,
-        "s3_keys": s3_keys,
-    }
-
-
-def _cleanup_s3_attachments(s3_keys: List[str]) -> None:
-    """Best-effort delete of S3 attachment objects. Import lazily so that callers
-    without S3 configured (unit tests) don't blow up at import time."""
-    if not s3_keys:
-        return
-    try:
-        from backend.routes.support.support_s3 import delete_attachment
-    except Exception as exc:
-        logger.warning(f"Could not import S3 client for attachment cleanup: {exc}")
-        return
-    for key in s3_keys:
-        try:
-            delete_attachment(key)
-        except Exception as exc:
-            logger.warning(f"Failed to delete S3 attachment {key}: {exc}")
-
-
-def delete_institution(session: Session, institution_id: int) -> str:
-    """Delete an institution and all associated teams, leagues, submissions,
-    simulation results, agent API keys, and support tickets."""
-    institution = session.get(Institution, institution_id)
-
-    if not institution:
-        raise InstitutionNotFoundError(
-            f"Institution with ID {institution_id} not found"
-        )
-
-    purge = _purge_institution_data(session, institution_id, keep_unassigned=False)
-    session.delete(institution)
+    name = team.name
+    session.delete(team)
     session.commit()
 
-    _cleanup_s3_attachments(purge["s3_keys"])
-
-    return (
-        f"Institution '{institution.name}' and all associated data deleted successfully"
-    )
+    return f"Team {name} deleted successfully"
 
 
-def clear_institution_data(session: Session, institution_id: int) -> Dict:
-    """Wipe all teams/leagues/submissions/results/api keys/tickets for an institution
-    while keeping the institution row and its auto-created 'unassigned' league."""
-    institution = session.get(Institution, institution_id)
-
-    if not institution:
-        raise InstitutionNotFoundError(
-            f"Institution with ID {institution_id} not found"
-        )
-
-    purge = _purge_institution_data(session, institution_id, keep_unassigned=True)
-    session.commit()
-
-    _cleanup_s3_attachments(purge["s3_keys"])
-
+def get_all_teams(session: Session) -> Dict:
+    """Every team in this deployment."""
+    teams = session.exec(select(Team)).all()
     return {
-        "institution_id": institution_id,
-        "teams_deleted": len(purge["team_ids"]),
-        "leagues_deleted": purge["leagues_deleted"],
-        "tickets_deleted": len(purge["ticket_ids"]),
-    }
-
-
-def export_institution_data(session: Session, institution_id: int) -> Dict:
-    """Return a JSON-serializable dump of every record belonging to one institution."""
-    institution = session.get(Institution, institution_id)
-
-    if not institution:
-        raise InstitutionNotFoundError(
-            f"Institution with ID {institution_id} not found"
-        )
-
-    teams = session.exec(
-        select(Team).where(Team.institution_id == institution_id)
-    ).all()
-    team_ids = [t.id for t in teams]
-
-    leagues = session.exec(
-        select(League).where(League.institution_id == institution_id)
-    ).all()
-    league_ids = [lg.id for lg in leagues]
-
-    metadata_rows = (
-        session.exec(
-            select(SubmissionMetadata).where(SubmissionMetadata.team_id.in_(team_ids))
-        ).all()
-        if team_ids
-        else []
-    )
-    meta_ids = [m.id for m in metadata_rows]
-    submissions = (
-        session.exec(
-            select(Submission).where(Submission.metadata_id.in_(meta_ids))
-        ).all()
-        if meta_ids
-        else []
-    )
-
-    sim_results = (
-        session.exec(
-            select(SimulationResult).where(SimulationResult.league_id.in_(league_ids))
-        ).all()
-        if league_ids
-        else []
-    )
-
-    sim_items = (
-        session.exec(
-            select(SimulationResultItem).where(
-                SimulationResultItem.team_id.in_(team_ids)
-            )
-        ).all()
-        if team_ids
-        else []
-    )
-
-    api_keys = (
-        session.exec(
-            select(AgentAPIKey).where(AgentAPIKey.team_id.in_(team_ids))
-        ).all()
-        if team_ids
-        else []
-    )
-
-    ticket_id_set: set[int] = set(
-        session.exec(
-            select(SupportTicket.id).where(
-                SupportTicket.institution_id == institution_id
-            )
-        ).all()
-    )
-    if team_ids:
-        ticket_id_set.update(
-            session.exec(
-                select(SupportTicket.id).where(SupportTicket.team_id.in_(team_ids))
-            ).all()
-        )
-    ticket_ids = list(ticket_id_set)
-
-    tickets = (
-        session.exec(
-            select(SupportTicket).where(SupportTicket.id.in_(ticket_ids))
-        ).all()
-        if ticket_ids
-        else []
-    )
-    attachments = (
-        session.exec(
-            select(SupportTicketAttachment).where(
-                SupportTicketAttachment.ticket_id.in_(ticket_ids)
-            )
-        ).all()
-        if ticket_ids
-        else []
-    )
-    attachments_by_ticket: Dict[int, list] = {}
-    for att in attachments:
-        attachments_by_ticket.setdefault(att.ticket_id, []).append(
-            att.model_dump(mode="json")
-        )
-
-    institution_dump = institution.model_dump(mode="json", exclude={"password_hash"})
-
-    teams_dump = [t.model_dump(mode="json", exclude={"password_hash"}) for t in teams]
-    leagues_dump = [lg.model_dump(mode="json") for lg in leagues]
-    submissions_dump = [s.model_dump(mode="json") for s in submissions]
-    submission_metadata_dump = [m.model_dump(mode="json") for m in metadata_rows]
-    sim_results_dump = [r.model_dump(mode="json") for r in sim_results]
-    sim_items_dump = [i.model_dump(mode="json") for i in sim_items]
-
-    api_keys_dump = []
-    for ak in api_keys:
-        masked = ak.model_dump(mode="json", exclude={"key"})
-        masked["key_masked"] = (
-            f"***{ak.key[-4:]}" if ak.key and len(ak.key) >= 4 else "***"
-        )
-        api_keys_dump.append(masked)
-
-    tickets_dump = []
-    for tk in tickets:
-        d = tk.model_dump(mode="json")
-        d["attachments"] = attachments_by_ticket.get(tk.id, [])
-        tickets_dump.append(d)
-
-    return {
-        "schema_version": 1,
-        "exported_at": utc_now().isoformat(),
-        "institution": institution_dump,
-        "leagues": leagues_dump,
-        "teams": teams_dump,
-        "submissions": submissions_dump,
-        "submission_metadata": submission_metadata_dump,
-        "simulation_results": sim_results_dump,
-        "simulation_result_items": sim_items_dump,
-        "agent_api_keys": api_keys_dump,
-        "support_tickets": tickets_dump,
-    }
-
-
-def get_all_institutions(session: Session) -> Dict:
-    """Get all institutions"""
-    institutions = session.exec(select(Institution)).all()
-    return {
-        "institutions": [
+        "teams": [
             {
-                "id": inst.id,
-                "name": inst.name,
-                "contact_person": inst.contact_person,
-                "contact_email": inst.contact_email,
-                "created_date": inst.created_date,
-                "is_teacher": inst.is_teacher,
-                "icon": inst.icon,
-                "subscription_active": (
-                    inst.subscription.subscription_active
-                    if inst.subscription
-                    else None
-                ),
-                "subscription_expiry": (
-                    inst.subscription.subscription_expiry
-                    if inst.subscription
-                    else None
-                ),
-                "team_count": len(inst.teams),
-                "league_count": len(inst.leagues),
+                "id": team.id,
+                "name": team.name,
+                "school": team.school_name,
+                "league": team.league.name if team.league else None,
             }
-            for inst in institutions
+            for team in teams
         ]
     }
 
 
-# Demo user management functions
-def get_all_demo_users(session: Session):
-    """
-    Retrieve all demo users along with their team, league, and submission details.
-    """
-    demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
-    result = []
-    if len(demo_teams) == 0:
-        return {"demo_users": []}
-
-    for team in demo_teams:
-        latest_attempt = session.exec(
-            select(SubmissionMetadata)
-            .where(SubmissionMetadata.team_id == team.id)
-            .order_by(SubmissionMetadata.timestamp.desc())
-        ).first()
-        # Add a null check before accessing .timestamp
-        latest_submission_timestamp = None
-        if latest_attempt is not None:
-            latest_submission_timestamp = latest_attempt.timestamp
-        # get the email from the DemoUser table
-        matching_demo_user = session.exec(
-            select(DemoUser).where(DemoUser.username == team.school_name)
-        ).first()  # for the special case of demo users, the username they typed in is saved as the school_name
-        email = matching_demo_user.email if matching_demo_user is not None else None
-        result.append(
-            {
-                "demo_team_id": team.id,
-                "demo_team_name": team.name,
-                "email": email,
-                "league_name": team.league.name if team.league else None,
-                "number_of_submissions": len(team.submission_attempts),
-                "latest_submission": latest_submission_timestamp,
-            }
+def get_classroom_summaries(session: Session) -> list:
+    """League/classroom cards for the admin home page: every non-deleted league
+    except the 'unassigned' holding pen, with its team count and shareable
+    signup link."""
+    leagues = session.exec(
+        select(League)
+        .where(
+            League.deleted_date == None,  # noqa: E711
+            League.name != UNASSIGNED_LEAGUE_NAME,
         )
-    return {"demo_users": result}
+        .order_by(League.created_date.desc())
+    ).all()
+    league_ids = [league.id for league in leagues]
+
+    team_counts: dict = {}
+    if league_ids:
+        team_counts = dict(
+            session.exec(
+                select(Team.league_id, func.count(Team.id))
+                .where(Team.league_id.in_(league_ids))
+                .group_by(Team.league_id)
+            ).all()
+        )
+
+    now = utc_now()
+    return [
+        {
+            "id": league.id,
+            "name": league.name,
+            "game": league.game,
+            "team_count": team_counts.get(league.id, 0),
+            "signup_link": league.signup_link,
+            "created_date": league.created_date,
+            "expiry_date": league.expiry_date,
+            "is_active": ensure_utc(league.expiry_date) >= now,
+        }
+        for league in leagues
+    ]
 
 
-def delete_all_demo_teams_and_subs(session):
-    """Delete all demo teams and submissions"""
-    all_demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
+def get_league_by_id(session: Session, league_id: int) -> League:
+    """Get a league by ID."""
+    league = session.get(League, league_id)
 
-    team_ids = [team.id for team in all_demo_teams]
+    if not league:
+        raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-    # First, clear everything that references these teams
-    delete_team_children(session, team_ids)
-    # Now delete the teams themselves
-    session.exec(delete(Team).where(Team.id.in_(team_ids)))
+    return league
+
+
+def save_simulation_results(
+    session: Session,
+    league_id: int,
+    results: Dict,
+    rewards=None,
+    feedback_str=None,
+    feedback_json=None,
+) -> SimulationResult:
+    """Save simulation results for a league"""
+    get_league_by_id(session, league_id)
+
+    timestamp = utc_now()
+    rewards_str = rewards if rewards is not None else "[10, 0, 0, 0, 0, 0, 0]"
+    if isinstance(rewards_str, list):
+        rewards_str = json.dumps(rewards_str)
+
+    simulation_result = SimulationResult(
+        league_id=league_id,
+        timestamp=timestamp,
+        num_simulations=results["num_simulations"],
+        custom_rewards=rewards_str,
+        feedback_str=feedback_str,
+        feedback_json=feedback_json,
+    )
+    session.add(simulation_result)
+    session.flush()
+
+    custom_value_names = list(results.get("table", {}).keys())[:3]
+
+    for team_name, score in results["total_points"].items():
+        # Scoped by league_id as well as name: a simulation's results belong to
+        # this one league, so a team that has since moved elsewhere must not pick
+        # up a row here.
+        team = session.exec(
+            select(Team)
+            .where(Team.name == team_name)
+            .where(Team.league_id == league_id)
+        ).one_or_none()
+        if team:
+            result_item = SimulationResultItem(
+                simulation_result_id=simulation_result.id, team_id=team.id, score=score
+            )
+
+            for i, name in enumerate(custom_value_names, start=1):
+                value = results["table"][name]
+                if isinstance(value, dict):
+                    setattr(result_item, f"custom_value{i}", value.get(team_name))
+                else:
+                    setattr(result_item, f"custom_value{i}", value)
+                setattr(result_item, f"custom_value{i}_name", name)
+
+            session.add(result_item)
 
     session.commit()
+    return simulation_result
 
 
-# Agent team management functions
-def create_agent_team(session: Session, team_data: CreateAgentTeam) -> Dict:
-    """Create a new agent team"""
-    # Check if league exists and is agent type
+def get_all_league_results(session: Session, league_id: int) -> Dict:
+    """Get all simulation results for a league"""
+    league = get_league_by_id(session, league_id)
+
+    results = [
+        process_simulation_results(sim, league.name)
+        for sim in league.simulation_results
+    ]
+
+    return {"results": sorted(results, key=lambda x: x["id"], reverse=True)}
+
+
+def publish_sim_results(
+    session: Session,
+    league_id: int,
+    sim_id: int,
+    feedback: Union[str, Dict, None] = None,
+) -> Tuple[str, Dict]:
+    """Publish simulation results"""
+    league = get_league_by_id(session, league_id)
+
+    simulation = session.get(SimulationResult, sim_id)
+    if not simulation:
+        raise SimulationResultNotFoundError(
+            f"Simulation result with ID {sim_id} not found"
+        )
+
+    if simulation.league_id != league.id:
+        raise SimulationResultNotFoundError(
+            f"Simulation result with ID {sim_id} does not belong to league "
+            f"'{league.name}'"
+        )
+
+    if not simulation.publish_link:
+        simulation.publish_link = secrets.token_urlsafe(16)
+
+    simulation.published = True
+
+    if feedback is not None:
+        if isinstance(feedback, str):
+            simulation.feedback_str = feedback
+            simulation.feedback_json = None
+        else:
+            simulation.feedback_str = None
+            simulation.feedback_json = json.dumps(feedback)
+
+    session.add(simulation)
+    session.commit()
+
+    return (
+        f"Results published successfully for league '{league.name}'",
+        {
+            "sim_id": simulation.id,
+            "league_name": league.name,
+            "published": True,
+            "publish_link": simulation.publish_link,
+        },
+    )
+
+
+def update_expiry_date(
+    session: Session, league_id: int, expiry_date: datetime
+) -> str:
+    """Update league expiry date."""
+    league = get_league_by_id(session, league_id)
+
+    league.expiry_date = expiry_date
+    session.add(league)
+    session.commit()
+
+    return f"Expiry date updated successfully for league '{league.name}'"
+
+
+def update_league_info(session: Session, league_id: int, info_markdown: str) -> str:
+    """Update the per-league markdown info block."""
+    league = get_league_by_id(session, league_id)
+
+    league.info_markdown = info_markdown or ""
+    session.add(league)
+    session.commit()
+    return f"League info updated successfully for league '{league.name}'"
+
+
+def assign_team_to_league(session: Session, team_id: int, league_id: int) -> str:
+    """Assign a team to a league"""
+    team = session.get(Team, team_id)
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+
+    league = get_league_by_id(session, league_id)
+
+    team.league_id = league.id
+    session.add(team)
+    session.commit()
+    return f"Team '{team.name}' assigned to league '{league.name}'"
+
+
+def unassign_team(session: Session, team_id: int) -> str:
+    """Move a team back to the 'unassigned' league."""
+    team = session.get(Team, team_id)
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+
+    team.league_id = get_unassigned_league(session).id
+    session.add(team)
+    session.commit()
+    return f"Team '{team.name}' moved to '{UNASSIGNED_LEAGUE_NAME}'"
+
+
+def generate_signup_link(session: Session, league_id: int) -> Dict:
+    """Generate a new signup link for a league"""
+    league = get_league_by_id(session, league_id)
+
+    signup_token = secrets.token_urlsafe(16)
+    league.signup_link = signup_token
+    session.add(league)
+    session.commit()
+
+    return {"signup_token": signup_token, "league_name": league.name}
+
+
+# How long a password-reset link stays usable. Generous on purpose: a teacher
+# may generate links in the evening for a class that runs the next day.
+PASSWORD_RESET_LINK_HOURS = 48
+
+
+def generate_team_password_reset(session: Session, team_id: int) -> Dict:
+    """Create a one-time password-reset token for a team.
+
+    Regenerating replaces any previous token, so a mis-shared link can be
+    invalidated by generating a fresh one.
+    """
+    team = session.get(Team, team_id)
+    if not team:
+        raise TeamNotFoundError(f"Team with ID {team_id} not found")
+
+    reset_token = secrets.token_urlsafe(16)
+    team.password_reset_token = reset_token
+    team.password_reset_expiry = utc_now() + timedelta(
+        hours=PASSWORD_RESET_LINK_HOURS
+    )
+    session.add(team)
+    session.commit()
+
+    return {"reset_token": reset_token, "team_name": team.name}
+
+
+def delete_league(session: Session, league_id: int) -> str:
+    """Delete a league, moving its teams to the 'unassigned' league.
+
+    The teams are reassigned *before* the delete, which is what keeps them: any
+    row still pointing at the league when it goes is removed by ON DELETE
+    CASCADE. Their submissions are deleted explicitly, because a submission's
+    feedback is only meaningful next to the league it was scored in.
+    """
+    league = get_league_by_id(session, league_id)
+
+    league_name = league.name
+    if league_name == UNASSIGNED_LEAGUE_NAME:
+        raise ProtectedLeagueError(
+            f"Cannot delete the '{UNASSIGNED_LEAGUE_NAME}' league"
+        )
+
+    unassigned_league = get_unassigned_league(session)
+
+    teams = session.exec(select(Team).where(Team.league_id == league.id)).all()
+    team_count = len(teams)
+
+    delete_submissions_for_teams(session, [team.id for team in teams])
+    for team in teams:
+        team.league_id = unassigned_league.id
+        session.add(team)
+    session.flush()
+
+    # Simulation results and their items cascade with the league.
+    session.delete(league)
+    session.commit()
+
+    return (
+        f"League '{league_name}' deleted and {team_count} teams moved to the "
+        "unassigned league"
+    )
+
+
+# --- agent teams -----------------------------------------------------------
+# Teams driven over the /agent router with an API key instead of a password.
+
+
+def create_agent_team(session: Session, team_data) -> Dict:
+    """Create a new agent team in an agent-type league."""
     league = session.get(League, team_data.league_id)
     if not league:
         raise AgentTeamError(f"League with ID {team_data.league_id} not found")
     if league.league_type != LeagueType.AGENT:
         raise AgentTeamError("Can only create agent teams in agent leagues")
 
-    # Create team
     team = Team(
         name=team_data.name,
         school_name="AI Agent",
         team_type=TeamType.AGENT,
         league_id=team_data.league_id,
-        institution_id=league.institution_id,
     )
     session.add(team)
     session.commit()
@@ -578,17 +514,15 @@ def create_agent_team(session: Session, team_data: CreateAgentTeam) -> Dict:
 
 
 def create_api_key(session: Session, team_id: int) -> Dict:
-    """Create a new API key for an agent team"""
+    """Create a new API key for an agent team."""
     team = session.get(Team, team_id)
     if not team:
         raise AgentTeamError(f"Team with ID {team_id} not found")
     if team.team_type != TeamType.AGENT:
         raise AgentTeamError("Can only create API keys for agent teams")
 
-    # Generate secure API key
     api_key = secrets.token_urlsafe(32)
 
-    # Create API key record
     key_record = AgentAPIKey(key=api_key, team_id=team_id)
     session.add(key_record)
     session.commit()

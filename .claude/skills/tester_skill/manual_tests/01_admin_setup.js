@@ -1,186 +1,109 @@
-// Stage 1 of docs/integration-test-manual.md — Admin:
-//   1.1 login  1.2 create two institutions + one TEACHER account (the
-//       "Teacher account (classroom/student wording)" checkbox — drives the
-//       classroom flow in scripts 05/06)  1.3 delete one institution
-//   1.4 backup + restore round-trip  1.5 configure OpenAI key  1.6 logout
+// Stage 1 — admin claims the deployment, creates a league and two teams.
 //
-// Requires OPENAI_API_KEY in the environment (a real, funded sk-... key).
-// Records the kept institution's credentials into the state file for Stage 2.
+// Everything here is setup for the two stages that carry the actual coverage
+// (02 submissions, 03 simulation + progress). It is a stage rather than a
+// fixture because the first-run setup form only exists on an unclaimed
+// deployment, and driving it through the browser is the only way to prove the
+// claim flow still works.
+//
 //   NODE_PATH="$HOME/.agent-games-playwright/node_modules" \
-//   OPENAI_API_KEY=sk-... node .claude/skills/tester_skill/manual_tests/01_admin_setup.js
+//     node .claude/skills/tester_skill/manual_tests/01_admin_setup.js
 //
-// Steps run independently where possible: a failing step is recorded (and the
-// script exits 1 at the end) but later steps still run, so one broken feature
-// doesn't hide the state of the others. Note on 1.4 backup/restore: it runs
-// against MinIO locally (admin_backup._get_s3_client() honours S3_ENDPOINT_URL)
-// and needs the AWS_S3_BUCKET bucket to exist — the minio service's compose
-// entrypoint pre-creates it, so a `docker compose down -v` reset is fine. With
-// real creds (.aws.env) it talks to real AWS instead: the MANUAL dump then
-// lands in the production backup bucket and the restore replays the newest
-// dump (its own) into the local DB.
+// Assumes a fresh stack (docker compose down -v && up) with
+// SEED_SAMPLE_DATA=false, which run_playwright_tests.sh guarantees.
 const {
-  BASE, saveState, launchPage, acceptDialogs, waitForToast, dismissToasts, finish,
+  BASE, saveState, launchPage, waitForToast, dismissToasts, finish,
 } = require('./_helpers');
 
 const RUN = Math.floor(1000 + Math.random() * 9000);
-const KEEP = {
-  name: `Test Institution Keep ${RUN}`,
-  contact_person: 'QA Tester',
-  contact_email: 'qa+keep@example.com',
-  password: 'KeepPass123',
-};
-const DEL = {
-  name: `Test Institution Delete ${RUN}`,
-  contact_person: 'QA Deleter',
-  contact_email: 'qa+delete@example.com',
-  password: 'DeletePass123',
-};
-// Teacher account: same institution table/login, but is_teacher=true flips all
-// user-visible wording to classroom/student (scripts 05/06 exercise it).
-const TEACHER = {
-  name: `Test Teacher Keep ${RUN}`,
-  contact_person: 'QA Teacher',
-  contact_email: 'qa+teacher@example.com',
-  password: 'TeachPass123',
-};
 
-async function createInstitution(page, inst, { teacher = false } = {}) {
-  await page.click('button:has-text("Add Institution")');
-  await page.fill('#name', inst.name);
-  await page.fill('#contact_person', inst.contact_person);
-  await page.fill('#contact_email', inst.contact_email);
-  await page.fill('#password', inst.password);
-  // Subscription expiry: leave the default (1 year); Docker access: leave unchecked.
-  if (teacher) await page.check('#is_teacher');
-  await page.click('button:has-text("Create Institution")');
-  await waitForToast(page, 'Institution created successfully');
-  const row = page.locator(`tr:has-text("${inst.name}")`);
-  await row.waitFor({ timeout: 15000 });
-  // The Type badge must reflect the checkbox (it's also the toggle button).
-  const expectedType = teacher ? 'Teacher' : 'Institution';
-  const badge = await row.locator('td:nth-child(3) button').innerText();
-  if (badge.trim() !== expectedType) {
-    throw new Error(`institution "${inst.name}" shows Type "${badge.trim()}", expected "${expectedType}"`);
-  }
-  console.log(`  created ${expectedType.toLowerCase()} account: ${inst.name}`);
-}
+const ADMIN = { name: `admin${RUN}`, password: 'AdminPass123' };
+const LEAGUE = { name: `qa_league_${RUN}`, game: 'greedy_pig' };
+const TEAMS = [
+  { name: `alpha${RUN}`, password: 'AlphaPass1' },
+  { name: `bravo${RUN}`, password: 'BravoPass1' },
+];
 
 (async () => {
-  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY env var is required');
   const { browser, page, observed } = await launchPage();
-  acceptDialogs(page, observed);
-
-  const results = [];
-  // Fatal steps abort the stage (later steps can't work without them);
-  // non-fatal failures are recorded and the run continues.
-  async function step(name, fatal, fn) {
-    try {
-      await fn();
-      results.push(`${name}: PASS`);
-      console.log(`[${name}] PASS`);
-    } catch (err) {
-      results.push(`${name}: FAIL — ${err.message}`);
-      console.error(`[${name}] FAIL — ${err.message}`);
-      const shot = `/tmp/agent_games_stage1_${name.replace(/[^\w]/g, '_')}.png`;
-      await page.screenshot({ path: shot, fullPage: true }).catch(() => {});
-      console.error(`  screenshot: ${shot}`);
-      if (fatal) throw err;
-    }
-  }
 
   try {
-    await step('1.1 admin login', true, async () => {
-      await page.goto(`${BASE}/Admin`, { waitUntil: 'domcontentloaded' });
-      await page.fill('#admin_name', 'admin');
-      await page.fill('#admin_password', 'admin');
-      await page.click('button:has-text("Login")');
-      await page.waitForURL('**/AdminInstitutions', { timeout: 20000 });
-      await page.waitForSelector('h1:has-text("Institution Management")');
+    // 1.1 claim the deployment. /Login serves the setup form while no admin
+    // row exists and the login form afterwards, so the button text is what
+    // tells the two apart.
+    await page.goto(`${BASE}/Login`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button:has-text("Create account")', { timeout: 20000 });
+    await page.fill('#admin_name', ADMIN.name);
+    await page.fill('#admin_password', ADMIN.password);
+    await page.click('button:has-text("Create account")');
+    await page.waitForURL('**/Home', { timeout: 20000 });
+    console.log(`[1.1] claimed the deployment as "${ADMIN.name}" -> /Home`);
+
+    // 1.2 create the league. The card button and the modal button carry the
+    // same label, so the modal one is addressed through the modal.
+    await page.click('button:has-text("Create League")');
+    const modal = page.locator('div.fixed').filter({
+      has: page.locator('h2:text-is("Create New League")'),
     });
+    await modal.waitFor({ timeout: 15000 });
+    await modal.locator('#leagueName').fill(LEAGUE.name);
+    await modal.locator('#gameName').selectOption(LEAGUE.game);
+    await modal.locator('button:has-text("Create League")').click();
+    await waitForToast(page, 'League created successfully!');
+    // The modal stays open showing the join link until dismissed.
+    await modal.locator('button:has-text("Done")').click();
+    await modal.waitFor({ state: 'detached', timeout: 10000 });
+    console.log(`[1.2] created league ${LEAGUE.name} (${LEAGUE.game})`);
 
-    await step('1.2 create institutions + teacher account', true, async () => {
-      await createInstitution(page, KEEP);
-      await createInstitution(page, DEL);
-      await createInstitution(page, TEACHER, { teacher: true });
-    });
+    // 1.3 create the teams on the site-wide roster. Teams created here land in
+    // the "unassigned" holding pen; 1.4 moves them into the league.
+    await dismissToasts(page);
+    await page.click('nav a:has-text("Teams")');
+    await page.waitForURL('**/Teams', { timeout: 20000 });
+    await page.waitForSelector('h1:has-text("Team Management")', { timeout: 15000 });
+    for (const team of TEAMS) {
+      await page.click('button:has-text("Add a new team")');
+      await page.fill('input[placeholder="Enter team name *"]', team.name);
+      await page.fill('input[placeholder="Enter team password *"]', team.password);
+      await page.fill('input[placeholder="Enter school name (optional)"]', 'Test School');
+      await page.click('button:has-text("Add Team")');
+      await waitForToast(page, 'Team created successfully');
+      await page.waitForSelector(`span:text-is("${team.name}")`, { timeout: 15000 });
+      console.log(`[1.3] created team ${team.name}`);
+    }
 
-    await step('1.3 delete one institution', false, async () => {
-      await page.locator(`tr:has-text("${DEL.name}")`).locator('button[title="Delete Institution"]').click();
-      await waitForToast(page, 'deleted successfully');
-      await page.waitForSelector(`tr:has-text("${DEL.name}")`, { state: 'detached', timeout: 15000 });
-      if (!(await page.locator(`tr:has-text("${KEEP.name}")`).count())) {
-        throw new Error('KEPT institution row disappeared after deleting the other one');
-      }
-      if (!(await page.locator(`tr:has-text("${TEACHER.name}")`).count())) {
-        throw new Error('TEACHER row disappeared after deleting the other institution');
-      }
-    });
+    // 1.4 assign both teams to the league from the home page's unassigned card.
+    await dismissToasts(page);
+    await page.click('nav a:has-text("Home")');
+    await page.waitForURL('**/Home', { timeout: 20000 });
+    const unassigned = page.locator('div.bg-white').filter({
+      has: page.locator('h2:text-is("Unassigned Teams")'),
+    }).first();
+    await unassigned.waitFor({ timeout: 15000 });
+    for (const team of TEAMS) {
+      const row = unassigned.locator('li').filter({ hasText: team.name });
+      await row.waitFor({ timeout: 15000 });
+      await row.locator('select').selectOption({ label: LEAGUE.name });
+      await row.locator('button:has-text("Assign")').click();
+      await waitForToast(page, `${team.name} assigned to ${LEAGUE.name}`);
+      console.log(`[1.4] assigned ${team.name} to ${LEAGUE.name}`);
+    }
 
-    await step('1.4 backup + restore', false, async () => {
-      await page.click('a:has-text("Backups"), button:has-text("Backups")');
-      await page.waitForURL('**/AdminBackup', { timeout: 15000 });
-      await page.waitForSelector('h1:has-text("Database Backups")');
-      const [backupResp] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/admin/backup-database'), { timeout: 120000 }).catch(() => null),
-        page.click('button:has-text("Create Backup")'),
-      ]);
-      // A CORS-stripped 500 never yields a response object — treat both as failure.
-      if (!backupResp || !backupResp.ok()) {
-        throw new Error(`backup-database failed (HTTP ${backupResp ? backupResp.status() : 'blocked/no response'})`);
-      }
-      await waitForToast(page, 'Backup created', 60000);
-      await page.waitForSelector('table tbody tr', { timeout: 15000 });
-      console.log('  backup created');
+    // 1.5 the league card must now count both teams, and opening it gives the
+    // league id the later stages address the workspace with.
+    const leagueCard = page.locator('div.bg-white').filter({
+      has: page.locator(`span:text-is("${LEAGUE.name}")`),
+    }).first();
+    await leagueCard.locator(`text=${TEAMS.length} teams`).waitFor({ timeout: 20000 });
+    await leagueCard.locator(`span:text-is("${LEAGUE.name}")`).click();
+    await page.waitForURL('**/Classroom/**', { timeout: 20000 });
+    const leagueId = Number(page.url().match(/\/Classroom\/(\d+)/)[1]);
+    console.log(`[1.5] league ${LEAGUE.name} has ${TEAMS.length} teams (id ${leagueId})`);
 
-      const [restoreResp] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/admin/restore-database'), { timeout: 180000 }).catch(() => null),
-        page.locator('table tbody tr').first().locator('button:has-text("Restore")').click(),
-      ]);
-      if (!restoreResp || !restoreResp.ok()) {
-        throw new Error(`restore-database failed (HTTP ${restoreResp ? restoreResp.status() : 'blocked/no response'})`);
-      }
-      await waitForToast(page, 'Database restored', 60000);
-      console.log('  restore completed');
-    });
-
-    await step('1.5 configure OpenAI key', true, async () => {
-      // If 1.4's backup/restore failed (known local-dev limitation), its error
-      // toast lingers over the top-center navbar — and react-toastify pauses
-      // its auto-dismiss timer in an unfocused headless window, so it never
-      // clears itself and intercepts the "API Keys" nav click. Dismiss it first.
-      await dismissToasts(page);
-      await page.click('a:has-text("API Keys"), button:has-text("API Keys")');
-      await page.waitForURL('**/AdminAPIKeys', { timeout: 15000 });
-      await page.waitForSelector('h1:has-text("API Keys Configuration")');
-      await page.fill('input[placeholder="sk-..."]', process.env.OPENAI_API_KEY);
-      const [valResp] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/ai/api-keys/validate'), { timeout: 60000 }),
-        page.click('button:has-text("Validate")'),
-      ]);
-      const valBody = await valResp.json().catch(() => ({}));
-      if (!valResp.ok() || !valBody.valid) {
-        throw new Error(`OpenAI key failed validation: HTTP ${valResp.status()} ${JSON.stringify(valBody)}`);
-      }
-      await waitForToast(page, 'OpenAI key is valid');
-      await page.click('button:has-text("Save Changes")');
-      await waitForToast(page, 'API keys updated successfully');
-      await page.waitForSelector('span:has-text("Configured")', { timeout: 15000 });
-    });
-
-    await step('1.6 logout', false, async () => {
-      await page.click('button:has-text("Logout")');
-      await page.waitForURL('**/Admin', { timeout: 15000 });
-    });
-
-    saveState({ run: RUN, institution: KEEP, teacher: TEACHER, deletedInstitution: DEL.name, stage1Results: results });
-    const failed = results.filter((r) => r.includes('FAIL'));
-    console.log('\n=== Stage 1 summary ===');
-    results.forEach((r) => console.log('  ' + r));
-    await finish(page, browser, observed, { name: 'STAGE1', failure: failed.length ? new Error(`${failed.length} step(s) failed`) : undefined });
+    saveState({ run: RUN, admin: ADMIN, league: { ...LEAGUE, id: leagueId }, teams: TEAMS });
+    await finish(page, browser, observed, { name: 'STAGE1' });
   } catch (err) {
-    saveState({ run: RUN, institution: KEEP, teacher: TEACHER, deletedInstitution: DEL.name, stage1Results: results });
-    console.log('\n=== Stage 1 summary (aborted) ===');
-    results.forEach((r) => console.log('  ' + r));
+    saveState({ run: RUN, admin: ADMIN, league: LEAGUE, teams: TEAMS });
     await finish(page, browser, observed, { name: 'STAGE1', failure: err });
   }
 })();

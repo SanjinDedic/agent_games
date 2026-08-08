@@ -5,7 +5,6 @@ from sqlmodel import Session, select
 
 from backend.database.db_models import League, Team, TeamType
 from backend.schools.naming import sanitize_school_name
-from backend.team_capacity import assert_team_capacity
 
 __all__ = [
     "MAX_COLLISION_RETRIES",
@@ -18,26 +17,21 @@ logger = logging.getLogger(__name__)
 MAX_COLLISION_RETRIES = 10
 
 
-def next_available_team_name(
-    session: Session, sanitized: str, institution_id: int
-) -> str:
-    """Find the lowest N >= 1 such that f'{sanitized}{N}' is unused as a
-    Team.name within ``institution_id``.
+def next_available_team_name(session: Session, sanitized: str) -> str:
+    """Find the lowest N >= 1 such that f'{sanitized}{N}' is unused as a Team.name.
 
-    Counter scope: names are unique per-institution (the (name, institution_id)
-    composite constraint), so counting is scoped to the institution. This must
-    match the binding constraint — a league-scoped counter would keep proposing
-    "<school>1" for a fresh league and collide forever with the institution
-    constraint on retry. Each institution numbers its schools from 1
-    independently; the same school in two institutions both get "<school>1".
+    Counter scope: global, matching Team.name's unique constraint. The two must
+    always agree. A narrower counter than the constraint keeps proposing a name
+    that is already taken somewhere the count could not see, so every retry
+    collides and create_school_team exhausts its attempts — for the Nth student
+    of the day, in a league whose sanitized school name another league already
+    used.
     """
     if not sanitized:
         raise ValueError("Sanitized school name is empty; cannot derive team name")
 
     existing = session.exec(
-        select(Team.name)
-        .where(Team.name.like(f"{sanitized}%"))
-        .where(Team.institution_id == institution_id)
+        select(Team.name).where(Team.name.like(f"{sanitized}%"))
     ).all()
 
     used = set()
@@ -66,9 +60,6 @@ def create_school_team(
     if not league:
         raise ValueError(f"League {league_id} not found")
 
-    # Signup links stop working once the institution's plan cap is reached.
-    assert_team_capacity(session, league.institution_id)
-
     sanitized = sanitize_school_name(school_name)
     if not sanitized:
         raise ValueError(
@@ -76,13 +67,12 @@ def create_school_team(
         )
 
     for attempt in range(MAX_COLLISION_RETRIES):
-        candidate = next_available_team_name(session, sanitized, league.institution_id)
+        candidate = next_available_team_name(session, sanitized)
         try:
             team = Team(
                 name=candidate,
                 school_name=school_name,
                 league_id=league_id,
-                institution_id=league.institution_id,
                 team_type=TeamType.STUDENT,
             )
             team.set_password(password)

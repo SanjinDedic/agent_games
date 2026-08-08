@@ -11,9 +11,8 @@ import useLeagueAPI from "../hooks/useLeagueAPI";
  * @param {Object} props - Component props
  * @param {string} props.simulation_id - ID of the simulation to publish
  * @param {string} props.selected_league_name - Name of the selected league
- * @param {string} props.userRole - User role ('admin' or 'institution')
  */
-const LeaguePublish = ({ simulation_id, selected_league_id, selected_league_name, userRole }) => {
+const LeaguePublish = ({ simulation_id, selected_league_id, selected_league_name }) => {
   const dispatch = useDispatch();
   const currentSimulation = useSelector(
     (state) => state.leagues.currentLeagueResultSelected
@@ -23,7 +22,7 @@ const LeaguePublish = ({ simulation_id, selected_league_id, selected_league_name
   const [copied, setCopied] = useState(false);
 
   // Use the shared API hook
-  const { publishResults, isLoading } = useLeagueAPI(userRole);
+  const { publishResults, isLoading } = useLeagueAPI();
 
   const handlePublish = async () => {
     if (!simulation_id || !selected_league_id) {

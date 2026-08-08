@@ -1,19 +1,16 @@
 """Sync site image files from a local directory into the assets bucket.
 
-Works against MinIO locally and real S3 in prod — whichever endpoint the
-AWS_* env vars already point at. Content-type is inferred from the extension.
+A maintainer script, not part of the running app: the frontend loads these images
+straight from VITE_ASSETS_URL, so nothing in the stack needs object storage at
+runtime. Run it from a workstation with AWS credentials — the containers carry
+none, and there is no local MinIO to point at any more. Content-type is inferred
+from the extension.
 
-Usage (inside the api container, dev):
-    docker compose exec api python -m backend.scripts.sync_site_images
-
-Override source / prefix:
-    docker compose exec -e SYNC_SOURCE_DIR=/agent_games/frontend/public/games \\
-        -e SYNC_DEST_PREFIX=images/games \\
-        api python -m backend.scripts.sync_site_images
-
-Run against AWS (from a workstation with AWS creds, no docker needed):
+Usage:
     AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... \\
         python -m backend.scripts.sync_site_images
+
+Override source / prefix with SYNC_SOURCE_DIR and SYNC_DEST_PREFIX.
 """
 
 import logging
@@ -21,7 +18,7 @@ import mimetypes
 import os
 from pathlib import Path
 
-from backend.routes.support.support_s3 import _get_s3_client, get_assets_bucket
+from backend.s3 import _get_s3_client, get_assets_bucket
 
 logger = logging.getLogger(__name__)
 

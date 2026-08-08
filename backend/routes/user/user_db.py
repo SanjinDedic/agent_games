@@ -12,63 +12,20 @@ from backend.database.db_models import (
     TeamType,
     SimulationResult,
 )
-from backend.team_capacity import assert_team_capacity
+from backend.errors import (
+    LeagueExpiredError,
+    LeagueNotFoundError,
+    ResultNotFoundError,
+    SubmissionLimitExceededError,
+    TeamError,
+    TeamExistsError,
+    TeamNotFoundError,
+)
 from backend.time_utils import ensure_utc, utc_now
 from backend.utils import process_simulation_results
 
 
 logger = logging.getLogger(__name__)
-
-
-class TeamError(Exception):
-    """Base exception for all team-related errors."""
-
-    pass
-
-
-class TeamExistsError(TeamError):
-    """Raised when a signup collides with an existing team name (maps to HTTP 409)."""
-
-    pass
-
-
-class SubmissionLimitExceededError(Exception):
-    """Raised when the submission rate limit is exceeded (maps to HTTP 429)."""
-
-    pass
-
-
-class TeamNotFoundError(Exception):
-    """Raised when a team is not found (maps to HTTP 404)."""
-
-    pass
-
-
-class LeagueNotFoundError(Exception):
-    """Raised when a league is not found (maps to HTTP 404)."""
-
-    pass
-
-
-class LeagueExpiredError(Exception):
-    """Raised when a signup targets a league past its expiry (maps to HTTP 410)."""
-
-    pass
-
-
-class DemoLeagueError(ValueError):
-    """Raised when a demo user targets a non-demo league (maps to HTTP 403).
-
-    Subclasses ValueError for compatibility with callers that predate the class.
-    """
-
-    pass
-
-
-class ResultNotFoundError(Exception):
-    """Raised when a published result is not found (maps to HTTP 404)."""
-
-    pass
 
 
 def allow_submission(session: Session, team_id: int) -> bool:
@@ -84,7 +41,6 @@ def allow_submission(session: Session, team_id: int) -> bool:
         .where(SubmissionMetadata.timestamp >= one_minute_ago)
     ).all()
 
-    # Demo users get a higher submission limit (10 per minute instead of 5)
     max_submissions = 5
 
     if len(recent_submissions) >= max_submissions:
@@ -142,16 +98,11 @@ def save_submission(
     return db_submission.id
 
 
-def assign_team_to_league(
-    session: Session, team_id: int, league_id: int, is_demo: bool
-) -> str:
+def assign_team_to_league(session: Session, team_id: int, league_id: int) -> str:
     """Assign a team to a league"""
     league = session.get(League, league_id)
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    if is_demo and not league.is_demo:
-        raise DemoLeagueError("Demo users can only join demo leagues")
 
     team = session.get(Team, team_id)
     if not team:
@@ -220,8 +171,9 @@ def get_all_published_results_for_league(session: Session, league_id: int) -> di
 
 
 def get_all_leagues(session: Session):
-    """Get all leagues"""
-    leagues = session.exec(select(League).where(League.deleted_date == None)).all()
+    """Every non-deleted league. Replaces get_leagues_for_user, which existed
+    only to scope this list to the caller's institution."""
+    leagues = session.exec(select(League).where(League.deleted_date == None)).all()  # noqa: E711
 
     return {
         "leagues": [
@@ -232,34 +184,6 @@ def get_all_leagues(session: Session):
                 "created_date": league.created_date,
                 "expiry_date": league.expiry_date,
                 "signup_link": league.signup_link,
-            }
-            for league in leagues
-        ]
-    }
-
-
-def get_leagues_for_user(session: Session, role: str, institution_id: Optional[int]):
-    """Get leagues scoped to the user's institution. Admin sees all."""
-    query = select(League).where(League.deleted_date == None)
-
-    if role != "admin":
-        if institution_id is not None:
-            query = query.where(League.institution_id == institution_id)
-        else:
-            return {"leagues": []}
-
-    leagues = session.exec(query).all()
-
-    return {
-        "leagues": [
-            {
-                "id": league.id,
-                "name": league.name,
-                "game": league.game,
-                "created_date": league.created_date,
-                "expiry_date": league.expiry_date,
-                "signup_link": league.signup_link,
-                "institution_name": league.institution.name if league.institution else None,
                 "info_markdown": league.info_markdown or "",
             }
             for league in leagues
@@ -388,7 +312,6 @@ def get_team_agent_stats(
     # Full ranked history newest-first: the window is the first 3 rows, but
     # best_ranking and achieved_first must see everything. Pre-ranking
     # submissions have NULL and are skipped (same convention as the
-    # institution progress view).
     ranked = session.exec(
         select(Submission.ranking)
         .join(SubmissionMetadata, Submission.metadata_id == SubmissionMetadata.id)
@@ -483,37 +406,23 @@ def create_team_and_assign_to_league(
     school_name: str = "",
 ) -> Team:
     """Create a new team and directly assign it to a specific league"""
-    # First get the league to retrieve institution_id
     league = session.get(League, league_id)
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
 
-    # Signup links stop working once the institution's plan cap is reached.
-    assert_team_capacity(session, league.institution_id)
-
-    # Check if team name already exists within scope. Names are unique
-    # per-institution (a bare name check would wrongly reject a name already
-    # used by a different institution). Fall back to the league when the league
-    # has no institution, matching the (name, league_id) secondary constraint.
-    name_conflict = select(Team).where(Team.name == team_name)
-    if league.institution_id is not None:
-        name_conflict = name_conflict.where(
-            Team.institution_id == league.institution_id
-        )
-    else:
-        name_conflict = name_conflict.where(Team.league_id == league_id)
-    existing_team = session.exec(name_conflict).first()
+    # One global name check, matching Team.name's unique constraint. The scope
+    # here and the constraint must always agree, or a name this query allows is
+    # rejected by the database on insert.
+    existing_team = session.exec(select(Team).where(Team.name == team_name)).first()
 
     if existing_team:
         raise TeamExistsError(f"Team with name '{team_name}' already exists")
 
-    # Create the team with connection to both league and institution
     team = Team(
         name=team_name,
         school_name=school_name
         or team_name,  # Use provided school name or team name as fallback
         league_id=league_id,
-        institution_id=league.institution_id,
         team_type=TeamType.STUDENT,
     )
     team.set_password(password)

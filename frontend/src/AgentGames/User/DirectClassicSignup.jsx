@@ -5,15 +5,14 @@ import { toast } from "react-toastify";
 
 import { setCurrentLeague, setLeagues } from "../../slices/leaguesSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
-import { getTerms } from "../Shared/terminology";
+import { useTerms } from "../Shared/terminology";
 import CredentialsModal from "../Shared/Utilities/CredentialsModal";
 
 function DirectClassicSignup({ leagueToken, leagueInfo, onShowLogin }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { directSignup, isLoading } = useAuthAPI();
-  // Visitors are logged out, so wording comes from the league's institution.
-  const T = getTerms(Boolean(leagueInfo?.is_teacher));
+  const T = useTerms();
 
   const [formData, setFormData] = useState({
     teamName: "",

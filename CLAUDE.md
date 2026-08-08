@@ -20,7 +20,7 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 
 ### Running the app
 ```bash
-# Development (starts api, valkey, celery workers, postgres, minio, frontend)
+# Development (starts api, valkey, celery workers, postgres, frontend)
 # docker-compose.override.yml is applied automatically: it wraps the api in debugpy (port 5678)
 docker compose up -d
 
@@ -32,7 +32,16 @@ docker compose restart api
 docker compose down   # Stop all containers
 ```
 
-Compose requires `.env` at the repo root (committed dev defaults). An optional gitignored `.aws.env` overrides S3 credentials for devs exercising real S3 instead of MinIO.
+Compose requires `.env` at the repo root (committed dev defaults).
+
+### Browser tests
+```bash
+./run_playwright_tests.sh all   # headless, three stages, exit 1 on failure
+```
+Three Playwright stages covering submission, simulation and the admin's view of
+team progress — nothing else. See `.claude/skills/tester_skill/manual_tests/README.md`.
+Every launch does `docker compose down -v`, and it must not overlap a pytest run
+(the test overlay recreates the api/worker containers with `DB_ENVIRONMENT=test`).
 
 ### Frontend (standalone)
 ```bash
@@ -42,64 +51,50 @@ npm run dev      # Vite dev server on port 3000
 npm run build    # Production build
 ```
 
-### Tutorial content (private)
-Tutorial/exercise content is NOT in this repo: it lives in the gitignored `tutorial_data/` folder along with its own tooling and tests (one folder per tutorial, one subfolder per exercise — `problem.md`, `starter.py` with the HINTS list, a runnable `solution.py`, `tests.py`; layout documented in `tutorial_data/README.md` and the `tutorial_sync.py` docstring). The database is the runtime source of truth; `tutorial_data/` is the authoring surface, synced with `tutorial_data/tutorial_sync.py`:
-
-```bash
-# Pull everything from prod into tutorial_data/ (REPLACES local tutorial folders)
-docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py pull --target prod
-
-# Push tutorial_data/ to prod — automatically writes a JSON backup to tutorial_data/backups/ first
-docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py push --target prod
-
-# Seed the local dev DB from tutorial_data/ (replaces the removed seed_tutorial script)
-docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues
-
-# Test the tooling (private tests, not part of the public suite/CI)
-docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --no-deps test-runner pytest tutorial_data/tests/ -v
-```
-
-`--target prod` reads `PROD_DATABASE_URL` (put it in the gitignored `.aws.env` so compose passes it automatically, or use `--db-url`). `--target local` always means the dev DB (`agent_games`), never the test DB, regardless of `DB_ENVIRONMENT`. Matching mirrors the old seed script: tutorials by title, exercises by position, leftover DB exercises deleted with their submission history. `python3 <exercise>/solution.py` (any system python3, stdlib only) checks the reference solution against that exercise's tests via `tutorial_data/exercise_runner.py`, with the same check semantics as the production worker.
-
 ### Database migrations
-`backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration for production, and keep it in sync with the model if you later refactor those columns (a migration that `ALTER`s a table the model no longer matches becomes schema drift). A forgotten migration is caught in CI, not by tests: the `schema-drift` job (`.github/workflows/tests_coverage_deploy.yml`) dumps the prod schema over SSH, rehearses `create_all` + migrations on a scratch copy (`backend/check_schema_drift.sh`), and diffs normalized catalog snapshots (`backend/database/schema_snapshot.sql`) against a schema built fresh from the models — any difference blocks the deploy job.
+`backend/migrations/` holds dated SQL migration files, applied automatically on api-container boot by `backend/entrypoint.sh` (right after `init_db`, before the server starts). Migrations must be idempotent (`CREATE/ALTER ... IF NOT EXISTS`, guarded `DO` blocks) since they re-run on every boot. Tests do not run them — the test DB is built fresh from SQLModel metadata (`create_all`). When changing `db_models.py`, add a matching SQL migration so an existing local database picks the change up, and keep it in sync with the model if you later refactor those columns.
 
 ## Architecture
 
 This is a **multi-game agent simulation platform** where students/teams submit code agents that compete in game simulations.
 
 ### Services (docker compose)
-- **API** (port 8000): Main FastAPI app — auth, league/team management, agent submission, AI hints, payments, support
+- **API** (port 8000): Main FastAPI app — auth, league/team management, agent submission, AI hints
 - **Valkey** (port 6379): Redis-compatible Celery broker + result backend (ephemeral, no persistence)
 - **worker-validation / worker-simulation**: Celery workers consuming the `validation` and `simulation` queues (separate containers so one queue's OOM can't kill the other's in-flight tasks)
-- **worker-exercises**: Standalone slim Celery app (`backend/exercise_worker/tasks.py`, its own image: python:alpine + celery + that one file) consuming the `exercises` queue at concurrency 2. Tutorial exercises run here with NO AST safety gate — the container is the sandbox (no secrets/DB/S3, ~96MB RAM, 50 pids) — under a 0.5s soft / 1.5s hard time limit (plain constants, not env-tunable). The API enqueues by task name (`exercises.run`) via `send_task`; the module must stay stdlib+celery only since the slim image ships nothing else
 - **PostgreSQL** (port 5432): Single cluster hosting both `agent_games` and `agent_games_test` databases
-- **MinIO** (ports 9000/9001): Local S3-compatible storage for assets and support attachments (real S3 in production)
 - **Frontend** (port 3000): React SPA served by Vite
+
+Nothing in the running stack talks to object storage. `backend/s3.py` exists only for
+`backend/scripts/sync_site_images.py`, a maintainer script run from a workstation with
+AWS credentials; the frontend loads images straight from `VITE_ASSETS_URL`.
 
 The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits the result by polling the result backend (`backend/tasks/celery_utils.py`). Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 6s hard time limit (soft limit via `VALIDATION_TIMEOUT_SECONDS` env, hard is always soft+1; the test compose sets 2s/3s on worker-validation, so worker containers must be recreated with the test overlay after changing it).
 
 ### Backend structure (`backend/`)
-- `api.py` — FastAPI entry point; mounts routers: auth, admin, institution, user, agent, demo, ai, diagnostics, support, payments
-- `routes/` — Route modules grouped by domain. Beyond CRUD domains: `ai/` (submission hints and plagiarism detection; `ai/clients/` is a pluggable provider layer — `AIClient` ABC + OpenAI/Anthropic/Google implementations registered in `factory.py`, keys stored per-provider in the DB), `payments/` (Stripe checkout/webhooks for institution subscriptions), `support/` (support tickets with S3 attachments)
-- `games/` — Game implementations extending `base_game.py`. Games are discovered dynamically: `backend/games/<name>/<name>.py` must define exactly one `BaseGame` subclass — no manual registration. Current games: `greedy_pig`, `prisoners_dilemma`, `lineup4`, `arena_champions`
+- `api.py` — FastAPI entry point; mounts routers: auth, admin, user, agent, ai, diagnostics. Also serves the unauthenticated `GET /config` (site mode/name/icon and whether the deployment still needs claiming)
+- `routes/` — Route modules grouped by domain. `admin/` is the whole operator surface (leagues, teams, simulations, publishing); `ai/` covers submission hints and plagiarism detection, with `ai/clients/` a pluggable provider layer — `AIClient` ABC + OpenAI/Anthropic/Google implementations registered in `factory.py`, keys stored per-provider in the DB
+- `games/` — Game implementations extending `base_game.py`. Games are discovered dynamically: `backend/games/<name>/<name>.py` must define exactly one `BaseGame` subclass — no manual registration. Current games: `greedy_pig`, `prisoners_dilemma`, `lineup4`, `arena_champions`, `thirteen`, `breakthrough`, `hearts`, `ohhell`
 - `database/` — SQLModel ORM models (`db_models.py`), DB config (`db_config.py`), session management, `init_db.py` for schema setup
-- `migrations/` — dated SQL migrations for production schema changes (not used by tests)
+- `migrations/` — dated SQL migrations for schema changes on an existing database (not used by tests)
 - `tasks/` — All Celery code: `celery_app.py` (broker config, queue routing, worker settings), `celery_utils.py` (result polling), `validation_task.py` and `simulation_task.py` (the tasks)
 - `Dockerfile` — shared image for api/workers/test-runner (build context is repo root)
-- `config.py` — Central config: dynamic game discovery (`GAMES`), league expiry settings, Stripe keys, secrets
+- `config.py` — Central config: dynamic game discovery (`GAMES`), league expiry settings, secrets
 - `time_utils.py` — The only place time/timezones are handled. All datetimes are aware UTC: get "now" via `utc_now()` (never `datetime.now()`/`datetime.utcnow()`), normalize boundary values with `ensure_utc()` (naive == UTC) or `interpret_as_sydney()` (naive user-typed dates == Sydney), convert for display with `to_sydney()`. DB columns are `TIMESTAMPTZ`; the frontend renders Sydney via moment-timezone. The Alpine image has no system tz database, so the `tzdata` PyPI package is a required dependency.
 
 Python dependencies are managed with uv (`pyproject.toml` / `uv.lock`), Python 3.14.
 
 ### Frontend structure (`frontend/src/`)
 - Vite + React 19. Monaco Editor for the in-browser code editor, Material-UI (v7) for components, Tailwind (v4) for utilities
-- `AgentGames/` — Main feature area, organized by role: `Admin/`, `User/`, `Institution/`, `Shared/`, `Feedback/`, `Support/`
-- `slices/` — Redux Toolkit slices: auth, feedback, games, leagues, rankings, settings, support, teams
+- `AgentGames/` — Main feature area, organized by role: `Admin/` (the operator surface, including the `Classroom/` league workspace), `User/` (team-facing pages), `Shared/`, `Feedback/`
+- `slices/` — Redux Toolkit slices: auth, feedback, games, leagues, rankings, settings, teams
 - `components/` — Shared UI components
+- `AgentGames/Shared/terminology.js` — one deployment serves one audience, set by `SITE_MODE`: a classroom (teacher/classroom/student wording) or a competition (organizer/league/team). Only user-visible copy goes through it — routes, JSON keys and Redux identifiers always say league/team
 
 ### Auth model
-Three user roles: **Admin**, **Team** (student user), **Institution** (manages teams/leagues; subscriptions billed via Stripe). JWT tokens with role-based route guards. Demo users get short-lived tokens.
+One tenant, so one operator account. Three roles: **admin** — the single account that runs the deployment (leagues, teams, keys, simulations); **student** and **ai_agent** — the two kinds of team session, split only by how they authenticate (a password versus an API key). JWT tokens with role-based route guards (`require_admin` / `require_team` / `require_agent` in `backend/routes/auth/auth_core.py`, `AuthProtection` on the frontend).
+
+No admin account is seeded: a fresh deployment is unclaimed, `GET /config` reports `setup_required`, and the frontend shows the setup form at `/Login`. `POST /auth/setup` creates the one admin row and refuses once it exists. Everyone — admin and teams alike — then logs in through `POST /auth/login`, which resolves the name against the admin row first and the (globally unique) team names second, and reports which matched as `role`.
 
 ### Game framework
 Each game extends `BaseGame` and implements match logic. `GameFactory` resolves game classes by folder-name convention at runtime. Games produce structured feedback (Markdown + JSON) shown in the frontend. `backend/games/game_instructions.md` documents how to add a new game.

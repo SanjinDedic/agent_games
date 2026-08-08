@@ -9,25 +9,24 @@
 #                                    order, per-stage summary, exit 1 on failure
 #
 # Stages (see .claude/skills/tester_skill/manual_tests/README.md):
-#   01 admin setup (institutions + teacher account)
-#   02-04 COMPETITION flow: institution league -> team submissions -> review/publish
-#   05-06 CLASSROOM flow: teacher classroom -> student submissions
-#   07 demo hint loop
-#   08 student password-reset link (classroom flow; needs 01 + 05 + 06)
-#   09 teacher progress dashboards: short-course grid, concept map, student
-#      page (classroom flow; needs 01 + 05 + 06)
+#   01 admin claims the deployment, creates a league and two teams
+#   02 each team logs in and submits an agent
+#   03 admin reads the submissions grid and runs a simulation
 #
-# Owns all setup: ensures the permanent Playwright install (outside the repo),
-# sources .env, pulls OPENAI_API_KEY from .kamal/secrets when .env doesn't
-# provide one (stage 1.5 validates it against OpenAI). Stages share state via
-# /tmp/agent_games_manual_state.json — run 01 before 02-09 (05 needs 01's
-# teacher account; 06 needs 05's classroom join URL; 08 and 09 need 06's
-# students).
+# Deliberately narrow: submission, simulation, and the admin's view of team
+# progress. Everything else (password resets, school leagues, AI hints,
+# publishing) is covered by the pytest suite and has no stage here.
+#
+# Owns all setup: ensures the permanent Playwright install (outside the repo)
+# and sources .env. Stages run in order and share state via
+# /tmp/agent_games_manual_state.json — 01 writes the admin, league and team
+# credentials that 02 and 03 log in with.
 #
 # Every launch resets the stack first: docker compose down -v, up -d --wait
 # (blocks until the api healthcheck passes, i.e. init_db + migrations are
-# done), then seeds the tutorial (the tutorial steps in stages 03 and 06
-# need it; not seeded on boot).
+# done). SEED_SAMPLE_DATA=false so the deployment starts empty and unclaimed —
+# stage 01 needs the first-run setup form, and the assertions are written
+# against a roster containing only the teams the run creates.
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -35,11 +34,7 @@ set -a
 source .env
 set +a
 
-if [[ -z "${OPENAI_API_KEY:-}" && -f .kamal/secrets ]]; then
-  OPENAI_API_KEY="$(grep -m1 '^OPENAI_API_KEY=' .kamal/secrets | cut -d= -f2-)"
-  export OPENAI_API_KEY
-fi
-[[ -n "${OPENAI_API_KEY:-}" ]] || echo "WARNING: no OPENAI_API_KEY found (.env / .kamal/secrets) — stage 1.5 will fail"
+export SEED_SAMPLE_DATA=false
 
 # Playwright lives permanently OUTSIDE the repo: npm package in
 # ~/.agent-games-playwright, browsers in ~/Library/Caches/ms-playwright.
@@ -59,20 +54,13 @@ TESTS_DIR=".claude/skills/tester_skill/manual_tests"
 PS3="> "
 
 echo "=== resetting stack (docker compose down -v && up) ==="
-docker compose down -v || { echo "docker compose down -v failed"; exit 1; }
+# --remove-orphans: containers from services since deleted from the compose file
+# otherwise survive the down and keep the network alive.
+docker compose down -v --remove-orphans || { echo "docker compose down -v failed"; exit 1; }
 docker compose up -d --wait || { echo "docker compose up failed"; exit 1; }
 
 # Fresh DB invalidates any state recorded by a previous run
 rm -f "${STATE_FILE:-/tmp/agent_games_manual_state.json}"
-
-echo "=== seeding tutorial ==="
-if [[ -f tutorial_data/tutorial_sync.py ]]; then
-  docker compose exec api python tutorial_data/tutorial_sync.py push --target local --link-all-leagues \
-    || { echo "tutorial seed failed"; exit 1; }
-else
-  echo "WARNING: tutorial_data/ missing (private, gitignored) — the stage 03/06 tutorial steps will fail."
-  echo "  Populate once with: docker compose run --rm --no-deps api python tutorial_data/tutorial_sync.py pull --target prod"
-fi
 
 scripts=()
 for f in "$TESTS_DIR"/[0-9]*.js; do

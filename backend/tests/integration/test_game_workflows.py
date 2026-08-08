@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.tests.conftest import add_submission, build_institution, make_student_token
+from backend.tests.conftest import add_submission, make_student_token
 from backend.database.db_models import League, Team
 from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
@@ -20,7 +20,6 @@ def setup_integration_team(db_session: Session, test_league: League) -> Team:
         school_name="Integration Test School",
         password_hash="test_hash",
         league_id=test_league.id,
-        institution_id=test_league.institution_id,
     )
     db_session.add(team)
     db_session.commit()
@@ -54,7 +53,7 @@ def integration_team_headers(setup_integration_team: Team) -> dict:
 def test_complete_game_lifecycle(
     client: TestClient,
     db_session: Session,
-    auth_headers: dict,
+    admin_headers: dict,
     team_auth_headers: dict,
 ):
     """
@@ -67,35 +66,21 @@ def test_complete_game_lifecycle(
     5. Publishing results
     6. Viewing results
     """
-    # First create an institution
-    institution = build_institution(
-        name="test_institution",
-        contact_person="Test Person",
-        contact_email="test@example.com",
-        created_date=utc_now(),
-        subscription_active=True,
-        subscription_expiry=utc_now() + timedelta(days=30),
-        password_hash="test_hash",
-    )
-    db_session.add(institution)
     db_session.commit()
-    db_session.refresh(institution)
 
     # 1. Create a new league
-    # The headers need to be institution headers
-    inst_token = create_access_token(
+    admin_token = create_access_token(
         data={
-            "sub": "test_institution",
-            "role": "institution",
-            "institution_id": institution.id,  # Include institution_id
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
-    auth_headers = {"Authorization": f"Bearer {inst_token}"}
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
     league_response = client.post(
-        "/institution/league-create",
-        headers=auth_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "integration_league", "game": "prisoners_dilemma"},
     )
     assert league_response.status_code == 200
@@ -104,8 +89,8 @@ def test_complete_game_lifecycle(
 
     # 2. Create and assign team
     team_response = client.post(
-        "/institution/team-create",  # Changed from /admin to /institution
-        headers=auth_headers,
+        "/admin/team-create",
+        headers=admin_headers,
         json={
             "name": "integration_team",
             "password": "test_pass",
@@ -152,8 +137,8 @@ class CustomPlayer(Player):
 
     # 4. Run simulation
     sim_response = client.post(
-        "/institution/run-simulation",  # Changed from /admin to /institution
-        headers=auth_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={
             "league_id": league_id,
             "num_simulations": 10,
@@ -166,8 +151,8 @@ class CustomPlayer(Player):
 
     # 5. Publish results
     publish_response = client.post(
-        "/institution/publish-results",  # Changed from /admin to /institution
-        headers=auth_headers,
+        "/admin/publish-results",
+        headers=admin_headers,
         json={
             "league_id": league_id,
             "id": sim_id,
@@ -220,11 +205,11 @@ def test_league_assign_keeps_team_in_original_league_on_failure(
     assert setup_integration_team.league_id == test_league.id
 
 
-def test_run_simulation_unknown_league(client: TestClient, auth_headers: dict):
+def test_run_simulation_unknown_league(client: TestClient, admin_headers: dict):
     """Simulating a league that doesn't exist is a 404 (never reaches the worker)."""
     response = client.post(
-        "/institution/run-simulation",
-        headers=auth_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={"league_id": 999999, "num_simulations": 10},
     )
     assert response.status_code == 404
@@ -232,7 +217,7 @@ def test_run_simulation_unknown_league(client: TestClient, auth_headers: dict):
 
 
 def test_run_simulation_rejected_on_unassigned_league(
-    client: TestClient, db_session: Session, auth_headers: dict
+    client: TestClient, db_session: Session, admin_headers: dict
 ):
     """The 'unassigned' holding league is protected from simulation runs."""
     unassigned = db_session.exec(
@@ -240,40 +225,10 @@ def test_run_simulation_rejected_on_unassigned_league(
     ).one()
 
     response = client.post(
-        "/institution/run-simulation",
-        headers=auth_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={"league_id": unassigned.id, "num_simulations": 10},
     )
     assert response.status_code == 400
     assert "unassigned" in response.json()["detail"].lower()
 
-
-def test_run_simulation_rejects_other_institutions_league(
-    client: TestClient, db_session: Session, test_league: League
-):
-    """An institution cannot simulate a league it doesn't own."""
-    outsider = build_institution(
-        name="outsider_institution",
-        contact_email="outsider@example.com",
-        created_date=utc_now(),
-        password_hash="test_hash",
-    )
-    db_session.add(outsider)
-    db_session.commit()
-    db_session.refresh(outsider)
-
-    outsider_token = create_access_token(
-        data={
-            "sub": "outsider_institution",
-            "role": "institution",
-            "institution_id": outsider.id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
-
-    response = client.post(
-        "/institution/run-simulation",
-        headers={"Authorization": f"Bearer {outsider_token}"},
-        json={"league_id": test_league.id, "num_simulations": 10},
-    )
-    assert response.status_code == 403

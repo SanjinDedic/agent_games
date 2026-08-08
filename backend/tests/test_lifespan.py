@@ -97,7 +97,7 @@ def test_check_database_status_skipped_in_test_env(mock_logger, monkeypatch):
 
 
 def test_check_database_status_empty_db(mock_logger, non_test_env):
-    """When admin count is 0, warns and points at the manual init command.
+    """With no admin row, says the deployment is unclaimed rather than broken.
     It must NOT auto-init: every gunicorn worker runs this concurrently."""
     mock_session = MagicMock()
     mock_session.exec.return_value.first.return_value = (0,)
@@ -107,9 +107,9 @@ def test_check_database_status_empty_db(mock_logger, non_test_env):
          patch("backend.database.init_db.initialize_database") as mock_init:
         check_database_status()
     mock_init.assert_not_called()
-    mock_logger.warning.assert_any_call("\U0001f6a8 DATABASE APPEARS EMPTY")
+    mock_logger.warning.assert_any_call("\U0001f4cb DEPLOYMENT NOT YET CLAIMED")
     mock_logger.warning.assert_any_call(
-        "Run manually: python -m backend.database.init_db"
+        "No admin account — visit the frontend to set one up."
     )
 
 

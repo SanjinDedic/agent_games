@@ -15,7 +15,6 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
-    Institution,
     League,
     LeagueType,
     SimulationResult,
@@ -26,7 +25,6 @@ from backend.database.db_models import (
 )
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import (
-    DemoLeagueError,
     LeagueNotFoundError,
     ResultNotFoundError,
     TeamNotFoundError,
@@ -40,20 +38,15 @@ from backend.routes.user.user_db import (
 from backend.time_utils import utc_now
 
 
-
 @pytest.fixture
 def published_league(db_session: Session) -> dict:
     """Create a league with a published simulation result including custom values and feedback."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     league = League(
         name="published_test_league",
         created_date=utc_now(),  # tz-naive on purpose to test localization
         expiry_date=utc_now() + timedelta(days=7),  # tz-naive
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
@@ -64,7 +57,6 @@ def published_league(db_session: Session) -> dict:
         school_name="School",
         password_hash="hash",
         league_id=league.id,
-        institution_id=institution.id,
         team_type=TeamType.STUDENT,
     )
     db_session.add(team)
@@ -100,7 +92,6 @@ def published_league(db_session: Session) -> dict:
         "team": team,
         "sim": sim,
         "publish_link": publish_link,
-        "institution": institution,
     }
 
 
@@ -110,60 +101,19 @@ def test_allow_submission_team_not_found(db_session):
         allow_submission(db_session, 99999)
 
 
-def test_assign_team_demo_to_non_demo_league(db_session):
-    """Demo team cannot be assigned to a non-demo league."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
-
-    league = League(
-        name="non_demo_league_test",
-        created_date=utc_now(),
-        expiry_date=utc_now() + timedelta(days=7),
-        game="greedy_pig",
-        institution_id=institution.id,
-        is_demo=False,
-    )
-    db_session.add(league)
-    db_session.commit()
-
-    demo_team = Team(
-        name="demo_assign_test",
-        school_name="Demo",
-        password_hash="hash",
-        league_id=league.id,
-        institution_id=institution.id,
-        team_type=TeamType.STUDENT,
-        is_demo=True,
-    )
-    db_session.add(demo_team)
-    db_session.commit()
-
-    with pytest.raises(DemoLeagueError, match="Demo users can only join demo leagues"):
-        assign_team_to_league(
-            db_session, demo_team.id, league.id, is_demo=True
-        )
-
-
 def test_assign_team_not_found(db_session):
     """assign_team_to_league raises TeamNotFoundError for non-existent team."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
     league = League(
         name="assign_target_league",
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
 
     with pytest.raises(TeamNotFoundError):
-        assign_team_to_league(
-            db_session, 999999, league.id, is_demo=False
-        )
+        assign_team_to_league(db_session, 999999, league.id)
 
 
 def test_get_published_result_with_feedback_json(db_session, published_league):
@@ -181,15 +131,11 @@ def test_get_published_result_with_feedback_json(db_session, published_league):
 
 def test_get_published_result_no_published(db_session):
     """get_published_result returns None when no simulation is published."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
     league = League(
         name="no_published_league",
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
