@@ -176,25 +176,13 @@ code_documentation.md
 backend/.env
 .aws.env
 
-docs/
-
 # Private nested repo for the browser-called validation Lambda
 backend/lambda_fallback/
-seed_prod.py
 
 # Binary assets hosted on S3, not committed
 frontend/public/videos/*.mp4
 frontend/public/about/
 .agents/
 .vscode/
-seed_arena_champions_teams_prod.py
-seed_greedy_pig_teams_prod.py
 skills-lock.json
-backend/celery_easy/
-.claude/skills/upgrade-stripe
 .gitignore
-.claude/skills/stripe-best-practices
-.claude/skills/stripe-projects
-.claude/skills/lesson_author
-.claude/skills/exercise_author
-reasearch/.env

@@ -11,6 +11,7 @@ import { clearResults, clearLeagues } from './slices/leaguesSlice';
 import { selectImmersiveMode } from './slices/settingsSlice';
 import { Button } from './components/ui';
 import { useTerms } from './AgentGames/Shared/terminology';
+import { HOSTED_URL, HOSTED_NAME } from './AgentGames/Shared/Common/HostedCallout';
 
 // User-visible entity labels come from terminology.js (the `T` map): a
 // classroom deployment sees "Students", a competition "Teams". Routes and
@@ -33,9 +34,13 @@ function getNavLinks(T) {
       { to: "/AgentSubmission", label: "Submit Agent" },
       { to: "/Leaderboards", label: "Leaderboards" },
     ],
+    // Public visitors are the ones who might want the hosted platform instead
+    // of running this one, so the agentgames.io pointer sits in this group only
+    // — `href` renders an external anchor rather than a router Link.
     public: [
       { to: "/Login", label: "Log in" },
       { to: "/About", label: "About" },
+      { href: HOSTED_URL, label: `${HOSTED_NAME} ↗` },
     ],
   };
 }
@@ -123,11 +128,23 @@ function AgentGamesNavbar() {
             >
               Agent Games
             </Link>
-            {navLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={navLinkClasses}>
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) =>
+              link.href ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={navLinkClasses}
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link key={link.to} to={link.to} className={navLinkClasses}>
+                  {link.label}
+                </Link>
+              )
+            )}
           </div>
 
           {/* Right side - GitHub info and logout */}

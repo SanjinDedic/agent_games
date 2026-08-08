@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const FOOTER_COLUMNS = [
+import { HOSTED_URL, HOSTED_NAME } from './AgentGames/Shared/Common/HostedCallout';
+import { useTerms } from './AgentGames/Shared/terminology';
+
+const getFooterColumns = (T) => [
   {
     heading: "Explore",
     links: [
@@ -14,13 +17,16 @@ const FOOTER_COLUMNS = [
     // "Competitions" columns existed to point at two different organizer pages.
     heading: "Log in",
     links: [
-      { to: "/Login", label: "Organizer Login" },
-      { to: "/AgentLogin", label: "Student Login" },
+      { to: "/Login", label: "Admin Login" },
+      { to: "/AgentLogin", label: `${T.Team} Login` },
     ],
   },
 ];
 
 function Footer() {
+  const T = useTerms();
+  const FOOTER_COLUMNS = getFooterColumns(T);
+
   return (
     <footer className="bg-[#111827] text-white py-12">
       <div className="container mx-auto px-6">
@@ -64,8 +70,24 @@ function Footer() {
               SanjinDedic/agent_games
             </a>
             <p className="mt-3 text-sm text-white/50">
-              Clone the repo and host it yourself, or use the hassle-free
-              hosted platform.
+              Clone it, run <code>docker compose up</code>, and this whole site
+              is yours. AGPL-3.0.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-3">{HOSTED_NAME}</h3>
+            <a
+              href={HOSTED_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/70 hover:text-white transition-colors duration-200"
+            >
+              agentgames.io →
+            </a>
+            <p className="mt-3 text-sm text-white/50">
+              Short courses, interactive lessons and per-student assessment,
+              hosted for you.
             </p>
           </div>
         </div>

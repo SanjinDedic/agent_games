@@ -4,7 +4,7 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 import bcrypt as _bcrypt
-from sqlalchemy import JSON, Column, DateTime, Text
+from sqlalchemy import Column, DateTime, Text
 from sqlmodel import Field, Relationship, SQLModel
 
 from backend.time_utils import utc_now
@@ -78,11 +78,6 @@ class League(SQLModel, table=True):
     signup_link: Optional[str] = Field(default=None, unique=True, index=True)
     game: str
     league_type: LeagueType = Field(default=LeagueType.STUDENT)
-    school_league: bool = Field(default=False)
-    schools_config: Optional[dict] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True),
-    )
     info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
 
     teams: List["Team"] = Relationship(

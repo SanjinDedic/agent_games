@@ -74,7 +74,6 @@ GAMES = _discover_games(os.path.join(ROOT_DIR, "games"))
 SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_tests")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")
 
 
 # One deployment serves one audience, so the classroom-vs-competition wording is

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { imageUrl, videoUrl } from '../config/assets';
+import HostedCallout, { HOSTED_URL, HOSTED_NAME } from './Shared/Common/HostedCallout';
 
 const About = () => {
   return (
@@ -12,7 +13,7 @@ const About = () => {
             About Agent Games
           </h1>
           <p className="text-xl text-league-text max-w-3xl mx-auto">
-            The story behind the platform — and how you can try it yourself.
+            The story behind the platform — and how to run it yourself.
           </p>
         </div>
       </section>
@@ -60,8 +61,20 @@ const About = () => {
               new game for the platform — <strong>get in touch</strong>.
             </p>
             <p>
-              There's nothing for sale here. This is, and will remain, free to
-              use.
+              This build is the self-hosted one: a single deployment with a
+              single admin account, free under the AGPL, with nothing for sale
+              anywhere on it. If you'd rather not run a server,{' '}
+              <a
+                href={HOSTED_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary font-semibold underline hover:no-underline"
+              >
+                {HOSTED_NAME}
+              </a>{' '}
+              at agentgames.io is the hosted platform — short courses,
+              interactive lessons and per-student assessment on top of the same
+              games.
             </p>
           </div>
         </div>
@@ -71,7 +84,7 @@ const About = () => {
       <section className="py-16 bg-white">
         <div className="container mx-auto px-6">
           <h2 className="text-3xl font-bold text-ui-dark text-center mb-12">
-            Tutorial
+            Watch First
           </h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
             {/* About Agent Games */}
@@ -109,7 +122,8 @@ const About = () => {
                   Run Locally in 5 min!
                 </h3>
                 <p className="text-ui text-sm">
-                  Walk-through of running Agent Games on your own machine.
+                  Clone, <code>docker compose up</code>, claim the admin
+                  account — the whole install, end to end.
                 </p>
               </div>
             </div>
@@ -147,6 +161,8 @@ const About = () => {
           </div>
         </div>
       </section>
+
+      <HostedCallout />
     </div>
   );
 };

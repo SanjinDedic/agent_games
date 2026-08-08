@@ -11,6 +11,7 @@ import {
   selectSiteName,
   setSiteConfig,
 } from '../../slices/settingsSlice';
+import { useTerms } from '../Shared/terminology';
 
 // One page, two modes. An unclaimed deployment (no admin row) shows the setup
 // form; once claimed it shows the login form. Which one is decided by
@@ -24,6 +25,7 @@ function AdminLogin() {
   const setupRequired = useSelector(selectSetupRequired);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const tokenExpired = useSelector(selectIsTokenExpired);
+  const T = useTerms();
 
   const [credentials, setCredentials] = useState({ name: '', password: '' });
   const [errorMessage, setErrorMessage] = useState('');
@@ -104,7 +106,9 @@ function AdminLogin() {
         {setupRequired && (
           <p className="text-ui mb-8 text-center">
             Pick the name and password you will use to run this site. This is
-            the only account that can create classrooms and teams.
+            the only account that can create {T.leagues} and {T.teams} — there
+            is no second admin and no password-reset email, so store it
+            somewhere safe.
           </p>
         )}
 

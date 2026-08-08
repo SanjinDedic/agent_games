@@ -1,0 +1,77 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same command a contributor runs locally — the whole suite lives in the
+      # test-runner container, so there is no Python toolchain to set up here.
+      # The committed .env supplies every value compose needs.
+      - name: Run tests with coverage
+        run: |
+          # pipefail so a pytest failure is not swallowed by tee's exit code
+          set -o pipefail
+          docker compose -f docker-compose.yml -f docker-compose.test.yml build
+          docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner \
+            pytest --cov=backend --cov-report=term backend/tests/ \
+            | tee pytest.log
+
+      # Coverage is reported per-run only (no external service, no threshold gate).
+      - name: Publish coverage to job summary
+        if: always()
+        run: |
+          # pytest-cov's terminal header: "____ coverage: platform linux, python ... ____"
+          REPORT=$(sed -n '/coverage: platform/,/^TOTAL/p' pytest.log || true)
+          {
+            echo '## Backend coverage'
+            if [ -n "$REPORT" ]; then
+              echo '```'
+              echo "$REPORT"
+              echo '```'
+            else
+              echo '_No coverage report found — see the test step log._'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cleanup test containers
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml down --volumes
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # A production build is the cheap guard against broken imports and JSX
+      # syntax errors. It does not exercise the app — the Playwright suite
+      # (./run_playwright_tests.sh) does, and needs the full stack to run.
+      - name: Build
+        working-directory: frontend
+        run: npm run build

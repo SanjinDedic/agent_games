@@ -58,8 +58,8 @@ admin_router = APIRouter(dependencies=[Depends(require_admin)])
 #
 # Business failures raise domain exceptions mapped centrally in api.py:
 # LeagueNotFoundError / TeamNotFoundError / SimulationResultNotFoundError -> 404,
-# LeagueExistsError / TeamExistsError -> 409, SchoolsConfigError /
-# ProtectedLeagueError -> 400. Anything unexpected surfaces as a 500 rather than
+# LeagueExistsError / TeamExistsError -> 409, ProtectedLeagueError -> 400.
+# Anything unexpected surfaces as a 500 rather than
 # a swallowed error. Data endpoints return their payload; action endpoints return
 # {"message": ...}.
 

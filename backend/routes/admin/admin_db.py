@@ -2,7 +2,7 @@ import json
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Tuple, Union
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
@@ -23,7 +23,6 @@ from backend.errors import (
     LeagueExistsError,
     LeagueNotFoundError,
     ProtectedLeagueError,
-    SchoolsConfigError,
     SimulationResultNotFoundError,
     TeamError,
     TeamExistsError,
@@ -31,11 +30,6 @@ from backend.errors import (
 )
 from backend.games.game_factory import GameFactory
 from backend.routes.admin.admin_models import LeagueSignUp
-from backend.schools.config import GoogleSheetsSchoolsConfig, StaticSchoolsConfig
-from backend.schools.providers import (
-    GoogleSheetsSchoolsProvider,
-    SchoolsProviderError,
-)
 from backend.time_utils import ensure_utc, utc_now
 from backend.utils import process_simulation_results
 
@@ -60,31 +54,6 @@ def get_unassigned_league(session: Session) -> League:
     return league
 
 
-def _build_schools_config(
-    league_data: LeagueSignUp,
-) -> Optional[Union[StaticSchoolsConfig, GoogleSheetsSchoolsConfig]]:
-    """Translate the validated LeagueSignUp into a typed schools_config.
-
-    Sheet-backed configs are validated upfront (one fetch) so configuration
-    errors surface at create time, not at student-signup time.
-    """
-    if not league_data.school_league:
-        return None
-    if league_data.sheet_url:
-        try:
-            schools = GoogleSheetsSchoolsProvider(league_data.sheet_url).list_schools()
-        except SchoolsProviderError as e:
-            raise SchoolsConfigError(f"Could not read the Google Sheet: {e}")
-        if not schools:
-            raise SchoolsConfigError(
-                "The Google Sheet returned an empty list. Ensure sharing "
-                "is set to 'Anyone with the link - Viewer' and that column "
-                "A contains school names below a header row."
-            )
-        return GoogleSheetsSchoolsConfig(sheet_url=league_data.sheet_url)
-    return StaticSchoolsConfig(schools=list(league_data.schools))
-
-
 def create_league(session: Session, league_data: LeagueSignUp) -> Dict:
     """Create a new league."""
     existing_league = session.exec(
@@ -99,11 +68,6 @@ def create_league(session: Session, league_data: LeagueSignUp) -> Dict:
     # Validate game name
     GameFactory.get_game_class(league_data.game)
 
-    schools_config_model = _build_schools_config(league_data)
-    schools_config = (
-        schools_config_model.model_dump() if schools_config_model else None
-    )
-
     signup_token = secrets.token_urlsafe(16)
 
     # A new league runs for 24 hours unless its expiry is extended later.
@@ -116,8 +80,6 @@ def create_league(session: Session, league_data: LeagueSignUp) -> Dict:
         game=league_data.game,
         league_type=LeagueType.STUDENT,
         signup_link=signup_token,
-        school_league=league_data.school_league,
-        schools_config=schools_config,
     )
 
     session.add(league)
@@ -126,7 +88,6 @@ def create_league(session: Session, league_data: LeagueSignUp) -> Dict:
         "league_id": league.id,
         "name": league.name,
         "signup_token": signup_token,
-        "school_league": league_data.school_league,
     }
 
 
