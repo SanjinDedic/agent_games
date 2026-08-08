@@ -21,7 +21,7 @@ import mimetypes
 import os
 from pathlib import Path
 
-from backend.routes.support.support_s3 import _get_s3_client, get_assets_bucket
+from backend.s3 import _get_s3_client, get_assets_bucket
 
 logger = logging.getLogger(__name__)
 

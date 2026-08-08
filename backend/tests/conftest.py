@@ -114,9 +114,6 @@ def celery_workers():
 _ENUM_TYPES = (
     "teamtype",
     "leaguetype",
-    "supportticketcategory",
-    "supportticketstatus",
-    "supportticketsubmittertype",
 )
 
 

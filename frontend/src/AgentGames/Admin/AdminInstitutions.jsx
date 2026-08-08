@@ -225,7 +225,7 @@ function AdminInstitutions() {
 
   const handleClearInstitution = (id, name) => {
     const typed = window.prompt(
-      `This will permanently delete every team, league (except "unassigned"), submission, simulation result, agent API key, and support ticket for "${name}".\n\nType the institution name exactly to confirm:`
+      `This will permanently delete every team, league (except "unassigned"), submission, simulation result, and agent API key for "${name}".\n\nType the institution name exactly to confirm:`
     );
     if (typed === null) return;
     if (typed !== name) {

@@ -12,11 +12,6 @@ from backend.database.db_models import (
     SimulationResult,
     SimulationResultItem,
     Submission,
-    SupportTicket,
-    SupportTicketAttachment,
-    SupportTicketCategory,
-    SupportTicketStatus,
-    SupportTicketSubmitterType,
     Team,
     TeamType,
 )
@@ -27,7 +22,7 @@ from backend.time_utils import utc_now
 @pytest.fixture
 def seeded_institution(db_session: Session) -> Institution:
     """Institution with unassigned + extra league, student + agent team,
-    submission, sim result, agent API key, and a support ticket + attachment."""
+    submission, sim result and agent API key."""
     now = utc_now()
 
     institution = build_institution(
@@ -109,28 +104,6 @@ def seeded_institution(db_session: Session) -> Institution:
     api_key = AgentAPIKey(key="secret-key-abcd1234", team_id=agent_team.id)
     db_session.add(api_key)
 
-    ticket = SupportTicket(
-        category=SupportTicketCategory.BUG,
-        subject="Test ticket",
-        description="desc",
-        status=SupportTicketStatus.OPEN,
-        submitter_type=SupportTicketSubmitterType.INSTITUTION,
-        institution_id=institution.id,
-        created_at=now,
-        updated_at=now,
-    )
-    db_session.add(ticket)
-    db_session.commit()
-    db_session.refresh(ticket)
-
-    attachment = SupportTicketAttachment(
-        ticket_id=ticket.id,
-        s3_key="fake-s3-key.png",
-        content_type="image/png",
-        size_bytes=10,
-        original_filename="image.png",
-    )
-    db_session.add(attachment)
     db_session.commit()
 
     return institution
@@ -148,7 +121,6 @@ def test_clear_institution_data_success(client, auth_headers, seeded_institution
     data = response.json()
     assert data["teams_deleted"] == 2
     assert data["leagues_deleted"] == 1  # comp_league only; unassigned kept
-    assert data["tickets_deleted"] == 1
 
     # Institution row still present
     db_session.expire_all()
@@ -161,7 +133,7 @@ def test_clear_institution_data_success(client, auth_headers, seeded_institution
     assert len(remaining_leagues) == 1
     assert remaining_leagues[0].name == "unassigned"
 
-    # Teams, submissions, sim results, sim items, api keys, tickets, attachments gone
+    # Teams, submissions, sim results, sim items and api keys gone
     assert db_session.exec(
         select(Team).where(Team.institution_id == inst_id)
     ).all() == []
@@ -169,10 +141,6 @@ def test_clear_institution_data_success(client, auth_headers, seeded_institution
     assert db_session.exec(select(SimulationResult)).all() == []
     assert db_session.exec(select(SimulationResultItem)).all() == []
     assert db_session.exec(select(AgentAPIKey)).all() == []
-    assert db_session.exec(
-        select(SupportTicket).where(SupportTicket.institution_id == inst_id)
-    ).all() == []
-    assert db_session.exec(select(SupportTicketAttachment)).all() == []
 
 
 def test_clear_institution_data_not_found(client, auth_headers):
@@ -243,12 +211,6 @@ def test_export_institution_data_success(client, auth_headers, seeded_institutio
     assert "key" not in api_key  # raw key never exported
     assert api_key["key_masked"] == "***1234"
 
-    assert len(dump["support_tickets"]) == 1
-    ticket = dump["support_tickets"][0]
-    assert ticket["subject"] == "Test ticket"
-    assert len(ticket["attachments"]) == 1
-    assert ticket["attachments"][0]["s3_key"] == "fake-s3-key.png"
-
 
 def test_export_institution_not_found(client, auth_headers):
     response = client.get(
@@ -267,9 +229,8 @@ def test_export_institution_unauthorized(client):
 def test_delete_institution_with_agent_team_regression(
     client, auth_headers, seeded_institution, db_session
 ):
-    """Regression: previously delete_institution crashed on AgentAPIKey FK
-    (institution had an agent team with an API key) and on SupportTicket FK
-    (institution_id was referenced). Should now succeed."""
+    """Regression: previously delete_institution crashed on the AgentAPIKey FK
+    when the institution had an agent team with an API key. Should now succeed."""
     inst_id = seeded_institution.id
 
     response = client.post(
@@ -285,6 +246,3 @@ def test_delete_institution_with_agent_team_regression(
         select(League).where(League.institution_id == inst_id)
     ).all() == []
     assert db_session.exec(select(AgentAPIKey)).all() == []
-    assert db_session.exec(
-        select(SupportTicket).where(SupportTicket.institution_id == inst_id)
-    ).all() == []

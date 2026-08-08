@@ -26,8 +26,6 @@ import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
 import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
 import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
-import SupportButton from "./AgentGames/Support/SupportButton";
-import AdminUserSupport from "./AgentGames/Admin/AdminUserSupport";
 import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
 
 function App() {
@@ -103,14 +101,6 @@ function App() {
               </AuthProtection>
             }
           />
-          <Route
-            path="AdminUserSupport"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminUserSupport />
-              </AuthProtection>
-            }
-          />
           {/* Institution Routes */}
           <Route path="Institution" element={<Institution />} />
           <Route path="Teacher" element={<Institution variant="teacher" />} />
@@ -174,7 +164,6 @@ function App() {
           theme="light"
         />
 
-        <SupportButton />
 
         <CreditLink />
       </div>

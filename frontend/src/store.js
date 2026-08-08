@@ -6,7 +6,6 @@ import gamesReducer from './slices/gamesSlice.js';
 import rankingsReducer from './slices/rankingsSlice';
 import settingsReducer from './slices/settingsSlice';
 import feedbackReducer from './slices/feedbackSlice';
-import supportReducer from './slices/supportSlice';
 import {
   authErrorMiddleware,
   sessionExpired,
@@ -48,7 +47,6 @@ const rootReducer = combineReducers({
   rankings: rankingsReducer,
   settings: settingsReducer,
   feedback: feedbackReducer,
-  support: supportReducer,
 });
 
 // The persisted blob may have been written by a different build of the app

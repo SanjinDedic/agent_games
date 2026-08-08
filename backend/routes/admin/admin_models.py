@@ -65,10 +65,3 @@ class CreateAgentAPIKey(BaseModel):
 
     team_id: int
 
-
-class UpdateSupportTicket(BaseModel):
-    """Model for an admin updating a support ticket's status and/or admin note."""
-
-    ticket_id: int
-    status: Optional[str] = None
-    admin_note: Optional[str] = None

@@ -17,8 +17,6 @@ from backend.database.db_models import (
     SimulationResultItem,
     Submission,
     SubmissionMetadata,
-    SupportTicket,
-    SupportTicketAttachment,
     Team,
     TeamType,
     get_password_hash,
@@ -133,7 +131,7 @@ def _purge_institution_data(
     session: Session, institution_id: int, *, keep_unassigned: bool
 ) -> Dict:
     """Delete every child row owned by an institution (teams, leagues, submissions,
-    simulation results, agent API keys, support tickets + attachments).
+    simulation results, agent API keys).
 
     When keep_unassigned is True, the auto-created 'unassigned' league row is preserved
     (its child teams are still wiped). Does not delete the Institution row itself and
@@ -154,39 +152,6 @@ def _purge_institution_data(
         {lg.id for lg in leagues if lg.name == "unassigned"} if keep_unassigned else set()
     )
 
-    # Tickets attached to the institution directly, plus any from its teams.
-    ticket_id_set: set[int] = set(
-        session.exec(
-            select(SupportTicket.id).where(
-                SupportTicket.institution_id == institution_id
-            )
-        ).all()
-    )
-    if team_ids:
-        ticket_id_set.update(
-            session.exec(
-                select(SupportTicket.id).where(SupportTicket.team_id.in_(team_ids))
-            ).all()
-        )
-    ticket_ids = list(ticket_id_set)
-
-    # Capture S3 keys before deleting attachment rows so we can clean up after commit.
-    s3_keys: List[str] = []
-    if ticket_ids:
-        s3_keys = list(
-            session.exec(
-                select(SupportTicketAttachment.s3_key).where(
-                    SupportTicketAttachment.ticket_id.in_(ticket_ids)
-                )
-            ).all()
-        )
-        session.exec(
-            delete(SupportTicketAttachment).where(
-                SupportTicketAttachment.ticket_id.in_(ticket_ids)
-            )
-        )
-        session.exec(delete(SupportTicket).where(SupportTicket.id.in_(ticket_ids)))
-
     if team_ids:
         delete_team_children(session, team_ids)
         session.exec(delete(Team).where(Team.institution_id == institution_id))
@@ -204,31 +169,12 @@ def _purge_institution_data(
         "team_ids": team_ids,
         "league_ids": league_ids,
         "leagues_deleted": len(leagues_to_delete),
-        "ticket_ids": ticket_ids,
-        "s3_keys": s3_keys,
     }
-
-
-def _cleanup_s3_attachments(s3_keys: List[str]) -> None:
-    """Best-effort delete of S3 attachment objects. Import lazily so that callers
-    without S3 configured (unit tests) don't blow up at import time."""
-    if not s3_keys:
-        return
-    try:
-        from backend.routes.support.support_s3 import delete_attachment
-    except Exception as exc:
-        logger.warning(f"Could not import S3 client for attachment cleanup: {exc}")
-        return
-    for key in s3_keys:
-        try:
-            delete_attachment(key)
-        except Exception as exc:
-            logger.warning(f"Failed to delete S3 attachment {key}: {exc}")
 
 
 def delete_institution(session: Session, institution_id: int) -> str:
     """Delete an institution and all associated teams, leagues, submissions,
-    simulation results, agent API keys, and support tickets."""
+    simulation results and agent API keys."""
     institution = session.get(Institution, institution_id)
 
     if not institution:
@@ -236,11 +182,9 @@ def delete_institution(session: Session, institution_id: int) -> str:
             f"Institution with ID {institution_id} not found"
         )
 
-    purge = _purge_institution_data(session, institution_id, keep_unassigned=False)
+    _purge_institution_data(session, institution_id, keep_unassigned=False)
     session.delete(institution)
     session.commit()
-
-    _cleanup_s3_attachments(purge["s3_keys"])
 
     return (
         f"Institution '{institution.name}' and all associated data deleted successfully"
@@ -248,7 +192,7 @@ def delete_institution(session: Session, institution_id: int) -> str:
 
 
 def clear_institution_data(session: Session, institution_id: int) -> Dict:
-    """Wipe all teams/leagues/submissions/results/api keys/tickets for an institution
+    """Wipe all teams/leagues/submissions/results/api keys for an institution
     while keeping the institution row and its auto-created 'unassigned' league."""
     institution = session.get(Institution, institution_id)
 
@@ -260,13 +204,10 @@ def clear_institution_data(session: Session, institution_id: int) -> Dict:
     purge = _purge_institution_data(session, institution_id, keep_unassigned=True)
     session.commit()
 
-    _cleanup_s3_attachments(purge["s3_keys"])
-
     return {
         "institution_id": institution_id,
         "teams_deleted": len(purge["team_ids"]),
         "leagues_deleted": purge["leagues_deleted"],
-        "tickets_deleted": len(purge["ticket_ids"]),
     }
 
 
@@ -331,43 +272,6 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
         else []
     )
 
-    ticket_id_set: set[int] = set(
-        session.exec(
-            select(SupportTicket.id).where(
-                SupportTicket.institution_id == institution_id
-            )
-        ).all()
-    )
-    if team_ids:
-        ticket_id_set.update(
-            session.exec(
-                select(SupportTicket.id).where(SupportTicket.team_id.in_(team_ids))
-            ).all()
-        )
-    ticket_ids = list(ticket_id_set)
-
-    tickets = (
-        session.exec(
-            select(SupportTicket).where(SupportTicket.id.in_(ticket_ids))
-        ).all()
-        if ticket_ids
-        else []
-    )
-    attachments = (
-        session.exec(
-            select(SupportTicketAttachment).where(
-                SupportTicketAttachment.ticket_id.in_(ticket_ids)
-            )
-        ).all()
-        if ticket_ids
-        else []
-    )
-    attachments_by_ticket: Dict[int, list] = {}
-    for att in attachments:
-        attachments_by_ticket.setdefault(att.ticket_id, []).append(
-            att.model_dump(mode="json")
-        )
-
     institution_dump = institution.model_dump(mode="json", exclude={"password_hash"})
 
     teams_dump = [t.model_dump(mode="json", exclude={"password_hash"}) for t in teams]
@@ -385,12 +289,6 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
         )
         api_keys_dump.append(masked)
 
-    tickets_dump = []
-    for tk in tickets:
-        d = tk.model_dump(mode="json")
-        d["attachments"] = attachments_by_ticket.get(tk.id, [])
-        tickets_dump.append(d)
-
     return {
         "schema_version": 1,
         "exported_at": utc_now().isoformat(),
@@ -402,7 +300,6 @@ def export_institution_data(session: Session, institution_id: int) -> Dict:
         "simulation_results": sim_results_dump,
         "simulation_result_items": sim_items_dump,
         "agent_api_keys": api_keys_dump,
-        "support_tickets": tickets_dump,
     }
 
 

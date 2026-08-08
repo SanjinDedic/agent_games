@@ -118,13 +118,6 @@ class ResultNotFoundError(Exception):
     """Raised when a published result is not found (maps to HTTP 404)."""
 
 
-# --- support ---------------------------------------------------------------
-
-
-class SupportError(Exception):
-    """Raised for support-ticket validation or lookup failures (maps to HTTP 404)."""
-
-
 # --- AI providers ----------------------------------------------------------
 # Re-exported by backend/routes/ai/clients/base.py, which owns the provider
 # contract; defined here so this module imports nothing from backend.routes.
@@ -188,7 +181,6 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     SimulationLimitExceededError: 429,
     SimulationResultNotFoundError: 404,
     ResultNotFoundError: 404,
-    SupportError: 404,
     UnknownProviderError: 400,
     NoApiKeyError: 400,
     NoSubmissionsError: 400,
