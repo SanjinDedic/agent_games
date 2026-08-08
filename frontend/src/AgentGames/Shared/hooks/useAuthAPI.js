@@ -10,12 +10,15 @@ export const useAuthAPI = () => {
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
 
-  // Team login - for regular login flow
+  // Team login. One endpoint serves every account now that the deployment has a
+  // single admin: /auth/login resolves the name against the admin row first,
+  // then the teams, and reports which one matched as `role`. The caller needs
+  // that role to route a wrong-door login to the page its token works on.
   const teamLogin = useCallback(async (username, password) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${apiUrl}/auth/team-login`, {
+      const response = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -28,7 +31,7 @@ export const useAuthAPI = () => {
       if (response.ok) {
         dispatch(setToken(data.access_token));
         dispatch(setCurrentTeam(username));
-        return { success: true };
+        return { success: true, role: data.role };
       } else {
         return { success: false, error: data.detail };
       }

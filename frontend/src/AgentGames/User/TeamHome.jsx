@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import moment from "moment-timezone";
 
 import useTeamAPI from "../Shared/hooks/useTeamAPI";
@@ -58,6 +59,11 @@ function PlacementSquare({ ranking }) {
 function TeamHome() {
   const navigate = useNavigate();
   const { getTeamData } = useTeamAPI();
+  // Every hook lives above the loading/error early returns: called after them,
+  // the loaded render runs more hooks than the loading one did and React tears
+  // the page down with "Rendered more hooks than during the previous render".
+  const T = useTerms();
+  const siteName = useSelector(selectSiteName);
 
   const [teamData, setTeamData] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -106,8 +112,6 @@ function TeamHome() {
     );
   }
 
-  const T = useTerms();
-  const siteName = useSelector(selectSiteName);
   const game = getGame(teamData.league.game);
   const gameDisplayName = game?.displayName || teamData.league.game;
   const stats = teamData.agent_game;

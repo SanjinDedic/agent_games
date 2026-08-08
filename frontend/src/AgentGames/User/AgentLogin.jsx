@@ -67,7 +67,10 @@ function AgentLogin() {
 
     if (result.success) {
       // TeamHome bounces unassigned students to the league picker itself.
-      navigate("/TeamHome");
+      // An admin logging in here rather than at /Login is a wrong-door mistake,
+      // not a failure — send them where their token works (AdminLogin does the
+      // same for a team that lands on it).
+      navigate(result.role === "admin" ? "/Home" : "/TeamHome");
     } else {
       setErrorMessage(result.error || "Login failed");
     }
