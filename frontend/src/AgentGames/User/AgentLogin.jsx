@@ -155,7 +155,7 @@ function AgentLogin() {
         <p className="text-sm text-ui-dark/60 text-center mt-6">
           Running this site?{" "}
           <Link to="/Login" className="text-primary hover:text-primary-hover">
-            Organizer login
+            Admin login
           </Link>
         </p>
       </div>
