@@ -32,8 +32,8 @@ recommendation, because there's nothing to compare against.
 ## What it measures
 
 Per environment: 2 demo submissions (launch → join `greedy_pig_demo` → submit-agent),
-admin + institution login, 3 institution actions (get-all-teams, league-create,
-team-progress), and a `run-simulation` over the demo league.
+admin + institution login, 2 institution actions (get-all-teams, league-create),
+and a `run-simulation` over the demo league.
 
 - **Network floor** — fastest of 5 `/health` round-trips, subtracted from every prod
   timing. Without it you'd blame the server for the trip to Sydney.

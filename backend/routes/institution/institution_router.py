@@ -24,7 +24,6 @@ from backend.routes.institution.institution_db import (
     get_all_teams,
     get_classroom_summaries,
     get_league_by_id,
-    get_teams_progress,
     publish_sim_results,
     save_simulation_results,
     unassign_team,
@@ -134,17 +133,6 @@ async def get_teams_endpoint(
     """Get all teams for the institution."""
     institution_id, _ = _require_institution(current_user)
     return get_all_teams(session, institution_id)
-
-
-@institution_router.get("/team-progress")
-@verify_admin_or_institution
-async def team_progress_endpoint(
-    session: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Data backing the Team Progress tab: per-team agent submission stats."""
-    institution_id, _ = _require_institution(current_user)
-    return {"teams": get_teams_progress(session, institution_id)}
 
 
 def _institution_payload(institution: Institution) -> dict:

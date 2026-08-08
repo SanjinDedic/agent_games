@@ -11,8 +11,6 @@ import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
 import ClassroomWorkspace from "./AgentGames/Institution/Classroom/ClassroomWorkspace";
 import Leaderboards from "./AgentGames/Leaderboards";
 import Admin from "./AgentGames/Admin/Admin";
-import AdminLeague from "./AgentGames/Admin/AdminLeague";
-import AdminLeagueSimulation from "./AgentGames/Admin/AdminLeagueSimulation";
 import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
 import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import StyleGuide from "./StyleGuide";
@@ -26,7 +24,6 @@ import "./utils/toastDefaults";
 import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
-// import AdminDemoUsers from "./AgentGames/Admin/AdminDemoUsers";
 import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
 import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
 import SupportButton from "./AgentGames/Support/SupportButton";
@@ -83,22 +80,6 @@ function App() {
           {/* Admin Routes */}
           <Route path="Admin" element={<Admin />} />
           <Route
-            path="AdminLeague"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminLeague />
-              </AuthProtection>
-            }
-          />
-          <Route
-            path="AdminLeagueSimulation"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminLeagueSimulation />
-              </AuthProtection>
-            }
-          />
-          <Route
             path="AdminInstitutions"
             element={
               <AuthProtection requiredRole="admin" redirectTo="/Admin">
@@ -106,7 +87,6 @@ function App() {
               </AuthProtection>
             }
           />
-          {/* <Route path="AdminDemoUsers" element={<AdminDemoUsers />} /> */}
           <Route
             path="AdminDockerStatus"
             element={

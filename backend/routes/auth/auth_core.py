@@ -9,8 +9,7 @@ from jose import JWTError, jwt
 from backend.routes.auth.auth_config import (
     ALGORITHM,
     SECRET_KEY,
-    create_access_token,
-    create_service_token,
+    create_access_token,  # noqa: F401  re-exported: callers import it from here
 )
 from backend.time_utils import utc_now
 
@@ -23,15 +22,13 @@ ROLE_ADMIN = "admin"
 ROLE_STUDENT = "student"
 ROLE_INSTITUTION = "institution"
 ROLE_AI_AGENT = "ai_agent"
-ROLE_SERVICE = "service"
 
-ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT, ROLE_SERVICE]
+ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT]
 
 
 def verify_role(allowed_roles: Union[str, List[str]]):
     """
     Decorator factory to verify if the current user has one of the allowed roles.
-    Always allows service role.
     """
 
     def decorator(func: Callable):
@@ -42,7 +39,6 @@ def verify_role(allowed_roles: Union[str, List[str]]):
                 raise HTTPException(status_code=401, detail="Invalid authentication")
 
             roles = [allowed_roles] if isinstance(allowed_roles, str) else list(allowed_roles)
-            roles.append(ROLE_SERVICE)  # Always allow service role
 
             if current_user["role"] not in roles:
                 raise HTTPException(
@@ -67,9 +63,7 @@ verify_admin_or_student = verify_role([ROLE_ADMIN, ROLE_STUDENT])
 verify_admin_or_institution = verify_role([ROLE_ADMIN, ROLE_INSTITUTION])
 verify_institution_or_student = verify_role([ROLE_INSTITUTION, ROLE_STUDENT])
 verify_admin_or_ai_agent = verify_role([ROLE_ADMIN, ROLE_AI_AGENT])
-verify_ai_agent_service_or_student = verify_role(
-    [ROLE_AI_AGENT, ROLE_SERVICE, ROLE_STUDENT]
-)
+verify_ai_agent_or_student = verify_role([ROLE_AI_AGENT, ROLE_STUDENT])
 
 # All roles except admin
 verify_non_admin = verify_role([ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT])
@@ -79,7 +73,6 @@ verify_any_role = verify_role(ALL_ROLES)
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    logger.info(f"Attempting to validate token: {token[:20]}...")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         sub: str = payload.get("sub")

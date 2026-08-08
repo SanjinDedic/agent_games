@@ -15,7 +15,7 @@ from backend.routes.auth.auth_core import (
     get_current_user,
     verify_admin_or_institution,
     verify_admin_or_student,
-    verify_ai_agent_service_or_student,
+    verify_ai_agent_or_student,
     verify_any_role,
 )
 from backend.routes.auth.auth_db import mint_team_token
@@ -115,7 +115,7 @@ def _validation_field_size(game_name: str) -> int | None:
 
 
 @user_router.post("/submit-agent")
-@verify_ai_agent_service_or_student
+@verify_ai_agent_or_student
 async def submit_agent(
     submission: SubmissionCode,
     current_user: dict = Depends(get_current_user),
@@ -262,7 +262,7 @@ async def submit_agent(
 
 
 @user_router.get("/team-data")
-@verify_ai_agent_service_or_student
+@verify_ai_agent_or_student
 async def get_team_data(
     current_user: dict = Depends(get_current_user),
     session: Session = Depends(get_db),
