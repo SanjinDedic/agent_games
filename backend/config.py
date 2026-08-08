@@ -75,3 +75,22 @@ SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_tests")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BENCHMARK_TOKEN = os.getenv("BENCHMARK_TOKEN")
+
+
+# One deployment serves one audience, so the classroom-vs-competition wording is
+# deploy configuration rather than per-account state. The frontend reads these
+# from GET /config and swaps its nouns via AgentGames/Shared/terminology.js;
+# API paths, JSON keys and route names always keep the league/team names.
+# Defaults to competition because that is the wording the app rendered before
+# the mode existed; a classroom deployment opts in explicitly.
+SITE_MODES = ("classroom", "competition")
+SITE_MODE = os.getenv("SITE_MODE", "competition").strip().lower()
+if SITE_MODE not in SITE_MODES:
+    # Fail at import rather than silently render the wrong nouns to a class of
+    # students for a term.
+    raise RuntimeError(
+        f"SITE_MODE must be one of {', '.join(SITE_MODES)} (got {SITE_MODE!r})"
+    )
+
+SITE_NAME = os.getenv("SITE_NAME", "Agent Games").strip()
+SITE_ICON = os.getenv("SITE_ICON", "").strip() or None

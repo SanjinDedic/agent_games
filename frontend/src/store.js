@@ -15,10 +15,19 @@ import { registerOnUnauthorized } from './utils/authFetch';
 const saveState = (state) => {
   try {
     // immersiveMode mirrors the live browser-fullscreen state, which never
-    // survives a reload — persisting true would hide the navbar with no way back
+    // survives a reload — persisting true would hide the navbar with no way back.
+    // The site config is deploy state fetched from GET /config on every boot;
+    // persisting it would let a stale siteMode outlive a server-side change and
+    // render the wrong vocabulary until the tab was closed.
     const serializedState = JSON.stringify({
       ...state,
-      settings: { ...state.settings, immersiveMode: false },
+      settings: {
+        ...state.settings,
+        immersiveMode: false,
+        siteMode: undefined,
+        siteName: undefined,
+        siteIcon: undefined,
+      },
     });
     sessionStorage.setItem('reduxState', serializedState); // Use sessionStorage instead of localStorage
   } catch (e) {

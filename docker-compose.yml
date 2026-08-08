@@ -26,6 +26,10 @@ services:
       # disabled. Set BENCHMARK_TOKEN in the env before `docker compose up` to
       # enable it for a benchmark run. In prod this comes from deploy secrets.
       - BENCHMARK_TOKEN=${BENCHMARK_TOKEN:-}
+      # Classroom-vs-competition wording, served to the frontend by GET /config.
+      # Listed here (not only in .env) so an exported SITE_MODE wins — the
+      # Playwright runner drives both vocabularies against one .env.
+      - SITE_MODE=${SITE_MODE:-competition}
     # Secrets. .env holds dev defaults (committed); .aws.env is an optional override
     # for devs exercising real S3 (gitignored). Listed second so its values win.
     env_file:

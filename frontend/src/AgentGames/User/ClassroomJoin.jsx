@@ -9,7 +9,7 @@ import {
 } from "../../slices/authSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
-import { getTerms } from "../Shared/terminology";
+import { useTerms } from "../Shared/terminology";
 import DirectClassicSignup from "./DirectClassicSignup";
 import DirectSchoolLeagueSignup from "./DirectSchoolLeagueSignup";
 
@@ -37,7 +37,7 @@ function ClassroomJoin({ defaultTab = "login" }) {
 
   // Wording comes from the league's owning institution, not the session:
   // visitors here are usually logged out.
-  const T = getTerms(Boolean(leagueInfo?.is_teacher));
+  const T = useTerms();
 
   const isStudentSession =
     isAuthenticated && !tokenExpired && currentUser.role === "student";

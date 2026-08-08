@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import moment from "moment-timezone";
 
 import useTeamAPI from "../Shared/hooks/useTeamAPI";
-import { getTerms } from "../Shared/terminology";
+import { useTerms } from "../Shared/terminology";
 import { getGame } from "../Feedback/games";
 import { imageUrl } from "../../config/assets";
 import { rankTone } from "../Shared/Progress/StatusCell";
@@ -105,7 +105,7 @@ function TeamHome() {
     );
   }
 
-  const T = getTerms(teamData.is_classroom);
+  const T = useTerms();
   const game = getGame(teamData.league.game);
   const gameDisplayName = game?.displayName || teamData.league.game;
   const stats = teamData.agent_game;

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from backend import config
 from backend.errors import EXCEPTION_STATUS_MAP
 from backend.models_api import ResponseModel
 from backend.routes.admin.admin_router import admin_router
@@ -131,3 +132,18 @@ async def root():
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {"status": "healthy"}
+
+
+@app.get("/config")
+async def site_config():
+    """Deploy-level settings the frontend needs before anyone logs in.
+
+    Unauthenticated and deliberately app-level rather than a router: this is
+    metadata about the deployment, not a domain resource. `site_mode` drives the
+    classroom-vs-competition wording the frontend renders.
+    """
+    return {
+        "site_mode": config.SITE_MODE,
+        "site_name": config.SITE_NAME,
+        "site_icon": config.SITE_ICON,
+    }
