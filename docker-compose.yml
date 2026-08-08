@@ -20,8 +20,6 @@ services:
       - PYTHONPATH=/agent_games
       - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
-      - S3_PUBLIC_ENDPOINT_URL=${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
       # Load-test gate. Empty by default -> /diagnostics/benchmark-submit is
       # disabled. Set BENCHMARK_TOKEN in the env before `docker compose up` to
       # enable it for a benchmark run. In prod this comes from deploy secrets.
@@ -33,17 +31,12 @@ services:
       # Dev/manual-test convenience: seed the example leagues and TeamA/B/C.
       # Never set in production — a fresh install starts empty.
       - SEED_SAMPLE_DATA=${SEED_SAMPLE_DATA:-true}
-    # Secrets. .env holds dev defaults (committed); .aws.env is an optional override
-    # for devs exercising real S3 (gitignored). Listed second so its values win.
+    # Secrets. .env holds committed dev defaults.
     env_file:
       - path: .env
         required: true
-      - path: .aws.env
-        required: false
     depends_on:
       valkey:
-        condition: service_healthy
-      minio:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -167,31 +160,6 @@ services:
     mem_limit: 1g
     mem_reservation: 250m
 
-  minio:
-    image: minio/minio:latest
-    entrypoint: /bin/sh
-    command: >
-      -c "mkdir -p /data/${AWS_S3_ASSETS_BUCKET:-agent-games-assets}
-      /data/${AWS_S3_BUCKET:-agent-games-backups} &&
-      exec minio server /data --console-address ':9001'"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "mc alias set local http://localhost:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} >/dev/null 2>&1 && mc ready local"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    restart: unless-stopped
-    mem_limit: 500m
-    mem_reservation: 150m
-
   postgres:
     image: postgres:18
     ports:
@@ -254,4 +222,3 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:

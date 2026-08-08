@@ -1,9 +1,9 @@
-"""S3 client construction, shared by anything that talks to object storage.
+"""S3 client construction.
 
-Points at MinIO over the docker network in dev (S3_ENDPOINT_URL) and at real AWS
-in production, where the variable is unset and boto3 resolves the default
-endpoint. Lived in the support-ticket package until support tickets were removed;
-the only remaining caller is backend/scripts/sync_site_images.py.
+Used only by backend/scripts/sync_site_images.py, a maintainer script — no part
+of the running app talks to object storage. S3_ENDPOINT_URL still overrides the
+endpoint if you point it at something, but nothing sets it now that the local
+MinIO service is gone; unset, boto3 resolves the real AWS endpoint.
 """
 
 import os
