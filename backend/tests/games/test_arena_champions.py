@@ -4,38 +4,21 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from backend.tests.conftest import build_institution
-from backend.database.db_models import Institution
+
 from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
 
 
-
-
-def _create_institution(db_session: Session) -> Institution:
-    inst = build_institution(
-        name="arena_inst",
-        contact_person="Arena Admin",
-        contact_email="arena@example.com",
-        created_date=utc_now(),
-        password_hash="test_hash",
-    )
-    db_session.add(inst)
-    db_session.commit()
-    db_session.refresh(inst)
-    return inst
-
-
-def _create_league(client: TestClient, institution_id: int) -> tuple[int, dict]:
+def _create_league(client: TestClient) -> tuple[int, dict]:
     token = create_access_token(
-        data={"sub": "arena_inst", "role": "institution", "institution_id": institution_id},
+        data={"sub": "arena_owner", "role": "owner"},
         expires_delta=timedelta(minutes=30),
     )
     headers = {"Authorization": f"Bearer {token}"}
 
     league_name = "arena_league"
     resp = client.post(
-        "/institution/league-create",
+        "/owner/league-create",
         headers=headers,
         json={"name": league_name, "game": "arena_champions"},
     )
@@ -45,9 +28,9 @@ def _create_league(client: TestClient, institution_id: int) -> tuple[int, dict]:
 
 
 def _create_team_and_assign(client: TestClient, headers: dict, league_id: int, team_name: str = "arena_team") -> tuple[int, str]:
-    # Create team (initially goes to unassigned league for the institution)
+    # Create team (initially goes to the unassigned league)
     create_resp = client.post(
-        "/institution/team-create",
+        "/owner/team-create",
         headers=headers,
         json={
             "name": team_name,
@@ -60,7 +43,7 @@ def _create_team_and_assign(client: TestClient, headers: dict, league_id: int, t
 
     # Assign to our arena league
     assign_resp = client.post(
-        "/institution/assign-team-to-league",
+        "/owner/assign-team-to-league",
         headers=headers,
         json={"team_id": team_id, "league_id": league_id},
     )
@@ -83,9 +66,8 @@ def _team_headers(team_name: str, team_id: int, league_id: int) -> dict:
 
 
 def test_submit_agent_success(client: TestClient, db_session: Session):
-    inst = _create_institution(db_session)
-    league_id, inst_headers = _create_league(client, inst.id)
-    team_id, team_name = _create_team_and_assign(client, inst_headers, league_id)
+    league_id, owner_headers_ = _create_league(client)
+    team_id, team_name = _create_team_and_assign(client, owner_headers_, league_id)
     headers = _team_headers(team_name, team_id, league_id)
 
     valid_agent_code = """
@@ -114,9 +96,8 @@ class CustomPlayer(Player):
 
 
 def test_submission_fails_when_sum_proportions_exceeds_one(client: TestClient, db_session: Session):
-    inst = _create_institution(db_session)
-    league_id, inst_headers = _create_league(client, inst.id)
-    team_id, team_name = _create_team_and_assign(client, inst_headers, league_id, team_name="arena_team_sum_fail")
+    league_id, owner_headers_ = _create_league(client)
+    team_id, team_name = _create_team_and_assign(client, owner_headers_, league_id, team_name="arena_team_sum_fail")
     headers = _team_headers(team_name, team_id, league_id)
 
     # Each within [0.2, 0.4], but sum = 1.2 (should fail validation in play_game)
@@ -144,9 +125,8 @@ class CustomPlayer(Player):
 
 
 def test_submission_fails_when_max_health_out_of_range(client: TestClient, db_session: Session):
-    inst = _create_institution(db_session)
-    league_id, inst_headers = _create_league(client, inst.id)
-    team_id, team_name = _create_team_and_assign(client, inst_headers, league_id, team_name="arena_team_max_fail")
+    league_id, owner_headers_ = _create_league(client)
+    team_id, team_name = _create_team_and_assign(client, owner_headers_, league_id, team_name="arena_team_max_fail")
     headers = _team_headers(team_name, team_id, league_id)
 
     # Intentional bad out-of-range proportion (mirrors the idea of an excessively large value)

@@ -1,0 +1,246 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { authFetch } from '../../utils/authFetch';
+import { selectToken } from '../../slices/authSlice';
+import { selectSiteName } from '../../slices/settingsSlice';
+import LeagueCreation from '../Shared/League/LeagueCreation';
+import UnassignedTeamsCard from './UnassignedTeamsCard';
+import { useTerms } from '../Shared/terminology';
+
+// "greedy_pig" -> "Greedy Pig"
+function formatGameName(game) {
+  if (!game) return '—';
+  return game
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function OwnerHome() {
+  const T = useTerms();
+  const siteName = useSelector(selectSiteName);
+  const navigate = useNavigate();
+  const apiUrl = useSelector((state) => state.settings.agentApiUrl);
+  const accessToken = useSelector(selectToken);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState(null);
+  // league id whose signup link is currently being generated
+  const [generatingFor, setGeneratingFor] = useState(null);
+
+  // silent = refresh the data without flashing the loading state (used after
+  // an inline action like assigning a student, where the page stays visible)
+  const fetchHome = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const response = await authFetch(`${apiUrl}/owner/home`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await response.json();
+      if (response.ok) {
+        setData(json);
+      } else {
+        toast.error(json.detail || 'Could not load your home page');
+      }
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+      toast.error('Could not reach the server. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, accessToken]);
+
+  useEffect(() => {
+    fetchHome();
+  }, [fetchHome]);
+
+  const loginUrlFor = (classroom) =>
+    `${window.location.origin}/join/${classroom.signup_link}`;
+
+  const copyLoginLink = (classroom) => {
+    navigator.clipboard.writeText(loginUrlFor(classroom));
+    toast.success('Login link copied to clipboard!');
+  };
+
+  const createLoginLink = async (classroom) => {
+    setGeneratingFor(classroom.id);
+    try {
+      const response = await authFetch(
+        `${apiUrl}/owner/generate-signup-link`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ league_id: classroom.id }),
+        }
+      );
+      const json = await response.json();
+      if (response.ok && json.signup_token) {
+        setData((prev) => ({
+          ...prev,
+          classrooms: prev.classrooms.map((c) =>
+            c.id === classroom.id ? { ...c, signup_link: json.signup_token } : c
+          ),
+        }));
+        toast.success(`Login link created for ${classroom.name}`);
+      } else {
+        toast.error(json.detail || 'Failed to create the login link');
+      }
+    } catch (error) {
+      console.error('Error generating signup link:', error);
+      toast.error('Network error while creating the login link');
+    } finally {
+      setGeneratingFor(null);
+    }
+  };
+
+  // Everything about a classroom lives in its workspace; the workspace loads
+  // the league list itself, so this is a plain navigation.
+  const openClassroom = (classroom, tab) =>
+    navigate(`/Classroom/${classroom.id}${tab ? `/${tab}` : ''}`);
+
+  const card = 'bg-white rounded-lg shadow-lg p-6';
+  const classrooms = data?.classrooms || [];
+  const activeClassrooms = classrooms.filter((c) => c.is_active);
+  const expiredClassrooms = classrooms.filter((c) => !c.is_active);
+
+  return (
+    <div className="min-h-screen pt-16 bg-ui-lighter">
+      <div className="w-full max-w-6xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-ui-dark mb-2">
+          {siteName ? `Welcome, ${siteName}` : 'Home'}
+        </h1>
+        <p className="text-ui mb-6">
+          {`Your active ${T.leagues} at a glance — share a login link with your ${T.teams} to get them started.`}
+        </p>
+
+        {isLoading ? (
+          <div className={`${card} text-center text-ui`}>Loading…</div>
+        ) : !data ? (
+          <div className={`${card} text-center text-ui`}>
+            Nothing to show yet.
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Active classrooms/leagues */}
+            <section>
+              <h2 className="text-2xl font-semibold text-ui-dark mb-4">
+                {`Active ${T.Leagues}`}
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {activeClassrooms.map((classroom) => (
+                    <div key={classroom.id} className={card}>
+                      <div className="flex justify-between items-start mb-4">
+                        <button
+                          onClick={() => openClassroom(classroom)}
+                          className="text-left"
+                          title={`Open the ${classroom.name} workspace`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-success"></span>
+                            <span className="text-xl font-semibold text-primary hover:underline">
+                              {classroom.name}
+                            </span>
+                          </span>
+                        </button>
+                        <span className="text-sm font-medium text-ui-dark bg-ui-lighter px-3 py-1 rounded-full whitespace-nowrap">
+                          {`${classroom.team_count} ${
+                            classroom.team_count === 1 ? T.team : T.teams
+                          }`}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 mb-4">
+                        <div>
+                          <span className="text-sm font-medium text-ui">Game: </span>
+                          <span className="text-ui-dark font-medium">
+                            {formatGameName(classroom.game)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-ui-light">
+                        <span className="block text-sm font-medium text-ui mb-2">
+                          {`${T.Team} login link:`}
+                        </span>
+                        {classroom.signup_link ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={loginUrlFor(classroom)}
+                              readOnly
+                              onFocus={(e) => e.target.select()}
+                              className="flex-1 p-2 border border-ui-light rounded-lg text-sm bg-ui-lighter"
+                            />
+                            <button
+                              onClick={() => copyLoginLink(classroom)}
+                              className="px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium"
+                              title="Copy to clipboard"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => createLoginLink(classroom)}
+                            disabled={generatingFor === classroom.id}
+                            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium transition-colors disabled:bg-ui-light disabled:cursor-not-allowed"
+                          >
+                            {generatingFor === classroom.id
+                              ? 'Creating…'
+                              : 'Create login link'}
+                          </button>
+                        )}
+                        <p className="mt-2 text-xs text-ui">
+                          {`Share this link with your ${T.teams} — they use it to sign up and log in to this ${T.league}.`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Creation + unassigned students share one grid cell so
+                      the classroom cards keep their proportions */}
+                  <div className="flex flex-col gap-6">
+                    <LeagueCreation
+                      onCreated={fetchHome}
+                      compact
+                    />
+                    <UnassignedTeamsCard
+                      classrooms={activeClassrooms}
+                      onAssigned={() => fetchHome({ silent: true })}
+                    />
+                  </div>
+                </div>
+
+              {expiredClassrooms.length > 0 && (
+                <div className="mt-4 text-sm text-ui">
+                  {`Expired ${T.leagues}: `}
+                  {expiredClassrooms.map((classroom, i) => (
+                    <span key={classroom.id}>
+                      {i > 0 && ', '}
+                      <button
+                        onClick={() => openClassroom(classroom, 'settings')}
+                        className="underline hover:text-primary"
+                        title={`Open ${classroom.name}'s settings to extend its expiry`}
+                      >
+                        {classroom.name}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default OwnerHome;

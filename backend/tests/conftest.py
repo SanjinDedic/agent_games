@@ -10,10 +10,10 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from backend.api import app
 from backend.database.db_config import get_database_url
 from backend.database.db_models import (
-    Admin,
-    Institution,
+    UNASSIGNED_LEAGUE_NAME,
     League,
     LeagueType,
+    Owner,
     Submission,
     SubmissionMetadata,
     Team,
@@ -26,27 +26,21 @@ from backend.time_utils import utc_now
 # Precomputed bcrypt hashes to avoid expensive hashing on every test.
 # Cost 4 (not the production 12) so login-flow checkpw is ~1ms instead of
 # ~170ms; verify cost comes from the cost embedded in the hash itself.
-_HASH_ADMIN = "$2b$04$.WPpp.Mj.ExyhVOhCjTugOgLBq24T/4zTjrwvnGiOx4c6bFmAXHcG"  # "admin"
-_HASH_INSTITUTION = "$2b$04$pvWMB/sRar78ntUsCb21lON3FpqsCypw8q.a.jVaEYzTu.e1mVEwq"  # "institution"
 _HASH_AA = "$2b$04$/.xNZ5ccGKIbRDAhGT3kBuDK/75Vl5viXLd/G5WCQRJPkqsorzdFm"  # "AA"
 _HASH_BB = "$2b$04$abtlVrQQ6nJf6uWH7OF2IubTw2KzQtQPbBTMtfXZc290ek8jNv1Xi"  # "BB"
 _HASH_CC = "$2b$04$0j273SvCCLMsx4mTO86gDeH4G812r/MXooXEyuyd7WwJk25Lj/wFG"  # "CC"
 _HASH_TEST_PASSWORD = "$2b$04$S/gQ6t/Ex.ME3g76Ga09ne8sUTLDXpBbCy2iVj5RFBGlFXN9mH/o2"  # "test_password"
 _HASH_TEAM_PASSWORD = "$2b$04$RqccKcL1cJP6rFjzclXWwOFgSQ2ALa/71UWz3O1GP9nyo60n9kPOi"  # "team_password"
 _HASH_PASSWORD2 = "$2b$04$adNjLkXrrC9LgRXfZW1EjeYdj66q8jAGrgeJnJNF6KTPdxHb9Iw6W"  # "password2"
-_HASH_INST_PASSWORD = "$2b$04$mNAjfBlxpWDSuMxJR5.Ie.OesZS46hM0cEFivUPN3XjKMNSreOPEO"  # "inst_password"
 
 # Lookup for test files that need hashes for known passwords
 TEST_PASSWORD_HASHES = {
-    "admin": _HASH_ADMIN,
-    "institution": _HASH_INSTITUTION,
     "AA": _HASH_AA,
     "BB": _HASH_BB,
     "CC": _HASH_CC,
     "test_password": _HASH_TEST_PASSWORD,
     "team_password": _HASH_TEAM_PASSWORD,
     "password2": _HASH_PASSWORD2,
-    "inst_password": _HASH_INST_PASSWORD,
     "expired_password": "$2b$04$LGfX.gdDyIfZvvtT8eq52eRCtl2JTIt3dXMQC6GllmCXXO/9fl7sS",
     "inactive_password": "$2b$04$X17RHyabQ7aKUwPP/9u98uOPKWjXhuW2wdZjg7SAwA7FQ8PrdUcBq",
 }
@@ -58,34 +52,6 @@ os.environ["DB_ENVIRONMENT"] = "test"
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-def build_institution(
-    *,
-    name,
-    password_hash,
-    contact_person="Test Contact",
-    contact_email="test@example.com",
-    created_date=None,
-    **extra,
-):
-    """Build an Institution — NOT yet persisted."""
-    return Institution(
-        name=name,
-        contact_person=contact_person,
-        contact_email=contact_email,
-        created_date=created_date or utc_now(),
-        password_hash=password_hash,
-        **extra,
-    )
-
-
-def create_test_institution(session, **kwargs):
-    """build_institution + persist; returns the committed, refreshed Institution."""
-    institution = build_institution(**kwargs)
-    session.add(institution)
-    session.commit()
-    session.refresh(institution)
-    return institution
 
 @pytest.fixture(scope="session")
 def celery_workers():
@@ -135,10 +101,10 @@ def db_engine():
     except Exception as e:
         logger.info(f"Test database doesn't exist, creating it: {e}")
         base_url = database_url.rsplit("/", 1)[0] + "/postgres"
-        admin_engine = create_engine(base_url)
+        maintenance_engine = create_engine(base_url)
         db_name = database_url.rsplit("/", 1)[1].split("?")[0]
 
-        with admin_engine.connect() as conn:
+        with maintenance_engine.connect() as conn:
             conn.execution_options(isolation_level="AUTOCOMMIT")
             conn.execute(
                 text(
@@ -148,7 +114,7 @@ def db_engine():
             conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
             conn.execute(text(f"CREATE DATABASE {db_name}"))
 
-        admin_engine.dispose()
+        maintenance_engine.dispose()
         logger.info("Test database created successfully")
         engine = create_engine(database_url)
 
@@ -187,69 +153,59 @@ def db_session(db_engine):
 
 
 def populate_test_database(session):
-    """Seed test database with precomputed hashes (no bcrypt cost)"""
-    existing_admin = session.exec(select(Admin).where(Admin.username == "admin")).first()
-    if existing_admin:
+    """Seed test database with precomputed hashes (no bcrypt cost).
+
+    Deliberately seeds no Owner row: tests that need one mint a token via the
+    owner_token fixture, and the setup-flow tests need a deployment that has not
+    been claimed yet.
+    """
+    existing = session.exec(
+        select(League).where(League.name == UNASSIGNED_LEAGUE_NAME)
+    ).first()
+    if existing:
         return
 
     now = utc_now()
 
-    admin = Admin(username="admin", password_hash=_HASH_ADMIN)
-    session.add(admin)
-
-    institution = create_test_institution(
-        session,
-        name="Admin Institution",
-        contact_person="Admin",
-        contact_email="admin@admin.com",
-        created_date=now,
-        password_hash=_HASH_INSTITUTION,
-    )
-
     unassigned_league = League(
-        name="unassigned",
+        name=UNASSIGNED_LEAGUE_NAME,
         created_date=now,
         expiry_date=now + timedelta(days=30),
         game="greedy_pig",
         league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
     )
     session.add(unassigned_league)
 
-    greedy_pig_league = League(
-        name="greedy_pig_league",
-        created_date=now,
-        expiry_date=now + timedelta(days=30),
-        game="greedy_pig",
-        league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
-    )
-    session.add(greedy_pig_league)
-
-    prisoners_dilemma_league = League(
-        name="prisoners_dilemma_league",
-        created_date=now,
-        expiry_date=now + timedelta(days=30),
-        game="prisoners_dilemma",
-        league_type=LeagueType.STUDENT,
-        institution_id=institution.id,
-    )
-    session.add(prisoners_dilemma_league)
+    for league_name, game in (
+        ("greedy_pig_league", "greedy_pig"),
+        ("prisoners_dilemma_league", "prisoners_dilemma"),
+    ):
+        session.add(
+            League(
+                name=league_name,
+                created_date=now,
+                expiry_date=now + timedelta(days=30),
+                game=game,
+                league_type=LeagueType.STUDENT,
+            )
+        )
     session.commit()
+    session.refresh(unassigned_league)
 
     for name, school, pw_hash in [
         ("TeamA", "Sirius College", _HASH_AA),
         ("TeamB", "Sirius College", _HASH_BB),
         ("TeamC", "Glen Waverley Secondary College", _HASH_CC),
     ]:
-        session.add(Team(
-            name=name,
-            school_name=school,
-            password_hash=pw_hash,
-            league_id=unassigned_league.id,
-            team_type=TeamType.STUDENT,
-            institution_id=institution.id,
-        ))
+        session.add(
+            Team(
+                name=name,
+                school_name=school,
+                password_hash=pw_hash,
+                league_id=unassigned_league.id,
+                team_type=TeamType.STUDENT,
+            )
+        )
     session.commit()
 
 
@@ -270,16 +226,14 @@ def client(db_session) -> TestClient:
 
 
 @pytest.fixture
-def admin_token(db_session: Session) -> str:
-    """Create admin user and return admin token"""
-    admin = Admin(
-        username="test_admin", password_hash=_HASH_TEST_PASSWORD
-    )
-    db_session.add(admin)
+def owner_token(db_session: Session) -> str:
+    """Create the deployment's owner account and return its token."""
+    owner = Owner(username="test_owner", password_hash=_HASH_TEST_PASSWORD)
+    db_session.add(owner)
     db_session.commit()
 
     return create_access_token(
-        data={"sub": "admin", "role": "admin", "institution_id": 1},
+        data={"sub": owner.username, "role": "owner"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -309,16 +263,7 @@ def team_token(db_session):
     db_session.commit()
     db_session.refresh(team)
 
-    return create_access_token(
-        data={
-            "sub": team.name,
-            "role": "student",
-            "team_id": team.id,
-            "team_type": team.team_type.value,
-            "institution_id": team.institution_id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
+    return make_student_token(team)
 
 
 def make_student_token(team: Team, minutes: int = 30) -> str:
@@ -329,7 +274,7 @@ def make_student_token(team: Team, minutes: int = 30) -> str:
             "role": "student",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "institution_id": team.institution_id,
+            "league_id": team.league_id,
         },
         expires_delta=timedelta(minutes=minutes),
     )
@@ -343,7 +288,7 @@ def make_ai_agent_token(team: Team, minutes: int = 30) -> str:
             "role": "ai_agent",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "institution_id": team.institution_id,
+            "league_id": team.league_id,
         },
         expires_delta=timedelta(minutes=minutes),
     )
@@ -398,9 +343,9 @@ def add_failed_submission(
 
 
 @pytest.fixture
-def auth_headers(admin_token) -> dict:
-    """Return headers with admin authentication"""
-    return {"Authorization": f"Bearer {admin_token}"}
+def owner_headers(owner_token) -> dict:
+    """Return headers with owner authentication"""
+    return {"Authorization": f"Bearer {owner_token}"}
 
 
 @pytest.fixture
@@ -424,15 +369,9 @@ def test_league(db_session: Session) -> League:
 
 
 @pytest.fixture
-def admin_headers(auth_headers) -> dict:
-    """Alias for auth_headers — admin-role bearer headers."""
-    return auth_headers
-
-
-@pytest.fixture
 def student_headers() -> dict:
     """Generic student-role bearer headers (no team_id). Suitable for tests that
-    only check role-gating on admin-only endpoints."""
+    only check role-gating on owner-only endpoints."""
     token = create_access_token(
         data={"sub": "student", "role": "student"},
         expires_delta=timedelta(minutes=30),
@@ -442,33 +381,6 @@ def student_headers() -> dict:
 
 @pytest.fixture
 def team_headers(db_session) -> dict:
-    """TeamA seed-data bearer headers (role=student, includes team_id + institution_id)."""
+    """TeamA seed-data bearer headers (role=student, includes team_id)."""
     team = db_session.exec(select(Team).where(Team.name == "TeamA")).first()
     return {"Authorization": f"Bearer {make_student_token(team)}"}
-
-
-@pytest.fixture
-def institution_token(db_session: Session) -> str:
-    """Create a fresh institution and return its institution-role JWT."""
-    institution = create_test_institution(
-        db_session,
-        name="test_institution",
-        contact_person="Test Person",
-        contact_email="test@example.com",
-        password_hash="test_hash",
-    )
-
-    return create_access_token(
-        data={
-            "sub": institution.name,
-            "role": "institution",
-            "institution_id": institution.id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
-
-
-@pytest.fixture
-def institution_headers(institution_token: str) -> dict:
-    """Bearer headers wrapping institution_token."""
-    return {"Authorization": f"Bearer {institution_token}"}

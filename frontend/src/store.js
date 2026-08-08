@@ -27,6 +27,7 @@ const saveState = (state) => {
         siteMode: undefined,
         siteName: undefined,
         siteIcon: undefined,
+        setupRequired: undefined,
       },
     });
     sessionStorage.setItem('reduxState', serializedState); // Use sessionStorage instead of localStorage

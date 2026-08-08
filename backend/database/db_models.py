@@ -4,13 +4,19 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 
 import bcrypt as _bcrypt
-from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text, text
-from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, Text
+from sqlmodel import Field, Relationship, SQLModel
 
 from backend.time_utils import utc_now
 
 # Test runs set BCRYPT_ROUNDS=4 so runtime hashing costs ~1ms instead of ~170ms.
 _BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+
+# The holding pen every team lands in when it has no league: created once by
+# init_db, guaranteed unique by League's unique name, and refused by
+# delete_league. Keyed by name because the name is already how every caller
+# finds it.
+UNASSIGNED_LEAGUE_NAME = "unassigned"
 
 
 def get_password_hash(password):
@@ -35,65 +41,17 @@ class TeamType(str, PyEnum):
 class LeagueType(str, PyEnum):
     STUDENT = "student"
     AGENT = "agent"
-    INSTITUTION = "institution"  # Added new type
 
 
-class Institution(SQLModel, table=True):
-    """Operational identity of an institution: who logs in and what they own."""
+class Owner(SQLModel, table=True):
+    """The single account that runs this deployment.
 
-    id: int = Field(primary_key=True)
-    name: str = Field(unique=True, index=True)
-    contact_person: str
-    contact_email: str
-    address: Optional[str] = None
-    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    password_hash: str
-    # Individual-teacher account: same role/permissions as any institution, but
-    # the frontend swaps league->classroom / team->student wording (claim is
-    # stamped into institution and student JWTs at login).
-    is_teacher: bool = Field(
-        default=False,
-        sa_column=Column(Boolean(), nullable=False, server_default=text("false")),
-    )
-    # Emoji or image URL shown next to the name on the public competition
-    # picker (student login page). Only meaningful for non-teacher accounts.
-    icon: Optional[str] = Field(default=None, sa_column=Column(Text(), nullable=True))
-    teams: List["Team"] = Relationship(back_populates="institution")
-    leagues: List["League"] = Relationship(back_populates="institution")
+    One row, created by the first-run setup endpoint rather than seeded, so a
+    fresh clone has no default password to forget to change. Replaces the old
+    Admin/Institution pair: with one tenant there is no platform operator
+    standing above the organizer, so there is one account and one role.
+    """
 
-    def set_password(self, password: str):
-        self.password_hash = get_password_hash(password)
-
-    def verify_password(self, password: str):
-        return verify_password(password, self.password_hash)
-
-
-class League(SQLModel, table=True):
-    id: int = Field(primary_key=True, default=None)
-    name: str = Field(index=True)  # Remove unique=True from here
-    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    deleted_date: datetime | None = None
-    signup_link: str | None = None
-    teams: List["Team"] = Relationship(back_populates="league")
-    game: str
-    league_type: LeagueType = Field(default=LeagueType.STUDENT)
-    school_league: bool = Field(default=False)
-    schools_config: Optional[dict] = Field(
-        default=None,
-        sa_column=Column(JSON, nullable=True),
-    )
-    info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
-    simulation_results: List["SimulationResult"] = Relationship(back_populates="league")
-    # New field for institution relationship
-    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
-    institution: Optional["Institution"] = Relationship(back_populates="leagues")
-
-    # Add a table-level unique constraint for name + institution_id
-    __table_args__ = (UniqueConstraint("name", "institution_id"),)
-
-
-class Admin(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     password_hash: str
@@ -105,47 +63,69 @@ class Admin(SQLModel, table=True):
         return verify_password(password, self.password_hash)
 
 
+class League(SQLModel, table=True):
+    id: int = Field(primary_key=True, default=None)
+    # Globally unique now that leagues have no owning tenant. This is also what
+    # guarantees the 'unassigned' holding pen is a singleton.
+    name: str = Field(unique=True, index=True)
+    created_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    expiry_date: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    deleted_date: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    # Public lookup key for the shareable join page: unique so a duplicate token
+    # can never shadow another league, indexed because every join hits it.
+    signup_link: Optional[str] = Field(default=None, unique=True, index=True)
+    game: str
+    league_type: LeagueType = Field(default=LeagueType.STUDENT)
+    school_league: bool = Field(default=False)
+    schools_config: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    info_markdown: str = Field(default="", sa_column=Column(Text(), nullable=False, server_default=""))
+
+    teams: List["Team"] = Relationship(
+        back_populates="league",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+    simulation_results: List["SimulationResult"] = Relationship(
+        back_populates="league",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+
+
 class Team(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    # Not globally unique: names are scoped per-institution by the composite
-    # constraints below, so different institutions can reuse a name like
-    # "Team A". A name is the team's stable identity within its institution as
-    # it moves between leagues. The index stays for name lookups (login,
-    # simulation attribution).
-    name: str = Field(index=True)
+    # Globally unique: with one tenant there is no scope to be unique within, and
+    # uniqueness is what lets login resolve a name to exactly one row instead of
+    # trying every match's password in turn.
+    name: str = Field(unique=True, index=True)
     school_name: str
-    password_hash: str | None = None  # Optional for agent teams
+    password_hash: Optional[str] = None  # Optional for agent teams
     score: int = Field(default=0)
     color: str = Field(default="rgb(171,239,177)")
-    league_id: int = Field(foreign_key="league.id")
+    league_id: int = Field(foreign_key="league.id", ondelete="CASCADE")
     team_type: TeamType = Field(default=TeamType.STUDENT)
-    league: League = Relationship(back_populates="teams")
-    submission_attempts: List["SubmissionMetadata"] = Relationship(back_populates="team")
-    api_key: Optional["AgentAPIKey"] = Relationship(
-        back_populates="team",
-        sa_relationship_kwargs={"uselist": False},
-    )
-    # New field for institution relationship
-    institution_id: Optional[int] = Field(default=None, foreign_key="institution.id")
-    institution: Optional["Institution"] = Relationship(back_populates="teams")
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-    # One-time password-reset link: generated by the owning institution and
-    # shared with the student out-of-band, cleared when consumed. Regenerating
-    # replaces the previous token, so a mis-shared link can be invalidated.
+    # One-time password-reset link: generated by the owner and shared with the
+    # student out-of-band, cleared when consumed. Regenerating replaces the
+    # previous token, so a mis-shared link can be invalidated.
     password_reset_token: Optional[str] = Field(default=None, index=True)
     password_reset_expiry: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True))
     )
 
-    # Primary rule: a team name is unique within an institution. The
-    # (name, league_id) constraint is a secondary guard for teams whose league
-    # has no institution (institution_id NULL) — Postgres treats NULLs as
-    # distinct in a unique constraint, so the institution rule can't cover them.
-    __table_args__ = (
-        UniqueConstraint("name", "institution_id"),
-        UniqueConstraint("name", "league_id"),
+    league: League = Relationship(back_populates="teams")
+    submission_attempts: List["SubmissionMetadata"] = Relationship(
+        back_populates="team",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+    api_key: Optional["AgentAPIKey"] = Relationship(
+        back_populates="team",
+        sa_relationship_kwargs={"uselist": False, "passive_deletes": True},
     )
 
     def set_password(self, password: str):
@@ -162,19 +142,20 @@ class SubmissionMetadata(SQLModel, table=True):
     and hint availability. A linked Submission row == passed validation."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    # nullable so an ORM Team delete can null it out rather than fail; deleting
-    # a Team still goes through delete_team_children(), which removes these rows
-    team_id: Optional[int] = Field(
-        default=None, foreign_key="team.id", nullable=True, index=True
+    team_id: int = Field(foreign_key="team.id", ondelete="CASCADE", index=True)
+    # Nullable: an attempt can be recorded before the team has joined a league.
+    # The cascade still fires whenever it is set.
+    league_id: Optional[int] = Field(
+        default=None, foreign_key="league.id", ondelete="CASCADE", nullable=True
     )
-    league_id: Optional[int] = Field(default=None, foreign_key="league.id", nullable=True)
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     duration_ms: Optional[float] = Field(default=None)
     hint_included: bool = Field(default=False)
-    team: Optional[Team] = Relationship(back_populates="submission_attempts")
+
+    team: Team = Relationship(back_populates="submission_attempts")
     submission: Optional["Submission"] = Relationship(
         back_populates="meta",
-        sa_relationship_kwargs={"uselist": False},
+        sa_relationship_kwargs={"uselist": False, "passive_deletes": True},
     )
 
 
@@ -187,43 +168,52 @@ class Submission(SQLModel, table=True):
     # Rank against the game's validation bots (1 = best, competition ranking),
     # from the validation run's total_points. Not a league standing.
     ranking: Optional[int] = Field(default=None)
-    metadata_id: int = Field(foreign_key="submissionmetadata.id", unique=True, index=True)
+    metadata_id: int = Field(
+        foreign_key="submissionmetadata.id", ondelete="CASCADE", unique=True, index=True
+    )
     # `metadata` is reserved on SQLAlchemy declarative classes
     meta: SubmissionMetadata = Relationship(back_populates="submission")
 
-# In backend/database/db_models.py
 
 class SimulationResult(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    league_id: int = Field(foreign_key="league.id")
-    league: League = Relationship(back_populates="simulation_results")
+    league_id: int = Field(foreign_key="league.id", ondelete="CASCADE")
     timestamp: datetime = Field(sa_column=Column(DateTime(timezone=True)))
-    simulation_results: List["SimulationResultItem"] = Relationship(
-        back_populates="simulation_result"
-    )
     published: bool = Field(default=False)
     num_simulations: int = Field(default=0)
     custom_rewards: str = Field(default="[10, 0, 0, 0, 0, 0, 0]")
-    feedback_str: str | None = Field(default=None, sa_column=Column(Text()))
-    feedback_json: str | None = Field(default=None, sa_column=Column(Text()))
-    publish_link: str | None = Field(default=None)  # New field for the publish link
+    feedback_str: Optional[str] = Field(default=None, sa_column=Column(Text()))
+    feedback_json: Optional[str] = Field(default=None, sa_column=Column(Text()))
+    # Public lookup key for the shareable results page — unique and indexed for
+    # the same reason as League.signup_link.
+    publish_link: Optional[str] = Field(default=None, unique=True, index=True)
+
+    league: League = Relationship(back_populates="simulation_results")
+    simulation_results: List["SimulationResultItem"] = Relationship(
+        back_populates="simulation_result",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
 
 
 class SimulationResultItem(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
-    simulation_result_id: int = Field(foreign_key="simulationresult.id")
+    simulation_result_id: int = Field(
+        foreign_key="simulationresult.id", ondelete="CASCADE"
+    )
+    # Indexed: this is the join column for every standings read.
+    team_id: int = Field(foreign_key="team.id", ondelete="CASCADE", index=True)
+    score: float = Field(default=0)
+    custom_value1: Optional[float] = None
+    custom_value2: Optional[float] = None
+    custom_value3: Optional[float] = None
+    custom_value1_name: Optional[str] = None
+    custom_value2_name: Optional[str] = None
+    custom_value3_name: Optional[str] = None
+
     simulation_result: SimulationResult = Relationship(
         back_populates="simulation_results"
     )
-    team_id: int = Field(foreign_key="team.id")
     team: Team = Relationship()
-    score: float = Field(default=0)
-    custom_value1: float | None = None
-    custom_value2: float | None = None
-    custom_value3: float | None = None
-    custom_value1_name: str | None = None
-    custom_value2_name: str | None = None
-    custom_value3_name: str | None = None
 
 
 class AgentAPIKey(SQLModel, table=True):
@@ -232,14 +222,17 @@ class AgentAPIKey(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
     key: str = Field(unique=True, index=True)
     team_id: int = Field(
-        foreign_key="team.id", unique=True
+        foreign_key="team.id", ondelete="CASCADE", unique=True
     )  # Ensures one API key per team
-    team: Team = Relationship(back_populates="api_key")
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-    last_used: datetime | None = None
+    last_used: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     is_active: bool = Field(default=True)
+
+    team: Team = Relationship(back_populates="api_key")
 
 
 class AIProviderKey(SQLModel, table=True):
@@ -254,5 +247,3 @@ class AIProviderKey(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-
-

@@ -3,10 +3,10 @@
 Run inside the api container:
     python -m backend.database.maintenance
 
-Only agent-team submissions are pruned. The other sweep used to target the
-"Admin Institution" and "Demo Institution" teams by name; demo mode is gone and
-a single-tenant install has no throwaway institution whose submissions are
-disposable, so a student's history is now kept until their team is deleted.
+Only agent-team submissions are pruned. The other sweep used to target two
+institutions by name; demo mode and institutions are both gone, and a
+single-tenant install has no throwaway tenant whose submissions are disposable,
+so a student's history is kept until their team is deleted.
 """
 
 import logging

@@ -180,13 +180,13 @@ class CustomPlayer(Player):
     assert response.status_code == 401
 
     # Test case 4: Submit with wrong token type
-    admin_token = create_access_token(
-        data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(minutes=30)
+    owner_token = create_access_token(
+        data={"sub": "admin", "role": "owner"}, expires_delta=timedelta(minutes=30)
     )
     response = client.post(
         "/user/submit-agent",
         json={"code": "valid_code"},
-        headers={"Authorization": f"Bearer {admin_token}"},
+        headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert response.status_code == 403
 
@@ -194,7 +194,7 @@ class CustomPlayer(Player):
 def test_get_league_submissions_success(
     client,
     db_session: Session,
-    auth_headers,
+    owner_headers,
     setup_test_league: League,
     setup_test_team: Team,
 ):
@@ -223,7 +223,7 @@ def test_get_league_submissions_success(
     # Get league submissions (admin bypasses ownership)
     response = client.get(
         f"/user/get-league-submissions/{setup_test_league.id}",
-        headers=auth_headers,
+        headers=owner_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -233,16 +233,18 @@ def test_get_league_submissions_success(
     )  # Should get latest submission
 
 
-def test_get_league_submissions_exceptions(client, student_token: str, auth_headers):
+def test_get_league_submissions_exceptions(client, student_token: str, owner_headers):
     """Test error cases for getting league submissions"""
 
-    # Test case 1: Admin gets empty dict for non-existent league
+    # A non-existent league is a 404. It used to return an empty dict for admin
+    # tokens, which is indistinguishable from a league that simply has no
+    # submissions yet.
     response = client.get(
         "/user/get-league-submissions/99999",
-        headers=auth_headers,
+        headers=owner_headers,
     )
-    assert response.status_code == 200
-    assert response.json() == {}
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
     # Test case 2: Unauthorized access (no token)
     response = client.get("/user/get-league-submissions/1")
@@ -334,7 +336,7 @@ def test_get_team_submission_exceptions(client):
         headers={"Authorization": f"Bearer {non_existent_token}"},
     )
     assert response.status_code == 400
-    assert "team token" in response.json()["detail"]
+    assert "Team ID not found" in response.json()["detail"]
 
 
 def _make_hints_available(db_session: Session, team_id: int) -> None:

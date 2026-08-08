@@ -12,7 +12,6 @@ function DirectClassicSignup({ leagueToken, leagueInfo, onShowLogin }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { directSignup, isLoading } = useAuthAPI();
-  // Visitors are logged out, so wording comes from the league's institution.
   const T = useTerms();
 
   const [formData, setFormData] = useState({

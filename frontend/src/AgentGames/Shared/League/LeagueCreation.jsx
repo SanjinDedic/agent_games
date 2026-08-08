@@ -26,11 +26,11 @@ const EMPTY_FORM = {
  * as a single thin row (title + button) so it can share a column with
  * other cards.
  */
-const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
+const LeagueCreation = ({ onCreated, compact = false }) => {
   const T = useTerms();
   const token = useSelector(selectToken);
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
-  const { fetchUserLeagues } = useLeagueAPI(userRole);
+  const { fetchUserLeagues } = useLeagueAPI();
 
   const [isOpen, setIsOpen] = useState(false);
   const [games, setGames] = useState([]);
@@ -154,7 +154,7 @@ const LeagueCreation = ({ userRole, onCreated, compact = false }) => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/institution/league-create`, {
+      const response = await authFetch(`${apiUrl}/owner/league-create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

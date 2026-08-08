@@ -1,6 +1,6 @@
 """School-name sanitization shared by the team-naming logic and the
 LeagueSignUp validator. Lives in the neutral schools package so neither
-``backend.routes.user`` nor ``backend.routes.institution`` has to import
+``backend.routes.user`` nor ``backend.routes.owner`` has to import
 across route boundaries.
 """
 

@@ -13,11 +13,11 @@ import { useTerms } from "../terminology";
 
 /**
  * Simulation controls + results for the league currently selected in Redux.
- * League selection lives with the caller: the admin/institution page keeps
+ * League selection lives with the caller: the owner page keeps
  * its LeagueCardList column; the classroom workspace's Simulation tab renders
  * this panel alone.
  */
-const SimulationPanel = ({ userRole }) => {
+const SimulationPanel = () => {
   const T = useTerms();
   const dispatch = useDispatch();
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
@@ -28,7 +28,7 @@ const SimulationPanel = ({ userRole }) => {
     (state) => state.leagues.currentLeagueResultSelected
   );
 
-  const api = useLeagueAPI(userRole);
+  const api = useLeagueAPI();
   // Roster names, used to show who had no agent in the selected run. Null when
   // the teams list hasn't loaded — the block then stays hidden.
   const allTeams = useSelector((state) => state.teams.list);
@@ -65,7 +65,7 @@ const SimulationPanel = ({ userRole }) => {
 
   return (
     <div className="space-y-6">
-      <SimulationRunner league={currentLeague} userRole={userRole} />
+      <SimulationRunner league={currentLeague} />
 
       {isPlaceholderLeague ? (
         <div className="bg-white rounded-lg shadow-lg p-6">
@@ -85,7 +85,6 @@ const SimulationPanel = ({ userRole }) => {
             current={currentSimulation}
             onSelect={(timestamp) => dispatch(setCurrentSimulation(timestamp))}
             league={currentLeague}
-            userRole={userRole}
             roster={roster}
             onViewResults={() => setShowResults(true)}
           />

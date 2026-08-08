@@ -12,40 +12,29 @@ import { selectImmersiveMode } from './slices/settingsSlice';
 import { Button } from './components/ui';
 import { useTerms } from './AgentGames/Shared/terminology';
 
-// User-visible entity labels come from terminology.js (the `T` map): teacher
-// accounts see "Students", everyone else "Teams".
-// Routes, admin-section labels, and marketing copy stay literal.
+// User-visible entity labels come from terminology.js (the `T` map): a
+// classroom deployment sees "Students", a competition "Teams". Routes and
+// marketing copy stay literal.
 function getNavLinks(T) {
   return {
-    admin: [
-      { to: "/AdminInstitutions", label: "Institutions" },
-      { to: "/AdminDockerStatus", label: "Service Status" },
-      { to: "/AdminAPIKeys", label: "API Keys" },
-    ],
-    // Everything about one league/classroom lives in the /Classroom/:id
-    // workspace, entered from the Home cards; the navbar only keeps Home and
-    // the institution-wide directory (the sole surface for unassigned members).
-    // Teacher and competition institutions share these routes — `T.Teams`
-    // renders "Students" vs "Teams" from the account's own terminology.
-    institution: [
-      { to: "/InstitutionHome", label: "Home" },
-      { to: "/InstitutionTeam", label: T.Teams },
+    // The owner runs the whole deployment, so this is the union of what the old
+    // admin and institution groups used to carry. Everything about one
+    // league/classroom lives in the /Classroom/:id workspace, entered from the
+    // Home cards; the navbar keeps Home, the site-wide roster (the only surface
+    // for unassigned members), and the two operational pages.
+    owner: [
+      { to: "/Home", label: "Home" },
+      { to: "/Teams", label: T.Teams },
+      { to: "/ServiceStatus", label: "Service Status" },
+      { to: "/APIKeys", label: "API Keys" },
     ],
     team: [
       { to: "/TeamHome", label: "Home" },
       { to: "/AgentSubmission", label: "Submit Agent" },
       { to: "/Leaderboards", label: "Leaderboards" },
     ],
-    demo: [
-      { to: "/TeamHome", label: "Home" },
-      { to: "/AgentSubmission", label: "Submit Agent" },
-    ],
-    // Logged-out visitors get the teacher-first pitch. Navbar links go to the
-    // login pages (returning users); the home-page hero carries the signup CTAs,
-    // and each login page links back to its signup/pricing page.
     public: [
-      { to: "/Teacher", label: "For Teachers" },
-      { to: "/Institution", label: "For Competitions" },
+      { to: "/Login", label: "Log in" },
       { to: "/About", label: "About" },
     ],
   };
@@ -54,9 +43,8 @@ function getNavLinks(T) {
 function resolveNavGroup(currentUser, isAuthenticated) {
   if (!isAuthenticated) return "public";
   const role = currentUser?.role;
-  if (role === "admin") return "admin";
-  if (role === "institution") return "institution";
-  if (role === "student") return "team";
+  if (role === "owner") return "owner";
+  if (role === "student" || role === "ai_agent") return "team";
   return "public";
 }
 
@@ -115,14 +103,7 @@ function AgentGamesNavbar() {
     dispatch(clearTeam());
     dispatch(clearResults());
 
-    // Redirect based on role
-    if (userRole === "admin") {
-      navigate("/Admin");
-    } else if (userRole === "institution") {
-      navigate(currentUser?.is_teacher ? "/Teacher" : "/Institution");
-    } else {
-      navigate("/AgentLogin");
-    }
+    navigate(userRole === "owner" ? "/Login" : "/AgentLogin");
   };
 
   const navLinkClasses = "inline-flex items-center px-3 py-3 text-lg text-white hover:bg-white/10 transition-colors duration-200";

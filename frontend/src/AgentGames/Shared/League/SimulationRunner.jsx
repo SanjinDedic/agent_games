@@ -11,16 +11,15 @@ import { useTerms } from '../terminology';
  * 
  * @param {Object} props - Component props
  * @param {Object} props.league - The current league object
- * @param {string} props.userRole - User role ('admin' or 'institution')
  */
-const SimulationRunner = ({ league, userRole }) => {
+const SimulationRunner = ({ league }) => {
   const T = useTerms();
   const dispatch = useDispatch();
   const rewards = useSelector((state) => state.leagues.currentRewards);
   const [simulationNumber, setSimulationNumber] = useState(1);
 
   // Use the shared API hook
-  const { isLoading, runSimulation } = useLeagueAPI(userRole);
+  const { isLoading, runSimulation } = useLeagueAPI();
 
   // The auto-created "unassigned" league is a placeholder and cannot be simulated
   const isPlaceholder = league?.name?.toLowerCase() === "unassigned";

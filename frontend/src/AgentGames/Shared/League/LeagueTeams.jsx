@@ -13,9 +13,8 @@ import { useTerms } from '../terminology';
  * 
  * @param {Object} props - Component props
  * @param {string} props.selected_league_name - The name of the selected league
- * @param {string} props.userRole - User role ('admin' or 'institution')
  */
-const LeagueTeams = ({ selected_league_name, userRole }) => {
+const LeagueTeams = ({ selected_league_name }) => {
     const T = useTerms();
     const dispatch = useDispatch();
     const teams = useSelector((state) => state.teams.list);
@@ -32,7 +31,7 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
     
     // Use shared API hook
   const { assignTeamToLeague, unassignTeam, isLoading } =
-    useLeagueAPI(userRole);
+    useLeagueAPI();
 
   // Fetch fresh team data when component mounts
   useEffect(() => {
@@ -69,13 +68,13 @@ const LeagueTeams = ({ selected_league_name, userRole }) => {
     return lg?.id;
   }, [leagues, selected_league_name]);
 
-  // No longer rely on global 'unassigned' league discovery; the backend resolves it safely per institution
+  // The backend resolves the 'unassigned' league itself.
 
   // Function to fetch all teams
   const fetchAllTeams = async () => {
     setIsLoadingTeams(true);
     try {
-      const response = await authFetch(`${apiUrl}/institution/get-all-teams`, {
+      const response = await authFetch(`${apiUrl}/owner/get-all-teams`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

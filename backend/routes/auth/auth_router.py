@@ -4,19 +4,11 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from backend.database.db_session import get_db
-from backend.routes.auth.auth_db import (
-    get_admin_token,
-    get_competitions,
-    get_institution_token,
-    get_team_token,
-    verify_agent_api_key,
-)
+from backend.routes.auth.auth_db import create_owner, login, verify_agent_api_key
 from backend.routes.auth.auth_models import (
-    AdminLogin,
     AgentLogin,
-    CompetitionsResponse,
-    InstitutionLogin,
-    TeamLogin,
+    Login,
+    OwnerSetup,
     TokenResponse,
 )
 
@@ -25,34 +17,34 @@ logger = logging.getLogger(__name__)
 auth_router = APIRouter()
 
 # Invalid credentials raise InvalidCredentialsError, mapped to HTTP 401 by the
-# handler registered in api.py. Any other exception surfaces as a 500. This
-# keeps each route a single expression instead of a per-route try/except.
+# handler registered in api.py; a second setup attempt raises OwnerExistsError ->
+# 409. Any other exception surfaces as a 500. This keeps each route a single
+# expression instead of a per-route try/except.
 
 
-@auth_router.get("/competitions", response_model=CompetitionsResponse)
-def list_competitions(session: Session = Depends(get_db)):
-    """Public endpoint listing competitions for the student login picker."""
-    return CompetitionsResponse(competitions=get_competitions(session))
+@auth_router.post("/setup", response_model=TokenResponse)
+def setup_owner(request: OwnerSetup, session: Session = Depends(get_db)):
+    """Claim a fresh deployment by creating its single owner account.
+
+    Unauthenticated by necessity — there is no account to authenticate with yet.
+    Safe in production because it refuses once an owner exists, so the window is
+    exactly one call. GET /config reports setup_required so the frontend knows
+    whether to offer this or the login form.
+    """
+    return TokenResponse(
+        access_token=create_owner(session, request.name, request.password),
+        role="owner",
+    )
 
 
-@auth_router.post("/admin-login", response_model=TokenResponse)
-def admin_login(login: AdminLogin, session: Session = Depends(get_db)):
-    """Authenticate an administrator and issue an access token."""
-    logger.info(f'Admin login attempt for username: "{login.username}"')
-    return get_admin_token(session, login.username, login.password)
+@auth_router.post("/login", response_model=TokenResponse)
+def login_endpoint(credentials: Login, session: Session = Depends(get_db)):
+    """Authenticate the owner or a team and issue an access token.
 
-
-@auth_router.post("/team-login", response_model=TokenResponse)
-def team_login(credentials: TeamLogin, session: Session = Depends(get_db)):
-    """Authenticate a team and issue an access token."""
-    return get_team_token(session, credentials.name, credentials.password)
-
-
-@auth_router.post("/institution-login", response_model=TokenResponse)
-def institution_login(login: InstitutionLogin, session: Session = Depends(get_db)):
-    """Authenticate an institution and issue an access token."""
-    logger.info(f'Institution login attempt for name: "{login.name}"')
-    return get_institution_token(session, login.name, login.password)
+    Deliberately does not log the submitted name: a failed attempt is often a
+    password typed into the name field.
+    """
+    return login(session, credentials.name, credentials.password)
 
 
 @auth_router.post("/agent-login", response_model=TokenResponse)

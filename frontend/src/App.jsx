@@ -5,27 +5,25 @@ import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
 import TeamHome from './AgentGames/User/TeamHome';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
-import Institution from "./AgentGames/Institution/Institution";
-import InstitutionTeam from "./AgentGames/Institution/InstitutionTeam";
-import InstitutionHome from "./AgentGames/Institution/InstitutionHome";
-import ClassroomWorkspace from "./AgentGames/Institution/Classroom/ClassroomWorkspace";
+import OwnerLogin from "./AgentGames/Owner/OwnerLogin";
+import OwnerTeams from "./AgentGames/Owner/OwnerTeams";
+import OwnerHome from "./AgentGames/Owner/OwnerHome";
+import ClassroomWorkspace from "./AgentGames/Owner/Classroom/ClassroomWorkspace";
+import AIProviderKeys from "./AgentGames/Owner/AIProviderKeys";
+import ServiceStatus from "./AgentGames/Owner/ServiceStatus";
 import Leaderboards from "./AgentGames/Leaderboards";
-import Admin from "./AgentGames/Admin/Admin";
-import AdminInstitutions from "./AgentGames/Admin/AdminInstitutions";
-import AdminAPIKeys from "./AgentGames/Admin/AdminAPIKeys";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
 import PublishedResults from "./AgentGames/PublishedResults";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./utils/toastDefaults";
-import DockerStatus from "./AgentGames/Admin/DockerStatus";
 import About from './AgentGames/About';
 import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
 import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
-import AuthProtection from "./AgentGames/Shared/Common/AuthProotection";
+import AuthProtection from "./AgentGames/Shared/Common/AuthProtection";
 
 function App() {
   return (
@@ -69,81 +67,56 @@ function App() {
             path="/TeamSignup/:leagueToken"
             element={<ClassroomJoin defaultTab="signup" />}
           />
-          {/* One-time password-reset link shared by the institution */}
+          {/* One-time password-reset link shared by the owner */}
           <Route path="/reset/:resetToken" element={<TeamPasswordReset />} />
-          {/* New Route for Published Results */}
           <Route path="/results/:publishLink" element={<PublishedResults />} />
-          {/* Admin Routes */}
-          <Route path="Admin" element={<Admin />} />
+
+          {/* Owner routes. /Login serves both the login form and, on an
+              unclaimed deployment, the first-run setup form. */}
+          <Route path="Login" element={<OwnerLogin />} />
           <Route
-            path="AdminInstitutions"
+            path="Home"
             element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminInstitutions />
+              <AuthProtection requiredRole="owner" redirectTo="/Login">
+                <OwnerHome />
               </AuthProtection>
             }
           />
           <Route
-            path="AdminDockerStatus"
+            path="Teams"
             element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <DockerStatus />
+              <AuthProtection requiredRole="owner" redirectTo="/Login">
+                <OwnerTeams />
               </AuthProtection>
             }
           />
-          <Route
-            path="AdminAPIKeys"
-            element={
-              <AuthProtection requiredRole="admin" redirectTo="/Admin">
-                <AdminAPIKeys />
-              </AuthProtection>
-            }
-          />
-          {/* Institution Routes */}
-          <Route path="Institution" element={<Institution />} />
-          <Route path="Teacher" element={<Institution variant="teacher" />} />
+          {/* Path kept as /Classroom in both site modes: routes are canonical,
+              only user-visible copy switches vocabulary. */}
           <Route
             path="Classroom/:leagueId/:tab?"
             element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
+              <AuthProtection requiredRole="owner" redirectTo="/Login">
                 <ClassroomWorkspace />
               </AuthProtection>
             }
           />
           <Route
-            path="InstitutionTeam"
+            path="ServiceStatus"
             element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionTeam />
+              <AuthProtection requiredRole="owner" redirectTo="/Login">
+                <ServiceStatus />
               </AuthProtection>
             }
           />
           <Route
-            path="InstitutionHome"
+            path="APIKeys"
             element={
-              <AuthProtection requiredRole="institution" redirectTo="/Institution">
-                <InstitutionHome />
+              <AuthProtection requiredRole="owner" redirectTo="/Login">
+                <AIProviderKeys />
               </AuthProtection>
             }
           />
-          {/* Legacy routes from the pre-workspace layout redirect into the
-              classroom workspace (or home when no classroom is implied). */}
-          <Route
-            path="InstitutionLeagueSubmissions/:leagueId"
-            element={<LegacySubmissionsRedirect />}
-          />
-          <Route
-            path="InstitutionProgress"
-            element={<Navigate to="/InstitutionHome" replace />}
-          />
-          <Route
-            path="InstitutionLeague"
-            element={<Navigate to="/InstitutionHome" replace />}
-          />
-          <Route
-            path="InstitutionLeagueSimulation"
-            element={<Navigate to="/InstitutionHome" replace />}
-          />
+
           {/* Other Routes */}
           <Route path="StyleGuide" element={<StyleGuide />} />
           <Route path="GamePreview/:gameName" element={<GamePreview />} />
@@ -167,11 +140,6 @@ function App() {
       </div>
     </BrowserRouter>
   );
-}
-
-function LegacySubmissionsRedirect() {
-  const { leagueId } = useParams();
-  return <Navigate to={`/Classroom/${leagueId}/submissions`} replace />;
 }
 
 function CreditLink() {

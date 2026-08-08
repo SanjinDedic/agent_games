@@ -9,12 +9,12 @@ from backend import config
 
 
 def test_config_returns_site_settings(client):
-    """Public, no auth, and reports the three deploy settings."""
+    """Public, no auth, and reports the deploy settings."""
     resp = client.get("/config")
     assert resp.status_code == 200
     data = resp.json()
 
-    assert set(data) == {"site_mode", "site_name", "site_icon"}
+    assert set(data) == {"site_mode", "site_name", "site_icon", "setup_required"}
     assert data["site_mode"] in config.SITE_MODES
     assert data["site_name"]
 

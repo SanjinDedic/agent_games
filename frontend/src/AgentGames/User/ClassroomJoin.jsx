@@ -9,6 +9,7 @@ import {
 } from "../../slices/authSlice";
 import useAuthAPI from "../Shared/hooks/useAuthAPI";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
+import { selectSiteName } from "../../slices/settingsSlice";
 import { useTerms } from "../Shared/terminology";
 import DirectClassicSignup from "./DirectClassicSignup";
 import DirectSchoolLeagueSignup from "./DirectSchoolLeagueSignup";
@@ -35,9 +36,9 @@ function ClassroomJoin({ defaultTab = "login" }) {
   const [routing, setRouting] = useState(false);
   const [conflictLeague, setConflictLeague] = useState(null);
 
-  // Wording comes from the league's owning institution, not the session:
   // visitors here are usually logged out.
   const T = useTerms();
+  const siteName = useSelector(selectSiteName);
 
   const isStudentSession =
     isAuthenticated && !tokenExpired && currentUser.role === "student";
@@ -150,7 +151,7 @@ function ClassroomJoin({ defaultTab = "login" }) {
             <>
               <div className="mb-6 text-center">
                 <p className="text-sm uppercase tracking-wide text-ui-dark/60">
-                  {leagueInfo.institution_name || `Agent Games ${T.League}`}
+                  {siteName}
                 </p>
                 <h1 className="text-2xl font-bold text-ui-dark">
                   {leagueInfo.name}

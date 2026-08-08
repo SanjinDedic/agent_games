@@ -3,11 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import moment from "moment-timezone";
 import { setCurrentLeague } from "../../slices/leaguesSlice";
-import {
-  selectCurrentUser,
-  selectInstitutionName,
-  selectLeagueId,
-} from "../../slices/authSlice";
+import { selectCurrentUser, selectLeagueId } from "../../slices/authSlice";
+import { selectSiteName } from "../../slices/settingsSlice";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 import { useTerms } from "../Shared/terminology";
 
@@ -19,7 +16,7 @@ function AgentLeagueSignUp() {
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
   const assignedLeagueId = useSelector(selectLeagueId);
-  const institutionName = useSelector(selectInstitutionName);
+  const siteName = useSelector(selectSiteName);
 
   const { fetchUserLeagues, assignToLeague, isLoading } = useLeagueAPI();
 
@@ -163,9 +160,7 @@ function AgentLeagueSignUp() {
               {`Change ${T.league}?`}
             </h2>
             <p className="text-ui-dark mb-3">
-              <span className="font-semibold">
-                {institutionName || (currentUser?.is_teacher ? "Your teacher" : "Your institution")}
-              </span>{" "}
+              <span className="font-semibold">{siteName}</span>{" "}
               assigned you to{" "}
               <span className="font-semibold">{assignedLeagueName}</span>.{" "}
               {`Are you sure you want to change ${T.leagues}?`}

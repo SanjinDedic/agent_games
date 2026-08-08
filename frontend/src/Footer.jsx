@@ -10,16 +10,12 @@ const FOOTER_COLUMNS = [
     ],
   },
   {
-    heading: "For Teachers",
+    // One deployment, one of each login — the split into "For Teachers" and
+    // "Competitions" columns existed to point at two different organizer pages.
+    heading: "Log in",
     links: [
-      { to: "/Teacher", label: "Teacher Login" },
+      { to: "/Login", label: "Organizer Login" },
       { to: "/AgentLogin", label: "Student Login" },
-    ],
-  },
-  {
-    heading: "Competitions",
-    links: [
-      { to: "/Institution", label: "Organizer Login" },
     ],
   },
 ];

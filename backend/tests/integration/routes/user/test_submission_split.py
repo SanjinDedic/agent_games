@@ -11,7 +11,6 @@ import pytest
 from sqlmodel import Session, select
 
 from backend.database.db_models import (
-    Institution,
     League,
     Submission,
     SubmissionMetadata,
@@ -33,19 +32,14 @@ from backend.tests.conftest import add_failed_submission, add_submission
 from backend.time_utils import utc_now
 
 
-
 @pytest.fixture
 def team(db_session: Session) -> Team:
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     league = League(
         name="split_test_league",
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
@@ -56,7 +50,6 @@ def team(db_session: Session) -> Team:
         school_name="Split School",
         password_hash="hash",
         league_id=league.id,
-        institution_id=institution.id,
         team_type=TeamType.STUDENT,
     )
     db_session.add(team)

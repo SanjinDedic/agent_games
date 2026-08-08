@@ -23,7 +23,6 @@ const leaguesSlice = createSlice({
         id: league.id,
         name: league.name,
         signup_link: league.signup_link,
-        institution_name: league.institution_name ?? null,
         school_league: league.school_league ?? false,
         info_markdown: league.info_markdown ?? '',
       }));
@@ -47,7 +46,6 @@ const leaguesSlice = createSlice({
         id: league.id,
         name: league.name,
         signup_link: league.signup_link,
-        institution_name: league.institution_name ?? null,
         school_league: league.school_league ?? false,
         info_markdown: league.info_markdown ?? '',
       });

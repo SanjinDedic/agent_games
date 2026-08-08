@@ -6,9 +6,9 @@ import { clearTeam } from '../slices/teamsSlice';
 export const sessionExpired = createAction('auth/sessionExpired');
 
 const LOGIN_ROUTES = {
-  admin: '/Admin',
-  institution: '/Institution',
+  owner: '/Login',
   student: '/AgentLogin',
+  ai_agent: '/AgentLogin',
 };
 
 let isLoggingOut = false;

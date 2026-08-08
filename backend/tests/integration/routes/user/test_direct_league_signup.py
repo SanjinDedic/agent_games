@@ -7,28 +7,18 @@ import pytest
 from jose import jwt
 from sqlmodel import Session, select
 
-from backend.tests.conftest import build_institution
-from backend.database.db_models import Institution, League, LeagueType, Team
+
+from backend.database.db_models import League, LeagueType, Team
 from backend.routes.auth.auth_config import SECRET_KEY, ALGORITHM
 from backend.time_utils import utc_now
 
 
-
 @pytest.fixture
 def signup_league(db_session: Session) -> dict:
-    """Create an institution with a league that has a valid signup token."""
+    """A league with a valid signup token."""
     now = utc_now()
 
-    institution = build_institution(
-        name="Signup Test School",
-        contact_person="Teacher",
-        contact_email="teacher@signup.com",
-        created_date=now,
-        password_hash="hash",
-    )
-    db_session.add(institution)
     db_session.commit()
-    db_session.refresh(institution)
 
     token = secrets.token_urlsafe(16)
     league = League(
@@ -36,15 +26,14 @@ def signup_league(db_session: Session) -> dict:
         created_date=now,
         expiry_date=now + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
         signup_link=token,
     )
     db_session.add(league)
     db_session.commit()
     db_session.refresh(league)
 
-    return {"institution": institution, "league": league, "signup_token": token}
+    return {"league": league, "signup_token": token}
 
 
 @pytest.fixture
@@ -52,9 +41,6 @@ def expired_league(db_session: Session) -> dict:
     """Create a league with an expired date and signup token."""
     now = utc_now()
 
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
 
     token = secrets.token_urlsafe(16)
     league = League(
@@ -62,8 +48,7 @@ def expired_league(db_session: Session) -> dict:
         created_date=now - timedelta(days=14),
         expiry_date=now - timedelta(days=1),
         game="greedy_pig",
-        institution_id=institution.id,
-        league_type=LeagueType.INSTITUTION,
+        league_type=LeagueType.STUDENT,
         signup_link=token,
     )
     db_session.add(league)
@@ -97,11 +82,10 @@ def test_direct_signup_success(client, signup_league, db_session):
     assert decoded["sub"] == "signup_team_1"
     assert decoded["role"] == "student"
 
-    # Team exists in DB linked to correct league and institution
+    # Team exists in DB linked to the correct league
     team = db_session.exec(select(Team).where(Team.name == "signup_team_1")).first()
     assert team is not None
     assert team.league_id == signup_league["league"].id
-    assert team.institution_id == signup_league["institution"].id
     assert team.school_name == "Test High School"
 
 

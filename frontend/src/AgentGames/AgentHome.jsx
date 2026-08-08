@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Footer from '../Footer';
 import { imageUrl } from '../config/assets';
 import { featuredGames } from './Feedback/games';
+import { useTerms } from './Shared/terminology';
 
 const HOW_IT_WORKS_STEPS = [
   { time: "5 min", title: "Sign up and create a classroom" },
@@ -105,6 +106,7 @@ const ShotGrid = ({ shots, onZoom }) => (
 );
 
 const Homepage = () => {
+  const T = useTerms();
   const [zoomed, setZoomed] = useState(null);
 
   return (
@@ -121,14 +123,14 @@ const Homepage = () => {
             minutes.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
-            <Link to="/Teacher" className="inline-block">
+            <Link to="/Login" className="inline-block">
               <button className="bg-white text-primary hover:bg-league-text hover:text-primary-dark shadow-lg text-lg py-2.5 px-8 rounded">
-                Teacher Login
+                Log in
               </button>
             </Link>
-            <Link to="/Institution" className="inline-block">
+            <Link to="/AgentLogin" className="inline-block">
               <button className="bg-blue-200 text-primary-dark hover:bg-blue-300 shadow-lg text-lg py-2.5 px-8 rounded">
-                Competition Organizer Login
+                {`${T.Team} login`}
               </button>
             </Link>
           </div>
@@ -375,9 +377,9 @@ const Homepage = () => {
                 ))}
               </ul>
               <div className="mt-6 text-center">
-                <Link to="/Teacher">
+                <Link to="/Login">
                   <button className="bg-white text-league-blue hover:bg-league-text hover:text-league-blue py-2 px-6 rounded">
-                    Teacher Login
+                    Log in
                   </button>
                 </Link>
               </div>
@@ -398,7 +400,7 @@ const Homepage = () => {
             results.
           </p>
           <Link
-            to="/Institution"
+            to="/Login"
             className="text-primary font-medium hover:text-primary-hover text-lg"
           >
             Organizer login →

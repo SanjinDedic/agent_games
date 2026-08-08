@@ -9,10 +9,9 @@ import { useTerms } from '../terminology';
 
 /**
  * Hook for handling league-related API calls
- * @param {string} userRole - The role of the current user ('admin' or 'institution')
  * @returns {Object} API methods and loading state
  */
-export const useLeagueAPI = (userRole) => {
+export const useLeagueAPI = () => {
   const dispatch = useDispatch();
   const T = useTerms();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -117,7 +116,7 @@ export const useLeagueAPI = (userRole) => {
     if (!leagueId) return { success: false, error: 'league_id required' };
     try {
       const response = await authFetch(
-        `${apiUrl}/institution/get-all-league-results`,
+        `${apiUrl}/owner/get-all-league-results`,
         {
           method: 'POST',
           headers: {
@@ -155,8 +154,7 @@ export const useLeagueAPI = (userRole) => {
     const toastId = toast.loading("Running simulation...");
     
     try {
-      // Both admin and institution use the same endpoint
-      const response = await authFetch(`${apiUrl}/institution/run-simulation`, {
+      const response = await authFetch(`${apiUrl}/owner/run-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,8 +203,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      // Both admin and institution use the same endpoint
-      const response = await authFetch(`${apiUrl}/institution/league-create`, {
+      const response = await authFetch(`${apiUrl}/owner/league-create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +240,7 @@ export const useLeagueAPI = (userRole) => {
       //set publishData.feedback to none
       publishData.feedback = undefined
 
-      const response = await authFetch(`${apiUrl}/institution/publish-results`, {
+      const response = await authFetch(`${apiUrl}/owner/publish-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -280,7 +277,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/institution/update-expiry-date`, {
+      const response = await authFetch(`${apiUrl}/owner/update-expiry-date`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,7 +313,7 @@ export const useLeagueAPI = (userRole) => {
   const updateLeagueInfo = useCallback(async (leagueId, infoMarkdown) => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/institution/update-league-info`, {
+      const response = await authFetch(`${apiUrl}/owner/update-league-info`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -356,7 +353,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
     
     try {
-      const response = await authFetch(`${apiUrl}/institution/assign-team-to-league`, {
+      const response = await authFetch(`${apiUrl}/owner/assign-team-to-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -387,12 +384,12 @@ export const useLeagueAPI = (userRole) => {
   }, [apiUrl, accessToken, T]);
 
   /**
-   * Unassign team (move to institution's 'unassigned' league)
+   * Unassign team (move to the 'unassigned' league)
    */
   const unassignTeam = useCallback(async (teamId) => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/institution/unassign-team`, {
+      const response = await authFetch(`${apiUrl}/owner/unassign-team`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -426,7 +423,7 @@ export const useLeagueAPI = (userRole) => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/institution/delete-league`, {
+      const response = await authFetch(`${apiUrl}/owner/delete-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

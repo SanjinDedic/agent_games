@@ -29,11 +29,11 @@ const EXPIRY_TONES = {
 /**
  * The details card for the league currently selected in Redux: expiry,
  * shareable login page, markdown info editor, delete.
- * `showTeams` adds the assign/unassign grid (the admin/institution management
+ * `showTeams` adds the assign/unassign grid (the owner management
  * page wants it; the classroom workspace's Students tab owns membership).
  * `onDeleted` fires after a successful delete so the caller can navigate.
  */
-const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
+const LeagueDetailsPanel = ({ showTeams = true, onDeleted }) => {
   const T = useTerms();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -49,7 +49,7 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     updateExpiryDate: updateLeagueExpiry,
     updateLeagueInfo,
     deleteLeague,
-  } = useLeagueAPI(userRole);
+  } = useLeagueAPI();
 
   const [infoMarkdownDraft, setInfoMarkdownDraft] = useState('');
   const [isSavingInfo, setIsSavingInfo] = useState(false);
@@ -86,7 +86,7 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
     setIsLoadingSignupLink(true);
     try {
       const response = await authFetch(
-        `${apiUrl}/institution/generate-signup-link`,
+        `${apiUrl}/owner/generate-signup-link`,
         {
           method: "POST",
           headers: {
@@ -392,7 +392,6 @@ const LeagueDetailsPanel = ({ userRole, showTeams = true, onDeleted }) => {
       {showTeams && (
         <LeagueTeams
           selected_league_name={currentLeague.name}
-          userRole={userRole}
         />
       )}
 

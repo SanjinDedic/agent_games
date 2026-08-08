@@ -27,23 +27,9 @@ class InvalidCredentialsError(Exception):
     """Raised when login credentials are invalid (maps to HTTP 401)."""
 
 
-# --- institution -----------------------------------------------------------
-
-
-class InstitutionError(Exception):
-    """Base exception for all institution-related errors."""
-
-
-class InstitutionNotFoundError(InstitutionError):
-    """Raised when the target institution does not exist (maps to HTTP 404)."""
-
-
-class InstitutionExistsError(InstitutionError):
-    """Raised when an institution name collides with an existing one (maps to HTTP 409)."""
-
-
-class InstitutionAccessError(Exception):
-    """Raised when an institution tries to access data it doesn't own (maps to HTTP 403)."""
+class OwnerExistsError(Exception):
+    """Raised when setup runs on a deployment that already has an owner
+    (maps to HTTP 409)."""
 
 
 # --- league ----------------------------------------------------------------
@@ -158,9 +144,7 @@ class PayloadTooLargeError(PlagiarismServiceError):
 # registered class, so listing a base class alongside its subclasses is safe.
 EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     InvalidCredentialsError: 401,
-    InstitutionAccessError: 403,
-    InstitutionNotFoundError: 404,
-    InstitutionExistsError: 409,
+    OwnerExistsError: 409,
     LeagueNotFoundError: 404,
     LeagueExistsError: 409,
     LeagueExpiredError: 410,

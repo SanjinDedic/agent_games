@@ -8,8 +8,8 @@ from datetime import timedelta
 import pytest
 from sqlmodel import Session, delete, select
 
-from backend.tests.conftest import add_submission, build_institution
-from backend.database.db_models import Institution, League, Team
+from backend.tests.conftest import add_submission
+from backend.database.db_models import League, Team
 from backend.database.submission_helpers import delete_submissions_for_teams
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import get_team_submission_history
@@ -18,26 +18,7 @@ from backend.time_utils import utc_now
 
 
 @pytest.fixture
-def institution(db_session: Session) -> Institution:
-    inst = db_session.exec(
-        select(Institution).where(Institution.name == "Team Info Institution")
-    ).first()
-    if not inst:
-        inst = build_institution(
-            name="Team Info Institution",
-            contact_person="Tester",
-            contact_email="ti@example.com",
-            created_date=utc_now(),
-            password_hash="hash",
-        )
-        db_session.add(inst)
-        db_session.commit()
-        db_session.refresh(inst)
-    return inst
-
-
-@pytest.fixture
-def league_with_institution(db_session: Session, institution: Institution) -> League:
+def test_league_for_team(db_session: Session) -> League:
     league = db_session.exec(
         select(League).where(League.name == "team_info_league")
     ).first()
@@ -47,7 +28,6 @@ def league_with_institution(db_session: Session, institution: Institution) -> Le
             game="prisoners_dilemma",
             created_date=utc_now(),
             expiry_date=utc_now() + timedelta(days=7),
-            institution_id=institution.id,
         )
         db_session.add(league)
         db_session.commit()
@@ -56,14 +36,14 @@ def league_with_institution(db_session: Session, institution: Institution) -> Le
 
 
 @pytest.fixture
-def team(db_session: Session, league_with_institution: League) -> Team:
+def team(db_session: Session, test_league_for_team: League) -> Team:
     team = db_session.exec(select(Team).where(Team.name == "team_info_team")).first()
     if not team:
         team = Team(
             name="team_info_team",
             school_name="Test School",
             password_hash="hash",
-            league_id=league_with_institution.id,
+            league_id=test_league_for_team.id,
         )
         db_session.add(team)
         db_session.commit()
@@ -185,7 +165,7 @@ def test_get_team_submissions_requires_team_token(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 400
-    assert "team token" in response.json()["detail"]
+    assert "Team ID not found" in response.json()["detail"]
 
 
 def test_get_team_submissions_unauthorized(client):

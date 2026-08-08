@@ -112,7 +112,7 @@ export const NEUTRAL = {
 const at = (stop, rendering) => (STOPS[stop] || NEUTRAL)[rendering];
 
 /**
- * Concept fluency, four bands (backend/routes/institution/concept_mastery.py).
+ * Concept fluency, four bands (backend/routes/owner/concept_mastery.py).
  * The two greens are the two bands a teacher does not have to act on, so they
  * take the top two stops and the scale then jumps the yellows entirely — that
  * gap is what lets the orange and red cells carry across a class-sized grid.

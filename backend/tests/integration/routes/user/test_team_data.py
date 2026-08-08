@@ -13,7 +13,7 @@ from backend.database.db_models import (
 )
 from backend.games.greedy_pig.validation_players import players as greedy_pig_bots
 from backend.routes.auth.auth_db import mint_team_token
-from backend.tests.conftest import build_institution
+
 from backend.time_utils import utc_now
 
 # Every league in these tests plays greedy_pig, so the validation field is
@@ -23,28 +23,16 @@ GREEDY_PIG_FIELD_SIZE = len(greedy_pig_bots) + 1
 
 @pytest.fixture
 def classroom_fixture(db_session: Session) -> dict:
-    """A teacher institution with a classroom league, one enrolled student,
-    and mixed agent progress."""
+    """A league with one enrolled student and mixed agent progress."""
     now = utc_now()
 
-    institution = build_institution(
-        name="Team Data Classroom School",
-        contact_person="Teacher",
-        contact_email="teacher@teamdata.com",
-        created_date=now,
-        password_hash="hash",
-        is_teacher=True,
-    )
-    db_session.add(institution)
     db_session.commit()
-    db_session.refresh(institution)
 
     league = League(
         name="team_data_classroom",
         created_date=now,
         expiry_date=now + timedelta(days=7),
         game="greedy_pig",
-        institution_id=institution.id,
     )
     db_session.add(league)
     db_session.commit()
@@ -55,7 +43,6 @@ def classroom_fixture(db_session: Session) -> dict:
         school_name="Team Data School",
         password_hash="hash",
         league_id=league.id,
-        institution_id=institution.id,
     )
     db_session.add(team)
 
@@ -63,7 +50,6 @@ def classroom_fixture(db_session: Session) -> dict:
     db_session.refresh(team)
 
     return {
-        "institution": institution,
         "league": league,
         "team": team,
     }
@@ -110,8 +96,6 @@ def test_team_data_classroom_full_payload(client, db_session, classroom_fixture)
     data = resp.json()
 
     assert data["team_name"] == "team_data_student"
-    assert data["is_classroom"] is True
-    assert data["institution_name"] == "Team Data Classroom School"
     assert data["league"] == {
         "id": fix["league"].id,
         "name": "team_data_classroom",
@@ -128,8 +112,8 @@ def test_team_data_classroom_full_payload(client, db_session, classroom_fixture)
     assert agent["latest_submission"] is not None
 
 
-def test_team_data_competition_institution(client, db_session):
-    """A non-teacher institution's student reads as competition wording."""
+def test_team_data_for_seed_team(client, db_session):
+    """The payload shape for a team with no submissions yet."""
     league = db_session.exec(
         select(League).where(League.name == "greedy_pig_league")
     ).first()
@@ -144,8 +128,6 @@ def test_team_data_competition_institution(client, db_session):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["is_classroom"] is False
-    assert data["institution_name"] == "Admin Institution"
     assert data["league"]["name"] == "greedy_pig_league"
     assert data["agent_game"]["total_attempts"] == 0
     assert data["agent_game"]["validated_submissions"] == 0
@@ -184,7 +166,6 @@ def test_team_data_stats_scoped_to_current_league(
         created_date=utc_now(),
         expiry_date=utc_now() + timedelta(days=7),
         game="greedy_pig",
-        institution_id=fix["institution"].id,
     )
     db_session.add(other_league)
     db_session.commit()
@@ -205,9 +186,9 @@ def test_team_data_stats_scoped_to_current_league(
     assert agent["achieved_first"] is False
 
 
-def test_team_data_rejects_non_team_tokens(client, auth_headers):
+def test_team_data_rejects_non_team_tokens(client, owner_headers):
     """Admin tokens fail the student-role gate before any team lookup."""
-    resp = client.get("/user/team-data", headers=auth_headers)
+    resp = client.get("/user/team-data", headers=owner_headers)
     assert resp.status_code == 403
 
 

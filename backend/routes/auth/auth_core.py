@@ -1,11 +1,10 @@
 import base64
 import logging
-from functools import wraps
-from typing import Callable, List, Union
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+
 from backend.routes.auth.auth_config import (
     ALGORITHM,
     SECRET_KEY,
@@ -15,64 +14,21 @@ from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# Define valid roles
-ROLE_ADMIN = "admin"
+# Three roles. `owner` runs the deployment (leagues, teams, keys, simulations);
+# `student` and `ai_agent` are the two kinds of team session, split only by how
+# they authenticate — a password versus an API key.
+ROLE_OWNER = "owner"
 ROLE_STUDENT = "student"
-ROLE_INSTITUTION = "institution"
 ROLE_AI_AGENT = "ai_agent"
 
-ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT]
-
-
-def verify_role(allowed_roles: Union[str, List[str]]):
-    """
-    Decorator factory to verify if the current user has one of the allowed roles.
-    """
-
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            current_user = kwargs.get("current_user")
-            if not current_user or not isinstance(current_user, dict):
-                raise HTTPException(status_code=401, detail="Invalid authentication")
-
-            roles = [allowed_roles] if isinstance(allowed_roles, str) else list(allowed_roles)
-
-            if current_user["role"] not in roles:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"This operation requires one of these roles: {roles}",
-                )
-            return await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-# Single role verification decorators
-verify_admin_role = verify_role(ROLE_ADMIN)
-verify_student_role = verify_role(ROLE_STUDENT)
-verify_institution_role = verify_role(ROLE_INSTITUTION)
-verify_ai_agent_role = verify_role(ROLE_AI_AGENT)
-
-# Common multi-role verification decorators
-verify_admin_or_student = verify_role([ROLE_ADMIN, ROLE_STUDENT])
-verify_admin_or_institution = verify_role([ROLE_ADMIN, ROLE_INSTITUTION])
-verify_institution_or_student = verify_role([ROLE_INSTITUTION, ROLE_STUDENT])
-verify_admin_or_ai_agent = verify_role([ROLE_ADMIN, ROLE_AI_AGENT])
-verify_ai_agent_or_student = verify_role([ROLE_AI_AGENT, ROLE_STUDENT])
-
-# All roles except admin
-verify_non_admin = verify_role([ROLE_STUDENT, ROLE_INSTITUTION, ROLE_AI_AGENT])
-
-# Verification for all roles
-verify_any_role = verify_role(ALL_ROLES)
+ALL_ROLES = [ROLE_OWNER, ROLE_STUDENT, ROLE_AI_AGENT]
+TEAM_ROLES = (ROLE_STUDENT, ROLE_AI_AGENT)
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Decode and validate a bearer token into a plain claims dict."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         sub: str = payload.get("sub")
@@ -88,25 +44,72 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             logger.error(f"Invalid token content - sub: {sub}, role: {user_role}")
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        user_data = {
-            "role": user_role,
-            "institution_id": payload.get("institution_id"),
-            "is_teacher": payload.get("is_teacher", False),
-        }
+        user_data = {"role": user_role}
 
-        if user_role in (ROLE_STUDENT, ROLE_AI_AGENT):
+        if user_role in TEAM_ROLES:
             user_data["team_name"] = sub
             user_data["team_id"] = payload.get("team_id")
             user_data["team_type"] = payload.get("team_type")
             user_data["league_id"] = payload.get("league_id")
-        elif user_role == ROLE_INSTITUTION:
-            user_data["institution_name"] = sub
+        else:
+            user_data["owner_name"] = sub
 
         return user_data
 
     except JWTError as e:
         logger.error(f"JWT Error: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# Guards are dependencies, not decorators. The decorator form read
+# kwargs["current_user"], so a route had to declare both the decorator and a
+# Depends(get_current_user) parameter: forgetting the Depends silently 401'd,
+# and forgetting the decorator silently removed the guard. As a dependency the
+# guard *is* what produces current_user, so neither mistake is possible.
+
+
+def require_owner(current_user: dict = Depends(get_current_user)) -> dict:
+    """Allow only the deployment's owner account."""
+    if current_user["role"] != ROLE_OWNER:
+        raise HTTPException(
+            status_code=403, detail="This operation requires the owner role"
+        )
+    return current_user
+
+
+def require_team(current_user: dict = Depends(get_current_user)) -> dict:
+    """Allow a team session (student or ai_agent) and guarantee a team_id.
+
+    Absorbs the old user_router._require_team_id check: a token that claims a
+    team role without a team_id is malformed, not merely unauthorized.
+    """
+    if current_user["role"] not in TEAM_ROLES:
+        raise HTTPException(
+            status_code=403, detail="This operation requires a team account"
+        )
+    if not current_user.get("team_id"):
+        raise HTTPException(status_code=400, detail="Team ID not found in token")
+    return current_user
+
+
+def require_agent(current_user: dict = Depends(get_current_user)) -> dict:
+    """Allow only an API-key agent session.
+
+    Narrower than require_team on purpose: the /agent routes are the
+    machine-driven surface, and a student password must not reach them.
+    """
+    if current_user["role"] != ROLE_AI_AGENT:
+        raise HTTPException(
+            status_code=403, detail="This operation requires an agent account"
+        )
+    if not current_user.get("team_id"):
+        raise HTTPException(status_code=400, detail="Team ID not found in token")
+    return current_user
+
+
+def require_any(current_user: dict = Depends(get_current_user)) -> dict:
+    """Allow any authenticated caller; the route decides what to do per role."""
+    return current_user
 
 
 def encode_id(id: int) -> str:

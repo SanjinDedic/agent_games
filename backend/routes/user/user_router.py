@@ -7,21 +7,20 @@ from sqlmodel import Session
 
 from backend.config import GAMES
 from backend.database.db_models import Team
+from backend.database.db_models import UNASSIGNED_LEAGUE_NAME
 from backend.database.db_session import get_db
 from backend.games.game_factory import GameFactory
 from backend.routes.ai.ai_models import Hint
 from backend.routes.ai.hint_service import hint_available, provide_hints
 from backend.routes.auth.auth_core import (
     get_current_user,
-    verify_admin_or_institution,
-    verify_admin_or_student,
-    verify_ai_agent_or_student,
-    verify_any_role,
+    require_any,
+    require_owner,
+    require_team,
 )
 from backend.routes.auth.auth_db import mint_team_token
-from backend.routes.institution.institution_db import get_league_by_id
-from backend.routes.institution.institution_models import LeagueName
-from backend.routes.institution.institution_router import _resolve_institution
+from backend.routes.owner.owner_db import get_league_by_id
+from backend.routes.owner.owner_models import LeagueName
 from backend.routes.user.code_validation import validate_code
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
@@ -37,7 +36,7 @@ from backend.routes.user.user_db import (
     get_all_submissions_for_league,
     get_latest_submissions_for_league,
     get_league_by_signup_token,
-    get_leagues_for_user,
+    get_all_leagues,
     get_team_agent_stats,
     get_published_result,
     get_result_by_publish_link,
@@ -72,23 +71,12 @@ user_router = APIRouter()
 # Lookups raise domain exceptions mapped centrally in api.py: user_db's
 # TeamNotFoundError / LeagueNotFoundError / ResultNotFoundError -> 404,
 # TeamExistsError -> 409, LeagueExpiredError -> 410,
-# SubmissionLimitExceededError -> 429; institution_db's LeagueNotFoundError -> 404
-# and InstitutionAccessError -> 403 cover the league-ownership checks; the AI
+# SubmissionLimitExceededError -> 429; the AI
 # client errors (LLMResponseError -> 502, AIRequestTimeoutError -> 504,
 # NoApiKeyError -> 400) cover hint generation. Request problems the router owns
 # (non-team token, unknown game, school not in list) are raised inline. Anything
 # unexpected surfaces as a 500 rather than a swallowed error. Each route returns
 # its payload directly; action endpoints keep a "message" carrying the outcome.
-
-
-def _require_team_id(current_user: dict) -> int:
-    """Reject tokens that don't carry a team_id (admin/institution tokens)."""
-    team_id = current_user.get("team_id")
-    if team_id is None:
-        raise HTTPException(
-            status_code=400, detail="This endpoint requires a team token"
-        )
-    return team_id
 
 
 def _validation_ranking(validation_result: dict, team_name: str) -> int | None:
@@ -115,10 +103,9 @@ def _validation_field_size(game_name: str) -> int | None:
 
 
 @user_router.post("/submit-agent")
-@verify_ai_agent_or_student
 async def submit_agent(
     submission: SubmissionCode,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team),
     session: Session = Depends(get_db),
     generate_hint: bool = False,
 ):
@@ -262,9 +249,8 @@ async def submit_agent(
 
 
 @user_router.get("/team-data")
-@verify_ai_agent_or_student
 async def get_team_data(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team),
     session: Session = Depends(get_db),
 ):
     """Everything the student landing page needs in one call: identity,
@@ -275,19 +261,14 @@ async def get_team_data(
     gets league=None (with no agent_game) — the frontend sends those students
     to the league picker.
     """
-    team_id = _require_team_id(current_user)
+    team_id = current_user["team_id"]
     team = get_team_by_id(session, team_id)
     league = team.league
-    unassigned = league is None or league.name == "unassigned"
-    institution = team.institution
+    unassigned = league is None or league.name == UNASSIGNED_LEAGUE_NAME
 
     return {
         "team_name": team.name,
         "school_name": team.school_name,
-        # Same rule the JWT's is_teacher claim is minted from: students of a
-        # teacher account see classroom/student wording.
-        "is_classroom": bool(institution.is_teacher) if institution else False,
-        "institution_name": institution.name if institution else None,
         "league": None
         if unassigned
         else {"id": league.id, "name": league.name, "game": league.game},
@@ -300,14 +281,13 @@ async def get_team_data(
 
 
 @user_router.post("/league-assign")
-@verify_admin_or_student
 async def assign_team_to_league_endpoint(
     league: LeagueAssignRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team),
     session: Session = Depends(get_db),
 ):
     """Assign a team to a league and return a refreshed token carrying the new league_id."""
-    team_id = _require_team_id(current_user)
+    team_id = current_user["team_id"]
     logger.info(
         f'Team "{current_user["team_name"]}" about to assign to league_id={league.league_id}'
     )
@@ -331,9 +311,8 @@ def get_published_results_for_league_endpoint(
 
 
 @user_router.get("/get-all-published-results-for-my-league")
-@verify_any_role
 async def get_all_published_results_for_my_league_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_any),
     session: Session = Depends(get_db),
 ):
     """All published results for the league the caller is enrolled in (JWT-scoped).
@@ -376,61 +355,33 @@ async def get_available_games():
 
 
 @user_router.get("/get-all-leagues")
-@verify_any_role
 async def get_leagues_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_any),
     session: Session = Depends(get_db),
 ):
-    """Get all leagues - accessible to both admin and student roles"""
-    return get_leagues_for_user(
-        session, current_user.get("role"), current_user.get("institution_id")
-    )
+    """Get all leagues — one deployment, so every caller sees the same list."""
+    return get_all_leagues(session)
 
 
 @user_router.get("/get-league-submissions/{league_id}")
-@verify_admin_or_institution
 async def get_league_submissions(
     league_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_owner),
     session: Session = Depends(get_db),
 ):
-    """Get latest submissions for all teams in a league.
-
-    Restricted to the institution that owns the league; admin and the internal
-    service role bypass the ownership check.
-    """
-    role = current_user.get("role")
-    if role not in ("admin", "service"):
-        institution_id, _ = _resolve_institution(current_user)
-        if not institution_id:
-            raise HTTPException(
-                status_code=400, detail="Institution ID not found in token"
-            )
-        get_league_by_id(session, league_id, institution_id, is_admin=False)
-
+    """Get latest submissions for all teams in a league."""
+    get_league_by_id(session, league_id)
     return get_latest_submissions_for_league(session, league_id)
 
 
 @user_router.get("/get-all-league-submissions/{league_id}")
-@verify_admin_or_institution
 async def get_all_league_submissions(
     league_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_owner),
     session: Session = Depends(get_db),
 ):
-    """Get all submissions for all teams in a league with timestamps.
-
-    Access is restricted to the institution that owns the league (admins
-    bypass the ownership check). A league the caller does not own raises
-    InstitutionAccessError -> 403 — never leaks cross-institution data.
-    """
-    institution_id, is_admin = _resolve_institution(current_user)
-    if not institution_id:
-        raise HTTPException(
-            status_code=400, detail="Institution ID not found in token"
-        )
-
-    league = get_league_by_id(session, league_id, institution_id, is_admin=is_admin)
+    """Get all submissions for all teams in a league with timestamps."""
+    league = get_league_by_id(session, league_id)
     result = get_all_submissions_for_league(session, league_id)
     return {
         "league_name": league.name,
@@ -440,26 +391,24 @@ async def get_all_league_submissions(
 
 
 @user_router.get("/get-team-submission")
-@verify_any_role
 async def get_team_submission_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team),
     session: Session = Depends(get_db),
 ):
     """Get latest submission for the current team, scoped to current league."""
-    team_id = _require_team_id(current_user)
+    team_id = current_user["team_id"]
     team = session.get(Team, team_id)
     league_id = team.league_id if team else current_user.get("league_id")
     return get_team_submission(session, team_id, league_id=league_id)
 
 
 @user_router.get("/get-team-submissions")
-@verify_any_role
 async def get_team_submissions_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team),
     session: Session = Depends(get_db),
 ):
     """Get full submission history for the current team"""
-    team_id = _require_team_id(current_user)
+    team_id = current_user["team_id"]
     return {"submissions": get_team_submission_history(session, team_id)}
 
 
@@ -497,11 +446,6 @@ async def get_league_by_token(
         "created_date": league.created_date,
         "expiry_date": league.expiry_date,
         "school_league": league.school_league,
-        # The join page is public (no token to read wording from), so it needs
-        # the owning institution's identity to render classroom/student vs
-        # league/team copy.
-        "institution_name": league.institution.name if league.institution else None,
-        "is_teacher": bool(league.institution.is_teacher) if league.institution else False,
     }
 
     if league.school_league:
@@ -524,16 +468,9 @@ async def get_password_reset_info(
 ):
     """Who this reset link is for — public, rendered on the /reset page."""
     team = get_team_by_reset_token(session, reset_token)
-    return {
-        "team_name": team.name,
-        # The reset page is public (no token to read wording from), so it
-        # needs the owning institution's identity to render classroom/student
-        # vs league/team copy — same contract as league-info above.
-        "institution_name": team.institution.name if team.institution else None,
-        "is_teacher": (
-            bool(team.institution.is_teacher) if team.institution else False
-        ),
-    }
+    # Wording is a deploy setting the frontend already has from GET /config, so
+    # this public payload no longer has to carry it.
+    return {"team_name": team.name}
 
 
 @user_router.post("/reset-team-password")

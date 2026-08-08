@@ -30,6 +30,9 @@ services:
       # Listed here (not only in .env) so an exported SITE_MODE wins — the
       # Playwright runner drives both vocabularies against one .env.
       - SITE_MODE=${SITE_MODE:-competition}
+      # Dev/manual-test convenience: seed the example leagues and TeamA/B/C.
+      # Never set in production — a fresh install starts empty.
+      - SEED_SAMPLE_DATA=${SEED_SAMPLE_DATA:-true}
     # Secrets. .env holds dev defaults (committed); .aws.env is an optional override
     # for devs exercising real S3 (gitignored). Listed second so its values win.
     env_file:

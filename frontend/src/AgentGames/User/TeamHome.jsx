@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import moment from "moment-timezone";
 
 import useTeamAPI from "../Shared/hooks/useTeamAPI";
+import { selectSiteName } from "../../slices/settingsSlice";
 import { useTerms } from "../Shared/terminology";
 import { getGame } from "../Feedback/games";
 import { imageUrl } from "../../config/assets";
@@ -50,7 +51,7 @@ function PlacementSquare({ ranking }) {
 /**
  * Student landing page. One backend call (GET /user/team-data) provides
  * identity, the current league, and agent-game stats.
- * Wording follows the owning institution: classroom/student for teacher
+ * Wording follows SITE_MODE: classroom/student for a classroom
  * accounts, league/team for competitions. Unassigned students are sent to
  * the league picker.
  */
@@ -106,6 +107,7 @@ function TeamHome() {
   }
 
   const T = useTerms();
+  const siteName = useSelector(selectSiteName);
   const game = getGame(teamData.league.game);
   const gameDisplayName = game?.displayName || teamData.league.game;
   const stats = teamData.agent_game;
@@ -118,7 +120,7 @@ function TeamHome() {
         {/* Welcome header */}
         <div className="bg-white rounded-lg shadow border border-ui-light/30 p-6">
           <p className="text-sm uppercase tracking-wide text-ui-dark/60">
-            {teamData.institution_name || "Agent Games"}
+            {siteName}
           </p>
           <h1 className="text-2xl font-bold text-ui-dark mt-1">
             Welcome back, {teamData.team_name}
