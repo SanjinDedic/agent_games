@@ -8,9 +8,8 @@ description: Run the full Playwright browser-test suite for agent_games via ./ru
 One job: run the suite through the runner script, then explain what failed and why.
 
 The script owns ALL setup — Playwright install/check (permanent install in
-`~/.agent-games-playwright`, never inside the repo), `.env` + `OPENAI_API_KEY`
-sourcing, stack reset. Do not install Playwright or run docker compose
-commands yourself.
+`~/.agent-games-playwright`, never inside the repo), `.env` sourcing, stack
+reset. Do not install Playwright or run docker compose commands yourself.
 
 ## 1. Run
 
@@ -23,16 +22,30 @@ commands yourself.
 summary at the end, exit 1 if anything failed. Without `all` the script is an
 interactive menu (browser mode, per-stage picker) — for humans, not for you.
 
-Stage layout: 01 admin setup (institutions + teacher account), 02–04 the
-COMPETITION flow (institution/league/team wording), 05–06 the CLASSROOM flow
-(teacher/classroom/student wording — same routes, different labels), 08 the
-one-time student password-reset link (classroom flow). The AI hint loop is
-currently uncovered — stage 07 drove the removed demo mode.
+Three stages, run in order and sharing state through
+`/tmp/agent_games_manual_state.json`:
+
+- **01 admin setup** — claim the deployment through the first-run setup form,
+  create a league and two teams, assign them.
+- **02 team submissions** — each team logs in and submits an agent; one valid,
+  one refused by the AST safety check.
+- **03 admin progress** — the submissions grid shows both teams' work, and a
+  simulation runs over it.
+
+The suite covers submission, simulation and the admin's view of progress, and
+nothing else by design. Behaviour coverage lives in the pytest suite
+(`docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner`);
+a browser failure here means the whole stack is broken, not that an edge case
+regressed.
 
 **Warning before running:** every launch does `docker compose down -v` — wipes
-the local DB and MinIO volumes. Say so first unless the user explicitly asked
-for a reset/clean run. Expect the full run to take several minutes (stack
-reset + healthcheck wait + every stage).
+the local database. Say so first unless the user explicitly asked for a
+reset/clean run. Expect a few minutes (stack reset + healthcheck wait + three
+stages, one of which runs a real simulation).
+
+**Do not run it while a pytest run is in flight.** The test overlay recreates the
+api and worker containers with `DB_ENVIRONMENT=test`, which pulls the stack out
+from under the browser. Check with `docker ps | grep test-runner` first.
 
 ## 2. Analyze failures
 
@@ -40,26 +53,18 @@ For each FAIL in the summary:
 
 - **Screenshot**: `/tmp/agent_games_STAGE<N>_failure.png` — read it.
 - **Observed block**: each stage prints an `--- observed ---` JSON block
-  (toasts, native dialogs, browser console errors) at the end of its output.
+  (toasts, browser console errors) at the end of its output. A React render
+  error in `consoleErrors` is the usual cause of a page that "never loads".
 - **Backend logs**: `docker logs agent_games-api-1 --since 10m` (workers:
   `agent_games-worker-validation-1`, `agent_games-worker-simulation-1`).
-- **Known deviations** (expected, not regressions — full detail in
-  `docs/test_findings/integration-manual-run-2026-07-11.md`):
-  - Stage 1.4 needs `OPENAI_API_KEY` (read from `.env`; the script warns at
-    startup if missing).
-  - Stage 7 can fail with a 502 "LLM provider failed to generate a valid
-    hint" on any game: `hint_service._validate_hints` drops every hint whose
-    `quoted_line` doesn't match the line it claims, so an off-target model
-    response leaves nothing to return. Intermittent — re-run the stage before
-    calling it a regression.
-  - Stage 4.5 first gets a 403 (simulation Docker-access toggle); the script
-    enables it via the admin UI and retries — not a failure.
+
+There are no known-flaky stages. Every failure is a real one until proven
+otherwise.
 
 Stage ↔ script mapping and per-stage detail: `manual_tests/README.md`.
 
 ## 3. Report
 
 Per-stage PASS/FAIL table, then for each failure: which step, what was
-observed (toast / console error / API response), the relevant log lines, and
-whether it's a known deviation or a real regression. Declare the stack healthy
-when stages 01–08 all pass.
+observed (toast / console error / API response), and the relevant log lines.
+Declare the stack healthy when all three stages pass.

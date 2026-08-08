@@ -55,7 +55,7 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 
 ## Adding a New Game
 
-Games are auto-discovered from `backend/games/*/` and `frontend/src/AgentGames/Feedback/games/*/`. Drop the required files, restart services, and the new game lights up across the API, validator, simulator, league dropdown, homepage, demo, and feedback rendering — no edits to factories, registries, or config.
+Games are auto-discovered from `backend/games/*/` and `frontend/src/AgentGames/Feedback/games/*/`. Drop the required files, restart services, and the new game lights up across the API, validator, simulator, league dropdown, homepage, and feedback rendering — no edits to factories, registries, or config.
 
 **Full walkthrough:** [backend/games/README.md](backend/games/README.md)
 
