@@ -5,12 +5,12 @@ import AgentRankings from "./AgentGames/Shared/Utilities/Rankings";
 import AgentSubmission from './AgentGames/User/AgentSubmission';
 import TeamHome from './AgentGames/User/TeamHome';
 import AgentLeagueSignUp from "./AgentGames/User/LeagueSignup";
-import OwnerLogin from "./AgentGames/Owner/OwnerLogin";
-import OwnerTeams from "./AgentGames/Owner/OwnerTeams";
-import OwnerHome from "./AgentGames/Owner/OwnerHome";
-import ClassroomWorkspace from "./AgentGames/Owner/Classroom/ClassroomWorkspace";
-import AIProviderKeys from "./AgentGames/Owner/AIProviderKeys";
-import ServiceStatus from "./AgentGames/Owner/ServiceStatus";
+import AdminLogin from "./AgentGames/Admin/AdminLogin";
+import AdminTeams from "./AgentGames/Admin/AdminTeams";
+import AdminHome from "./AgentGames/Admin/AdminHome";
+import ClassroomWorkspace from "./AgentGames/Admin/Classroom/ClassroomWorkspace";
+import AIProviderKeys from "./AgentGames/Admin/AIProviderKeys";
+import ServiceStatus from "./AgentGames/Admin/ServiceStatus";
 import Leaderboards from "./AgentGames/Leaderboards";
 import StyleGuide from "./StyleGuide";
 import GamePreview from "./AgentGames/GamePreview";
@@ -67,26 +67,26 @@ function App() {
             path="/TeamSignup/:leagueToken"
             element={<ClassroomJoin defaultTab="signup" />}
           />
-          {/* One-time password-reset link shared by the owner */}
+          {/* One-time password-reset link shared by the admin */}
           <Route path="/reset/:resetToken" element={<TeamPasswordReset />} />
           <Route path="/results/:publishLink" element={<PublishedResults />} />
 
-          {/* Owner routes. /Login serves both the login form and, on an
+          {/* Admin routes. /Login serves both the login form and, on an
               unclaimed deployment, the first-run setup form. */}
-          <Route path="Login" element={<OwnerLogin />} />
+          <Route path="Login" element={<AdminLogin />} />
           <Route
             path="Home"
             element={
-              <AuthProtection requiredRole="owner" redirectTo="/Login">
-                <OwnerHome />
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
+                <AdminHome />
               </AuthProtection>
             }
           />
           <Route
             path="Teams"
             element={
-              <AuthProtection requiredRole="owner" redirectTo="/Login">
-                <OwnerTeams />
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
+                <AdminTeams />
               </AuthProtection>
             }
           />
@@ -95,7 +95,7 @@ function App() {
           <Route
             path="Classroom/:leagueId/:tab?"
             element={
-              <AuthProtection requiredRole="owner" redirectTo="/Login">
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
                 <ClassroomWorkspace />
               </AuthProtection>
             }
@@ -103,7 +103,7 @@ function App() {
           <Route
             path="ServiceStatus"
             element={
-              <AuthProtection requiredRole="owner" redirectTo="/Login">
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
                 <ServiceStatus />
               </AuthProtection>
             }
@@ -111,7 +111,7 @@ function App() {
           <Route
             path="APIKeys"
             element={
-              <AuthProtection requiredRole="owner" redirectTo="/Login">
+              <AuthProtection requiredRole="admin" redirectTo="/Login">
                 <AIProviderKeys />
               </AuthProtection>
             }

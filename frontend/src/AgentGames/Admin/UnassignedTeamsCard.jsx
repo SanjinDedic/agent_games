@@ -27,7 +27,7 @@ function UnassignedStudentsCard({ classrooms, onAssigned }) {
 
   const fetchUnassigned = useCallback(async () => {
     try {
-      const response = await authFetch(`${apiUrl}/owner/get-all-teams`, {
+      const response = await authFetch(`${apiUrl}/admin/get-all-teams`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json();
@@ -55,7 +55,7 @@ function UnassignedStudentsCard({ classrooms, onAssigned }) {
     setAssigningId(student.id);
     try {
       const response = await authFetch(
-        `${apiUrl}/owner/assign-team-to-league`,
+        `${apiUrl}/admin/assign-team-to-league`,
         {
           method: 'POST',
           headers: {

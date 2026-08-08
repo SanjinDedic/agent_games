@@ -126,7 +126,7 @@ def test_deleting_a_league_removes_its_results(db_session: Session):
     ).all() == []
 
 
-def test_delete_league_endpoint_keeps_its_teams(client, owner_headers, db_session):
+def test_delete_league_endpoint_keeps_its_teams(client, admin_headers, db_session):
     """The endpoint reassigns teams before deleting, so the cascade must not
     take them. Without the reassignment, deleting a league would silently delete
     a whole class's accounts."""
@@ -135,7 +135,7 @@ def test_delete_league_endpoint_keeps_its_teams(client, owner_headers, db_sessio
     team_id = team.id
 
     response = client.post(
-        "/owner/delete-league", headers=owner_headers, json={"league_id": league.id}
+        "/admin/delete-league", headers=admin_headers, json={"league_id": league.id}
     )
     assert response.status_code == 200
 

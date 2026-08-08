@@ -68,8 +68,8 @@ def simulation_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -84,7 +84,7 @@ def test_run_simulation_success(client, simulation_setup, db_session):
     league, team, _, headers = simulation_setup
     
     # Patch the Celery task so no worker round-trip happens
-    with patch("backend.routes.owner.owner_router.run_simulation") as mock_task:
+    with patch("backend.routes.admin.admin_router.run_simulation") as mock_task:
         # The router awaits poll_task_result, which reads ready()/successful()/.result
         mock_async = mock_task.delay.return_value
         mock_async.ready.return_value = True
@@ -103,7 +103,7 @@ def test_run_simulation_success(client, simulation_setup, db_session):
 
         # Test basic simulation
         response = client.post(
-            "/owner/run-simulation",
+            "/admin/run-simulation",
             headers=headers,
             json={"league_id": league.id, "num_simulations": 10},
         )
@@ -127,7 +127,7 @@ def test_run_simulation_success(client, simulation_setup, db_session):
         # Test with custom rewards
         custom_rewards = [10, 8, 6, 4]
         response = client.post(
-            "/owner/run-simulation",
+            "/admin/run-simulation",
             headers=headers,
             json={
                 "league_id": league.id,
@@ -151,7 +151,7 @@ def test_run_simulation_worker_error_surfaces_and_stores_nothing(
     before = len(db_session.exec(select(SimulationResult)).all())
 
     with patch(
-        "backend.routes.owner.owner_router.run_simulation"
+        "backend.routes.admin.admin_router.run_simulation"
     ) as mock_task:
         mock_async = mock_task.delay.return_value
         mock_async.ready.return_value = True
@@ -167,7 +167,7 @@ def test_run_simulation_worker_error_surfaces_and_stores_nothing(
         }
 
         response = client.post(
-            "/owner/run-simulation",
+            "/admin/run-simulation",
             headers=headers,
             json={"league_id": league.id, "num_simulations": 10},
         )
@@ -189,7 +189,7 @@ def test_run_simulation_rejects_unassigned_league(
     ).one()
 
     response = client.post(
-        "/owner/run-simulation",
+        "/admin/run-simulation",
         headers=headers,
         json={"league_id": unassigned.id, "num_simulations": 10},
     )
@@ -203,7 +203,7 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
     
     # Test case 1: Non-existent league
     response = client.post(
-        "/owner/run-simulation",
+        "/admin/run-simulation",
         headers=headers,
         json={"league_id": 99999, "num_simulations": 10},
     )
@@ -212,7 +212,7 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
     
     # Test case 2: Invalid number of simulations
     response = client.post(
-        "/owner/run-simulation",
+        "/admin/run-simulation",
         headers=headers,
         json={"league_id": league.id, "num_simulations": -1},
     )
@@ -220,7 +220,7 @@ def test_run_simulation_failures(client, simulation_setup, db_session):
     
     # Test case 3: Unauthorized access (no token)
     response = client.post(
-        "/owner/run-simulation",
+        "/admin/run-simulation",
         json={"league_id": league.id, "num_simulations": 10},
     )
     assert response.status_code == 401

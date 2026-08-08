@@ -42,7 +42,7 @@ def assignment_setup(db_session: Session) -> tuple:
     return league1, league2, team
 
 
-def test_assign_team_to_league_success(client, assignment_setup, owner_headers, db_session):
+def test_assign_team_to_league_success(client, assignment_setup, admin_headers, db_session):
     """Test successful team assignment to a league"""
     source_league, target_league, team = assignment_setup
 
@@ -51,8 +51,8 @@ def test_assign_team_to_league_success(client, assignment_setup, owner_headers, 
 
     # Assign team to target league
     response = client.post(
-        "/owner/assign-team-to-league",
-        headers=owner_headers,
+        "/admin/assign-team-to-league",
+        headers=admin_headers,
         json={"team_id": team.id, "league_id": target_league.id},
     )
     assert response.status_code == 200
@@ -65,8 +65,8 @@ def test_assign_team_to_league_success(client, assignment_setup, owner_headers, 
 
     # Move team back to source league
     response = client.post(
-        "/owner/assign-team-to-league",
-        headers=owner_headers,
+        "/admin/assign-team-to-league",
+        headers=admin_headers,
         json={"team_id": team.id, "league_id": source_league.id},
     )
     assert response.status_code == 200
@@ -76,14 +76,14 @@ def test_assign_team_to_league_success(client, assignment_setup, owner_headers, 
     assert team.league_id == source_league.id
 
 
-def test_assign_team_to_league_failures(client, assignment_setup, owner_headers):
+def test_assign_team_to_league_failures(client, assignment_setup, admin_headers):
     """Test failure cases for team assignment"""
     _, target_league, team = assignment_setup
 
     # Test case 1: Non-existent team
     response = client.post(
-        "/owner/assign-team-to-league",
-        headers=owner_headers,
+        "/admin/assign-team-to-league",
+        headers=admin_headers,
         json={"team_id": 99999, "league_id": target_league.id},
     )
     assert response.status_code == 404
@@ -91,8 +91,8 @@ def test_assign_team_to_league_failures(client, assignment_setup, owner_headers)
 
     # Test case 2: Non-existent league
     response = client.post(
-        "/owner/assign-team-to-league",
-        headers=owner_headers,
+        "/admin/assign-team-to-league",
+        headers=admin_headers,
         json={"team_id": team.id, "league_id": 99999},
     )
     assert response.status_code == 404
@@ -100,7 +100,7 @@ def test_assign_team_to_league_failures(client, assignment_setup, owner_headers)
 
     # Test case 3: Unauthorized access (no token)
     response = client.post(
-        "/owner/assign-team-to-league",
+        "/admin/assign-team-to-league",
         json={"team_id": team.id, "league_id": target_league.id},
     )
     assert response.status_code == 401
@@ -111,7 +111,7 @@ def test_assign_team_to_league_failures(client, assignment_setup, owner_headers)
         expires_delta=timedelta(minutes=30),
     )
     response = client.post(
-        "/owner/assign-team-to-league",
+        "/admin/assign-team-to-league",
         headers={"Authorization": f"Bearer {wrong_token}"},
         json={"team_id": team.id, "league_id": target_league.id},
     )

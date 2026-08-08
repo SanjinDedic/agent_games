@@ -16,14 +16,14 @@ logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# Three roles. `owner` runs the deployment (leagues, teams, keys, simulations);
+# Three roles. `admin` runs the deployment (leagues, teams, keys, simulations);
 # `student` and `ai_agent` are the two kinds of team session, split only by how
 # they authenticate — a password versus an API key.
-ROLE_OWNER = "owner"
+ROLE_ADMIN = "admin"
 ROLE_STUDENT = "student"
 ROLE_AI_AGENT = "ai_agent"
 
-ALL_ROLES = [ROLE_OWNER, ROLE_STUDENT, ROLE_AI_AGENT]
+ALL_ROLES = [ROLE_ADMIN, ROLE_STUDENT, ROLE_AI_AGENT]
 TEAM_ROLES = (ROLE_STUDENT, ROLE_AI_AGENT)
 
 
@@ -52,7 +52,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             user_data["team_type"] = payload.get("team_type")
             user_data["league_id"] = payload.get("league_id")
         else:
-            user_data["owner_name"] = sub
+            user_data["admin_name"] = sub
 
         return user_data
 
@@ -68,11 +68,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 # guard *is* what produces current_user, so neither mistake is possible.
 
 
-def require_owner(current_user: dict = Depends(get_current_user)) -> dict:
-    """Allow only the deployment's owner account."""
-    if current_user["role"] != ROLE_OWNER:
+def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """Allow only the deployment's admin account."""
+    if current_user["role"] != ROLE_ADMIN:
         raise HTTPException(
-            status_code=403, detail="This operation requires the owner role"
+            status_code=403, detail="This operation requires the admin role"
         )
     return current_user
 

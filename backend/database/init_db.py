@@ -101,9 +101,9 @@ def _seed_sample_data_enabled() -> bool:
 def populate_database(engine):
     """Populate the database with the initial data the app cannot run without.
 
-    No owner account is seeded — there is no default password to ship and forget
+    No admin account is seeded — there is no default password to ship and forget
     to change. A fresh deployment is claimed through POST /auth/setup, which
-    refuses once an owner exists.
+    refuses once an admin exists.
 
     Idempotence is keyed on the 'unassigned' league rather than on an account,
     since that league is now the one row this function must always produce.

@@ -8,11 +8,11 @@ from backend.api import app
 client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_status_success(client, owner_headers):
+async def test_status_success(client, admin_headers):
     """Test successful retrieval of service status."""
 
     # Test getting status for all services
-    response = client.get("/diagnostics/status", headers=owner_headers)
+    response = client.get("/diagnostics/status", headers=admin_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -43,7 +43,7 @@ async def test_status_unauthorized(client):
     assert "not authenticated" in response.json()["detail"].lower()
 
 @pytest.mark.asyncio
-async def test_status_exception(client, owner_headers):
+async def test_status_exception(client, admin_headers):
     """A failure collecting service status is no longer masked as a 200 error;
     it propagates (a 500 in production) so monitoring sees it."""
 
@@ -53,21 +53,21 @@ async def test_status_exception(client, owner_headers):
                side_effect=Exception("Test exception")):
 
         with pytest.raises(Exception, match="Test exception"):
-            client.get("/diagnostics/status", headers=owner_headers)
+            client.get("/diagnostics/status", headers=admin_headers)
 
 
 @pytest.mark.asyncio
-async def test_status_owner_allowed(client):
-    """The owner can read service status."""
+async def test_status_admin_allowed(client):
+    """The admin can read service status."""
     from backend.routes.auth.auth_core import create_access_token
     from datetime import timedelta
 
-    owner_token = create_access_token(
-        data={"sub": "test_owner", "role": "owner"},
+    admin_token = create_access_token(
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
-    headers = {"Authorization": f"Bearer {owner_token}"}
+    headers = {"Authorization": f"Bearer {admin_token}"}
 
     response = client.get("/diagnostics/status", headers=headers)
 

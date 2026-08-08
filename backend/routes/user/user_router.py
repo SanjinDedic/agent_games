@@ -15,12 +15,12 @@ from backend.routes.ai.hint_service import hint_available, provide_hints
 from backend.routes.auth.auth_core import (
     get_current_user,
     require_any,
-    require_owner,
+    require_admin,
     require_team,
 )
 from backend.routes.auth.auth_db import mint_team_token
-from backend.routes.owner.owner_db import get_league_by_id
-from backend.routes.owner.owner_models import LeagueName
+from backend.routes.admin.admin_db import get_league_by_id
+from backend.routes.admin.admin_models import LeagueName
 from backend.routes.user.code_validation import validate_code
 from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
@@ -366,7 +366,7 @@ async def get_leagues_endpoint(
 @user_router.get("/get-league-submissions/{league_id}")
 async def get_league_submissions(
     league_id: int,
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Get latest submissions for all teams in a league."""
@@ -377,7 +377,7 @@ async def get_league_submissions(
 @user_router.get("/get-all-league-submissions/{league_id}")
 async def get_all_league_submissions(
     league_id: int,
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Get all submissions for all teams in a league with timestamps."""

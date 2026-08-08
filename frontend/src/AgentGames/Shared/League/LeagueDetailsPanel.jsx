@@ -29,7 +29,7 @@ const EXPIRY_TONES = {
 /**
  * The details card for the league currently selected in Redux: expiry,
  * shareable login page, markdown info editor, delete.
- * `showTeams` adds the assign/unassign grid (the owner management
+ * `showTeams` adds the assign/unassign grid (the admin management
  * page wants it; the classroom workspace's Students tab owns membership).
  * `onDeleted` fires after a successful delete so the caller can navigate.
  */
@@ -86,7 +86,7 @@ const LeagueDetailsPanel = ({ showTeams = true, onDeleted }) => {
     setIsLoadingSignupLink(true);
     try {
       const response = await authFetch(
-        `${apiUrl}/owner/generate-signup-link`,
+        `${apiUrl}/admin/generate-signup-link`,
         {
           method: "POST",
           headers: {

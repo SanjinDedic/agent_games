@@ -27,8 +27,8 @@ class InvalidCredentialsError(Exception):
     """Raised when login credentials are invalid (maps to HTTP 401)."""
 
 
-class OwnerExistsError(Exception):
-    """Raised when setup runs on a deployment that already has an owner
+class AdminExistsError(Exception):
+    """Raised when setup runs on a deployment that already has an admin
     (maps to HTTP 409)."""
 
 
@@ -144,7 +144,7 @@ class PayloadTooLargeError(PlagiarismServiceError):
 # registered class, so listing a base class alongside its subclasses is safe.
 EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     InvalidCredentialsError: 401,
-    OwnerExistsError: 409,
+    AdminExistsError: 409,
     LeagueNotFoundError: 404,
     LeagueExistsError: 409,
     LeagueExpiredError: 410,

@@ -212,11 +212,11 @@ def test_get_all_leagues_exceptions(client):
     assert response.status_code == 401
 
     # Test case 3: Admin access should work
-    owner_token = create_access_token(
-        data={"sub": "admin", "role": "owner"}, expires_delta=timedelta(minutes=30)
+    admin_token = create_access_token(
+        data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(minutes=30)
     )
     response = client.get(
-        "/user/get-all-leagues", headers={"Authorization": f"Bearer {owner_token}"}
+        "/user/get-all-leagues", headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
     assert "leagues" in response.json()

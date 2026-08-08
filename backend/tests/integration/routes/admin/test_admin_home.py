@@ -58,8 +58,8 @@ def home_setup(db_session: Session) -> tuple:
 
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -69,7 +69,7 @@ def home_setup(db_session: Session) -> tuple:
 def test_home_success(client, home_setup):
     headers = home_setup
 
-    response = client.get("/owner/home", headers=headers)
+    response = client.get("/admin/home", headers=headers)
     assert response.status_code == 200
     data = response.json()
 
@@ -93,7 +93,7 @@ def test_home_failures(client, home_setup):
     _ = home_setup
 
     # No token
-    response = client.get("/owner/home")
+    response = client.get("/admin/home")
     assert response.status_code == 401
 
     # Wrong role
@@ -102,7 +102,7 @@ def test_home_failures(client, home_setup):
         expires_delta=timedelta(minutes=30),
     )
     response = client.get(
-        "/owner/home",
+        "/admin/home",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 403

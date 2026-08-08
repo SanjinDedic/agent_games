@@ -7,7 +7,7 @@ import { authFetch } from '../../utils/authFetch';
 import { selectToken } from '../../slices/authSlice';
 import { useTerms } from '../Shared/terminology';
 
-function OwnerTeams() {
+function AdminTeams() {
   const T = useTerms();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -24,7 +24,7 @@ function OwnerTeams() {
   const fetchAllTeams = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/owner/get-all-teams`, {
+      const response = await authFetch(`${apiUrl}/admin/get-all-teams`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json();
@@ -58,7 +58,7 @@ function OwnerTeams() {
     }
 
     try {
-      const response = await authFetch(`${apiUrl}/owner/team-create`, {
+      const response = await authFetch(`${apiUrl}/admin/team-create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ function OwnerTeams() {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete ${T.team} "${name}"?`)) return;
     try {
-      const response = await authFetch(`${apiUrl}/owner/delete-team`, {
+      const response = await authFetch(`${apiUrl}/admin/delete-team`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +111,7 @@ function OwnerTeams() {
 
   const handleResetPassword = async (id) => {
     try {
-      const response = await authFetch(`${apiUrl}/owner/team-password-reset`, {
+      const response = await authFetch(`${apiUrl}/admin/team-password-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -303,4 +303,4 @@ function OwnerTeams() {
   );
 }
 
-export default OwnerTeams;
+export default AdminTeams;

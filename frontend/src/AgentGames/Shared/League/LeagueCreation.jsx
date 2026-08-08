@@ -154,7 +154,7 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/owner/league-create`, {
+      const response = await authFetch(`${apiUrl}/admin/league-create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

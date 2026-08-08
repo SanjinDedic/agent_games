@@ -18,7 +18,7 @@ function formatGameName(game) {
     .join(' ');
 }
 
-function OwnerHome() {
+function AdminHome() {
   const T = useTerms();
   const siteName = useSelector(selectSiteName);
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ function OwnerHome() {
   const fetchHome = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/owner/home`, {
+      const response = await authFetch(`${apiUrl}/admin/home`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const json = await response.json();
@@ -68,7 +68,7 @@ function OwnerHome() {
     setGeneratingFor(classroom.id);
     try {
       const response = await authFetch(
-        `${apiUrl}/owner/generate-signup-link`,
+        `${apiUrl}/admin/generate-signup-link`,
         {
           method: 'POST',
           headers: {
@@ -206,8 +206,12 @@ function OwnerHome() {
                   {/* Creation + unassigned students share one grid cell so
                       the classroom cards keep their proportions */}
                   <div className="flex flex-col gap-6">
+                    {/* Silent refresh: a plain fetchHome() flips isLoading,
+                        which swaps this whole subtree for the loading state and
+                        unmounts LeagueCreation — taking its just-opened "here is
+                        the join link" panel with it. */}
                     <LeagueCreation
-                      onCreated={fetchHome}
+                      onCreated={() => fetchHome({ silent: true })}
                       compact
                     />
                     <UnassignedTeamsCard
@@ -243,4 +247,4 @@ function OwnerHome() {
   );
 }
 
-export default OwnerHome;
+export default AdminHome;

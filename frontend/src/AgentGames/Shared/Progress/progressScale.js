@@ -112,19 +112,6 @@ export const NEUTRAL = {
 const at = (stop, rendering) => (STOPS[stop] || NEUTRAL)[rendering];
 
 /**
- * Concept fluency, four bands (backend/routes/owner/concept_mastery.py).
- * The two greens are the two bands a teacher does not have to act on, so they
- * take the top two stops and the scale then jumps the yellows entirely — that
- * gap is what lets the orange and red cells carry across a class-sized grid.
- */
-export const FLUENCY_STOPS = {
-  fluent: 1,
-  showing_understanding: 2,
-  progressing_slowly: 6,
-  needs_help: 8,
-};
-
-/**
  * Validation placement, best first. Note where this stops: last place lands on
  * orange, never on red. Coming sixth against a row of validation bots is a
  * result, not a verdict on the student, and the bottom of the ramp is reserved
@@ -140,6 +127,8 @@ export const PLACEMENT_TRAILING_STOP = 6;
  */
 export const STATUS_STOPS = { passed: 2, attempted: 4 };
 
+// One accessor per rendering the STOPS table defines, so the table and its
+// readers stay in step even where a rendering currently has no caller.
 export const stopFill = (stop) => at(stop, 'fill');
 export const stopSolid = (stop) => at(stop, 'solid');
 export const stopChip = (stop) => at(stop, 'chip');

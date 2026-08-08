@@ -38,8 +38,8 @@ def delete_league_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -86,7 +86,7 @@ def test_delete_league_success(client, delete_league_setup, db_session):
     
     # Delete the league
     response = client.post(
-        "/owner/delete-league",
+        "/admin/delete-league",
         headers=headers,
         json={"league_id": league.id},
     )
@@ -115,7 +115,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     
     # Test case 1: Try to delete non-existent league
     response = client.post(
-        "/owner/delete-league",
+        "/admin/delete-league",
         headers=headers,
         json={"league_id": 99999},
     )
@@ -142,7 +142,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
         db_session.commit()
     
     response = client.post(
-        "/owner/delete-league",
+        "/admin/delete-league",
         headers=headers,
         json={"league_id": unassigned_league.id},
     )
@@ -151,7 +151,7 @@ def test_delete_league_failures(client, delete_league_setup, db_session):
     
 
 
-def test_delete_league_requires_the_unassigned_league(client, owner_headers, db_session):
+def test_delete_league_requires_the_unassigned_league(client, admin_headers, db_session):
     """A missing 'unassigned' league is a broken install, not something to paper
     over. get_unassigned_league used to create one on demand; now it raises, so
     the failure points at init_db instead of silently minting a second
@@ -175,7 +175,7 @@ def test_delete_league_requires_the_unassigned_league(client, owner_headers, db_
     db_session.commit()
 
     response = client.post(
-        "/owner/delete-league", headers=owner_headers, json={"league_id": league_id}
+        "/admin/delete-league", headers=admin_headers, json={"league_id": league_id}
     )
     assert response.status_code == 404
     assert "init_db" in response.json()["detail"]

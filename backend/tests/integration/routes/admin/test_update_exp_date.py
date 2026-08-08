@@ -30,8 +30,8 @@ def expiry_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -51,7 +51,7 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
     # Test case 1: Update expiry to future date - use timezone-aware datetime
     new_expiry = utc_now() + timedelta(days=14)
     response = client.post(
-        "/owner/update-expiry-date",
+        "/admin/update-expiry-date",
         headers=headers,
         json={
             "league_id": league.id,
@@ -71,7 +71,7 @@ def test_update_expiry_date_success(client, expiry_setup, db_session):
     # Test case 2: Change to an even later date - use timezone-aware datetime
     later_expiry = utc_now() + timedelta(days=30)
     response = client.post(
-        "/owner/update-expiry-date",
+        "/admin/update-expiry-date",
         headers=headers,
         json={
             "league_id": league.id,
@@ -95,7 +95,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
         days=7
     )  # Use timezone-aware
     response = client.post(
-        "/owner/update-expiry-date",
+        "/admin/update-expiry-date",
         headers=headers,
         json={
             "league_id": 99999,
@@ -108,7 +108,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
     # Test case 2: Past expiry date - use timezone-aware datetime
     past_date = utc_now() - timedelta(days=1)
     response = client.post(
-        "/owner/update-expiry-date",
+        "/admin/update-expiry-date",
         headers=headers,
         json={
             "league_id": league.id,
@@ -119,7 +119,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
 
     # Test case 3: Invalid date format
     response = client.post(
-        "/owner/update-expiry-date",
+        "/admin/update-expiry-date",
         headers=headers,
         json={
             "league_id": league.id,
@@ -130,7 +130,7 @@ def test_update_expiry_date_failures(client, expiry_setup, db_session):
 
     # Test case 4: Missing league_id field
     response = client.post(
-        "/owner/update-expiry-date",
+        "/admin/update-expiry-date",
         headers=headers,
         json={
             "date": new_expiry.isoformat(),

@@ -28,8 +28,8 @@ def signup_link_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -48,7 +48,7 @@ def test_generate_signup_link_success(client, signup_link_setup, db_session):
 
     # Generate signup link
     response = client.post(
-        "/owner/generate-signup-link",
+        "/admin/generate-signup-link",
         headers=headers,
         json={"league_id": league.id},
     )
@@ -64,7 +64,7 @@ def test_generate_signup_link_success(client, signup_link_setup, db_session):
 
     # Test regenerating link
     response = client.post(
-        "/owner/generate-signup-link",
+        "/admin/generate-signup-link",
         headers=headers,
         json={"league_id": league.id},
     )
@@ -83,7 +83,7 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
 
     # Test case 1: Non-existent league
     response = client.post(
-        "/owner/generate-signup-link",
+        "/admin/generate-signup-link",
         headers=headers,
         json={"league_id": 99999},
     )
@@ -93,7 +93,7 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
 
     # Test case 3: Missing league_id (Pydantic 422)
     response = client.post(
-        "/owner/generate-signup-link",
+        "/admin/generate-signup-link",
         headers=headers,
         json={},
     )
@@ -101,7 +101,7 @@ def test_generate_signup_link_failures(client, signup_link_setup, db_session):
 
     # Test case 4: Invalid league_id type (Pydantic 422)
     response = client.post(
-        "/owner/generate-signup-link",
+        "/admin/generate-signup-link",
         headers=headers,
         json={"league_id": "not_an_integer"},
     )

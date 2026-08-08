@@ -12,11 +12,11 @@ import {
   setSiteConfig,
 } from '../../slices/settingsSlice';
 
-// One page, two modes. An unclaimed deployment (no owner row) shows the setup
+// One page, two modes. An unclaimed deployment (no admin row) shows the setup
 // form; once claimed it shows the login form. Which one is decided by
 // setup_required from GET /config, so the deployment's state — not a route or a
 // build flag — picks the form.
-function OwnerLogin() {
+function AdminLogin() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const apiUrl = useSelector((state) => state.settings.agentApiUrl);
@@ -85,7 +85,7 @@ function OwnerLogin() {
       if (setupRequired) {
         dispatch(setSiteConfig({ setup_required: false }));
       }
-      navigate(data.role === 'owner' ? '/Home' : '/TeamHome');
+      navigate(data.role === 'admin' ? '/Home' : '/TeamHome');
     } catch (error) {
       console.error('Error:', error);
       setErrorMessage('An error occurred. Please try again.');
@@ -110,12 +110,12 @@ function OwnerLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label htmlFor="owner_name" className="text-xl font-bold text-ui-dark">
+            <label htmlFor="admin_name" className="text-xl font-bold text-ui-dark">
               Name:
             </label>
             <input
               type="text"
-              id="owner_name"
+              id="admin_name"
               name="name"
               autoComplete="username"
               value={credentials.name}
@@ -126,14 +126,14 @@ function OwnerLogin() {
 
           <div className="space-y-2">
             <label
-              htmlFor="owner_password"
+              htmlFor="admin_password"
               className="text-xl font-bold text-ui-dark"
             >
               Password:
             </label>
             <input
               type="password"
-              id="owner_password"
+              id="admin_password"
               name="password"
               autoComplete={setupRequired ? 'new-password' : 'current-password'}
               value={credentials.password}
@@ -158,4 +158,4 @@ function OwnerLogin() {
   );
 }
 
-export default OwnerLogin;
+export default AdminLogin;

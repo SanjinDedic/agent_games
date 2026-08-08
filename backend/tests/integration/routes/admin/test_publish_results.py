@@ -50,8 +50,8 @@ def publish_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -67,7 +67,7 @@ def test_publish_results_success(client, publish_setup, db_session):
 
     # Test case 1: Publish with string feedback
     response = client.post(
-        "/owner/publish-results",
+        "/admin/publish-results",
         headers=headers,
         json={
             "league_id": league.id,
@@ -93,7 +93,7 @@ def test_publish_results_success(client, publish_setup, db_session):
         }
     }
     response = client.post(
-        "/owner/publish-results",
+        "/admin/publish-results",
         headers=headers,
         json={
             "league_id": league.id,
@@ -113,7 +113,7 @@ def test_publish_results_success(client, publish_setup, db_session):
 
     # Test case 3: Publish without feedback
     response = client.post(
-        "/owner/publish-results",
+        "/admin/publish-results",
         headers=headers,
         json={
             "league_id": league.id,
@@ -129,7 +129,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
     
     # Test case 1: Non-existent league
     response = client.post(
-        "/owner/publish-results",
+        "/admin/publish-results",
         headers=headers,
         json={
             "league_id": 99999,
@@ -141,7 +141,7 @@ def test_publish_results_failures(client, publish_setup, db_session):
     
     # Test case 2: Non-existent simulation result
     response = client.post(
-        "/owner/publish-results",
+        "/admin/publish-results",
         headers=headers,
         json={
             "league_id": league.id,

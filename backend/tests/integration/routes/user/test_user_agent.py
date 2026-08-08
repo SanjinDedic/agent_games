@@ -180,13 +180,13 @@ class CustomPlayer(Player):
     assert response.status_code == 401
 
     # Test case 4: Submit with wrong token type
-    owner_token = create_access_token(
-        data={"sub": "admin", "role": "owner"}, expires_delta=timedelta(minutes=30)
+    admin_token = create_access_token(
+        data={"sub": "admin", "role": "admin"}, expires_delta=timedelta(minutes=30)
     )
     response = client.post(
         "/user/submit-agent",
         json={"code": "valid_code"},
-        headers={"Authorization": f"Bearer {owner_token}"},
+        headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 403
 
@@ -194,7 +194,7 @@ class CustomPlayer(Player):
 def test_get_league_submissions_success(
     client,
     db_session: Session,
-    owner_headers,
+    admin_headers,
     setup_test_league: League,
     setup_test_team: Team,
 ):
@@ -223,7 +223,7 @@ def test_get_league_submissions_success(
     # Get league submissions (admin bypasses ownership)
     response = client.get(
         f"/user/get-league-submissions/{setup_test_league.id}",
-        headers=owner_headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -233,7 +233,7 @@ def test_get_league_submissions_success(
     )  # Should get latest submission
 
 
-def test_get_league_submissions_exceptions(client, student_token: str, owner_headers):
+def test_get_league_submissions_exceptions(client, student_token: str, admin_headers):
     """Test error cases for getting league submissions"""
 
     # A non-existent league is a 404. It used to return an empty dict for admin
@@ -241,7 +241,7 @@ def test_get_league_submissions_exceptions(client, student_token: str, owner_hea
     # submissions yet.
     response = client.get(
         "/user/get-league-submissions/99999",
-        headers=owner_headers,
+        headers=admin_headers,
     )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()

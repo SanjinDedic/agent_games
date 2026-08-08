@@ -33,9 +33,9 @@ def test_mask_key_exactly_nine_chars():
 # --- Integration tests for GET /ai/api-keys ---
 
 
-def test_get_api_keys_empty(client, owner_headers):
+def test_get_api_keys_empty(client, admin_headers):
     """Initially no keys are configured"""
-    response = client.get("/ai/api-keys", headers=owner_headers)
+    response = client.get("/ai/api-keys", headers=admin_headers)
     assert response.status_code == 200
     assert response.json()["openai_api_key"] == ""
 
@@ -62,54 +62,54 @@ def test_get_api_keys_wrong_role(client):
 # --- Integration tests for POST /ai/api-keys ---
 
 
-def test_update_api_key(client, owner_headers):
+def test_update_api_key(client, admin_headers):
     """Update OpenAI key and verify masked response"""
     response = client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"openai_api_key": "sk-test1234567890abcdef"},
     )
     assert response.status_code == 200
     assert response.json()["openai_api_key"] == "sk-t****cdef"
 
 
-def test_update_then_get_api_key(client, owner_headers):
+def test_update_then_get_api_key(client, admin_headers):
     """Key persists after update"""
     client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"openai_api_key": "sk-test1234567890abcdef"},
     )
-    response = client.get("/ai/api-keys", headers=owner_headers)
+    response = client.get("/ai/api-keys", headers=admin_headers)
     assert response.status_code == 200
     assert response.json()["openai_api_key"] == "sk-t****cdef"
 
 
-def test_update_api_key_overwrite(client, owner_headers):
+def test_update_api_key_overwrite(client, admin_headers):
     """Updating an existing key overwrites it"""
     client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"openai_api_key": "sk-first000000000000000"},
     )
     response = client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"openai_api_key": "sk-second00000000000000"},
     )
     assert response.json()["openai_api_key"] == "sk-s****0000"
 
 
-def test_update_api_key_none_no_change(client, owner_headers):
+def test_update_api_key_none_no_change(client, admin_headers):
     """Sending None for a key does not change it"""
     client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"openai_api_key": "sk-test1234567890abcdef"},
     )
     response = client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={},  # openai_api_key defaults to None
     )
     assert response.json()["openai_api_key"] == "sk-t****cdef"
@@ -127,11 +127,11 @@ def test_update_api_key_unauthenticated(client):
 # --- Integration tests for POST /ai/api-keys/validate ---
 
 
-def test_validate_no_stored_key(client, owner_headers):
+def test_validate_no_stored_key(client, admin_headers):
     """Validate with no stored key and no key in request"""
     response = client.post(
         "/ai/api-keys/validate",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"provider": "openai"},
     )
     assert response.status_code == 200
@@ -140,11 +140,11 @@ def test_validate_no_stored_key(client, owner_headers):
     assert "no api key configured" in data["message"].lower()
 
 
-def test_validate_unknown_provider(client, owner_headers):
+def test_validate_unknown_provider(client, admin_headers):
     """Unknown provider returns error"""
     response = client.post(
         "/ai/api-keys/validate",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"provider": "unknown_provider", "api_key": "some-key"},
     )
     assert response.status_code == 400
@@ -152,7 +152,7 @@ def test_validate_unknown_provider(client, owner_headers):
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
-def test_validate_valid_key(mock_client_cls, client, owner_headers):
+def test_validate_valid_key(mock_client_cls, client, admin_headers):
     """Valid key returns valid=True"""
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -165,7 +165,7 @@ def test_validate_valid_key(mock_client_cls, client, owner_headers):
 
     response = client.post(
         "/ai/api-keys/validate",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"provider": "openai", "api_key": "sk-valid-key"},
     )
     assert response.status_code == 200
@@ -173,7 +173,7 @@ def test_validate_valid_key(mock_client_cls, client, owner_headers):
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
-def test_validate_invalid_key(mock_client_cls, client, owner_headers):
+def test_validate_invalid_key(mock_client_cls, client, admin_headers):
     """Invalid key returns valid=False"""
     mock_response = MagicMock()
     mock_response.status_code = 401
@@ -186,7 +186,7 @@ def test_validate_invalid_key(mock_client_cls, client, owner_headers):
 
     response = client.post(
         "/ai/api-keys/validate",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"provider": "openai", "api_key": "sk-invalid-key"},
     )
     assert response.status_code == 200
@@ -194,12 +194,12 @@ def test_validate_invalid_key(mock_client_cls, client, owner_headers):
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
-def test_validate_stored_key(mock_client_cls, client, owner_headers):
+def test_validate_stored_key(mock_client_cls, client, admin_headers):
     """Validate the stored key when no key provided in request"""
     # First store a key
     client.post(
         "/ai/api-keys",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"openai_api_key": "sk-stored-key-12345678"},
     )
 
@@ -214,7 +214,7 @@ def test_validate_stored_key(mock_client_cls, client, owner_headers):
 
     response = client.post(
         "/ai/api-keys/validate",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"provider": "openai"},
     )
     assert response.status_code == 200
@@ -227,7 +227,7 @@ def test_validate_stored_key(mock_client_cls, client, owner_headers):
 
 
 @patch("backend.routes.ai.clients.base.httpx.AsyncClient")
-def test_validate_timeout(mock_client_cls, client, owner_headers):
+def test_validate_timeout(mock_client_cls, client, admin_headers):
     """Timeout returns error"""
     import httpx
 
@@ -239,7 +239,7 @@ def test_validate_timeout(mock_client_cls, client, owner_headers):
 
     response = client.post(
         "/ai/api-keys/validate",
-        headers=owner_headers,
+        headers=admin_headers,
         json={"provider": "openai", "api_key": "sk-some-key"},
     )
     assert response.status_code == 504

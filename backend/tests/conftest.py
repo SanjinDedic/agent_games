@@ -13,7 +13,7 @@ from backend.database.db_models import (
     UNASSIGNED_LEAGUE_NAME,
     League,
     LeagueType,
-    Owner,
+    Admin,
     Submission,
     SubmissionMetadata,
     Team,
@@ -155,8 +155,8 @@ def db_session(db_engine):
 def populate_test_database(session):
     """Seed test database with precomputed hashes (no bcrypt cost).
 
-    Deliberately seeds no Owner row: tests that need one mint a token via the
-    owner_token fixture, and the setup-flow tests need a deployment that has not
+    Deliberately seeds no Admin row: tests that need one mint a token via the
+    admin_token fixture, and the setup-flow tests need a deployment that has not
     been claimed yet.
     """
     existing = session.exec(
@@ -226,14 +226,14 @@ def client(db_session) -> TestClient:
 
 
 @pytest.fixture
-def owner_token(db_session: Session) -> str:
-    """Create the deployment's owner account and return its token."""
-    owner = Owner(username="test_owner", password_hash=_HASH_TEST_PASSWORD)
-    db_session.add(owner)
+def admin_token(db_session: Session) -> str:
+    """Create the deployment's admin account and return its token."""
+    admin = Admin(username="test_admin", password_hash=_HASH_TEST_PASSWORD)
+    db_session.add(admin)
     db_session.commit()
 
     return create_access_token(
-        data={"sub": owner.username, "role": "owner"},
+        data={"sub": admin.username, "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -343,9 +343,9 @@ def add_failed_submission(
 
 
 @pytest.fixture
-def owner_headers(owner_token) -> dict:
-    """Return headers with owner authentication"""
-    return {"Authorization": f"Bearer {owner_token}"}
+def admin_headers(admin_token) -> dict:
+    """Return headers with admin authentication"""
+    return {"Authorization": f"Bearer {admin_token}"}
 
 
 @pytest.fixture
@@ -371,7 +371,7 @@ def test_league(db_session: Session) -> League:
 @pytest.fixture
 def student_headers() -> dict:
     """Generic student-role bearer headers (no team_id). Suitable for tests that
-    only check role-gating on owner-only endpoints."""
+    only check role-gating on admin-only endpoints."""
     token = create_access_token(
         data={"sub": "student", "role": "student"},
         expires_delta=timedelta(minutes=30),

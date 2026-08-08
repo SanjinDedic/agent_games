@@ -11,7 +11,7 @@ from backend.time_utils import utc_now
 
 
 @pytest.fixture
-def owner_setup(db_session: Session) -> tuple:
+def admin_setup(db_session: Session) -> tuple:
     """Setup for testing and return necessary objects"""
     db_session.commit()
     
@@ -48,8 +48,8 @@ def owner_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -59,9 +59,9 @@ def owner_setup(db_session: Session) -> tuple:
     return team, token, headers
 
 
-def test_delete_team_success(client, owner_setup, db_session):
+def test_delete_team_success(client, admin_setup, db_session):
     """Test successful team deletion"""
-    team, _, headers = owner_setup
+    team, _, headers = admin_setup
     
     # Verify team exists before deletion
     existing_team = db_session.exec(
@@ -71,7 +71,7 @@ def test_delete_team_success(client, owner_setup, db_session):
     
     # Delete the team
     response = client.post(
-        "/owner/delete-team",
+        "/admin/delete-team",
         headers=headers,
         json={"id": team.id},
     )
@@ -98,13 +98,13 @@ def test_delete_team_success(client, owner_setup, db_session):
     assert len(orphaned_code) == 0
 
 
-def test_delete_team_failures(client, owner_setup, db_session):
+def test_delete_team_failures(client, admin_setup, db_session):
     """Test failure cases for team deletion"""
-    team, _, headers = owner_setup
+    team, _, headers = admin_setup
     
     # Test case 1: Delete non-existent team
     response = client.post(
-        "/owner/delete-team",
+        "/admin/delete-team",
         headers=headers,
         json={"id": 9999999},
     )
@@ -114,7 +114,7 @@ def test_delete_team_failures(client, owner_setup, db_session):
     
     # Test case 3: Invalid team ID format
     response = client.post(
-        "/owner/delete-team",
+        "/admin/delete-team",
         headers=headers,
         json={"id": "invalid_id"},
     )
@@ -122,7 +122,7 @@ def test_delete_team_failures(client, owner_setup, db_session):
     
     # Test case 4: Unauthorized access (no token)
     response = client.post(
-        "/owner/delete-team",
+        "/admin/delete-team",
         json={"id": team.id},
     )
     assert response.status_code == 401

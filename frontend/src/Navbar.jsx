@@ -17,12 +17,12 @@ import { useTerms } from './AgentGames/Shared/terminology';
 // marketing copy stay literal.
 function getNavLinks(T) {
   return {
-    // The owner runs the whole deployment, so this is the union of what the old
+    // The admin runs the whole deployment, so this is the union of what the old
     // admin and institution groups used to carry. Everything about one
     // league/classroom lives in the /Classroom/:id workspace, entered from the
     // Home cards; the navbar keeps Home, the site-wide roster (the only surface
     // for unassigned members), and the two operational pages.
-    owner: [
+    admin: [
       { to: "/Home", label: "Home" },
       { to: "/Teams", label: T.Teams },
       { to: "/ServiceStatus", label: "Service Status" },
@@ -43,7 +43,7 @@ function getNavLinks(T) {
 function resolveNavGroup(currentUser, isAuthenticated) {
   if (!isAuthenticated) return "public";
   const role = currentUser?.role;
-  if (role === "owner") return "owner";
+  if (role === "admin") return "admin";
   if (role === "student" || role === "ai_agent") return "team";
   return "public";
 }
@@ -103,7 +103,7 @@ function AgentGamesNavbar() {
     dispatch(clearTeam());
     dispatch(clearResults());
 
-    navigate(userRole === "owner" ? "/Login" : "/AgentLogin");
+    navigate(userRole === "admin" ? "/Login" : "/AgentLogin");
   };
 
   const navLinkClasses = "inline-flex items-center px-3 py-3 text-lg text-white hover:bg-white/10 transition-colors duration-200";

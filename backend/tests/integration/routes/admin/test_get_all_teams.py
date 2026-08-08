@@ -40,8 +40,8 @@ def teams_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -56,7 +56,7 @@ def test_get_all_teams_success(client, teams_setup, db_session):
     teams, _, headers = teams_setup
     
     # Get all teams
-    response = client.get("/owner/get-all-teams", headers=headers)
+    response = client.get("/admin/get-all-teams", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert "teams" in data
@@ -84,7 +84,7 @@ def test_get_all_teams_failures(client, teams_setup, db_session):
     _, _, _ = teams_setup
     
     # Test case 1: Unauthorized access (no token)
-    response = client.get("/owner/get-all-teams")
+    response = client.get("/admin/get-all-teams")
     assert response.status_code == 401
     
     # Test case 2: Wrong role token
@@ -93,7 +93,7 @@ def test_get_all_teams_failures(client, teams_setup, db_session):
         expires_delta=timedelta(minutes=30),
     )
     response = client.get(
-        "/owner/get-all-teams",
+        "/admin/get-all-teams",
         headers={"Authorization": f"Bearer {wrong_token}"},
     )
     assert response.status_code == 403
@@ -102,8 +102,8 @@ def test_get_all_teams_failures(client, teams_setup, db_session):
     # Test case 4: Expired token
     expired_token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(microseconds=1),  # Immediate expiration
     )
@@ -111,7 +111,7 @@ def test_get_all_teams_failures(client, teams_setup, db_session):
     import time
     time.sleep(0.01)
     response = client.get(
-        "/owner/get-all-teams",
+        "/admin/get-all-teams",
         headers={"Authorization": f"Bearer {expired_token}"},
     )
     assert response.status_code == 401

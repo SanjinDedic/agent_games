@@ -11,10 +11,10 @@ from backend.errors import EXCEPTION_STATUS_MAP
 from backend.models_api import ResponseModel
 from backend.routes.agent.agent_router import agent_router
 from backend.routes.ai.ai_router import ai_router
-from backend.routes.auth.auth_db import owner_exists
+from backend.routes.auth.auth_db import admin_exists
 from backend.routes.auth.auth_router import auth_router
 from backend.routes.diagnostics.diagnostics_router import diagnostics_router
-from backend.routes.owner.owner_router import owner_router
+from backend.routes.admin.admin_router import admin_router
 from backend.routes.user.user_router import user_router
 from sqlmodel import Session, text
 
@@ -40,11 +40,11 @@ def check_database_status():
     try:
         engine = get_db_engine()
         with Session(engine) as session:
-            owner_count = session.exec(text("SELECT COUNT(*) FROM owner")).first()
-        if owner_count[0] == 0:
+            admin_count = session.exec(text("SELECT COUNT(*) FROM admin")).first()
+        if admin_count[0] == 0:
             logger.warning("=" * 60)
             logger.warning("📋 DEPLOYMENT NOT YET CLAIMED")
-            logger.warning("No owner account — visit the frontend to set one up.")
+            logger.warning("No admin account — visit the frontend to set one up.")
             logger.warning("=" * 60)
         else:
             logger.warning("=" * 60)
@@ -111,7 +111,7 @@ app.add_middleware(
 
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-app.include_router(owner_router, prefix="/owner", tags=["Owner"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(user_router, prefix="/user", tags=["User Operations"])
 app.include_router(agent_router, prefix="/agent", tags=["Agent Operations"])
 app.include_router(ai_router, prefix="/ai", tags=["AI Configuration"])
@@ -143,5 +143,5 @@ async def site_config(session: Session = Depends(get_db)):
         "site_mode": config.SITE_MODE,
         "site_name": config.SITE_NAME,
         "site_icon": config.SITE_ICON,
-        "setup_required": not owner_exists(session),
+        "setup_required": not admin_exists(session),
     }

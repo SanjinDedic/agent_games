@@ -116,7 +116,7 @@ export const useLeagueAPI = () => {
     if (!leagueId) return { success: false, error: 'league_id required' };
     try {
       const response = await authFetch(
-        `${apiUrl}/owner/get-all-league-results`,
+        `${apiUrl}/admin/get-all-league-results`,
         {
           method: 'POST',
           headers: {
@@ -154,7 +154,7 @@ export const useLeagueAPI = () => {
     const toastId = toast.loading("Running simulation...");
     
     try {
-      const response = await authFetch(`${apiUrl}/owner/run-simulation`, {
+      const response = await authFetch(`${apiUrl}/admin/run-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ export const useLeagueAPI = () => {
     setIsLoading(true);
     
     try {
-      const response = await authFetch(`${apiUrl}/owner/league-create`, {
+      const response = await authFetch(`${apiUrl}/admin/league-create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,7 +240,7 @@ export const useLeagueAPI = () => {
       //set publishData.feedback to none
       publishData.feedback = undefined
 
-      const response = await authFetch(`${apiUrl}/owner/publish-results`, {
+      const response = await authFetch(`${apiUrl}/admin/publish-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +277,7 @@ export const useLeagueAPI = () => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/owner/update-expiry-date`, {
+      const response = await authFetch(`${apiUrl}/admin/update-expiry-date`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,7 +313,7 @@ export const useLeagueAPI = () => {
   const updateLeagueInfo = useCallback(async (leagueId, infoMarkdown) => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/owner/update-league-info`, {
+      const response = await authFetch(`${apiUrl}/admin/update-league-info`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -353,7 +353,7 @@ export const useLeagueAPI = () => {
     setIsLoading(true);
     
     try {
-      const response = await authFetch(`${apiUrl}/owner/assign-team-to-league`, {
+      const response = await authFetch(`${apiUrl}/admin/assign-team-to-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -389,7 +389,7 @@ export const useLeagueAPI = () => {
   const unassignTeam = useCallback(async (teamId) => {
     setIsLoading(true);
     try {
-      const response = await authFetch(`${apiUrl}/owner/unassign-team`, {
+      const response = await authFetch(`${apiUrl}/admin/unassign-team`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +423,7 @@ export const useLeagueAPI = () => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch(`${apiUrl}/owner/delete-league`, {
+      const response = await authFetch(`${apiUrl}/admin/delete-league`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

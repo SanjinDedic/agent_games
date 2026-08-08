@@ -13,7 +13,7 @@ import { useTerms } from "../terminology";
 
 /**
  * Simulation controls + results for the league currently selected in Redux.
- * League selection lives with the caller: the owner page keeps
+ * League selection lives with the caller: the admin page keeps
  * its LeagueCardList column; the classroom workspace's Simulation tab renders
  * this panel alone.
  */

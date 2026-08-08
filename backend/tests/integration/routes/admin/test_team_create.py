@@ -10,15 +10,15 @@ from backend.time_utils import utc_now
 
 
 @pytest.fixture
-def owner_setup(db_session: Session) -> tuple:
-    """Return owner token and headers."""
+def admin_setup(db_session: Session) -> tuple:
+    """Return admin token and headers."""
     db_session.commit()
 
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -28,13 +28,13 @@ def owner_setup(db_session: Session) -> tuple:
     return token, headers
 
 
-def test_team_create_success(client, owner_setup, db_session):
+def test_team_create_success(client, admin_setup, db_session):
     """Test successful team creation"""
-    _, headers = owner_setup
+    _, headers = admin_setup
     
     # Test basic team creation
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers=headers,
         json={
             "name": "test_team",
@@ -54,7 +54,7 @@ def test_team_create_success(client, owner_setup, db_session):
 
     # Test team creation with optional fields
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers=headers,
         json={
             "name": "team_with_options",
@@ -67,13 +67,13 @@ def test_team_create_success(client, owner_setup, db_session):
     assert response.status_code == 200
 
 
-def test_team_create_failures(client, owner_setup, db_session):
+def test_team_create_failures(client, admin_setup, db_session):
     """Test failure cases for team creation"""
-    _, headers = owner_setup
+    _, headers = admin_setup
     
     # Test case 1: First create a team
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers=headers,
         json={
             "name": "duplicate_team",
@@ -85,7 +85,7 @@ def test_team_create_failures(client, owner_setup, db_session):
 
     # Test duplicate team name
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers=headers,
         json={
             "name": "duplicate_team",
@@ -98,7 +98,7 @@ def test_team_create_failures(client, owner_setup, db_session):
 
     # Test case 2: Missing required fields
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers=headers,
         json={"name": "incomplete_team"},  # Missing password
     )
@@ -106,7 +106,7 @@ def test_team_create_failures(client, owner_setup, db_session):
 
     # Test case 3: Empty team name
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers=headers,
         json={"name": "", "password": "test_password"},
     )
@@ -114,7 +114,7 @@ def test_team_create_failures(client, owner_setup, db_session):
 
     # Test case 4: Unauthorized access (no token)
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         json={
             "name": "unauthorized_team",
             "password": "test_password",
@@ -129,7 +129,7 @@ def test_team_create_failures(client, owner_setup, db_session):
         expires_delta=timedelta(minutes=30),
     )
     response = client.post(
-        "/owner/team-create",
+        "/admin/team-create",
         headers={"Authorization": f"Bearer {wrong_token}"},
         json={
             "name": "wrong_role_team",
@@ -140,7 +140,7 @@ def test_team_create_failures(client, owner_setup, db_session):
     assert response.status_code == 403
 
 
-def test_team_create_name_must_be_globally_unique(client, owner_headers, db_session):
+def test_team_create_name_must_be_globally_unique(client, admin_headers, db_session):
     """Team names are unique across the whole deployment.
 
     They used to be unique only within an institution. The constraint and the
@@ -149,11 +149,11 @@ def test_team_create_name_must_be_globally_unique(client, owner_headers, db_sess
     then fail on insert as a 500 instead of a clean 409.
     """
     payload = {"name": "shared_team_name", "password": "pass", "school_name": "School A"}
-    assert client.post("/owner/team-create", headers=owner_headers, json=payload).status_code == 200
+    assert client.post("/admin/team-create", headers=admin_headers, json=payload).status_code == 200
 
     clash = client.post(
-        "/owner/team-create",
-        headers=owner_headers,
+        "/admin/team-create",
+        headers=admin_headers,
         json={"name": "shared_team_name", "password": "pass", "school_name": "School B"},
     )
     assert clash.status_code == 409
@@ -162,12 +162,12 @@ def test_team_create_name_must_be_globally_unique(client, owner_headers, db_sess
     assert len(teams) == 1
 
 
-def test_team_create_duplicate_rejected(client, owner_headers):
+def test_team_create_duplicate_rejected(client, admin_headers):
     """A name already in use is rejected with a 409."""
     payload = {"name": "same_team", "password": "pass", "school_name": "School"}
-    first = client.post("/owner/team-create", headers=owner_headers, json=payload)
+    first = client.post("/admin/team-create", headers=admin_headers, json=payload)
     assert first.status_code == 200
 
-    second = client.post("/owner/team-create", headers=owner_headers, json=payload)
+    second = client.post("/admin/team-create", headers=admin_headers, json=payload)
     assert second.status_code == 409
     assert "already exists" in second.json()["detail"].lower()

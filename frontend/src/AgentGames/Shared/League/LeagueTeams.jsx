@@ -74,7 +74,7 @@ const LeagueTeams = ({ selected_league_name }) => {
   const fetchAllTeams = async () => {
     setIsLoadingTeams(true);
     try {
-      const response = await authFetch(`${apiUrl}/owner/get-all-teams`, {
+      const response = await authFetch(`${apiUrl}/admin/get-all-teams`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

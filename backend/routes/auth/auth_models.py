@@ -8,7 +8,7 @@ def _not_blank(v):
 
 
 class Login(BaseModel):
-    """One login form for every password-based account: the owner and teams."""
+    """One login form for every password-based account: the admin and teams."""
 
     name: str
     password: str
@@ -16,8 +16,8 @@ class Login(BaseModel):
     _check_not_empty = field_validator("*")(_not_blank)
 
 
-class OwnerSetup(BaseModel):
-    """First-run setup: the name and password the owner will log in with."""
+class AdminSetup(BaseModel):
+    """First-run setup: the name and password the admin will log in with."""
 
     name: str
     password: str

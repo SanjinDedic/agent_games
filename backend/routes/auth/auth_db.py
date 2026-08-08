@@ -3,11 +3,11 @@ from datetime import timedelta
 
 from sqlmodel import Session, select
 
-from backend.database.db_models import AgentAPIKey, Owner, Team, TeamType
-from backend.errors import InvalidCredentialsError, OwnerExistsError
+from backend.database.db_models import AgentAPIKey, Admin, Team, TeamType
+from backend.errors import InvalidCredentialsError, AdminExistsError
 from backend.routes.auth.auth_config import (
     AGENT_TOKEN_EXPIRY_DAYS,
-    OWNER_TOKEN_EXPIRY_MINUTES,
+    ADMIN_TOKEN_EXPIRY_MINUTES,
     TEAM_TOKEN_EXPIRY_MINUTES,
     create_access_token,
 )
@@ -16,16 +16,16 @@ from backend.time_utils import utc_now
 logger = logging.getLogger(__name__)
 
 
-def owner_exists(session: Session) -> bool:
+def admin_exists(session: Session) -> bool:
     """Whether this deployment has been claimed. Gates the setup endpoint and is
     reported by GET /config so the frontend knows to show the setup form."""
-    return session.exec(select(Owner.id)).first() is not None
+    return session.exec(select(Admin.id)).first() is not None
 
 
-def mint_owner_token(owner: Owner) -> str:
+def mint_admin_token(admin: Admin) -> str:
     return create_access_token(
-        data={"sub": owner.username, "role": "owner"},
-        expires_delta=timedelta(minutes=OWNER_TOKEN_EXPIRY_MINUTES),
+        data={"sub": admin.username, "role": "admin"},
+        expires_delta=timedelta(minutes=ADMIN_TOKEN_EXPIRY_MINUTES),
     )
 
 
@@ -43,37 +43,37 @@ def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedel
     return create_access_token(data=token_data, expires_delta=expires_delta)
 
 
-def create_owner(session: Session, username: str, password: str) -> str:
-    """Claim an unclaimed deployment, returning a token for the new owner.
+def create_admin(session: Session, username: str, password: str) -> str:
+    """Claim an unclaimed deployment, returning a token for the new admin.
 
-    Refuses once an owner exists — that check is the entire authorization for
+    Refuses once an admin exists — that check is the entire authorization for
     this endpoint, which is why it is safe to expose in production.
     """
-    if owner_exists(session):
-        raise OwnerExistsError("This deployment has already been set up")
+    if admin_exists(session):
+        raise AdminExistsError("This deployment has already been set up")
 
-    owner = Owner(username=username, password_hash="")
-    owner.set_password(password)
-    session.add(owner)
+    admin = Admin(username=username, password_hash="")
+    admin.set_password(password)
+    session.add(admin)
     session.commit()
-    session.refresh(owner)
-    logger.info(f'Deployment claimed by owner "{username}"')
-    return mint_owner_token(owner)
+    session.refresh(admin)
+    logger.info(f'Deployment claimed by admin "{username}"')
+    return mint_admin_token(admin)
 
 
 def login(session: Session, name: str, password: str) -> dict:
-    """Authenticate the owner or a team against one name+password form.
+    """Authenticate the admin or a team against one name+password form.
 
-    Resolves the owner first, then a team; team names are globally unique, so it
+    Resolves the admin first, then a team; team names are globally unique, so it
     is one row either way. Every failure raises the same error with the same
     message, so the response never reveals which namespace the name matched.
     """
-    owner = session.exec(select(Owner).where(Owner.username == name)).one_or_none()
-    if owner is not None and owner.verify_password(password):
+    admin = session.exec(select(Admin).where(Admin.username == name)).one_or_none()
+    if admin is not None and admin.verify_password(password):
         return {
-            "access_token": mint_owner_token(owner),
+            "access_token": mint_admin_token(admin),
             "token_type": "bearer",
-            "role": "owner",
+            "role": "admin",
         }
 
     team = session.exec(select(Team).where(Team.name == name)).one_or_none()

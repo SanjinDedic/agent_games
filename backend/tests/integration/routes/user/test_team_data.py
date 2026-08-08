@@ -186,9 +186,9 @@ def test_team_data_stats_scoped_to_current_league(
     assert agent["achieved_first"] is False
 
 
-def test_team_data_rejects_non_team_tokens(client, owner_headers):
+def test_team_data_rejects_non_team_tokens(client, admin_headers):
     """Admin tokens fail the student-role gate before any team lookup."""
-    resp = client.get("/user/team-data", headers=owner_headers)
+    resp = client.get("/user/team-data", headers=admin_headers)
     assert resp.status_code == 403
 
 

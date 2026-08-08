@@ -11,7 +11,7 @@ from backend.time_utils import utc_now
 
 @pytest.fixture
 def reset_setup(db_session: Session) -> dict:
-    """A league with a team, plus owner headers."""
+    """A league with a team, plus admin headers."""
     teams = {}
     for key in ("own", "other"):
         league = League(
@@ -37,7 +37,7 @@ def reset_setup(db_session: Session) -> dict:
         teams[key] = team
 
     token = create_access_token(
-        data={"sub": "test_owner", "role": "owner"},
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -53,7 +53,7 @@ def test_generate_reset_link(client, reset_setup, db_session):
     team = reset_setup["team"]
 
     response = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers=reset_setup["headers"],
         json={"team_id": team.id},
     )
@@ -67,7 +67,7 @@ def test_generate_reset_link(client, reset_setup, db_session):
     assert team.password_reset_expiry > utc_now()
 
     response = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers=reset_setup["headers"],
         json={"team_id": team.id},
     )
@@ -87,20 +87,20 @@ def test_generate_reset_link_failures(client, reset_setup, team_token):
     headers = reset_setup["headers"]
 
     response = client.post(
-        "/owner/team-password-reset", headers=headers, json={"team_id": 99999}
+        "/admin/team-password-reset", headers=headers, json={"team_id": 99999}
     )
     assert response.status_code == 404
 
-    # Every team in the deployment is the owner's to reset.
+    # Every team in the deployment is the admin's to reset.
     response = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers=headers,
         json={"team_id": reset_setup["other_team"].id},
     )
     assert response.status_code == 200
 
     response = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers={"Authorization": f"Bearer {team_token}"},
         json={"team_id": reset_setup["team"].id},
     )
@@ -111,7 +111,7 @@ def test_reset_info_public_lookup(client, reset_setup):
     """The public info endpoint names the team; unknown tokens 404."""
     team = reset_setup["team"]
     reset_token = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers=reset_setup["headers"],
         json={"team_id": team.id},
     ).json()["reset_token"]
@@ -129,7 +129,7 @@ def test_reset_password_full_flow(client, reset_setup, db_session):
     token; the old password stops working."""
     team = reset_setup["team"]
     reset_token = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers=reset_setup["headers"],
         json={"team_id": team.id},
     ).json()["reset_token"]
@@ -176,7 +176,7 @@ def test_reset_password_expired_and_invalid(client, reset_setup, db_session):
     """Expired tokens 404; blank passwords 422 without consuming the token."""
     team = reset_setup["team"]
     reset_token = client.post(
-        "/owner/team-password-reset",
+        "/admin/team-password-reset",
         headers=reset_setup["headers"],
         json={"team_id": team.id},
     ).json()["reset_token"]

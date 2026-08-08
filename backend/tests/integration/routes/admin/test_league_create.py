@@ -7,12 +7,12 @@ from backend.routes.auth.auth_core import create_access_token
 from backend.time_utils import utc_now
 
 
-def test_league_create_success(client, owner_headers, db_session):
+def test_league_create_success(client, admin_headers, db_session):
     """Test successful league creation"""
     # Test basic league creation
     response = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "new_test_league", "game": "greedy_pig"},
     )
     assert response.status_code == 200
@@ -33,21 +33,21 @@ def test_league_create_success(client, owner_headers, db_session):
     ) < 60
 
 
-def test_league_create_failures(client, owner_headers, db_session):
+def test_league_create_failures(client, admin_headers, db_session):
     """Test failure cases for league creation"""
     # Test case 1: Duplicate league name
     # First create a league
     response = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "duplicate_league", "game": "greedy_pig"},
     )
     assert response.status_code == 200
 
     # Try to create league with same name
     response = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "duplicate_league", "game": "greedy_pig"},
     )
     assert response.status_code == 409
@@ -55,8 +55,8 @@ def test_league_create_failures(client, owner_headers, db_session):
 
     # Test case 2: Invalid game name
     response = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "invalid_game_league", "game": "invalid_game"},
     )
     assert response.status_code == 422
@@ -64,15 +64,15 @@ def test_league_create_failures(client, owner_headers, db_session):
 
     # Test case 3: Empty league name
     response = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "", "game": "greedy_pig"},
     )
     assert response.status_code == 422
 
     # Test case 4: Unauthorized access (no token)
     response = client.post(
-        "/owner/league-create",
+        "/admin/league-create",
         json={"name": "unauthorized_league", "game": "greedy_pig"},
     )
     assert response.status_code == 401
@@ -83,7 +83,7 @@ def test_league_create_failures(client, owner_headers, db_session):
         expires_delta=timedelta(minutes=30),
     )
     response = client.post(
-        "/owner/league-create",
+        "/admin/league-create",
         headers={"Authorization": f"Bearer {wrong_token}"},
         json={"name": "wrong_role_league", "game": "greedy_pig"},
     )

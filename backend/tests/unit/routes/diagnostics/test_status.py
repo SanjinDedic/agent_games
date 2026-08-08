@@ -3,14 +3,14 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from backend.routes.auth.auth_core import require_owner
+from backend.routes.auth.auth_core import require_admin
 from backend.routes.diagnostics.diagnostics_router import get_status
 
 
 @pytest.mark.asyncio
 async def test_status_success():
     """Test successful retrieval of status for all services."""
-    mock_user = {"role": "owner", "sub": "admin"}
+    mock_user = {"role": "admin", "sub": "admin"}
 
     # Mock service status data
     mock_statuses = {
@@ -45,10 +45,10 @@ async def test_status_success():
         assert mock_get_all_services_status.called
 
 
-def test_require_owner_rejects_other_roles():
+def test_require_admin_rejects_other_roles():
     """The guard is a dependency now, so it is tested directly rather than by
     calling the endpoint — a bare call to get_status no longer runs it."""
     with pytest.raises(HTTPException) as exc_info:
-        require_owner({"role": "student", "team_name": "some_team"})
+        require_admin({"role": "student", "team_name": "some_team"})
 
     assert exc_info.value.status_code == 403

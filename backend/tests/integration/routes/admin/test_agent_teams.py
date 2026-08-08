@@ -12,8 +12,8 @@ from backend.database.db_models import (
     Team,
     TeamType,
 )
-from backend.routes.owner.owner_db import create_agent_team, create_api_key
-from backend.routes.owner.owner_models import CreateAgentTeam
+from backend.routes.admin.admin_db import create_agent_team, create_api_key
+from backend.routes.admin.admin_models import CreateAgentTeam
 from backend.time_utils import utc_now
 
 

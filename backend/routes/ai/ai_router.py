@@ -19,9 +19,9 @@ from backend.routes.ai.clients import CLIENT_REGISTRY, get_client_class
 from backend.routes.ai.plagiarism_service import assess_team_for_plagiarism
 from backend.routes.auth.auth_core import (
     get_current_user,
-    require_owner,
+    require_admin,
 )
-from backend.routes.owner.owner_db import get_league_by_id
+from backend.routes.admin.admin_db import get_league_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ ai_router = APIRouter()
 
 @ai_router.get("/api-keys")
 async def get_api_keys_endpoint(
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Get the current AI provider API keys (masked for security)."""
@@ -48,7 +48,7 @@ async def get_api_keys_endpoint(
 @ai_router.post("/api-keys")
 async def update_api_keys_endpoint(
     keys_data: UpdateAPIKeysRequest,
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Update AI provider API keys."""
@@ -63,7 +63,7 @@ async def update_api_keys_endpoint(
 @ai_router.post("/api-keys/validate")
 async def validate_api_key_endpoint(
     request_data: ValidateAPIKeyRequest,
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Validate an AI provider API key by making a test call."""
@@ -88,7 +88,7 @@ async def validate_api_key_endpoint(
 @ai_router.post("/assess-plagiarism")
 async def assess_plagiarism_endpoint(
     request: PlagiarismRequest,
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
     session: Session = Depends(get_db),
 ):
     """Run plagiarism + AI-generation assessment against a team's submission history."""
@@ -106,7 +106,7 @@ async def assess_plagiarism_endpoint(
     # Audit log.
     logger.info(
         "Plagiarism assessment: caller=%s team=%s league_id=%s",
-        current_user.get("owner_name"),
+        current_user.get("admin_name"),
         team.name,
         request.league_id,
     )

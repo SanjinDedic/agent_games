@@ -53,7 +53,7 @@ def integration_team_headers(setup_integration_team: Team) -> dict:
 def test_complete_game_lifecycle(
     client: TestClient,
     db_session: Session,
-    owner_headers: dict,
+    admin_headers: dict,
     team_auth_headers: dict,
 ):
     """
@@ -69,18 +69,18 @@ def test_complete_game_lifecycle(
     db_session.commit()
 
     # 1. Create a new league
-    owner_token = create_access_token(
+    admin_token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
-    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
     league_response = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "integration_league", "game": "prisoners_dilemma"},
     )
     assert league_response.status_code == 200
@@ -89,8 +89,8 @@ def test_complete_game_lifecycle(
 
     # 2. Create and assign team
     team_response = client.post(
-        "/owner/team-create",
-        headers=owner_headers,
+        "/admin/team-create",
+        headers=admin_headers,
         json={
             "name": "integration_team",
             "password": "test_pass",
@@ -137,8 +137,8 @@ class CustomPlayer(Player):
 
     # 4. Run simulation
     sim_response = client.post(
-        "/owner/run-simulation",
-        headers=owner_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={
             "league_id": league_id,
             "num_simulations": 10,
@@ -151,8 +151,8 @@ class CustomPlayer(Player):
 
     # 5. Publish results
     publish_response = client.post(
-        "/owner/publish-results",
-        headers=owner_headers,
+        "/admin/publish-results",
+        headers=admin_headers,
         json={
             "league_id": league_id,
             "id": sim_id,
@@ -205,11 +205,11 @@ def test_league_assign_keeps_team_in_original_league_on_failure(
     assert setup_integration_team.league_id == test_league.id
 
 
-def test_run_simulation_unknown_league(client: TestClient, owner_headers: dict):
+def test_run_simulation_unknown_league(client: TestClient, admin_headers: dict):
     """Simulating a league that doesn't exist is a 404 (never reaches the worker)."""
     response = client.post(
-        "/owner/run-simulation",
-        headers=owner_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={"league_id": 999999, "num_simulations": 10},
     )
     assert response.status_code == 404
@@ -217,7 +217,7 @@ def test_run_simulation_unknown_league(client: TestClient, owner_headers: dict):
 
 
 def test_run_simulation_rejected_on_unassigned_league(
-    client: TestClient, db_session: Session, owner_headers: dict
+    client: TestClient, db_session: Session, admin_headers: dict
 ):
     """The 'unassigned' holding league is protected from simulation runs."""
     unassigned = db_session.exec(
@@ -225,8 +225,8 @@ def test_run_simulation_rejected_on_unassigned_league(
     ).one()
 
     response = client.post(
-        "/owner/run-simulation",
-        headers=owner_headers,
+        "/admin/run-simulation",
+        headers=admin_headers,
         json={"league_id": unassigned.id, "num_simulations": 10},
     )
     assert response.status_code == 400

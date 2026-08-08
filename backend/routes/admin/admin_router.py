@@ -7,8 +7,8 @@ from sqlmodel import Session
 from backend.database.db_models import UNASSIGNED_LEAGUE_NAME
 from backend.database.db_session import get_db
 from backend.errors import ProtectedLeagueError
-from backend.routes.auth.auth_core import require_owner
-from backend.routes.owner.owner_db import (
+from backend.routes.auth.auth_core import require_admin
+from backend.routes.admin.admin_db import (
     assign_team_to_league,
     create_agent_team,
     create_api_key,
@@ -28,7 +28,7 @@ from backend.routes.owner.owner_db import (
     update_expiry_date,
     update_league_info,
 )
-from backend.routes.owner.owner_models import (
+from backend.routes.admin.admin_models import (
     CreateAgentAPIKey,
     CreateAgentTeam,
     ExpiryDate,
@@ -49,9 +49,9 @@ from backend.tasks.simulation_task import run_simulation
 
 logger = logging.getLogger(__name__)
 
-owner_router = APIRouter(dependencies=[Depends(require_owner)])
+admin_router = APIRouter(dependencies=[Depends(require_admin)])
 
-# Every route here requires the owner role, enforced once by the router-level
+# Every route here requires the admin role, enforced once by the router-level
 # dependency above rather than per route — there is no endpoint in this module a
 # team may call, so a missing per-route guard should be impossible rather than
 # merely unlikely.
@@ -64,7 +64,7 @@ owner_router = APIRouter(dependencies=[Depends(require_owner)])
 # {"message": ...}.
 
 
-@owner_router.post("/league-create")
+@admin_router.post("/league-create")
 async def create_league_endpoint(
     league: LeagueSignUp,
     session: Session = Depends(get_db),
@@ -73,7 +73,7 @@ async def create_league_endpoint(
     return create_league(session, league)
 
 
-@owner_router.post("/team-create")
+@admin_router.post("/team-create")
 async def team_create_endpoint(
     team: TeamSignup,
     session: Session = Depends(get_db),
@@ -82,7 +82,7 @@ async def team_create_endpoint(
     return create_team(session, team)
 
 
-@owner_router.post("/delete-team")
+@admin_router.post("/delete-team")
 async def delete_team_endpoint(
     team: TeamDelete,
     session: Session = Depends(get_db),
@@ -91,20 +91,20 @@ async def delete_team_endpoint(
     return {"message": delete_team(session, team.id)}
 
 
-@owner_router.get("/get-all-teams")
+@admin_router.get("/get-all-teams")
 async def get_teams_endpoint(session: Session = Depends(get_db)):
     """Get every team in this deployment."""
     return get_all_teams(session)
 
 
-@owner_router.get("/home")
+@admin_router.get("/home")
 async def get_home_endpoint(session: Session = Depends(get_db)):
-    """Payload backing the owner home page: one card per league/classroom (team
+    """Payload backing the admin home page: one card per league/classroom (team
     count, game, signup link)."""
     return {"classrooms": get_classroom_summaries(session)}
 
 
-@owner_router.post("/run-simulation")
+@admin_router.post("/run-simulation")
 async def run_simulation_endpoint(
     simulation_config: SimulationConfig,
     session: Session = Depends(get_db),
@@ -181,7 +181,7 @@ async def run_simulation_endpoint(
     return response_data
 
 
-@owner_router.post("/get-all-league-results")
+@admin_router.post("/get-all-league-results")
 async def get_league_results_endpoint(
     league: LeagueIdRef,
     session: Session = Depends(get_db),
@@ -190,7 +190,7 @@ async def get_league_results_endpoint(
     return get_all_league_results(session, league.league_id)
 
 
-@owner_router.post("/publish-results")
+@admin_router.post("/publish-results")
 async def publish_results_endpoint(
     results: LeagueResults,
     session: Session = Depends(get_db),
@@ -202,7 +202,7 @@ async def publish_results_endpoint(
     return {"message": msg, **data}
 
 
-@owner_router.post("/update-expiry-date")
+@admin_router.post("/update-expiry-date")
 async def update_expiry_endpoint(
     expiry: ExpiryDate,
     session: Session = Depends(get_db),
@@ -211,7 +211,7 @@ async def update_expiry_endpoint(
     return {"message": update_expiry_date(session, expiry.league_id, expiry.date)}
 
 
-@owner_router.post("/update-league-info")
+@admin_router.post("/update-league-info")
 async def update_league_info_endpoint(
     payload: LeagueInfoUpdate,
     session: Session = Depends(get_db),
@@ -224,7 +224,7 @@ async def update_league_info_endpoint(
     }
 
 
-@owner_router.post("/assign-team-to-league")
+@admin_router.post("/assign-team-to-league")
 async def assign_team_endpoint(
     assignment: TeamLeagueAssignment,
     session: Session = Depends(get_db),
@@ -237,7 +237,7 @@ async def assign_team_endpoint(
     }
 
 
-@owner_router.post("/generate-signup-link")
+@admin_router.post("/generate-signup-link")
 async def generate_signup_link_endpoint(
     league: LeagueIdRef,
     session: Session = Depends(get_db),
@@ -250,7 +250,7 @@ async def generate_signup_link_endpoint(
     }
 
 
-@owner_router.post("/team-password-reset")
+@admin_router.post("/team-password-reset")
 async def team_password_reset_endpoint(
     team: TeamIdRef,
     session: Session = Depends(get_db),
@@ -264,7 +264,7 @@ async def team_password_reset_endpoint(
     }
 
 
-@owner_router.post("/delete-league")
+@admin_router.post("/delete-league")
 async def delete_league_endpoint(
     league: LeagueDelete,
     session: Session = Depends(get_db),
@@ -273,7 +273,7 @@ async def delete_league_endpoint(
     return {"message": delete_league(session, league.league_id)}
 
 
-@owner_router.post("/unassign-team")
+@admin_router.post("/unassign-team")
 async def unassign_team_endpoint(
     team: TeamIdRef,
     session: Session = Depends(get_db),
@@ -286,7 +286,7 @@ async def unassign_team_endpoint(
 # --- agent teams (API-key driven, for the /agent router) --------------------
 
 
-@owner_router.post("/create-agent-team")
+@admin_router.post("/create-agent-team")
 async def create_agent_team_endpoint(
     request: CreateAgentTeam,
     session: Session = Depends(get_db),
@@ -295,7 +295,7 @@ async def create_agent_team_endpoint(
     return create_agent_team(session, request)
 
 
-@owner_router.post("/create-agent-api-key")
+@admin_router.post("/create-agent-api-key")
 async def create_agent_api_key_endpoint(
     request: CreateAgentAPIKey,
     session: Session = Depends(get_db),

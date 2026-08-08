@@ -66,7 +66,7 @@ def league_with_submissions(db_session: Session) -> dict:
     db_session.refresh(empty_league)
 
     token = create_access_token(
-        data={"sub": "test_owner", "role": "owner"},
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -141,7 +141,7 @@ def test_get_all_submissions_invalid_league(client, league_with_submissions):
 
 
 def test_get_all_submissions_student_forbidden(client, league_with_submissions):
-    """Student role is rejected by require_owner."""
+    """Student role is rejected by require_admin."""
     data = league_with_submissions
     student_token = create_access_token(
         data={"sub": "some_student", "role": "student"},
@@ -154,8 +154,8 @@ def test_get_all_submissions_student_forbidden(client, league_with_submissions):
     assert resp.status_code == 403
 
 
-def test_get_all_submissions_owner_sees_league(client, db_session):
-    """The owner can see submissions in any league."""
+def test_get_all_submissions_admin_sees_league(client, db_session):
+    """The admin can see submissions in any league."""
     db_session.commit()
 
     league = League(
@@ -170,8 +170,8 @@ def test_get_all_submissions_owner_sees_league(client, db_session):
 
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )

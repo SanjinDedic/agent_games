@@ -25,8 +25,8 @@ def info_setup(db_session: Session) -> tuple:
 
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -39,7 +39,7 @@ def test_update_league_info_success(client, info_setup, db_session):
 
     markdown = "# Schedule\n\nSimulations run every Friday 5pm."
     response = client.post(
-        "/owner/update-league-info",
+        "/admin/update-league-info",
         headers=headers,
         json={"league_id": league.id, "info_markdown": markdown},
     )
@@ -50,7 +50,7 @@ def test_update_league_info_success(client, info_setup, db_session):
 
     # Empty string clears the field
     response = client.post(
-        "/owner/update-league-info",
+        "/admin/update-league-info",
         headers=headers,
         json={"league_id": league.id, "info_markdown": ""},
     )
@@ -63,7 +63,7 @@ def test_update_league_info_unknown_league_404(client, info_setup):
     _, headers = info_setup
 
     response = client.post(
-        "/owner/update-league-info",
+        "/admin/update-league-info",
         headers=headers,
         json={"league_id": 999999, "info_markdown": "should fail"},
     )
@@ -73,7 +73,7 @@ def test_update_league_info_unknown_league_404(client, info_setup):
 def test_update_league_info_unauthenticated(client, info_setup):
     league, _ = info_setup
     response = client.post(
-        "/owner/update-league-info",
+        "/admin/update-league-info",
         json={"league_id": league.id, "info_markdown": "x"},
     )
     assert response.status_code == 401
@@ -86,7 +86,7 @@ def test_update_league_info_wrong_role(client, info_setup):
         expires_delta=timedelta(minutes=30),
     )
     response = client.post(
-        "/owner/update-league-info",
+        "/admin/update-league-info",
         headers={"Authorization": f"Bearer {student}"},
         json={"league_id": league.id, "info_markdown": "x"},
     )
@@ -96,7 +96,7 @@ def test_update_league_info_wrong_role(client, info_setup):
 def test_update_league_info_not_found(client, info_setup):
     _, headers = info_setup
     response = client.post(
-        "/owner/update-league-info",
+        "/admin/update-league-info",
         headers=headers,
         json={"league_id": 999999, "info_markdown": "x"},
     )

@@ -1,4 +1,4 @@
-"""Tests for POST /owner/league-create with school_league flag."""
+"""Tests for POST /admin/league-create with school_league flag."""
 
 from unittest.mock import MagicMock, patch
 
@@ -9,10 +9,10 @@ from sqlmodel import select
 from backend.database.db_models import League
 
 
-def test_school_league_create_success(client, owner_headers, db_session):
+def test_school_league_create_success(client, admin_headers, db_session):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "school_league_happy",
             "game": "greedy_pig",
@@ -35,10 +35,10 @@ def test_school_league_create_success(client, owner_headers, db_session):
     }
 
 
-def test_school_league_requires_a_source(client, owner_headers):
+def test_school_league_requires_a_source(client, admin_headers):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "school_league_empty",
             "game": "greedy_pig",
@@ -50,10 +50,10 @@ def test_school_league_requires_a_source(client, owner_headers):
     assert "exactly one source" in str(resp.json()).lower()
 
 
-def test_non_school_league_ignores_schools(client, owner_headers, db_session):
+def test_non_school_league_ignores_schools(client, admin_headers, db_session):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "non_school_with_schools_arg",
             "game": "greedy_pig",
@@ -71,10 +71,10 @@ def test_non_school_league_ignores_schools(client, owner_headers, db_session):
     assert league.schools_config is None
 
 
-def test_school_list_dedup_and_strip(client, owner_headers, db_session):
+def test_school_list_dedup_and_strip(client, admin_headers, db_session):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "school_league_dedup",
             "game": "greedy_pig",
@@ -90,10 +90,10 @@ def test_school_list_dedup_and_strip(client, owner_headers, db_session):
     assert league.schools_config["schools"] == ["Willetton", "Perth Modern"]
 
 
-def test_school_list_rejects_punctuation_only(client, owner_headers):
+def test_school_list_rejects_punctuation_only(client, admin_headers):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "school_league_punct",
             "game": "greedy_pig",
@@ -105,11 +105,11 @@ def test_school_list_rejects_punctuation_only(client, owner_headers):
     assert "alphanumeric" in str(resp.json()).lower()
 
 
-def test_default_school_league_false(client, owner_headers, db_session):
+def test_default_school_league_false(client, admin_headers, db_session):
     """Leagues created without the flag default to school_league=False."""
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={"name": "classic_league", "game": "greedy_pig"},
     )
     assert resp.status_code == 200
@@ -128,15 +128,15 @@ def _mock_csv_response(csv_text: str) -> MagicMock:
     return resp
 
 
-def test_school_league_create_with_sheet_url(client, owner_headers, db_session):
+def test_school_league_create_with_sheet_url(client, admin_headers, db_session):
     csv_text = "School\nWilletton SHS\nPerth Modern\n"
     with patch(
         "backend.schools.providers.httpx.get",
         return_value=_mock_csv_response(csv_text),
     ):
         resp = client.post(
-            "/owner/league-create",
-            headers=owner_headers,
+            "/admin/league-create",
+            headers=admin_headers,
             json={
                 "name": "sheet_backed_league",
                 "game": "greedy_pig",
@@ -155,10 +155,10 @@ def test_school_league_create_with_sheet_url(client, owner_headers, db_session):
     }
 
 
-def test_school_league_rejects_both_sheet_and_static(client, owner_headers):
+def test_school_league_rejects_both_sheet_and_static(client, admin_headers):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "both_sources",
             "game": "greedy_pig",
@@ -171,10 +171,10 @@ def test_school_league_rejects_both_sheet_and_static(client, owner_headers):
     assert "exactly one source" in str(resp.json()).lower()
 
 
-def test_school_league_rejects_neither_source(client, owner_headers):
+def test_school_league_rejects_neither_source(client, admin_headers):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "no_source",
             "game": "greedy_pig",
@@ -185,15 +185,15 @@ def test_school_league_rejects_neither_source(client, owner_headers):
     assert "exactly one source" in str(resp.json()).lower()
 
 
-def test_school_league_rejects_empty_sheet(client, owner_headers):
+def test_school_league_rejects_empty_sheet(client, admin_headers):
     csv_text = "School\n"  # header only, no data rows
     with patch(
         "backend.schools.providers.httpx.get",
         return_value=_mock_csv_response(csv_text),
     ):
         resp = client.post(
-            "/owner/league-create",
-            headers=owner_headers,
+            "/admin/league-create",
+            headers=admin_headers,
             json={
                 "name": "empty_sheet_league",
                 "game": "greedy_pig",
@@ -205,14 +205,14 @@ def test_school_league_rejects_empty_sheet(client, owner_headers):
     assert "empty list" in resp.json()["detail"].lower()
 
 
-def test_school_league_rejects_unreachable_sheet(client, owner_headers):
+def test_school_league_rejects_unreachable_sheet(client, admin_headers):
     with patch(
         "backend.schools.providers.httpx.get",
         side_effect=httpx.ConnectError("boom"),
     ):
         resp = client.post(
-            "/owner/league-create",
-            headers=owner_headers,
+            "/admin/league-create",
+            headers=admin_headers,
             json={
                 "name": "unreachable_sheet_league",
                 "game": "greedy_pig",
@@ -224,10 +224,10 @@ def test_school_league_rejects_unreachable_sheet(client, owner_headers):
     assert "could not read the google sheet" in resp.json()["detail"].lower()
 
 
-def test_school_league_rejects_non_sheets_url(client, owner_headers):
+def test_school_league_rejects_non_sheets_url(client, admin_headers):
     resp = client.post(
-        "/owner/league-create",
-        headers=owner_headers,
+        "/admin/league-create",
+        headers=admin_headers,
         json={
             "name": "bad_url_league",
             "game": "greedy_pig",

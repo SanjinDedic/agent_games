@@ -61,7 +61,7 @@ def _mock_openai_client(envelope):
 
 @pytest.fixture
 def league_setup(db_session: Session):
-    """A league, a team with 2 submissions, and owner headers.
+    """A league, a team with 2 submissions, and admin headers.
 
     Returns (league, team, headers).
     """
@@ -100,7 +100,7 @@ def league_setup(db_session: Session):
     db_session.commit()
 
     token = create_access_token(
-        data={"sub": "test_owner", "role": "owner"},
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
     headers = {"Authorization": f"Bearer {token}"}
@@ -143,7 +143,7 @@ def test_assess_team_not_found_in_league(client, league_setup, stored_openai_key
 
 
 def test_assess_wrong_role_forbidden(client, league_setup, stored_openai_key):
-    """Student role is rejected by require_owner."""
+    """Student role is rejected by require_admin."""
     league, team, _ = league_setup
     token = create_access_token(
         data={"sub": "some_student", "role": "student"},
@@ -640,13 +640,13 @@ def test_assess_ast_construct_counts(
     assert pm["complexity_jump_flag"] in ("suspicious", "highly_suspicious")
 
 
-def test_assess_owner_can_assess_any_league(
+def test_assess_admin_can_assess_any_league(
     client, league_setup, stored_openai_key
 ):
-    """Any league in the deployment is the owner's to assess."""
+    """Any league in the deployment is the admin's to assess."""
     league, team, _ = league_setup
-    owner_token = create_access_token(
-        data={"sub": "test_owner", "role": "owner"},
+    admin_token = create_access_token(
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
     with patch(
@@ -657,7 +657,7 @@ def test_assess_owner_can_assess_any_league(
         )
         response = client.post(
             "/ai/assess-plagiarism",
-            headers={"Authorization": f"Bearer {owner_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={"league_id": league.id, "team_id": team.id},
         )
     assert response.json()["team_name"] == team.name

@@ -30,7 +30,7 @@ from backend.errors import (
     TeamNotFoundError,
 )
 from backend.games.game_factory import GameFactory
-from backend.routes.owner.owner_models import LeagueSignUp
+from backend.routes.admin.admin_models import LeagueSignUp
 from backend.schools.config import GoogleSheetsSchoolsConfig, StaticSchoolsConfig
 from backend.schools.providers import (
     GoogleSheetsSchoolsProvider,
@@ -198,7 +198,7 @@ def get_all_teams(session: Session) -> Dict:
 
 
 def get_classroom_summaries(session: Session) -> list:
-    """League/classroom cards for the owner home page: every non-deleted league
+    """League/classroom cards for the admin home page: every non-deleted league
     except the 'unassigned' holding pen, with its team count and shareable
     signup link."""
     leagues = session.exec(

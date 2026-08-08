@@ -3,7 +3,7 @@ import time
 from fastapi import APIRouter, Depends, Header, HTTPException
 
 from backend.config import BENCHMARK_TOKEN
-from backend.routes.auth.auth_core import require_owner
+from backend.routes.auth.auth_core import require_admin
 from backend.routes.diagnostics.diagnostics_models import BenchmarkSubmission
 from backend.routes.diagnostics.diagnostics_utils import get_all_services_status
 
@@ -23,7 +23,7 @@ diagnostics_router = APIRouter()
 
 @diagnostics_router.get("/status")
 async def get_status(
-    current_user: dict = Depends(require_owner),
+    current_user: dict = Depends(require_admin),
 ):
     """Get health status for the Celery broker and worker services"""
     return {"statuses": await get_all_services_status()}

@@ -42,7 +42,7 @@ def unassign_setup(db_session: Session) -> dict:
     db_session.refresh(team)
 
     token = create_access_token(
-        data={"sub": "test_owner", "role": "owner"},
+        data={"sub": "test_admin", "role": "admin"},
         expires_delta=timedelta(minutes=30),
     )
 
@@ -59,7 +59,7 @@ def test_unassign_team_success(client, unassign_setup, db_session):
     data = unassign_setup
 
     resp = client.post(
-        "/owner/unassign-team",
+        "/admin/unassign-team",
         headers=data["headers"],
         json={"team_id": data["team"].id},
     )
@@ -74,7 +74,7 @@ def test_unassign_team_success(client, unassign_setup, db_session):
 def test_unassign_team_not_found(client, unassign_setup):
     """Unassign non-existent team returns error."""
     resp = client.post(
-        "/owner/unassign-team",
+        "/admin/unassign-team",
         headers=unassign_setup["headers"],
         json={"team_id": 99999},
     )

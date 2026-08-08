@@ -47,8 +47,8 @@ def league_results_setup(db_session: Session) -> tuple:
     # Create token
     token = create_access_token(
         data={
-            "sub": "test_owner",
-            "role": "owner",
+            "sub": "test_admin",
+            "role": "admin",
         },
         expires_delta=timedelta(minutes=30),
     )
@@ -64,7 +64,7 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     
     # Get results for league with simulations
     response = client.post(
-        "/owner/get-all-league-results",
+        "/admin/get-all-league-results",
         headers=headers,
         json={"league_id": league.id},
     )
@@ -98,7 +98,7 @@ def test_get_all_league_results_success(client, league_results_setup, db_session
     
     # Get results for empty league
     response = client.post(
-        "/owner/get-all-league-results",
+        "/admin/get-all-league-results",
         headers=headers,
         json={"league_id": empty_league.id},
     )
@@ -114,7 +114,7 @@ def test_get_all_league_results_failures(client, league_results_setup, db_sessio
     
     # Test case 1: Non-existent league
     response = client.post(
-        "/owner/get-all-league-results",
+        "/admin/get-all-league-results",
         headers=headers,
         json={"league_id": 99999},
     )
