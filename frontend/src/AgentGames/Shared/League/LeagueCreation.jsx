@@ -12,16 +12,11 @@ const EMPTY_FORM = {
   leagueName: "",
   gameName: "",
   selectedDate: null,
-  schoolLeague: false,
-  schoolsSource: "static",
-  schoolsText: "",
-  sheetUrl: "",
 };
 
 /**
  * "Create New League" button that opens the creation form in a modal.
- * The form covers name, game, school-league settings, expiry, and which
- * game and signup options. After a successful creation the
+ * The form covers name, game and expiry. After a successful creation the
  * modal shows the signup link until dismissed. `compact` renders the card
  * as a single thin row (title + button) so it can share a column with
  * other cards.
@@ -38,9 +33,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [signupUrl, setSignupUrl] = useState("");
-  const [createdSchoolLeague, setCreatedSchoolLeague] = useState(false);
-
-  const SHEETS_URL_RE = /\/spreadsheets\/d\/[a-zA-Z0-9_-]+/;
 
   const fetchGames = async () => {
     try {
@@ -90,12 +82,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
     setError("");
   };
 
-  const parseSchools = (text) =>
-    text
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
   const handleDateChange = (date) => {
     setLeagueInfo((prev) => ({
       ...prev,
@@ -108,7 +94,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
     setIsOpen(false);
     setError("");
     setSignupUrl("");
-    setCreatedSchoolLeague(false);
     setLeagueInfo({ ...EMPTY_FORM, gameName: games[0] || "" });
   };
 
@@ -121,28 +106,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
     if (!leagueInfo.gameName) {
       setError("Game selection is required");
       return false;
-    }
-
-    if (leagueInfo.schoolLeague) {
-      if (leagueInfo.schoolsSource === "sheet") {
-        const url = leagueInfo.sheetUrl.trim();
-        if (!url) {
-          setError("Enter a Google Sheet URL");
-          return false;
-        }
-        if (!SHEETS_URL_RE.test(url)) {
-          setError(
-            "That doesn't look like a Google Sheets URL (expected /spreadsheets/d/...)."
-          );
-          return false;
-        }
-      } else {
-        const schools = parseSchools(leagueInfo.schoolsText);
-        if (schools.length === 0) {
-          setError("Add at least one school (one per line)");
-          return false;
-        }
-      }
     }
 
     return true;
@@ -166,15 +129,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
           expiry_date: leagueInfo.selectedDate
             ? leagueInfo.selectedDate.toISOString()
             : undefined,
-          school_league: leagueInfo.schoolLeague,
-          schools:
-            leagueInfo.schoolLeague && leagueInfo.schoolsSource === "static"
-              ? parseSchools(leagueInfo.schoolsText)
-              : [],
-          sheet_url:
-            leagueInfo.schoolLeague && leagueInfo.schoolsSource === "sheet"
-              ? leagueInfo.sheetUrl.trim()
-              : null,
         }),
       });
 
@@ -191,7 +145,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
           const baseUrl = `${window.location.protocol}//${window.location.host}`;
           const signupPath = `/join/${data.signup_token}`;
           setSignupUrl(`${baseUrl}${signupPath}`);
-          setCreatedSchoolLeague(Boolean(data.school_league));
         } else {
           closeModal();
         }
@@ -299,11 +252,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
                 <p className="mt-2 text-sm text-ui-dark">
                   {`${T.Teams} who use this link will be directly assigned to this ${T.league} upon signup.`}
                 </p>
-                {createdSchoolLeague && (
-                  <p className="mt-2 text-sm text-danger font-medium">
-                    {`School ${T.league}: tell students to save their passwords. There is no recovery — if they lose it they will need to sign up again under a new ${T.team} number.`}
-                  </p>
-                )}
                 <button
                   onClick={closeModal}
                   className="mt-4 w-full py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded transition-colors"
@@ -349,103 +297,6 @@ const LeagueCreation = ({ onCreated, compact = false }) => {
                     ))}
                   </select>
                 </div>
-
-                <div className="mb-4 flex items-center">
-                  <input
-                    type="checkbox"
-                    id="schoolLeague"
-                    name="schoolLeague"
-                    checked={leagueInfo.schoolLeague}
-                    onChange={handleChange}
-                    className="mr-2"
-                  />
-                  <label htmlFor="schoolLeague" className="text-ui-dark">
-                    {`School ${T.league} (students pick their school from a dropdown; ${T.team} names auto-generated; no email, no password recovery)`}
-                  </label>
-                </div>
-
-                {leagueInfo.schoolLeague && (
-                  <div className="mb-4 border border-ui-light rounded p-3">
-                    <div className="mb-3 flex gap-4">
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="schoolsSource"
-                          value="static"
-                          checked={leagueInfo.schoolsSource === "static"}
-                          onChange={handleChange}
-                          className="mr-2"
-                        />
-                        Paste list
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="schoolsSource"
-                          value="sheet"
-                          checked={leagueInfo.schoolsSource === "sheet"}
-                          onChange={handleChange}
-                          className="mr-2"
-                        />
-                        Google Sheet URL
-                      </label>
-                    </div>
-
-                    {leagueInfo.schoolsSource === "static" ? (
-                      <>
-                        <label
-                          htmlFor="schoolsText"
-                          className="block text-ui-dark mb-1"
-                        >
-                          Schools (one per line)
-                        </label>
-                        <textarea
-                          id="schoolsText"
-                          name="schoolsText"
-                          rows={6}
-                          value={leagueInfo.schoolsText}
-                          onChange={handleChange}
-                          className="w-full p-2 border border-ui-light rounded font-mono text-sm"
-                          placeholder={"Willetton SHS\nPerth Modern\nApplecross SHS"}
-                        />
-                        <p className="text-sm text-ui mt-1">
-                          Students will pick from this list at signup. At least
-                          one school is required.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <label
-                          htmlFor="sheetUrl"
-                          className="block text-ui-dark mb-1"
-                        >
-                          Google Sheet URL
-                        </label>
-                        <input
-                          id="sheetUrl"
-                          name="sheetUrl"
-                          type="text"
-                          value={leagueInfo.sheetUrl}
-                          onChange={handleChange}
-                          className="w-full p-2 border border-ui-light rounded font-mono text-sm"
-                          placeholder="https://docs.google.com/spreadsheets/d/..."
-                        />
-                        <p className="text-sm text-ui mt-1">
-                          Share the sheet as{" "}
-                          <strong>Anyone with the link &mdash; Viewer</strong>.
-                          Put school names in column A; the first row is treated
-                          as a header. The list refreshes automatically every 5
-                          minutes.
-                        </p>
-                      </>
-                    )}
-
-                    <p className="text-sm text-ui mt-3">
-                      Remind students to save their passwords &mdash; there is
-                      no recovery.
-                    </p>
-                  </div>
-                )}
 
                 <div className="mb-4">
                   <label htmlFor="expiryDate" className="block text-ui-dark mb-1">

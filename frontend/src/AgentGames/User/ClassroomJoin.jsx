@@ -12,7 +12,6 @@ import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
 import { selectSiteName } from "../../slices/settingsSlice";
 import { useTerms } from "../Shared/terminology";
 import DirectClassicSignup from "./DirectClassicSignup";
-import DirectSchoolLeagueSignup from "./DirectSchoolLeagueSignup";
 
 // Every classroom/league has one shareable page: students sign up here the
 // first time, log in here afterwards, and always land inside this league.
@@ -271,12 +270,6 @@ function ClassroomJoin({ defaultTab = "login" }) {
                         </button>
                       </p>
                     </div>
-                  ) : leagueInfo.school_league ? (
-                    <DirectSchoolLeagueSignup
-                      leagueToken={leagueToken}
-                      leagueInfo={leagueInfo}
-                      onShowLogin={() => setTab("login")}
-                    />
                   ) : (
                     <DirectClassicSignup
                       leagueToken={leagueToken}

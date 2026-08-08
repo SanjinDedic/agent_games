@@ -14,8 +14,8 @@
 #   03 admin reads the submissions grid and runs a simulation
 #
 # Deliberately narrow: submission, simulation, and the admin's view of team
-# progress. Everything else (password resets, school leagues, AI hints,
-# publishing) is covered by the pytest suite and has no stage here.
+# progress. Everything else (password resets, AI hints, publishing) is covered
+# by the pytest suite and has no stage here.
 #
 # Owns all setup: ensures the permanent Playwright install (outside the repo)
 # and sources .env. Stages run in order and share state via

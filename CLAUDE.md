@@ -18,6 +18,10 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-ru
 docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner pytest --cov=backend --cov-report=term backend/tests/
 ```
 
+CI (`.github/workflows/tests.yml`) runs the same coverage command plus a frontend
+`npm run build` on every push to `main` and every PR — no deploy step, this repo is
+the self-hosted build.
+
 ### Running the app
 ```bash
 # Development (starts api, valkey, celery workers, postgres, frontend)
@@ -65,9 +69,8 @@ This is a **multi-game agent simulation platform** where students/teams submit c
 - **PostgreSQL** (port 5432): Single cluster hosting both `agent_games` and `agent_games_test` databases
 - **Frontend** (port 3000): React SPA served by Vite
 
-Nothing in the running stack talks to object storage. `backend/s3.py` exists only for
-`backend/scripts/sync_site_images.py`, a maintainer script run from a workstation with
-AWS credentials; the frontend loads images straight from `VITE_ASSETS_URL`.
+Nothing talks to object storage: the frontend loads images and videos straight from
+`VITE_ASSETS_URL` (a public bucket) and no backend code has an AWS dependency.
 
 The API enqueues Celery tasks (`validation.run`, `simulation.run`) and awaits the result by polling the result backend (`backend/tasks/celery_utils.py`). Submitted code executes inside the worker containers (compose-level limits: 500MB RAM, 50 pids) with `worker_max_tasks_per_child=1` — a fresh process per task, so agent code can't contaminate later runs. The AST safety check runs in the API process before enqueue (`backend/routes/user/code_validation.py`); validation tasks have a 5s soft / 6s hard time limit (soft limit via `VALIDATION_TIMEOUT_SECONDS` env, hard is always soft+1; the test compose sets 2s/3s on worker-validation, so worker containers must be recreated with the test overlay after changing it).
 

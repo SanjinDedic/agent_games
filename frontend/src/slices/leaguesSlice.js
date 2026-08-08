@@ -23,7 +23,6 @@ const leaguesSlice = createSlice({
         id: league.id,
         name: league.name,
         signup_link: league.signup_link,
-        school_league: league.school_league ?? false,
         info_markdown: league.info_markdown ?? '',
       }));
       const existing = state.currentLeague
@@ -46,7 +45,6 @@ const leaguesSlice = createSlice({
         id: league.id,
         name: league.name,
         signup_link: league.signup_link,
-        school_league: league.school_league ?? false,
         info_markdown: league.info_markdown ?? '',
       });
     },

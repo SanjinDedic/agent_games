@@ -20,10 +20,6 @@ services:
       - PYTHONPATH=/agent_games
       - CELERY_BROKER_URL=redis://valkey:6379/0
       - DB_ENVIRONMENT=${DB_ENVIRONMENT:-production}
-      # Load-test gate. Empty by default -> /diagnostics/benchmark-submit is
-      # disabled. Set BENCHMARK_TOKEN in the env before `docker compose up` to
-      # enable it for a benchmark run. In prod this comes from deploy secrets.
-      - BENCHMARK_TOKEN=${BENCHMARK_TOKEN:-}
       # Classroom-vs-competition wording, served to the frontend by GET /config.
       # Listed here (not only in .env) so an exported SITE_MODE wins — the
       # Playwright runner drives both vocabularies against one .env.

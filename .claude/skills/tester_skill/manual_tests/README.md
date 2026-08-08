@@ -8,8 +8,8 @@ root — it resets the stack, then runs the stages in order.
 Deliberately narrow. This is not a coverage net: the pytest suite
 (`docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner`)
 owns behaviour, and these scripts only answer "does the whole thing still work
-through a real browser". Password resets, school leagues, AI hints, plagiarism
-and publishing have no stage here on purpose.
+through a real browser". Password resets, AI hints, plagiarism and publishing
+have no stage here on purpose.
 
 Stages run in order and share state through `/tmp/agent_games_manual_state.json`
 (`STATE_FILE` to override): stage 01 writes the admin, league and team

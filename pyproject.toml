@@ -5,7 +5,6 @@ description = "Agent Games Backend"
 requires-python = ">=3.14"
 dependencies = [
     "bcrypt>=5.0.0",
-    "boto3>=1.35.0",
     "celery[redis]>=5.6.2",
     "email-validator>=2.3.0",
     "fastapi>=0.135.0",
@@ -44,9 +43,6 @@ addopts = "-v"
 [tool.coverage.run]
 # One-off/operational scripts that never run under the app or the test suite.
 omit = [
-    "backend/scripts/*",
-    "backend/rank_sim_tmp.py",
-    "backend/bench_validation.py",
     "backend/games/greedy_pig/test_threshold_calibration.py",
 ]
 

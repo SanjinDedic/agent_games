@@ -52,10 +52,6 @@ class ProtectedLeagueError(Exception):
     e.g. deleting the auto-created 'unassigned' league (maps to HTTP 400)."""
 
 
-class SchoolsConfigError(Exception):
-    """Raised when a school league's schools_config is invalid or unreachable (maps to HTTP 400)."""
-
-
 # --- team ------------------------------------------------------------------
 
 
@@ -149,7 +145,6 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     LeagueExistsError: 409,
     LeagueExpiredError: 410,
     ProtectedLeagueError: 400,
-    SchoolsConfigError: 400,
     TeamNotFoundError: 404,
     TeamExistsError: 409,
     AgentTeamError: 400,

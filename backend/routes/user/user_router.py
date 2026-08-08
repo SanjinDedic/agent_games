@@ -26,7 +26,6 @@ from backend.routes.user.signup_helpers import (
     resolve_active_league_by_token,
     team_signup_success_data,
 )
-from backend.routes.user.team_naming import create_school_team
 from backend.routes.user.user_db import (
     allow_submission,
     assign_team_to_league,
@@ -50,13 +49,11 @@ from backend.routes.user.user_db import (
 )
 from backend.routes.user.user_models import (
     DirectLeagueSignup,
-    DirectSchoolLeagueSignup,
     GameName,
     LeagueAssignRequest,
     SubmissionCode,
     TeamPasswordReset,
 )
-from backend.schools.providers import SchoolsProviderError, get_schools_provider
 from backend.tasks.validation_task import (
     await_validation_result,
     enqueue_validation,
@@ -439,26 +436,13 @@ async def get_league_by_token(
     """Get league information by its signup token"""
     league = get_league_by_signup_token(session, signup_token)
 
-    data = {
+    return {
         "id": league.id,
         "name": league.name,
         "game": league.game,
         "created_date": league.created_date,
         "expiry_date": league.expiry_date,
-        "school_league": league.school_league,
     }
-
-    if league.school_league:
-        try:
-            provider = get_schools_provider(league)
-            schools = provider.list_schools() if provider else []
-        except SchoolsProviderError as e:
-            # Soft fallback: the signup page still renders without the list.
-            logger.error(f"Schools provider error for league {league.id}: {e}")
-            schools = []
-        data["schools"] = schools
-
-    return data
 
 
 @user_router.get("/password-reset-info/{reset_token}")
@@ -488,48 +472,6 @@ async def reset_team_password_endpoint(
         "league_id": team.league_id,
         "access_token": mint_team_token(team),
         "token_type": "bearer",
-    }
-
-
-@user_router.post("/direct-school-league-signup")
-async def direct_school_league_signup(
-    signup: DirectSchoolLeagueSignup,
-    session: Session = Depends(get_db),
-):
-    """Create a team in a school league using the server-assigned team name."""
-    league = resolve_active_league_by_token(session, signup.signup_token)
-
-    if not league.school_league:
-        raise HTTPException(
-            status_code=400, detail="This league is not a school league"
-        )
-
-    try:
-        provider = get_schools_provider(league)
-        allowed = set(provider.list_schools()) if provider else set()
-    except SchoolsProviderError as e:
-        # Unlike league-info there is no soft fallback: signup must not
-        # proceed against an unverifiable school list.
-        raise HTTPException(
-            status_code=502, detail=f"School list unavailable: {str(e)}"
-        )
-
-    if signup.school_name not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"School '{signup.school_name}' is not in this league's "
-                "allowed list"
-            ),
-        )
-
-    team = create_school_team(session, league.id, signup.school_name, signup.password)
-    return {
-        "message": (
-            f"Team '{team.name}' created and assigned to league "
-            f"'{league.name}' successfully!"
-        ),
-        **team_signup_success_data(team, league),
     }
 
 
