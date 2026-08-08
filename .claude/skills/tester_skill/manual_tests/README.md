@@ -32,7 +32,6 @@ attempts that never got past validation.
 | `04_institution_review_publish.js` | competition | manual Stage 4 — open the league workspace from Home, then its tabs: review submissions in the **Submissions** grid (one row per team, one cell per submission; a cell or **ALL** opens the code modal), plagiarism from inside that modal (OpenAI), 100-round simulation + publish (**Simulation**: runner → run summary → "Show results" modal), verify the public page |
 | `05_teacher_classroom.js` | classroom | mirror of 02 — teacher login via `/Teacher` ("Teacher Login", "Account Name:"; lands on `/InstitutionHome`, navbar "Students" + heading "Active Classrooms"), create greedy_pig classroom from the Home "Create New Classroom" card ("Classroom Created Successfully"), capture join URL |
 | `06_student_submissions.js` | classroom | mirror of 03 — two students: signup via the classroom join page ("Classroom · greedy_pig", "Student Name", "Sign Up & Join Classroom"), same 2-valid + 1-invalid submissions, history check and landing-page check (STUDENT:/CLASSROOM: footer) |
-| `07_demo_hints.js` | demo | manual Stage 5 — per game ×7: demo user, invalid submission, Get Hint, fix, valid submission |
 | `08_password_reset.js` | classroom | not in the manual yet — teacher opens the classroom workspace **Students** tab and generates a one-time reset link for Student 1 (`/institution/team-password-reset`; modal must say "Share this link with the student."), regenerates (old link must 404), consumes the live link on `/reset/<token>` (mismatch check, then reset + auto-login via `/user/reset-team-password`), verifies work kept (stage 6's 2 submissions), consumed link dead, old password rejected / new password logs in |
 
 ```bash
@@ -40,14 +39,14 @@ attempts that never got past validation.
 export OPENAI_API_KEY=sk-...
 for s in 01_admin_setup 02_institution_league 03_team_submissions \
          04_institution_review_publish 05_teacher_classroom \
-         06_student_submissions 07_demo_hints 08_password_reset; do
+         06_student_submissions 08_password_reset; do
   NODE_PATH="$HOME/.agent-games-playwright/node_modules" \
     node .claude/skills/tester_skill/manual_tests/$s.js || break
 done
 ```
 
 State-file dependencies: 02–04 need 01 (institution) and each other in order; 05 needs 01
-(teacher account); 06 needs 05 (classroom join URL); 07 is independent; 08 needs 01 + 05 + 06
+(teacher account); 06 needs 05 (classroom join URL); 08 needs 01 + 05 + 06
 (teacher account, classroom name, student credentials — it rewrites Student 1's password in
 the state file after the reset).
 

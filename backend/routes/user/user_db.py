@@ -13,7 +13,6 @@ from backend.database.db_models import (
     SimulationResult,
 )
 from backend.errors import (
-    DemoLeagueError,
     LeagueExpiredError,
     LeagueNotFoundError,
     ResultNotFoundError,
@@ -42,7 +41,6 @@ def allow_submission(session: Session, team_id: int) -> bool:
         .where(SubmissionMetadata.timestamp >= one_minute_ago)
     ).all()
 
-    # Demo users get a higher submission limit (10 per minute instead of 5)
     max_submissions = 5
 
     if len(recent_submissions) >= max_submissions:
@@ -100,16 +98,11 @@ def save_submission(
     return db_submission.id
 
 
-def assign_team_to_league(
-    session: Session, team_id: int, league_id: int, is_demo: bool
-) -> str:
+def assign_team_to_league(session: Session, team_id: int, league_id: int) -> str:
     """Assign a team to a league"""
     league = session.get(League, league_id)
     if not league:
         raise LeagueNotFoundError(f"League with ID {league_id} not found")
-
-    if is_demo and not league.is_demo:
-        raise DemoLeagueError("Demo users can only join demo leagues")
 
     team = session.get(Team, team_id)
     if not team:

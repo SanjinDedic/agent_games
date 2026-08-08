@@ -121,11 +121,6 @@ const Homepage = () => {
             minutes.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
-            <Link to="/Demo" className="inline-block">
-              <button className="bg-success hover:bg-success-hover text-white shadow-lg text-lg py-2.5 px-8 rounded">
-                Try the Demo
-              </button>
-            </Link>
             <Link to="/Teacher" className="inline-block">
               <button className="bg-white text-primary hover:bg-league-text hover:text-primary-dark shadow-lg text-lg py-2.5 px-8 rounded">
                 Teacher Login
@@ -330,9 +325,9 @@ const Homepage = () => {
                   {game.displayName}
                 </h3>
                 <p className="text-ui mb-4">{game.description}</p>
-                <Link to={`/Demo?game=${game.name}`}>
+                <Link to={`/GamePreview/${game.name}`}>
                   <span className="text-primary font-medium hover:text-primary-hover">
-                    Try it →
+                    Preview →
                   </span>
                 </Link>
               </div>

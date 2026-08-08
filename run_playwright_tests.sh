@@ -12,13 +12,15 @@
 #   01 admin setup (institutions + teacher account)
 #   02-04 COMPETITION flow: institution league -> team submissions -> review/publish
 #   05-06 CLASSROOM flow: teacher classroom -> student submissions
-#   07 demo hint loop
 #   08 student password-reset link (classroom flow; needs 01 + 05 + 06)
+#
+# The AI hint loop has no stage right now: it was covered by 07, which drove the
+# removed demo mode. Coverage returns when the stages are renumbered.
 #
 # Owns all setup: ensures the permanent Playwright install (outside the repo),
 # sources .env (OPENAI_API_KEY must be set there — stage 1.4 validates it
 # against OpenAI). Stages share state via /tmp/agent_games_manual_state.json —
-# run 01 before 02-08 (05 needs 01's teacher account; 06 needs 05's classroom
+# run 01 before the rest (05 needs 01's teacher account; 06 needs 05's classroom
 # join URL; 08 needs 06's students).
 #
 # Every launch resets the stack first: docker compose down -v, up -d --wait

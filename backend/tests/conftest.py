@@ -11,7 +11,6 @@ from backend.api import app
 from backend.database.db_config import get_database_url
 from backend.database.db_models import (
     Admin,
-    DemoUser,
     Institution,
     League,
     LeagueType,
@@ -316,7 +315,6 @@ def team_token(db_session):
             "role": "student",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
             "institution_id": team.institution_id,
         },
         expires_delta=timedelta(minutes=30),
@@ -331,7 +329,6 @@ def make_student_token(team: Team, minutes: int = 30) -> str:
             "role": "student",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
             "institution_id": team.institution_id,
         },
         expires_delta=timedelta(minutes=minutes),
@@ -346,7 +343,6 @@ def make_ai_agent_token(team: Team, minutes: int = 30) -> str:
             "role": "ai_agent",
             "team_id": team.id,
             "team_type": team.team_type.value,
-            "is_demo": team.is_demo,
             "institution_id": team.institution_id,
         },
         expires_delta=timedelta(minutes=minutes),
@@ -425,54 +421,6 @@ def test_league(db_session: Session) -> League:
     db_session.add(league)
     db_session.commit()
     return league
-
-
-@pytest.fixture
-def setup_demo_data(db_session: Session) -> None:
-    """Set up demo data in the test database"""
-    # Get unassigned league
-    unassigned = db_session.exec(
-        select(League).where(League.name == "unassigned")
-    ).first()
-
-    # Create demo teams and tracking records
-    for i in range(2):
-        team_name = f"demo_team_{i}"
-        team = db_session.exec(select(Team).where(Team.name == team_name)).first()
-
-        if not team:
-            # Create the Team with is_demo flag
-            team = Team(
-                name=team_name + "_demo",
-                school_name=team_name,
-                password_hash="test_hash",
-                league_id=unassigned.id,
-                is_demo=True,
-                team_type=TeamType.STUDENT,
-            )
-            db_session.add(team)
-            db_session.commit()
-            db_session.refresh(team)
-
-            # Create separate DemoUser tracking record
-            demo_user = DemoUser(
-                username=team_name,
-                email=f"demo{i}@example.com",
-                created_at=utc_now(),
-            )
-            db_session.add(demo_user)
-            db_session.commit()
-
-            # Add submissions for each team
-            for j in range(3):
-                add_submission(
-                    db_session,
-                    code=f"Demo code {j} for team {i}",
-                    timestamp=utc_now() - timedelta(minutes=j),
-                    team_id=team.id,
-                )
-
-    db_session.commit()
 
 
 @pytest.fixture

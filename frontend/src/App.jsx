@@ -22,7 +22,6 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./utils/toastDefaults";
 import DockerStatus from "./AgentGames/Admin/DockerStatus";
-import Demo from './AgentGames/Demo';
 import About from './AgentGames/About';
 import ClassroomJoin from "./AgentGames/User/ClassroomJoin";
 import TeamPasswordReset from "./AgentGames/User/TeamPasswordReset";
@@ -61,7 +60,6 @@ function App() {
             }
           />
           <Route path="Rankings" element={<AgentRankings />} />
-          <Route path="Demo" element={<Demo />} />
           <Route path="Leaderboards" element={<Leaderboards />} />
           <Route path="About" element={<About />} />
           {/* Per-classroom/league page: log in or sign up, land in the league.

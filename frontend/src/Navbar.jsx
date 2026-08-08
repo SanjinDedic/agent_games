@@ -44,7 +44,6 @@ function getNavLinks(T) {
     // login pages (returning users); the home-page hero carries the signup CTAs,
     // and each login page links back to its signup/pricing page.
     public: [
-      { to: "/Demo", label: "Demo" },
       { to: "/Teacher", label: "For Teachers" },
       { to: "/Institution", label: "For Competitions" },
       { to: "/About", label: "About" },
@@ -57,7 +56,7 @@ function resolveNavGroup(currentUser, isAuthenticated) {
   const role = currentUser?.role;
   if (role === "admin") return "admin";
   if (role === "institution") return "institution";
-  if (role === "student") return currentUser?.is_demo ? "demo" : "team";
+  if (role === "student") return "team";
   return "public";
 }
 
@@ -121,10 +120,6 @@ function AgentGamesNavbar() {
       navigate("/Admin");
     } else if (userRole === "institution") {
       navigate(currentUser?.is_teacher ? "/Teacher" : "/Institution");
-    } else if (currentUser?.is_demo) {
-      // Demo sessions are account-less — send them back to the home page,
-      // not a login page they can't use.
-      navigate("/");
     } else {
       navigate("/AgentLogin");
     }

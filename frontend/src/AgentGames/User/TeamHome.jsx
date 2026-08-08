@@ -210,14 +210,12 @@ function TeamHome() {
                   >
                     Open Agent Workspace
                   </Link>
-                  {!teamData.is_demo && (
-                    <Link
-                      to="/Leaderboards"
-                      className="text-center py-2.5 px-5 text-lg font-medium text-ui-dark bg-ui-lighter hover:bg-ui-light rounded-lg transition-colors duration-200"
-                    >
-                      Leaderboards
-                    </Link>
-                  )}
+                  <Link
+                    to="/Leaderboards"
+                    className="text-center py-2.5 px-5 text-lg font-medium text-ui-dark bg-ui-lighter hover:bg-ui-light rounded-lg transition-colors duration-200"
+                  >
+                    Leaderboards
+                  </Link>
                 </div>
               </div>
             </div>

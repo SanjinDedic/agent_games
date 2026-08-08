@@ -112,7 +112,6 @@ def test_team_data_classroom_full_payload(client, db_session, classroom_fixture)
     assert data["team_name"] == "team_data_student"
     assert data["is_classroom"] is True
     assert data["institution_name"] == "Team Data Classroom School"
-    assert data["is_demo"] is False
     assert data["league"] == {
         "id": fix["league"].id,
         "name": "team_data_classroom",

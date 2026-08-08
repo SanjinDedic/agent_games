@@ -6,10 +6,8 @@ from backend.routes.admin.admin_db import (
     create_agent_team,
     create_api_key,
     create_institution,
-    delete_all_demo_teams_and_subs,
     delete_institution,
     export_institution_data,
-    get_all_demo_users,
     get_all_institutions,
     update_institution,
 )
@@ -125,23 +123,3 @@ async def create_agent_api_key_endpoint(
 ):
     """Create a new API key for an agent team."""
     return create_api_key(session, request.team_id)
-
-
-# Demo user management endpoints
-@admin_router.get("/get_all_demo_users")
-@verify_admin_role
-async def get_all_demo_users_endpoint(
-    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
-):
-    """Get the name, number of submissions and time created for all demo users."""
-    return get_all_demo_users(session)
-
-
-@admin_router.post("/delete_demo_teams_and_subs")
-@verify_admin_role
-async def delete_all_demo_teams_and_submissions(
-    session: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
-):
-    """Delete all demo teams and submissions."""
-    delete_all_demo_teams_and_subs(session)
-    return {"message": "All demo users deleted"}

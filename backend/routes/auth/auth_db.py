@@ -31,9 +31,7 @@ def get_competitions(session: Session):
     league's shareable /join/<token> page, never through this list.
     """
     institutions = session.exec(
-        select(Institution)
-        .where(Institution.name != "Demo Institution")
-        .where(Institution.is_teacher == False)
+        select(Institution).where(Institution.is_teacher == False)
     ).all()
     return [{"name": inst.name, "icon": inst.icon} for inst in institutions]
 
@@ -45,7 +43,6 @@ def mint_team_token(team: Team, *, role: str = "student", expires_delta: timedel
         "role": role,
         "team_id": team.id,
         "team_type": team.team_type.value,
-        "is_demo": team.is_demo,
         "institution_id": team.institution_id,
         "league_id": team.league_id,
         # Students of a teacher account see classroom/student wording; requires

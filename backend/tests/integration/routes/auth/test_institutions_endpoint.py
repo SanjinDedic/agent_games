@@ -12,7 +12,7 @@ from backend.time_utils import utc_now
 
 @pytest.fixture
 def multiple_institutions(db_session: Session) -> dict:
-    """Create a mix of competition, teacher, and demo institutions."""
+    """Create a mix of competition and teacher institutions."""
     now = utc_now()
 
     competition = build_institution(
@@ -35,26 +35,16 @@ def multiple_institutions(db_session: Session) -> dict:
     )
     db_session.add(teacher)
 
-    demo = build_institution(
-        name="Demo Institution",
-        contact_person="Demo",
-        contact_email="demo@example.com",
-        created_date=now,
-        password_hash="hash",
-    )
-    db_session.add(demo)
-
     db_session.commit()
 
     return {
         "competition": competition,
         "teacher": teacher,
-        "demo": demo,
     }
 
 
 def test_list_competitions_success(client, multiple_institutions):
-    """Public endpoint returns only non-teacher, non-demo institutions."""
+    """Public endpoint returns only non-teacher institutions."""
     resp = client.get("/auth/competitions")
     assert resp.status_code == 200
     data = resp.json()
@@ -66,9 +56,6 @@ def test_list_competitions_success(client, multiple_institutions):
 
     # Teacher accounts are excluded (classroom students use /join links)
     assert "Ms Smith" not in by_name
-
-    # Demo Institution is excluded
-    assert "Demo Institution" not in by_name
 
     # Admin Institution (created by conftest, non-teacher) is included;
     # no icon set, so it comes back null

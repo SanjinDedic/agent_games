@@ -78,7 +78,6 @@ class League(SQLModel, table=True):
     teams: List["Team"] = Relationship(back_populates="league")
     game: str
     league_type: LeagueType = Field(default=LeagueType.STUDENT)
-    is_demo: bool = Field(default=False)
     school_league: bool = Field(default=False)
     schools_config: Optional[dict] = Field(
         default=None,
@@ -120,7 +119,6 @@ class Team(SQLModel, table=True):
     color: str = Field(default="rgb(171,239,177)")
     league_id: int = Field(foreign_key="league.id")
     team_type: TeamType = Field(default=TeamType.STUDENT)
-    is_demo: bool = Field(default=False)
     league: League = Relationship(back_populates="teams")
     submission_attempts: List["SubmissionMetadata"] = Relationship(back_populates="team")
     api_key: Optional["AgentAPIKey"] = Relationship(
@@ -256,14 +254,5 @@ class AIProviderKey(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(DateTime(timezone=True))
     )
-
-
-class DemoUser(SQLModel, table=True):
-    """Model for demo users with tracking information"""
-
-    id: int = Field(primary_key=True, default=None)
-    username: str = Field(index=True)  # Original username provided by user
-    email: str | None = None  # Optional email provided by user
-    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))
 
 

@@ -66,13 +66,6 @@ class ProtectedLeagueError(Exception):
     e.g. deleting the auto-created 'unassigned' league (maps to HTTP 400)."""
 
 
-class DemoLeagueError(ValueError):
-    """Raised when a demo user targets a non-demo league (maps to HTTP 403).
-
-    Subclasses ValueError for compatibility with callers that predate the class.
-    """
-
-
 class SchoolsConfigError(Exception):
     """Raised when a school league's schools_config is invalid or unreachable (maps to HTTP 400)."""
 
@@ -172,7 +165,6 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     LeagueExistsError: 409,
     LeagueExpiredError: 410,
     ProtectedLeagueError: 400,
-    DemoLeagueError: 403,
     SchoolsConfigError: 400,
     TeamNotFoundError: 404,
     TeamExistsError: 409,

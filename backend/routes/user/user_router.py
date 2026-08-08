@@ -71,7 +71,7 @@ user_router = APIRouter()
 # Business failures surface via the HTTP status line, not a masked 200 envelope.
 # Lookups raise domain exceptions mapped centrally in api.py: user_db's
 # TeamNotFoundError / LeagueNotFoundError / ResultNotFoundError -> 404,
-# TeamExistsError -> 409, LeagueExpiredError -> 410, DemoLeagueError -> 403,
+# TeamExistsError -> 409, LeagueExpiredError -> 410,
 # SubmissionLimitExceededError -> 429; institution_db's LeagueNotFoundError -> 404
 # and InstitutionAccessError -> 403 cover the league-ownership checks; the AI
 # client errors (LLMResponseError -> 502, AIRequestTimeoutError -> 504,
@@ -284,7 +284,6 @@ async def get_team_data(
     return {
         "team_name": team.name,
         "school_name": team.school_name,
-        "is_demo": team.is_demo,
         # Same rule the JWT's is_teacher claim is minted from: students of a
         # teacher account see classroom/student wording.
         "is_classroom": bool(institution.is_teacher) if institution else False,
@@ -312,9 +311,7 @@ async def assign_team_to_league_endpoint(
     logger.info(
         f'Team "{current_user["team_name"]}" about to assign to league_id={league.league_id}'
     )
-    msg = assign_team_to_league(
-        session, team_id, league.league_id, current_user["is_demo"]
-    )
+    msg = assign_team_to_league(session, team_id, league.league_id)
     team = get_team_by_id(session, team_id)
     role = current_user.get("role", "student")
     token_role = "ai_agent" if role == "ai_agent" else "student"

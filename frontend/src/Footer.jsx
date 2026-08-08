@@ -5,7 +5,6 @@ const FOOTER_COLUMNS = [
   {
     heading: "Explore",
     links: [
-      { to: "/Demo", label: "Try the Demo" },
       { to: "/Leaderboards", label: "Leaderboards" },
       { to: "/About", label: "About" },
     ],

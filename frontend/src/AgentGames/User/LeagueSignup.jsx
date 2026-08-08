@@ -6,7 +6,6 @@ import { setCurrentLeague } from "../../slices/leaguesSlice";
 import {
   selectCurrentUser,
   selectInstitutionName,
-  selectIsDemo,
   selectLeagueId,
 } from "../../slices/authSlice";
 import useLeagueAPI from "../Shared/hooks/useLeagueAPI";
@@ -19,7 +18,6 @@ function AgentLeagueSignUp() {
   const currentUser = useSelector(selectCurrentUser);
   const currentLeague = useSelector((state) => state.leagues.currentLeague);
   const allLeagues = useSelector((state) => state.leagues.list);
-  const isDemo = useSelector(selectIsDemo);
   const assignedLeagueId = useSelector(selectLeagueId);
   const institutionName = useSelector(selectInstitutionName);
 
@@ -84,13 +82,9 @@ function AgentLeagueSignUp() {
     }
   };
 
-  const displayLeagues = allLeagues
-    .filter((league) => league.name.toLowerCase() !== "unassigned")
-    .filter((league) =>
-      isDemo
-        ? league.name.toLowerCase().includes("_demo")
-        : !league.name.toLowerCase().includes("_demo")
-    );
+  const displayLeagues = allLeagues.filter(
+    (league) => league.name.toLowerCase() !== "unassigned"
+  );
 
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center bg-ui-lighter">
@@ -109,19 +103,6 @@ function AgentLeagueSignUp() {
             </p>
           )}
 
-          {isDemo && (
-            <div className="mb-6 bg-notice-yellowBg border border-notice-yellow rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <p className="text-ui-dark font-medium">
-                  DEMO MODE - You are using the demo version of Agent Games
-                </p>
-              </div>
-              <p className="text-ui-dark mt-2">
-                {`Only demo ${T.leagues} are displayed. Your progress will be available for the duration of your demo session.`}
-              </p>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-ui-lighter p-6 rounded-lg max-h-[304px] overflow-y-auto">
             {displayLeagues.length > 0 ? (
               displayLeagues.map((league) => (
@@ -129,7 +110,7 @@ function AgentLeagueSignUp() {
                   key={league.id}
                   className={`
                     flex items-center p-4 rounded-lg cursor-pointer
-                    ${isDemo ? "bg-notice-orange hover:bg-notice-orange/90" : "bg-league-blue hover:bg-league-hover"}
+                    bg-league-blue hover:bg-league-hover
                     transform transition-all duration-200 hover:scale-105
                     shadow-md
                   `}

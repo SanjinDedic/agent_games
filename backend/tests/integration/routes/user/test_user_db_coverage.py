@@ -26,7 +26,6 @@ from backend.database.db_models import (
 )
 from backend.routes.auth.auth_core import create_access_token
 from backend.routes.user.user_db import (
-    DemoLeagueError,
     LeagueNotFoundError,
     ResultNotFoundError,
     TeamNotFoundError,
@@ -110,41 +109,6 @@ def test_allow_submission_team_not_found(db_session):
         allow_submission(db_session, 99999)
 
 
-def test_assign_team_demo_to_non_demo_league(db_session):
-    """Demo team cannot be assigned to a non-demo league."""
-    institution = db_session.exec(
-        select(Institution).where(Institution.name == "Admin Institution")
-    ).first()
-
-    league = League(
-        name="non_demo_league_test",
-        created_date=utc_now(),
-        expiry_date=utc_now() + timedelta(days=7),
-        game="greedy_pig",
-        institution_id=institution.id,
-        is_demo=False,
-    )
-    db_session.add(league)
-    db_session.commit()
-
-    demo_team = Team(
-        name="demo_assign_test",
-        school_name="Demo",
-        password_hash="hash",
-        league_id=league.id,
-        institution_id=institution.id,
-        team_type=TeamType.STUDENT,
-        is_demo=True,
-    )
-    db_session.add(demo_team)
-    db_session.commit()
-
-    with pytest.raises(DemoLeagueError, match="Demo users can only join demo leagues"):
-        assign_team_to_league(
-            db_session, demo_team.id, league.id, is_demo=True
-        )
-
-
 def test_assign_team_not_found(db_session):
     """assign_team_to_league raises TeamNotFoundError for non-existent team."""
     institution = db_session.exec(
@@ -161,9 +125,7 @@ def test_assign_team_not_found(db_session):
     db_session.commit()
 
     with pytest.raises(TeamNotFoundError):
-        assign_team_to_league(
-            db_session, 999999, league.id, is_demo=False
-        )
+        assign_team_to_league(db_session, 999999, league.id)
 
 
 def test_get_published_result_with_feedback_json(db_session, published_league):

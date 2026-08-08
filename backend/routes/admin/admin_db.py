@@ -9,7 +9,6 @@ from sqlmodel import Session, delete, select
 
 from backend.database.db_models import (
     AgentAPIKey,
-    DemoUser,
     Institution,
     League,
     LeagueType,
@@ -322,58 +321,6 @@ def get_all_institutions(session: Session) -> Dict:
             for inst in institutions
         ]
     }
-
-
-# Demo user management functions
-def get_all_demo_users(session: Session):
-    """
-    Retrieve all demo users along with their team, league, and submission details.
-    """
-    demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
-    result = []
-    if len(demo_teams) == 0:
-        return {"demo_users": []}
-
-    for team in demo_teams:
-        latest_attempt = session.exec(
-            select(SubmissionMetadata)
-            .where(SubmissionMetadata.team_id == team.id)
-            .order_by(SubmissionMetadata.timestamp.desc())
-        ).first()
-        # Add a null check before accessing .timestamp
-        latest_submission_timestamp = None
-        if latest_attempt is not None:
-            latest_submission_timestamp = latest_attempt.timestamp
-        # get the email from the DemoUser table
-        matching_demo_user = session.exec(
-            select(DemoUser).where(DemoUser.username == team.school_name)
-        ).first()  # for the special case of demo users, the username they typed in is saved as the school_name
-        email = matching_demo_user.email if matching_demo_user is not None else None
-        result.append(
-            {
-                "demo_team_id": team.id,
-                "demo_team_name": team.name,
-                "email": email,
-                "league_name": team.league.name if team.league else None,
-                "number_of_submissions": len(team.submission_attempts),
-                "latest_submission": latest_submission_timestamp,
-            }
-        )
-    return {"demo_users": result}
-
-
-def delete_all_demo_teams_and_subs(session):
-    """Delete all demo teams and submissions"""
-    all_demo_teams = session.exec(select(Team).where(Team.is_demo == True)).all()
-
-    team_ids = [team.id for team in all_demo_teams]
-
-    # First, clear everything that references these teams
-    delete_team_children(session, team_ids)
-    # Now delete the teams themselves
-    session.exec(delete(Team).where(Team.id.in_(team_ids)))
-
-    session.commit()
 
 
 # Agent team management functions
