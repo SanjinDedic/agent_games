@@ -12,6 +12,7 @@ from backend.database.db_models import (
     SupportTicketSubmitterType,
     Team,
 )
+from backend.errors import SupportError
 from backend.routes.support.support_models import (
     SupportTicketAttachmentOut,
     SupportTicketOut,
@@ -21,10 +22,6 @@ from backend.routes.support.support_s3 import delete_attachment, presign_attachm
 from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-
-
-class SupportError(Exception):
-    """Raised for support-ticket validation or lookup failures."""
 
 
 def create_ticket(

@@ -12,62 +12,21 @@ from backend.database.db_models import (
     TeamType,
     SimulationResult,
 )
+from backend.errors import (
+    DemoLeagueError,
+    LeagueExpiredError,
+    LeagueNotFoundError,
+    ResultNotFoundError,
+    SubmissionLimitExceededError,
+    TeamError,
+    TeamExistsError,
+    TeamNotFoundError,
+)
 from backend.time_utils import ensure_utc, utc_now
 from backend.utils import process_simulation_results
 
 
 logger = logging.getLogger(__name__)
-
-
-class TeamError(Exception):
-    """Base exception for all team-related errors."""
-
-    pass
-
-
-class TeamExistsError(TeamError):
-    """Raised when a signup collides with an existing team name (maps to HTTP 409)."""
-
-    pass
-
-
-class SubmissionLimitExceededError(Exception):
-    """Raised when the submission rate limit is exceeded (maps to HTTP 429)."""
-
-    pass
-
-
-class TeamNotFoundError(Exception):
-    """Raised when a team is not found (maps to HTTP 404)."""
-
-    pass
-
-
-class LeagueNotFoundError(Exception):
-    """Raised when a league is not found (maps to HTTP 404)."""
-
-    pass
-
-
-class LeagueExpiredError(Exception):
-    """Raised when a signup targets a league past its expiry (maps to HTTP 410)."""
-
-    pass
-
-
-class DemoLeagueError(ValueError):
-    """Raised when a demo user targets a non-demo league (maps to HTTP 403).
-
-    Subclasses ValueError for compatibility with callers that predate the class.
-    """
-
-    pass
-
-
-class ResultNotFoundError(Exception):
-    """Raised when a published result is not found (maps to HTTP 404)."""
-
-    pass
 
 
 def allow_submission(session: Session, team_id: int) -> bool:

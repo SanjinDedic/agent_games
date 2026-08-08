@@ -11,6 +11,7 @@ from backend.database.db_models import (
     Team,
     TeamType,
 )
+from backend.errors import InvalidCredentialsError
 from backend.routes.auth.auth_config import (
     ADMIN_TOKEN_EXPIRY_MINUTES,
     AGENT_TOKEN_EXPIRY_DAYS,
@@ -21,18 +22,6 @@ from backend.routes.auth.auth_config import (
 from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-
-
-class InvalidCredentialsError(Exception):
-    """Raised when login credentials are invalid"""
-
-    pass
-
-
-class RateLimitExceededError(Exception):
-    """Raised when API rate limit is exceeded"""
-
-    pass
 
 
 def get_competitions(session: Session):

@@ -29,36 +29,14 @@ from backend.routes.admin.admin_models import (
     CreateInstitution,
     InstitutionUpdate,
 )
+from backend.errors import (
+    AgentTeamError,
+    InstitutionExistsError,
+    InstitutionNotFoundError,
+)
 from backend.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-
-
-class InstitutionError(Exception):
-    """Base exception for all institution-related errors"""
-
-    pass
-
-
-class InstitutionNotFoundError(InstitutionError):
-    """Raised when the target institution does not exist (maps to HTTP 404)."""
-
-    pass
-
-
-class InstitutionExistsError(InstitutionError):
-    """Raised when an institution name collides with an existing one (maps to HTTP 409)."""
-
-    pass
-
-
-class AgentTeamError(ValueError):
-    """Raised for invalid agent-team / API-key operations (maps to HTTP 400).
-
-    Subclasses ValueError so existing callers/tests that catch ValueError keep working.
-    """
-
-    pass
 
 
 def create_institution(session: Session, institution_data: CreateInstitution) -> Dict:

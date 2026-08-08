@@ -18,6 +18,14 @@ from typing import List, Optional
 from sqlmodel import Session
 
 from backend.database.db_models import Team
+
+# Error taxonomy: defined in backend/errors.py alongside their HTTP status codes
+# and re-exported here, which is where the router imports them from.
+from backend.errors import (  # noqa: F401
+    NoSubmissionsError,
+    PayloadTooLargeError,
+    PlagiarismServiceError,
+)
 from backend.routes.ai.ai_db import get_team_submissions_ordered
 from backend.routes.ai.clients import (  # noqa: F401 — errors re-exported for the router
     LLMResponseError,
@@ -115,21 +123,6 @@ def _summarize_deterministic_flags(
             )
 
     return concern_level, summary
-
-
-# --- Error taxonomy (NoApiKeyError / LLMResponseError come from the clients package) ---
-
-
-class PlagiarismServiceError(Exception):
-    """Base error for plagiarism service failures."""
-
-
-class NoSubmissionsError(PlagiarismServiceError):
-    """The team has no submissions to analyze."""
-
-
-class PayloadTooLargeError(PlagiarismServiceError):
-    """Combined submission code exceeds the size limit."""
 
 
 # --- Public API ---

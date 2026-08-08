@@ -11,8 +11,8 @@ from backend.routes.auth.auth_core import (
     verify_admin_or_institution,
     verify_institution_role,
 )
+from backend.errors import ProtectedLeagueError
 from backend.routes.institution.institution_db import (
-    ProtectedLeagueError,
     assign_team_to_league,
     create_league,
     create_team,

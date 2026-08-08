@@ -14,6 +14,17 @@ from typing import Any, ClassVar, Dict, Optional, Type, TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 
+# Error taxonomy shared by all providers. Defined in backend/errors.py alongside
+# their HTTP status codes and re-exported here, which is where every provider and
+# the router import them from.
+from backend.errors import (  # noqa: F401
+    AIClientError,
+    AIRequestTimeoutError,
+    LLMResponseError,
+    NoApiKeyError,
+    UnknownProviderError,
+)
+
 logger = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = 60.0
@@ -22,27 +33,6 @@ KEY_CHECK_TIMEOUT = 10.0
 T = TypeVar("T", bound=BaseModel)
 
 
-# --- Error taxonomy (shared by all providers) ---
-
-
-class AIClientError(Exception):
-    """Base error for AI client failures."""
-
-
-class NoApiKeyError(AIClientError):
-    """No API key is configured for the requested provider."""
-
-
-class UnknownProviderError(AIClientError):
-    """The requested provider has no registered client."""
-
-
-class LLMResponseError(AIClientError):
-    """The provider returned an unusable response (HTTP error, bad JSON, schema mismatch)."""
-
-
-class AIRequestTimeoutError(AIClientError):
-    """The provider did not respond within the request timeout."""
 
 
 # --- Schema normalization ---

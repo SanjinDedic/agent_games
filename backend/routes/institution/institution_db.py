@@ -12,6 +12,10 @@ from backend.database.db_models import (Institution, League, LeagueType,
                                         SimulationResultItem, Team, TeamType)
 from backend.database.submission_helpers import (delete_submissions_for_teams,
                                                  delete_team_children)
+from backend.errors import (InstitutionAccessError, LeagueExistsError,
+                            LeagueNotFoundError, ProtectedLeagueError,
+                            SchoolsConfigError, SimulationResultNotFoundError,
+                            TeamError, TeamExistsError, TeamNotFoundError)
 from backend.games.game_factory import GameFactory
 from backend.routes.institution.institution_models import LeagueSignUp
 from backend.schools.config import (GoogleSheetsSchoolsConfig,
@@ -24,50 +28,6 @@ from backend.time_utils import ensure_utc, to_sydney, utc_now
 logger = logging.getLogger(__name__)
 
 
-class LeagueExistsError(Exception):
-    """Raised when attempting to create a league that already exists (maps to HTTP 409)."""
-    pass
-
-
-class LeagueNotFoundError(Exception):
-    """Raised when a league is not found or is not visible to the caller (maps to HTTP 404)."""
-    pass
-
-
-class ProtectedLeagueError(Exception):
-    """Raised when an operation targets a league that may not be modified,
-    e.g. deleting the auto-created 'unassigned' league (maps to HTTP 400)."""
-    pass
-
-
-class SimulationResultNotFoundError(Exception):
-    """Raised when a referenced simulation result does not exist (maps to HTTP 404)."""
-    pass
-
-
-class TeamError(Exception):
-    """Base exception for all team-related errors."""
-    pass
-
-
-class TeamNotFoundError(TeamError):
-    """Raised when the target team does not exist (maps to HTTP 404)."""
-    pass
-
-
-class TeamExistsError(TeamError):
-    """Raised when a team name collides within the institution (maps to HTTP 409)."""
-    pass
-
-
-class InstitutionAccessError(Exception):
-    """Raised when an institution tries to access data it doesn't own (maps to HTTP 403)."""
-    pass
-
-
-class SchoolsConfigError(Exception):
-    """Raised when a school league's schools_config is invalid or unreachable (maps to HTTP 400)."""
-    pass
 
 
 def _build_schools_config(

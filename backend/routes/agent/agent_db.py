@@ -4,6 +4,7 @@ from redis import Redis
 from sqlmodel import Session, select
 
 from backend.database.db_models import League
+from backend.errors import SimulationLimitExceededError
 from backend.tasks.celery_app import broker_url
 
 # Env-overridable default; read at call time so tests can monkeypatch it and
@@ -23,12 +24,6 @@ def _get_redis() -> Redis:
 
 def get_league_by_id(session: Session, league_id: int) -> League | None:
     return session.exec(select(League).where(League.id == league_id)).one_or_none()
-
-
-class SimulationLimitExceededError(Exception):
-    """Raised when simulation rate limit is exceeded"""
-
-    pass
 
 
 def allow_simulation(team_id: int, limit: int | None = None) -> bool:
